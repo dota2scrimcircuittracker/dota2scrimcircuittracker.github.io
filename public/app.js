@@ -1,6 +1,6 @@
 import { HEROES } from "./lib/heroes.js";
 import { validateMatch } from "./lib/validate.js";
-import { withDerived, playerLeaderboard, heroStats, hasDetails, playerKey, playerHistory, heroHistory, heroSlug, hasMapStats, mapSummary, draftSlotRecord } from "./lib/stats.js";
+import { withDerived, isRemake, playerLeaderboard, heroStats, hasDetails, playerKey, playerHistory, heroHistory, heroSlug, hasMapStats, mapSummary, draftSlotRecord } from "./lib/stats.js";
 import { tierList, tierModel, rankLabel, ratingOf, MIN_GAMES, K_PRIOR, K_SPEED, K_CONSISTENCY, K_SHRINK, TIERS, WEIGHTS, METRICS, SURVIVAL, MULT, RATING_STRETCH, EASE } from "./lib/tiers.js";
 import { heroImg } from "./lib/hero-meta.js";
 import { listTeams, teamHistory, teamSlug, sideOf, standingsRows } from "./lib/teams.js";
@@ -726,7 +726,7 @@ async function loadDivision(file) {
   const res = await fetch(file, { cache: "no-cache" });
   if (!res.ok) throw new Error("The AD2L data hasn't been published yet.");
   const d = await res.json();
-  d.games = d.games.map((g) => withDerived({ ...g, createdAt: new Date(g.start_time * 1000) }));
+  d.games = d.games.filter((g) => !isRemake(g)).map((g) => withDerived({ ...g, createdAt: new Date(g.start_time * 1000) }));
   return d;
 }
 const divCache = {};
@@ -763,7 +763,7 @@ async function divGames(src) {
   const d = await src.data();
   const ids = src.view ? new Set(d.teams.map((t) => t.id)) : null;
   const up = (await divUploaded(src.key)).filter((u) => !u.private).map((u) => withDerived(asAd2l(u, d)))
-    .filter((g) => !ids || (ids.has(g.team_a_id) && ids.has(g.team_b_id)));
+    .filter((g) => !isRemake(g) && (!ids || (ids.has(g.team_a_id) && ids.has(g.team_b_id))));
   return up.length ? [...d.games, ...up].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)) : d.games;
 }
 

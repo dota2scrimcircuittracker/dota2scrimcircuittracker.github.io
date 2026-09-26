@@ -196,6 +196,8 @@ const games = [];
 for (const id of [...candidates].sort()) {
   const d = await matchDetail(id);
   if (d.leagueid !== LEAGUE_ID || !Array.isArray(d.players) || d.players.length !== 10) continue;
+  // A remake: lobby made, game never played; every player 0/0/0.
+  if (d.players.every((p) => !p.kills && !p.deaths && !p.assists)) continue;
   // Which division team is each side? Majority of its 5 accounts.
   const sideTeam = (radiant) => {
     const counts = {};

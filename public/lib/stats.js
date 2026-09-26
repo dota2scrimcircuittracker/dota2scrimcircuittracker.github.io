@@ -20,6 +20,12 @@ export async function matchId(m) {
   return [...new Uint8Array(hash)].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// A remake: the lobby was created but the game never played, so all ten players are 0/0/0.
+// These are left out everywhere; the series score still comes from PlayOn.
+export function isRemake(m) {
+  return !!m.players?.length && m.players.every((p) => !p.kills && !p.deaths && !p.assists);
+}
+
 export function withDerived(match) {
   if (!hasDetails(match)) return { ...match, players: [], private: true };
   const minutes = match.duration_sec / 60;
