@@ -61,8 +61,8 @@ const WIN_PARTS = { win: 2, speed: 1 }; // winning = (2 × win rate + 1 × win s
 // better. A player missing a stat (screenshot uploads have no wards) has the rest scaled up
 // to fill its points. See METRICS for definitions.
 export const WEIGHTS = {
-  core: { dmg: 15, farm: 15, kills: 13, gpm: 13, nw: 10, xp: 8, assists: 8, tower: 5, lanewin: 5, lane: 4, stuns: 4 },
-  support: { dewards: 15, assists: 13, vision: 13, stuns: 8, stacks: 8, kills: 8, lanewin: 7, heal: 5, dmg: 4, sentries: 4, dust: 3, smokes: 3, gpm: 3, farm: 2, nw: 2, tower: 2 },
+  core: { farm: 15, dmg: 14, kills: 13, gpm: 13, nw: 10, xp: 8, assists: 8, tower: 5, lane: 5, lanewin: 5, stuns: 4 },
+  support: { vision: 16, dewards: 13, assists: 13, stuns: 8, kills: 8, lanewin: 7, heal: 7, stacks: 7, smokes: 5, dmg: 3, gpm: 3, dust: 2, sentries: 2, farm: 2, nw: 2, tower: 2 },
 };
 // Survival: its three parts' share of the survival score. Negative = lower is better.
 export const SURVIVAL = { deaths: -40, dead: -35, tanked: 25 };

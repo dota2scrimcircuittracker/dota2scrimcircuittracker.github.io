@@ -148,10 +148,10 @@ to the stat points and each multiplier shows the points it adds or removes.
   0–100 per role: a player's average, padded with 3 games at the position average; 100 = the
   league's best such average (players with 3+ games in the role), 0 = the worst. Support
   stacks are easier: 100 sits 70% of the way from the worst stacker to the best.
-- **Stat points** out of 100 — cores: damage share 15, farm share 15, kill share 13, GPM 13,
-  net worth 10, XP share 8, assist share 8, building share 5, lane result 5, laning 4, stun time 4.
-  Supports: dewards 15, assist share 13, ward uptime 13, stun time 8, stacks 8, kill share 8,
-  lane result 7, healing 5, damage share 4, sentries 4, dust 3, smokes 3, GPM 3, farm share 2, net
+- **Stat points** out of 100 — cores: farm share 15, damage share 14, kill share 13, GPM 13,
+  net worth 10, XP share 8, assist share 8, building share 5, laning 5, lane result 5, stun time 4.
+  Supports: ward uptime 16, dewards 13, assist share 13, stun time 8, kill share 8, lane result 7,
+  healing 7, stacks 7, smokes 5, damage share 3, GPM 3, dust 2, sentries 2, farm share 2, net
   worth 2, building share 2.
 - **Survival** ×0.85–1.00: deaths 40%, time dead 35%, hero damage taken per life 25%, each on its
   own 0–100.
