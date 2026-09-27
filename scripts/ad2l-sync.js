@@ -70,12 +70,21 @@ async function playon(p, ttlHours) {
 
 let lastOD = 0, odCalls = 0;
 async function opendota(p, method = "GET") {
-  for (let attempt = 0; attempt < 4; attempt++) {
+  // 429s: wait what OpenDota asks (Retry-After) or 30s, 60s, ... up to 2 min, six times
+  // (about 9 minutes in all). The scheduled sync runs on shared GitHub runners, whose IPs
+  // other OpenDota users share, so a burst of 429s there isn't this script's own pace.
+  for (let attempt = 0; attempt < 6; attempt++) {
     await sleep(Math.max(0, 1100 - (Date.now() - lastOD))); // free tier: 60/min
     lastOD = Date.now();
     odCalls++;
     const res = await fetch(`https://api.opendota.com/api${p}`, { method, headers: { "user-agent": UA } });
-    if (res.status === 429) { await sleep(15000 * (attempt + 1)); continue; }
+    if (res.status === 429) {
+      const after = Number(res.headers.get("retry-after"));
+      const wait = Math.min(120e3, after > 0 ? after * 1000 : 30e3 * (attempt + 1));
+      console.log(`  OpenDota rate limit on ${p}; waiting ${Math.round(wait / 1000)}s`);
+      await sleep(wait);
+      continue;
+    }
     if (!res.ok) throw new Error(`OpenDota ${p}: HTTP ${res.status}`);
     return res.json();
   }

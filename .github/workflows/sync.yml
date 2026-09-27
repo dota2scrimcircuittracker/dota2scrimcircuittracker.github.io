@@ -29,7 +29,9 @@ jobs:
           node-version: 22
       # PlayOn pages and parsed OpenDota match details (never change once parsed), carried
       # between runs so each run only fetches what's new. A new key each run keeps it rolling.
-      - uses: actions/cache@v4
+      # Restore and save are separate steps so the cache is saved even when a division
+      # failed (actions/cache skips its save on a failed job, which left every run cold).
+      - uses: actions/cache/restore@v4
         with:
           path: .cache
           key: sync-cache-${{ github.run_id }}
@@ -45,6 +47,11 @@ jobs:
             echo "::endgroup::"
           done
           echo "FAILED=$failed" >> "$GITHUB_ENV"
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache
+          key: sync-cache-${{ github.run_id }}
       # A run where only the "updated" timestamp moved isn't worth a commit.
       - name: Drop timestamp-only changes
         run: |
