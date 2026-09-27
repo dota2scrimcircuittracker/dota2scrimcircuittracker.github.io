@@ -15,6 +15,7 @@
 // Usage: npm run ad2l:sync   [--season 675 --league 20077 --out ad2l.json]
 //        npm run heroic:sync  (S48 Heroic/Aegis: --season 676 --out heroic.json)
 //        npm run conqueror:sync  (S48 Conqueror: --season 674 --out conqueror.json)
+//        npm run warrior:sync  (S48 Warrior: --season 673 --out warrior.json)
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";

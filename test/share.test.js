@@ -7,6 +7,7 @@ test("shareable routes map to preview paths and back", () => {
     ["#/", "/"], ["", "/"], ["#/week", "/week/"], ["#/ad2l/", "/ad2l/"], ["#/heroic/b/week", "/heroic/b/week/"],
     ["#/heroic/a/", "/heroic/a/"], ["#/heroic/teams/14999", "/heroic/teams/14999/"], ["#/ad2l/game/8969465019", "/ad2l/game/8969465019/"],
     ["#/conqueror/", "/conqueror/"], ["#/conqueror/players", "/conqueror/players/"], ["#/conqueror/teams/14095", "/conqueror/teams/14095/"],
+    ["#/warrior/", "/warrior/"], ["#/warrior/week", "/warrior/week/"],
   ]) {
     assert.equal(sharePath(hash), path, hash);
     if (path !== "/") assert.equal(sharePath(routeOf(path)), path, `round trip ${path}`);
@@ -14,6 +15,7 @@ test("shareable routes map to preview paths and back", () => {
   assert.equal(routeOf("/heroic/b/"), "#/heroic/b/");
   assert.equal(routeOf("/heroic/b/week/"), "#/heroic/b/week");
   assert.equal(routeOf("/conqueror/"), "#/conqueror/");
+  assert.equal(routeOf("/warrior/"), "#/warrior/");
 });
 
 test("routes without a preview page return null", () => {

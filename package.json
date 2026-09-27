@@ -12,6 +12,7 @@
     "ad2l:sync": "node scripts/ad2l-sync.js",
     "heroic:sync": "node scripts/ad2l-sync.js --season 676 --out heroic.json",
     "conqueror:sync": "node scripts/ad2l-sync.js --season 674 --out conqueror.json",
+    "warrior:sync": "node scripts/ad2l-sync.js --season 673 --out warrior.json",
     "config:write": "node scripts/write-firebase-config.js"
   },
   "devDependencies": {

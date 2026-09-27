@@ -26,7 +26,12 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   Champion; predictions use `league: "conqueror"` and unticketed uploads go to
   `conqueror_unticketed`. One division, no A/B split. Divisions are one table (`DIVISIONS` in
   `public/app.js`): a new one needs an entry there, a sync script, a menu link, a colour, its
-  collection in `lib/store.js` and the rules.
+  collection in `lib/store.js`, the rules (`knownColl()` regex and the prediction leagues),
+  and a `league(...)` line plus a colour in `scripts/share-pages.js` and the regexes in `lib/share.js`.
+- **AD2L S48 Warrior** — the division below Conqueror (PlayOn season 673), from
+  `public/data/warrior.json` (`npm run warrior:sync`), under `#/warrior/`. Same as Conqueror:
+  `league: "warrior"`, `warrior_unticketed`. The league menu runs lowest to highest: Scrim,
+  Warrior, Conqueror, Champion, Heroic/Aegis.
 - **Tier list** (top of the Players tab) — every player with 3+ games, ranked S–D by in-season performance
   against same-role players plus win rate (see "Tier list" below).
 - **Weekly recap** — one week at a time: highlights (player of the week, biggest damage,
