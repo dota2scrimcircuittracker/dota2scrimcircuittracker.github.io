@@ -107,11 +107,11 @@ body[data-league="conqueror"] .brand-mark i { background: #5aa9e6; }
 body[data-league="conqueror"] .brand-mark i + i { background: #2f78b5; }
 body[data-league="conqueror"] .brand-word b { color: #8cc4f0; }
 body[data-league="conqueror"] .league-menu a.current { border-left-color: #5aa9e6; background: rgba(90, 169, 230, .08); }
-/* Warrior: rose, clear of the other leagues' colours. */
-body[data-league="warrior"] .brand-mark i { background: #e46f9b; }
-body[data-league="warrior"] .brand-mark i + i { background: #b04672; }
-body[data-league="warrior"] .brand-word b { color: #f29dbd; }
-body[data-league="warrior"] .league-menu a.current { border-left-color: #e46f9b; background: rgba(228, 111, 155, .08); }
+/* Warrior: orange, between Champion's gold and the scrims' red-orange ember. */
+body[data-league="warrior"] .brand-mark i { background: #ff9a3c; }
+body[data-league="warrior"] .brand-mark i + i { background: #c4671c; }
+body[data-league="warrior"] .brand-word b { color: #ffb870; }
+body[data-league="warrior"] .league-menu a.current { border-left-color: #ff9a3c; background: rgba(255, 154, 60, .08); }
 .div-badge {
   font: 600 11px/1 var(--mono); font-style: normal; letter-spacing: .12em; text-transform: uppercase;
   color: var(--ink); background: #a58bff; padding: 4px 6px; margin-left: 8px; vertical-align: middle; border-radius: 2px; white-space: nowrap;

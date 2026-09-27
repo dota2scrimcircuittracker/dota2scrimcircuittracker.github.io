@@ -10,7 +10,7 @@ import { routeOf, sharePath } from "../public/lib/share.js";
 
 const OUT = path.resolve(process.argv[2] ?? "_site");
 const SITE = "https://dota2scrimcircuittracker.github.io";
-const COLOR = { scrim: "#5fd39b", ad2l: "#e8b64c", heroic: "#a58bff", conqueror: "#5aa9e6", warrior: "#e46f9b" };
+const COLOR = { scrim: "#5fd39b", ad2l: "#e8b64c", heroic: "#a58bff", conqueror: "#5aa9e6", warrior: "#ff9a3c" };
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const TZ = "America/Los_Angeles";
 const day = (sec) => new Date(sec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: TZ });
