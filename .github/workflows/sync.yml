@@ -1,0 +1,72 @@
+# Re-sync every AD2L division from PlayOn + OpenDota on a schedule, commit the data if it
+# changed, and redeploy. Picks up new schedules (predictions), results, replays OpenDota has
+# parsed since, and recent pubs. Run it by hand from the Actions tab too.
+name: Sync AD2L data
+
+on:
+  schedule:
+    # 07:00 and 19:00 UTC = midnight and noon Pacific (PDT): midnight catches Thursday's
+    # league night right after it ends, noon catches late replay parses and new schedules.
+    - cron: "0 7,19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit the synced data
+  actions: write # start the Pages deploy (a push made with GITHUB_TOKEN doesn't trigger it)
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # PlayOn pages and parsed OpenDota match details (never change once parsed), carried
+      # between runs so each run only fetches what's new. A new key each run keeps it rolling.
+      - uses: actions/cache@v4
+        with:
+          path: .cache
+          key: sync-cache-${{ github.run_id }}
+          restore-keys: sync-cache-
+      # One division failing (PlayOn down, OpenDota rate limit) doesn't stop the others;
+      # the job still fails at the end so it shows red.
+      - name: Sync every division
+        run: |
+          failed=""
+          for l in ad2l heroic conqueror warrior challenger; do
+            echo "::group::$l"
+            npm run -s "$l:sync" || failed="$failed $l"
+            echo "::endgroup::"
+          done
+          echo "FAILED=$failed" >> "$GITHUB_ENV"
+      # A run where only the "updated" timestamp moved isn't worth a commit.
+      - name: Drop timestamp-only changes
+        run: |
+          for f in $(git diff --name-only -- public/data); do
+            if [ -z "$(git diff -U0 -- "$f" | grep '^[+-] ' | grep -v '"updated":')" ]; then git checkout -- "$f"; fi
+          done
+      - name: Commit and push
+        id: commit
+        run: |
+          if git diff --quiet -- public/data; then echo "No data changes."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          git commit -m "Sync AD2L data ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "pushed=1" >> "$GITHUB_OUTPUT"
+      - name: Deploy
+        if: steps.commit.outputs.pushed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
+      - name: Report failed divisions
+        if: env.FAILED != ''
+        run: echo "::error::Sync failed for:${FAILED}" && exit 1

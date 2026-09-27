@@ -135,6 +135,14 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
 Static site: every push to `main` deploys `public/` to GitHub Pages via GitHub Actions
 (`.github/workflows/pages.yml`).
 
+**Auto sync:** `.github/workflows/sync.yml` re-syncs all five divisions twice a day
+(midnight and noon Pacific; run it by hand from the Actions tab too), commits
+`public/data/` when anything but the timestamp changed, and starts the Pages deploy. That
+picks up new schedules for predictions, results, newly parsed replays and pubs without
+anyone running a command. A division that fails (PlayOn down, OpenDota rate limit) is
+skipped and the run shows red. The sync caches (`.cache/`) carry over between runs.
+Locally: `npm run sync:all`.
+
 **Firebase key:** `public/firebase-config.js` is not committed. The Actions workflow writes
 it from the `FIREBASE_WEB_API_KEY` repository secret; locally, run
 `FIREBASE_WEB_API_KEY=... npm run config:write` once. It's a public web key by design (the
