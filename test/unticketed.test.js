@@ -103,7 +103,7 @@ test("roster questions skip known aliases, division names and names answered sta
 });
 
 test("a forfeit against a bye week isn't a game anyone can upload", () => {
-  for (const file of ["heroic.json", "conqueror.json", "warrior.json"]) {
+  for (const file of ["heroic.json", "conqueror.json", "warrior.json", "challenger.json"]) {
     const h = JSON.parse(readFileSync(new URL(`../public/data/${file}`, import.meta.url), "utf8"));
     const bye = h.teams.find((t) => /bye week/i.test(t.name));
     assert.ok(bye, `${file} has a bye-week placeholder team`);

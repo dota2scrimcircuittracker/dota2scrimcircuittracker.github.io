@@ -122,7 +122,7 @@ function errorBox(e) {
 
 const engine = createBrowserEngine();
 // league: "scrim" (the ledger), or an AD2L division key ("ad2l" = Champion, "heroic",
-// "conqueror", "warrior"; see DIVISIONS) for an unticketed game in that division, same form.
+// "conqueror", "warrior", "challenger"; see DIVISIONS) for an unticketed game in that division, same form.
 const upload = { images: [], draft: null, check: null, notes: [], names: [], standins: new Set(), busy: false, progress: "", message: null, isPrivate: false, league: "scrim", seriesId: null,
   // Private result form (scrims): no screenshots or players, just the result.
   quick: false, teams: [], newTeam: { a: false, b: false },
@@ -721,6 +721,7 @@ const DIVISIONS = {
   heroic: { name: "S48 Heroic/Aegis", short: "Heroic/Aegis", file: "data/heroic.json", views: ["a", "b"] },
   conqueror: { name: "S48 Conqueror", short: "Conqueror", file: "data/conqueror.json" },
   warrior: { name: "S48 Warrior", short: "Warrior", file: "data/warrior.json" },
+  challenger: { name: "S48 Challenger", short: "Challenger", file: "data/challenger.json" },
 };
 
 async function loadDivision(file) {
@@ -2710,7 +2711,7 @@ function route() {
 
   let section, page;
   if (isAd2l) {
-    // Every AD2L division (#/ad2l, #/heroic, #/conqueror, #/warrior) shares these pages.
+    // Every AD2L division (#/ad2l, #/heroic, #/conqueror, #/warrior, #/challenger) shares these pages.
     const gameId = new RegExp(`^${r}/game/(\\d+|[0-9a-f]{32})$`).exec(h)?.[1];
     if (gameId) { section = "week"; page = () => renderMatch(gameId, src); }
     else if (h.startsWith(`${r}/games`)) { section = "week"; page = () => renderWeek(src, 0); } // old Games tab: Weekly lists every game

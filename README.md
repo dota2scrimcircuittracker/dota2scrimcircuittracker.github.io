@@ -30,8 +30,11 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   and a `league(...)` line plus a colour in `scripts/share-pages.js` and the regexes in `lib/share.js`.
 - **AD2L S48 Warrior** — the division below Conqueror (PlayOn season 673), from
   `public/data/warrior.json` (`npm run warrior:sync`), under `#/warrior/`. Same as Conqueror:
-  `league: "warrior"`, `warrior_unticketed`. The league menu runs lowest to highest: Scrim,
-  Warrior, Conqueror, Champion, Heroic/Aegis.
+  `league: "warrior"`, `warrior_unticketed`.
+- **AD2L S48 Challenger** — the division below Warrior (PlayOn season 672), from
+  `public/data/challenger.json` (`npm run challenger:sync`), under `#/challenger/`; `league:
+  "challenger"`, `challenger_unticketed`. The league menu runs lowest to highest: Scrim,
+  Challenger, Warrior, Conqueror, Champion, Heroic/Aegis.
 - **League switching** — the league menu keeps the tab you're on: Players in Champion →
   Warrior opens Warrior's Players. A team, game or player page opens that tab's list.
 - **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
