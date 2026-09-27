@@ -32,6 +32,13 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   `public/data/warrior.json` (`npm run warrior:sync`), under `#/warrior/`. Same as Conqueror:
   `league: "warrior"`, `warrior_unticketed`. The league menu runs lowest to highest: Scrim,
   Warrior, Conqueror, Champion, Heroic/Aegis.
+- **League switching** — the league menu keeps the tab you're on: Players in Champion →
+  Warrior opens Warrior's Players. A team, game or player page opens that tab's list.
+- **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
+  pasted into Discord previews as that page, not the home page. The deploy writes a preview
+  page at each of those paths (`scripts/share-pages.js`) that forwards into the app; pages
+  without one (player pages, a week other than the latest, uploaded games) keep `/#/…`.
+  Old `#/` links still work. Locally, `npm start` serves the app for any extensionless path.
 - **Tier list** (top of the Players tab) — every player with 3+ games, ranked S–D by in-season performance
   against same-role players plus win rate (see "Tier list" below).
 - **Weekly recap** — one week at a time: highlights (player of the week, biggest damage,

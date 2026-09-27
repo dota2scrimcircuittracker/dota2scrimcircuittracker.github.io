@@ -18,7 +18,7 @@ import { settle, asSeries, scrimRatings, fixtureOdds, fixtureCall, fixtureBackte
 import { parseScreenshots } from "./lib/ocr/parse.js";
 import { createBrowserEngine } from "./lib/ocr/engine-browser.js";
 import { info, wireInfo } from "./lib/glossary.js";
-import { sharePath } from "./lib/share.js";
+import { routeOf, sharePath } from "./lib/share.js";
 
 const app = document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -233,7 +233,7 @@ function addFiles(files) {
 
 // Snipping Tool: Win+Shift+S, then Ctrl+V anywhere on the upload page.
 document.addEventListener("paste", (e) => {
-  if (!/^#\/(([a-z0-9]+)(\/[a-z])?\/)?upload/.test(location.hash) || e.target.closest?.("input")) return;
+  if (!/^#\/(([a-z0-9]+)(\/[a-z])?\/)?upload/.test(here()) || e.target.closest?.("input")) return;
   const files = [...(e.clipboardData?.items ?? [])].filter((i) => i.kind === "file").map((i) => i.getAsFile()).filter(Boolean);
   if (files.length) { e.preventDefault(); addFiles(files); }
 });
@@ -2656,11 +2656,34 @@ function divisionBar(src, h) {
     <span class="div-note">${src.view ? `Only Division ${src.view.toUpperCase()} teams and the games between them` : "Both divisions together"}</span>`;
 }
 
+// Addresses: routes are "#/..." inside the app, but the address bar shows the /path/ form
+// (/warrior/players/) whenever the page has a link-preview page (lib/share.js), so a link
+// pasted from the address bar previews as that page in Discord, not as the home page.
+// Other pages stay /#/... . Old #/ links still work; a /path/ address with no hash (a
+// reload, or the local server) routes from the path.
+function here() {
+  if (location.hash) return location.hash;
+  const p = location.pathname.replace(/index\.html$/, "");
+  return p === "/" ? "#/" : routeOf(p);
+}
+const addressOf = (h) => sharePath(h) ?? `/${h === "#/" ? "" : h}`;
+// In-app links: move the address without a page load, then route as a hash change would.
+document.addEventListener("click", (e) => {
+  const a = e.target.closest?.('a[href^="#/"]');
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target) return;
+  e.preventDefault();
+  history.pushState(null, "", addressOf(a.getAttribute("href")));
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+});
+// hashchange and popstate both fire on some back/forward steps: route once per address.
+let routedAt = null;
+const onNav = () => { if (location.href !== routedAt) route(); };
+
 // Copy link: the /path/ form of this page when it has a preview page (lib/share.js), so
 // Discord shows this page's title instead of the site's; otherwise the address as is.
 const shareBtn = document.getElementById("share-btn");
 shareBtn.onclick = async () => {
-  const p = sharePath(location.hash);
+  const p = sharePath(here());
   const url = p ? `${location.origin}${p}` : location.href;
   try { await navigator.clipboard.writeText(url); shareBtn.textContent = "Copied"; }
   catch { prompt("Copy this link:", url); }
@@ -2670,7 +2693,11 @@ shareBtn.onclick = async () => {
 
 function route() {
   setMenu(false);
-  const h = location.hash || "#/";
+  const h = here();
+  // Show this page's /path/ form (replaceState: no reload, no new history entry).
+  const want = addressOf(h);
+  if (location.pathname + location.hash !== want) history.replaceState(history.state, "", want);
+  routedAt = location.href;
   // #/<division>/..., or #/<division>/<view>/... for a sub-division.
   const [, key, view] = /^#\/([a-z0-9]+)(?:\/([a-z])(?=\/|$))?/.exec(h) ?? [];
   const src = !isDiv(key) ? SOURCES.scrim : view && SOURCES[`${key}_${view}`] || SOURCES[key];
@@ -2729,6 +2756,14 @@ function route() {
   }
   document.getElementById("nav").innerHTML = src.nav
     .map(([href, key, label, cls]) => `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}">${label}</a>`).join("");
+  // League menu: each league opens on the tab you're on (Players stays Players). A team,
+  // game or player page opens that tab's list, since it needn't exist in the other league.
+  // Standings, the scrim match list and scrim Teams all land on the other league's standings.
+  const tab = { standings: "", matches: "", teams: "" }[section] ?? section;
+  leagueMenu.querySelectorAll("a").forEach((a) => {
+    const l = a.dataset.league;
+    a.href = l === "scrim" ? `#/${tab}` : `${SOURCES[l].root}/${tab}`;
+  });
   divisionBar(src, h);
   return page();
 }
@@ -2749,6 +2784,7 @@ const openNested = (e) => {
 };
 app.addEventListener("click", openNested);
 app.addEventListener("keydown", openNested);
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", onNav);
+window.addEventListener("popstate", onNav);
 wireInfo();
 route();

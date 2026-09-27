@@ -21,6 +21,11 @@ http.createServer(async (req, res) => {
     res.writeHead(200, { "content-type": MIME[path.extname(file)] ?? "application/octet-stream", "cache-control": "no-store" });
     res.end(body);
   } catch {
+    // /warrior/players/ etc.: the deploy writes preview pages there; locally, serve the app.
+    if (!path.extname(pathname)) {
+      res.writeHead(200, { "content-type": MIME[".html"], "cache-control": "no-store" }).end(await readFile(path.join(root, "index.html")));
+      return;
+    }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   }
 }).listen(PORT, "127.0.0.1", () => console.log(`Dota Scrim League (static) at http://localhost:${PORT}`));
