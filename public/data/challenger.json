@@ -2,7 +2,7 @@
  "season": "S48 Challenger League - Amateur Dota 2 League",
  "playon_season_id": 672,
  "league_id": 20077,
- "updated": "2026-09-27T21:01:33.692Z",
+ "updated": "2026-09-27T21:39:50.285Z",
  "teams": [
   {
    "id": 14764,
@@ -593,7 +593,7 @@
    "time": 1790298000,
    "home": 14962,
    "away": 14430,
-   "home_score": 0,
+   "home_score": 1,
    "away_score": 0
   },
   {
@@ -627,6 +627,46 @@
    "away": 15017,
    "home_score": 0,
    "away_score": 2
+  },
+  {
+   "id": 20775,
+   "time": 1790902800,
+   "home": 15041,
+   "away": 14956,
+   "home_score": 0,
+   "away_score": 0
+  },
+  {
+   "id": 20774,
+   "time": 1790902800,
+   "home": 14493,
+   "away": 15050,
+   "home_score": 0,
+   "away_score": 0
+  },
+  {
+   "id": 20773,
+   "time": 1790902800,
+   "home": 15017,
+   "away": 14764,
+   "home_score": 0,
+   "away_score": 0
+  },
+  {
+   "id": 20772,
+   "time": 1790902800,
+   "home": 14430,
+   "away": 15030,
+   "home_score": 0,
+   "away_score": 0
+  },
+  {
+   "id": 20771,
+   "time": 1790902800,
+   "home": 14994,
+   "away": 14962,
+   "home_score": 0,
+   "away_score": 0
   }
  ],
  "games": [
