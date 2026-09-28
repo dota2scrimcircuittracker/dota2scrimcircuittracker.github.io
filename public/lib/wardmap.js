@@ -3,12 +3,14 @@
 // seconds it lived (-1 = still up at the end), 1 if the enemy killed it.
 //
 // wardMapHtml() returns a <figure> with the wards embedded; wireWardMaps() draws it and wires
-// the controls (observers / sentries, game phase, heat / dots). No library: heat is a density
+// the controls (observers / sentries, game phase, dots / heat). No library: heat is a density
 // grid drawn as SVG cells with a light blur.
 
 // The minimap picture (public/img/minimap.webp, 634×599) placed on the grid by its two fountain
 // icons (pixels 75,532 and 535,106) and where players stand pre-horn in 38 S48 replays (grid
 // 74.6,78.0 and 182.9,177.9). Both axes come out at 4.25 px per grid unit, so no stretching.
+import { applyZoom, wireZoom } from "./mapzoom.js";
+
 const IMG = { src: "img/minimap.webp", x0: 56.94, x1: 206.2, y0: 62.3, y1: 202.8 };
 // The map is point-symmetric about the midpoint of the fountains; mirroring uses that centre.
 const CX = (74.6 + 182.9) / 2, CY = (78.0 + 177.9) / 2;
@@ -56,19 +58,19 @@ export function wardSummary(wards) {
   };
 }
 
-// layers: [{ label, cls, wards }]. One layer = a heat map of that player / hero / team;
-// two layers (a game) = each team in its colour, as dots by default.
+// layers: [{ label, cls, wards }]. One layer = a player / hero / team;
+// two layers (a game) = each team in its colour. Dots by default, heat on toggle.
 export function wardMapHtml(layers, { mirrored = false, mode = null, id = "wards" } = {}) {
   const total = layers.reduce((s, l) => s + l.wards.length, 0);
   if (!total) return "";
   const compact = layers.map((l) => ({ label: l.label, cls: l.cls, w: l.wards.map((w) => [w.kind === "obs" ? 1 : 0, w.x, w.y, w.t, w.life, w.killed ? 1 : 0]) }));
-  const start = mode ?? (layers.length > 1 ? "dots" : "heat");
+  const start = mode ?? "dots";
   const seg = (name, opts, on) => `<div class="wm-seg" role="group" data-ctl="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === on}">${l}</button>`).join("")}</div>`;
   return `<figure class="wardmap" id="${id}" data-mode="${start}" data-mirrored="${mirrored ? 1 : 0}" data-wards="${attr(JSON.stringify(compact))}">
     <div class="wm-controls">
       ${seg("kind", [["all", "All wards"], ["obs", "Observers"], ["sen", "Sentries"]], "all")}
       ${seg("phase", [["all", "Whole game"], ["0", "0–10'"], ["1", "10–20'"], ["2", "20–35'"], ["3", "35'+"]], "all")}
-      ${seg("mode", [["heat", "Heat"], ["dots", "Dots"]], start)}
+      ${seg("mode", [["dots", "Dots"], ["heat", "Heat"]], start)}
     </div>
     <div class="wm-body"><div class="wm-map"></div><div class="wm-side"></div></div>
   </figure>`;
@@ -76,11 +78,27 @@ export function wardMapHtml(layers, { mirrored = false, mode = null, id = "wards
 
 // 0..1 → teal (few) → gold → ember → near white (most).
 const RAMP = [[0, [40, 120, 110]], [0.35, [95, 211, 155]], [0.6, [232, 182, 76]], [0.85, [255, 90, 54]], [1, [255, 236, 214]]];
-function heat(v) {
+export function heat(v) {
   const k = RAMP.findIndex(([s]) => s >= v);
   if (k <= 0) return `rgb(${RAMP[0][1]})`;
   const [s0, c0] = RAMP[k - 1], [s1, c1] = RAMP[k], f = (v - s0) / (s1 - s0);
   return `rgb(${c0.map((c, i) => Math.round(c + (c1[i] - c) * f)).join(",")})`;
+}
+
+// Density on a 2-unit grid over the minimap: a Gaussian spread of ~`spread` grid units around
+// each point [x, y, weight = 1]. Weights can be negative (the fight map nets deaths off).
+export function densityGrid(points, { cell = 2, spread = 2.5 } = {}) {
+  const GX = Math.ceil(VB.w / cell), GY = Math.ceil(VB.h / cell), sigma = spread / cell, reach = Math.ceil(sigma * 2.5);
+  const grid = new Float32Array(GX * GY);
+  for (const [x, y, wt = 1] of points) {
+    const cx = (x - VB.x) / cell, cy = (Y(y) - VB.y) / cell;
+    for (let j = Math.max(0, Math.floor(cy) - reach); j <= Math.min(GY - 1, Math.floor(cy) + reach); j++)
+      for (let i = Math.max(0, Math.floor(cx) - reach); i <= Math.min(GX - 1, Math.floor(cx) + reach); i++) {
+        const d2 = (i + 0.5 - cx) ** 2 + (j + 0.5 - cy) ** 2;
+        grid[j * GX + i] += wt * Math.exp(-d2 / (2 * sigma * sigma));
+      }
+  }
+  return { cell, GX, GY, grid, x0: VB.x, y0: VB.y };
 }
 
 const PHASES =[[-Infinity, 600], [600, 1200], [1200, 2100], [2100, Infinity]];
@@ -104,18 +122,9 @@ function draw(fig) {
   const fid = `${fig.id}-heat`;
   let body = "";
   if (mode === "heat") {
-    // Density on a 2-unit grid (Gaussian spread of ~2.5 units around each ward), scaled to
-    // the busiest cell so the hot spots always show, whether there are 20 wards or 2,000.
-    const cell = 2, GX = Math.ceil(VB.w / cell), GY = Math.ceil(VB.h / cell), sigma = 2.5 / cell, reach = Math.ceil(sigma * 2.5);
-    const grid = new Float32Array(GX * GY);
-    for (const w of shown.flatMap((l) => l.w)) {
-      const cx = (w[1] - VB.x) / cell, cy = (Y(w[2]) - VB.y) / cell;
-      for (let j = Math.max(0, Math.floor(cy) - reach); j <= Math.min(GY - 1, Math.floor(cy) + reach); j++)
-        for (let i = Math.max(0, Math.floor(cx) - reach); i <= Math.min(GX - 1, Math.floor(cx) + reach); i++) {
-          const d2 = (i + 0.5 - cx) ** 2 + (j + 0.5 - cy) ** 2;
-          grid[j * GX + i] += Math.exp(-d2 / (2 * sigma * sigma));
-        }
-    }
+    // Density scaled to the busiest cell so the hot spots always show, whether there are 20
+    // wards or 2,000.
+    const { cell, GX, GY, grid } = densityGrid(shown.flatMap((l) => l.w).map((w) => [w[1], w[2]]));
     const peak = Math.max(...grid) || 1;
     let cells = "";
     for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
@@ -128,11 +137,13 @@ function draw(fig) {
     body = shown.map((l) => `<g class="wm-dots ${l.cls ?? ""}">${l.w.map((w) => {
       const tip = `${attr(l.label)} · ${w[0] === 1 ? "Observer" : "Sentry"} at ${clock(w[3])}${w[4] >= 0 ? `, lasted ${clock(w[4])}${w[5] ? " (dewarded)" : ""}` : ", up at game end"}`;
       return w[0] === 1
-        ? `<circle class="obs${w[5] ? " killed" : ""}" cx="${w[1]}" cy="${Y(w[2])}" r="1.5"><title>${tip}</title></circle>`
-        : `<rect class="sen${w[5] ? " killed" : ""}" x="${w[1] - 1.1}" y="${Y(w[2]) - 1.1}" width="2.2" height="2.2" transform="rotate(45 ${w[1]} ${Y(w[2])})"><title>${tip}</title></rect>`;
+        // Drawn at 0,0 and moved into place, so wards keep their size when the map is zoomed.
+        ? `<circle class="obs${w[5] ? " killed" : ""}" r="1.5" style="transform:translate(${w[1]}px,${Y(w[2])}px) scale(var(--ms,1))"><title>${tip}</title></circle>`
+        : `<rect class="sen${w[5] ? " killed" : ""}" x="-1.1" y="-1.1" width="2.2" height="2.2" style="transform:translate(${w[1]}px,${Y(w[2])}px) scale(var(--ms,1)) rotate(45deg)"><title>${tip}</title></rect>`;
     }).join("")}</g>`).join("");
   }
   fig.querySelector(".wm-map").innerHTML = `<svg viewBox="${VB.x} ${VB.y} ${VB.w} ${VB.h}" role="img" aria-label="Ward map, ${n} wards">${terrain(fig.dataset.mirrored === "1")}${body}</svg>`;
+  applyZoom(fig);
 
   // Side panel: counts and survival per layer for what's shown.
   fig.querySelector(".wm-side").innerHTML = shown.map((l) => {
@@ -151,6 +162,7 @@ function draw(fig) {
 export function wireWardMaps(root) {
   root.querySelectorAll("figure.wardmap[data-wards]").forEach((fig) => {
     draw(fig);
+    wireZoom(fig);
     fig.querySelectorAll(".wm-seg").forEach((seg) => seg.addEventListener("click", (e) => {
       const b = e.target.closest("button");
       if (!b) return;

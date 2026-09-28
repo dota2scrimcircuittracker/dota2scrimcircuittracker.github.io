@@ -24,6 +24,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildingsFrom } from "../public/lib/towermap.js";
+import { deathsFrom } from "../public/lib/deathmap.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = path.join(ROOT, ".cache");
@@ -205,7 +206,9 @@ for (const [acct, o] of owner) {
 }
 console.log(`  ${candidates.size} candidate practice-lobby games; pubs for ${pubRows.size} players`);
 
-const heroes = Object.fromEntries((await opendota("/heroes")).map((h) => [h.id, h.localized_name === "Ring Master" ? "Ringmaster" : h.localized_name]));
+const heroList = await opendota("/heroes");
+const heroes = Object.fromEntries(heroList.map((h) => [h.id, h.localized_name === "Ring Master" ? "Ringmaster" : h.localized_name]));
+const heroKeys = Object.fromEntries(heroList.map((h) => [h.id, h.name])); // "npc_dota_hero_…", as the death logs name killers
 
 const games = [];
 for (const id of [...candidates].sort()) {
@@ -227,6 +230,7 @@ for (const id of [...candidates].sort()) {
   if (rad == null || dire == null || rad === dire) continue;
   const teamName = (id) => teams.find((t) => t.id === id).name;
   // Which PlayOn series this game belongs to: same two teams, closest scheduled time.
+  const deaths = deathsFrom(d, (id) => heroKeys[id]);
   const seriesOf = series
     .filter((s) => (s.home === rad && s.away === dire) || (s.home === dire && s.away === rad))
     .sort((x, y) => Math.abs((x.time ?? 0) - d.start_time) - Math.abs((y.time ?? 0) - d.start_time))[0];
@@ -258,7 +262,9 @@ for (const id of [...candidates].sort()) {
     }) : null,
     // Towers, barracks and Ancients as they fell: owner side, which one, second, who took it.
     buildings: buildingsFrom(d.objectives, (slot) => heroes[d.players.find((p) => p.player_slot === slot)?.hero_id] ?? null),
-    players: [...d.players].sort((x, y) => x.player_slot - y.player_slot).map((p) => ({
+    // Teamfights (flat groups of 3: start second, end second, deaths), from the parsed replay.
+    fights: deaths?.fights ?? null,
+    players: [...d.players].sort((x, y) => x.player_slot - y.player_slot).map((p, i) => ({
       team: p.isRadiant ? "a" : "b",
       name: owner.get(p.account_id)?.name ?? p.personaname ?? (p.account_id ? `account ${p.account_id}` : "anonymous"),
       account_id: p.account_id ?? null,
@@ -298,6 +304,9 @@ for (const id of [...candidates].sort()) {
       // left), second placed, seconds it lived (-1 unknown), 1 if an enemy killed it.
       obs_pos: wardLog(p.obs_log, p.obs_left_log),
       sen_pos: wardLog(p.sen_log, p.sen_left_log),
+      // Every death, flat groups of 6 (see public/lib/deathmap.js): second, killer, gold
+      // lost, seconds dead, x, y (a spot only for teamfight deaths).
+      death_log: deaths?.players[i] ?? null,
     })),
   });
 }

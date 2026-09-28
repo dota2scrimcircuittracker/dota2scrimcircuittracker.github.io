@@ -305,9 +305,10 @@ function metricScores(rl, rrows, weights, anchors) {
 }
 
 // Score every player in `rows` against `model` (rows must already be scored). With
-// `consistency: false` (while the model is being built) consistency counts as 1.
-function scorePlayers(rows, model, { consistency = true } = {}) {
-  const series = seriesRows(rows), teams = teamGames(rows);
+// `consistency: false` (while the model is being built) consistency counts as 1. `teams`:
+// the team results opponent strength is read from (default: `rows` themselves).
+function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows) } = {}) {
+  const series = seriesRows(rows);
   const byPlayer = new Map();
   for (const r of rows) {
     const k = keyOf(r.p);
@@ -505,6 +506,33 @@ export function tierList(matches, { minGames = MIN_GAMES, model = null } = {}) {
     curve: model.curve,
     model,
   };
+}
+
+// Per-hero ratings: each player's games on one hero, scored like the tier list against the
+// league's model (so a hero rating reads on the same curve as the tier rating). Opponent
+// strength still comes from all the league's games. Returns hero -> players, best first. No
+// minimum games: the rating already pulls small samples toward the average.
+export function heroRatings(matches, { model = null } = {}) {
+  model ??= tierModel(matches);
+  const rows = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
+  const teams = teamGames(rows), byHero = new Map();
+  for (const r of rows) (byHero.get(r.p.hero) ?? byHero.set(r.p.hero, []).get(r.p.hero)).push(r);
+  return new Map([...byHero].map(([hero, rs]) => [hero, scorePlayers(rs, model, { teams })
+    .map((p) => { const rating_exact = ratingOf(p.score, model.curve); return { ...p, hero, rating_exact, rating: Math.round(rating_exact) }; })
+    .sort((a, b) => b.score - a.score)]));
+}
+
+// One game's ratings: its ten players, each scored on that game alone against the league's
+// model (opponent strength from all of `matches`), on the tier rating's curve. Like any one-game
+// sample it's pulled toward the average. Best first.
+const leagueTeams = new WeakMap();
+export function gameRatings(m, matches, { model = null } = {}) {
+  model ??= tierModel(matches);
+  const teams = leagueTeams.get(matches) ?? leagueTeams.set(matches, teamGames(matches.flatMap(gameRows))).get(matches);
+  const rows = gameRows(m).map((r) => scoreRow(r, model));
+  return scorePlayers(rows, model, { teams })
+    .map((p) => { const rating_exact = ratingOf(p.score, model.curve); return { ...p, rating_exact, rating: Math.round(rating_exact), tier: TIERS.find((t) => rating_exact >= t.min).tier }; })
+    .sort((a, b) => b.score - a.score);
 }
 
 // OpenDota rank_tier (tens = medal, ones = stars) -> label.
