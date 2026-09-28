@@ -17,6 +17,8 @@
 //        npm run conqueror:sync  (S48 Conqueror: --season 674 --out conqueror.json)
 //        npm run warrior:sync  (S48 Warrior: --season 673 --out warrior.json)
 //        npm run challenger:sync  (S48 Challenger: --season 672 --out challenger.json)
+//        npm run voyager:sync  (S48 Voyager: --season 671 --out voyager.json)
+//        npm run explorer:sync  (S48 Explorer: --season 670 --out explorer.json)
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";

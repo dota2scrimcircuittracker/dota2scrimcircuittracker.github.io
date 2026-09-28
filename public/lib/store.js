@@ -16,8 +16,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 // Scrims in `matches`; AD2L division games played without a league ticket, uploaded from
 // screenshots the same way, in `ad2l_unticketed` (Champion), `heroic_unticketed`
-// (Heroic/Aegis), `conqueror_unticketed`, `warrior_unticketed` and `challenger_unticketed`. Same document shape and rules for all of them.
-const COLLECTIONS = { scrim: "matches", ad2l: "ad2l_unticketed", heroic: "heroic_unticketed", conqueror: "conqueror_unticketed", warrior: "warrior_unticketed", challenger: "challenger_unticketed" };
+// (Heroic/Aegis), `conqueror_unticketed`, `warrior_unticketed`, `challenger_unticketed`, `voyager_unticketed` and `explorer_unticketed`. Same document shape and rules for all of them.
+const COLLECTIONS = { scrim: "matches", ad2l: "ad2l_unticketed", heroic: "heroic_unticketed", conqueror: "conqueror_unticketed", warrior: "warrior_unticketed", challenger: "challenger_unticketed", voyager: "voyager_unticketed", explorer: "explorer_unticketed" };
 const coll = (league = "scrim") => collection(db, "scrimLeague", "data", COLLECTIONS[league]);
 
 export const MAX_MATCHES = 500;
@@ -147,7 +147,7 @@ export async function listPredictions() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data(), updatedAt: d.data().updatedAt?.toDate?.() ?? null }));
 }
 
-// league "ad2l" (Champion), "heroic", "conqueror", "warrior" or "challenger": seriesId is a PlayOn series (number); "scrim": a
+// league "ad2l" (Champion), "heroic", "conqueror", "warrior", "challenger", "voyager" or "explorer": seriesId is a PlayOn series (number); "scrim": a
 // fixture's document ID.
 export async function savePrediction(seriesId, pick, name, league = "ad2l") {
   await signedIn();

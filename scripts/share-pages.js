@@ -10,7 +10,7 @@ import { routeOf, sharePath } from "../public/lib/share.js";
 
 const OUT = path.resolve(process.argv[2] ?? "_site");
 const SITE = "https://dota2scrimcircuittracker.github.io";
-const COLOR = { scrim: "#5fd39b", ad2l: "#e8b64c", heroic: "#a58bff", conqueror: "#5aa9e6", warrior: "#ff9a3c", challenger: "#9bd34a" };
+const COLOR = { scrim: "#5fd39b", ad2l: "#e8b64c", heroic: "#a58bff", conqueror: "#5aa9e6", warrior: "#ff9a3c", challenger: "#9bd34a", voyager: "#ef6b73", explorer: "#3cc6c6" };
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const TZ = "America/Los_Angeles";
 const day = (sec) => new Date(sec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: TZ });
@@ -101,6 +101,8 @@ for (const div of ["A", "B"]) league(`heroic/${div.toLowerCase()}`, "heroic", "A
 league("conqueror", "conqueror", "AD2L S48 Conqueror", await load("conqueror.json"));
 league("warrior", "warrior", "AD2L S48 Warrior", await load("warrior.json"));
 league("challenger", "challenger", "AD2L S48 Challenger", await load("challenger.json"));
+league("voyager", "voyager", "AD2L S48 Voyager", await load("voyager.json"));
+league("explorer", "explorer", "AD2L S48 Explorer", await load("explorer.json"));
 
 // ---------- write ----------
 for (const { p, title, description, color } of pages) {

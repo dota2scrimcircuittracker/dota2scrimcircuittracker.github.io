@@ -41,7 +41,7 @@ jobs:
       - name: Sync every division
         run: |
           failed=""
-          for l in ad2l heroic conqueror warrior challenger; do
+          for l in ad2l heroic conqueror warrior challenger voyager explorer; do
             echo "::group::$l"
             npm run -s "$l:sync" || failed="$failed $l"
             echo "::endgroup::"

@@ -155,6 +155,10 @@ const cases = [
   ["challenger: unticketed game", { ...req(match({ series_id: 20690 })), path: PATH.replace("/matches/", "/challenger_unticketed/") }, "ALLOW"],
   ["challenger: worst case (budget)", { ...req({ ...match({ series_id: 20690 }), players: match().players.map((p, i) => ({ ...p, name: "N".repeat(32), hero: "Vengeful Spirit", level: 30, hero_damage: 150000, tag: "TAG", pick: i + 1 })) }), path: PATH.replace("/matches/", "/challenger_unticketed/") }, "ALLOW"],
   ["prediction: challenger", predReq(pred({ league: "challenger" })), "ALLOW"],
+  ["voyager: unticketed game", { ...req(match({ series_id: 20690 })), path: PATH.replace("/matches/", "/voyager_unticketed/") }, "ALLOW"],
+  ["explorer: worst case (budget)", { ...req({ ...match({ series_id: 20690 }), players: match().players.map((p, i) => ({ ...p, name: "N".repeat(32), hero: "Vengeful Spirit", level: 30, hero_damage: 150000, tag: "TAG", pick: i + 1 })) }), path: PATH.replace("/matches/", "/explorer_unticketed/") }, "ALLOW"],
+  ["prediction: voyager", predReq(pred({ league: "voyager" })), "ALLOW"],
+  ["prediction: explorer", predReq(pred({ league: "explorer" })), "ALLOW"],
   ["prediction: unknown league", predReq(pred({ league: "knight" })), "DENY"],
   ["prediction: heroic with a fixture id", { ...predReq(pred({ league: "heroic", series_id: FIX_ID })), path: SCRIM_PRED_PATH }, "DENY"],
 ];

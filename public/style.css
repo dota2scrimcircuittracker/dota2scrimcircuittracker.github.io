@@ -126,6 +126,18 @@ body[data-league="challenger"] .brand-mark i + i { background: #5e8f22; }
 body[data-league="challenger"] .brand-word b { color: #c2e88e; }
 body[data-league="challenger"] .league-menu a.current { border-left-color: #9bd34a; background: rgba(155, 211, 74, .08); }
 body[data-league="challenger"] { --accent: #9bd34a; --accent-rgb: 155, 211, 74; }
+/* Voyager: coral red. */
+body[data-league="voyager"] .brand-mark i { background: #ef6b73; }
+body[data-league="voyager"] .brand-mark i + i { background: #a83a44; }
+body[data-league="voyager"] .brand-word b { color: #f7b3b8; }
+body[data-league="voyager"] .league-menu a.current { border-left-color: #ef6b73; background: rgba(239, 107, 115, .08); }
+body[data-league="voyager"] { --accent: #ef6b73; --accent-rgb: 239, 107, 115; }
+/* Explorer: teal, bluer than the scrims' jade. */
+body[data-league="explorer"] .brand-mark i { background: #3cc6c6; }
+body[data-league="explorer"] .brand-mark i + i { background: #1f8585; }
+body[data-league="explorer"] .brand-word b { color: #9fe6e6; }
+body[data-league="explorer"] .league-menu a.current { border-left-color: #3cc6c6; background: rgba(60, 198, 198, .08); }
+body[data-league="explorer"] { --accent: #3cc6c6; --accent-rgb: 60, 198, 198; }
 .div-badge {
   font: 600 11px/1 var(--mono); font-style: normal; letter-spacing: .12em; text-transform: uppercase;
   color: var(--ink); background: #a58bff; padding: 4px 6px; margin-left: 8px; vertical-align: middle; border-radius: 2px; white-space: nowrap;

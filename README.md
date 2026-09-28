@@ -33,7 +33,11 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   `league: "warrior"`, `warrior_unticketed`.
 - **AD2L S48 Challenger** — the division below Warrior (PlayOn season 672), from
   `public/data/challenger.json` (`npm run challenger:sync`), under `#/challenger/`; `league:
-  "challenger"`, `challenger_unticketed`. The league menu runs lowest to highest: Scrim,
+  "challenger"`, `challenger_unticketed`.
+- **AD2L S48 Voyager** (PlayOn season 671, `npm run voyager:sync`, `#/voyager/`) and **AD2L S48
+  Explorer** (season 670, `npm run explorer:sync`, `#/explorer/`) — the two divisions below
+  Challenger, same shape: `league: "voyager"` / `"explorer"`, `voyager_unticketed` /
+  `explorer_unticketed`. The league menu runs lowest to highest: Scrim, Explorer, Voyager,
   Challenger, Warrior, Conqueror, Champion, Heroic/Aegis.
 - **League switching** — the league menu keeps the tab you're on: Players in Champion →
   Warrior opens Warrior's Players. A team, game or player page opens that tab's list.

@@ -14,7 +14,9 @@
     "conqueror:sync": "node scripts/ad2l-sync.js --season 674 --out conqueror.json",
     "warrior:sync": "node scripts/ad2l-sync.js --season 673 --out warrior.json",
     "challenger:sync": "node scripts/ad2l-sync.js --season 672 --out challenger.json",
-    "sync:all": "npm run -s ad2l:sync && npm run -s heroic:sync && npm run -s conqueror:sync && npm run -s warrior:sync && npm run -s challenger:sync",
+    "voyager:sync": "node scripts/ad2l-sync.js --season 671 --out voyager.json",
+    "explorer:sync": "node scripts/ad2l-sync.js --season 670 --out explorer.json",
+    "sync:all": "npm run -s ad2l:sync && npm run -s heroic:sync && npm run -s conqueror:sync && npm run -s warrior:sync && npm run -s challenger:sync && npm run -s voyager:sync && npm run -s explorer:sync",
     "config:write": "node scripts/write-firebase-config.js"
   },
   "devDependencies": {
