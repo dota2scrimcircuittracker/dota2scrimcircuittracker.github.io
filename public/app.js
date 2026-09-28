@@ -1340,7 +1340,12 @@ async function renderPredict(src) {
   const since = lastNight(d);
   const now = Date.now();
 
-  const upcoming = d.series.filter((s) => !isPlayed(s) && s.time);
+  // This week's slate: the earliest night still to be played. A series whose result never
+  // came (a 0–0 between teams that dropped out) stops counting 3 days after its start, so
+  // it can't hold the page on a dead week; a forfeit against the bye-week placeholder isn't
+  // a match to call.
+  const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
+  const upcoming = d.series.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
   const night = upcoming.length ? Math.min(...upcoming.map((s) => s.time)) : null;
   const week = upcoming.filter((s) => s.time === night);
   const mine = (sid) => (preds ?? []).filter((p) => p.series_id === sid && p.uid === uid).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];

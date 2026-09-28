@@ -175,6 +175,8 @@ const series = [];
 for (const id of season.series) {
   // Played series don't change; unplayed ones are re-checked.
   const s = parseSeries(await playon(`/matches/${id}`, 6), id);
+  // "TBD / Bye vs TBD / Bye" placeholders (no team links) aren't series between two teams.
+  if (!season.teams.has(s.home) || !season.teams.has(s.away)) { console.log(`  skipping series ${id}: not two division teams`); continue; }
   series.push(s);
 }
 series.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
