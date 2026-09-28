@@ -272,9 +272,10 @@ export function heroStats(matches) {
 
 // Record by the team's pick number (1 = first pick … 5 = last pick) in Captains Mode drafts,
 // for the player-games matching `match(p, m)`. Which slot a player's hero came in, not who
-// clicked it. Games without a draft (scrim screenshots) are skipped.
+// clicked it. Games without a draft (scrim screenshots) are skipped. Each slot keeps its games
+// ({ m, p }) so callers can measure how the hero played from there, not just the result.
 export function draftSlotRecord(matches, match) {
-  const slots = [1, 2, 3, 4, 5].map((n) => ({ slot: n, games: 0, wins: 0, heroes: new Map() }));
+  const slots = [1, 2, 3, 4, 5].map((n) => ({ slot: n, games: 0, wins: 0, heroes: new Map(), rows: [] }));
   let games = 0;
   for (const m of matches) {
     if (!m.draft?.length) continue;
@@ -285,6 +286,7 @@ export function draftSlotRecord(matches, match) {
       if (i < 0 || i > 4) continue;
       const r = slots[i];
       r.games++; games++;
+      r.rows.push({ m, p });
       if (m.winner === p.team) r.wins++;
       r.heroes.set(p.hero, (r.heroes.get(p.hero) ?? 0) + 1);
     }

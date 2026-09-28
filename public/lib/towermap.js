@@ -142,7 +142,100 @@ function draw(fig) {
     `<p class="wm-note">Map at ${clock(to)}${ph ? `, end of ${ph[1]}` : ", end of game"}. ● tower, ■ barracks; ✕ = fallen (bright: ${ph ? "in this phase" : "during the game"}, faded: earlier). Hover a building for when and who.</p>`;
 }
 
+// Many games at once (player page): per building, how often it fell and when on average.
+// match(p, m) picks the player in each game. Their team's base is always bottom left: in Dire
+// games every building's lane is swapped, which is the point mirror the death map uses.
+// Stored per game: [won, [[rel, b, n, time, mine, deny], ...]], rel "o" own / "e" enemy.
+const SWAP = { top: "bot", mid: "mid", bot: "top" };
+export function towerSummaryHtml(games, match, { id = "tower-summary", name = "This player" } = {}) {
+  const rows = [];
+  for (const m of games) {
+    if (!Array.isArray(m.buildings) || !m.buildings.length) continue;
+    const p = m.players.find((x) => match(x, m));
+    if (!p) continue;
+    const t4 = { a: 0, b: 0 };
+    rows.push([m.winner === p.team ? 1 : 0, m.buildings.map((f) => {
+      const lane = f.b.split("_")[1];
+      const b = p.team === "b" && lane ? f.b.replace(lane, SWAP[lane]) : f.b;
+      return [f.side === p.team ? "o" : "e", b, f.b === "t4" ? t4[f.side]++ : 0, f.time,
+        f.by === p.team && f.side !== p.team && f.hero === p.hero ? 1 : 0, f.by === f.side ? 1 : 0];
+    })]);
+  }
+  if (!rows.length) return "";
+  const seg = `<div class="wm-seg" role="group" data-ctl="res">${[["all", "All games"], ["w", "Wins"], ["l", "Losses"]]
+    .map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === "all"}">${l}</button>`).join("")}</div>`;
+  return `<figure class="wardmap towermap" id="${id}" data-res="all" data-summary="${attr(JSON.stringify({ name, g: rows }))}">
+    <div class="wm-controls">${seg}</div>
+    <div class="wm-body"><div class="wm-map"></div><div class="wm-side"></div></div>
+  </figure>`;
+}
+
+function drawSummary(fig) {
+  const d = JSON.parse(fig.dataset.summary), res = fig.dataset.res;
+  const games = d.g.filter(([w]) => res === "all" || (res === "w") === !!w);
+  const n = games.length, avg = (xs) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+  const pct = (x) => `${Math.round(x * 100)}%`;
+  // Own buildings drawn as Radiant's ("a", bottom left), the enemy's as Dire's.
+  const slots = [];
+  for (const rel of ["o", "e"]) {
+    let t4 = 0;
+    for (const b of ALL) {
+      const k = b === "t4" ? t4++ : 0;
+      const falls = games.flatMap(([, fs]) => fs.filter((f) => f[0] === rel && f[1] === b && f[2] === k));
+      slots.push({ rel, side: rel === "o" ? "a" : "b", b, pos: spot(rel === "o" ? "a" : "b", b, k),
+        fell: falls.length, time: avg(falls.map((f) => f[3])), mine: falls.filter((f) => f[4]).length, deny: falls.filter((f) => f[5]).length });
+    }
+  }
+  const who = (s) => `${s.rel === "o" ? "Own" : "Enemy"} ${NAME(s.b)}`;
+  const tip = (s) => !n ? who(s) : !s.fell ? `${who(s)}: never fell (${n} game${n === 1 ? "" : "s"})`
+    : `${who(s)}: fell in ${s.fell} of ${n} games (${pct(s.fell / n)}), on average at ${clock(s.time)}`
+      + (s.mine ? `. ${d.name} took it ${s.mine}×` : "") + (s.deny ? `. Denied ${s.deny}×` : "");
+  const mark = (s) => {
+    const [x, gy] = s.pos, y = Y(gy), r = s.b === "fort" ? 2.4 : isTower(s.b) ? 1.7 : 1.1, rate = n ? s.fell / n : 0;
+    const shape = isTower(s.b) || s.b === "fort"
+      ? `<circle cx="${x}" cy="${y}" r="${r}" fill-opacity="${(1 - rate * .85).toFixed(2)}"/>`
+      : `<rect x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" fill-opacity="${(1 - rate * .85).toFixed(2)}"/>`;
+    const cross = s.fell ? `<path class="tm-x" stroke-opacity="${(.3 + rate * .7).toFixed(2)}" d="M${x - r} ${y - r}L${x + r} ${y + r}M${x + r} ${y - r}L${x - r} ${y + r}"/>` : "";
+    const ring = s.mine ? `<circle class="tm-mine" cx="${x}" cy="${y}" r="${r + .9}"/>` : "";
+    return `<g class="tm-b s-${s.side}"><title>${attr(tip(s))}</title>${ring}${shape}${cross}</g>`;
+  };
+  const label = (s) => s.fell && isTower(s.b) && s.b !== "t4"
+    ? `<text class="tm-t" x="${s.pos[0]}" y="${Y(s.pos[1]) - 2.9}" text-anchor="middle">${clock(s.time)}</text>` : "";
+  fig.querySelector(".wm-map").innerHTML = `<svg viewBox="${VB.x} ${VB.y} ${VB.w} ${VB.h}" role="img" aria-label="Towers over ${n} games">
+    <image href="${IMG.src}" x="${VB.x}" y="${VB.y}" width="${VB.w}" height="${VB.h}" preserveAspectRatio="none"/>
+    <rect class="wm-dim" x="${VB.x}" y="${VB.y}" width="${VB.w}" height="${VB.h}"/>
+    <text class="wm-lbl a" x="${VB.x + 3}" y="${VB.y + VB.h - 3}">Own base</text>
+    <text class="wm-lbl b" x="${VB.x + VB.w - 3}" y="${VB.y + 7}" text-anchor="end">Enemy base</text>
+    ${slots.map(mark).join("")}${slots.map(label).join("")}</svg>`;
+
+  // Side panel: per game, what their team lost and took and when the first tower went; then
+  // the buildings the player last-hit.
+  const per = (rel, f) => (n ? (games.reduce((a, [, fs]) => a + fs.filter((x) => x[0] === rel && !x[5] && f(x[1])).length, 0) / n).toFixed(1) : "—");
+  const first = (rel) => avg(games.map(([, fs]) => fs.find((x) => x[0] === rel && isTower(x[1]))?.[3]).filter((t) => t != null));
+  const rax = (rel) => games.filter(([, fs]) => fs.some((x) => x[0] === rel && x[1].includes("_") && !isTower(x[1]))).length;
+  const stat = (rel, cls, title, verb) => `<div class="wm-stat ${cls}"><div class="wm-who">${title}</div>
+    <div><b>${per(rel, isTower)}</b> towers · <b>${per(rel, (b) => !isTower(b) && b !== "fort")}</b> barracks ${verb} a game</div>
+    <div>First tower ${rel === "o" ? "lost" : "taken"}: <b>${first(rel) == null ? "never" : `${clock(first(rel))}`}</b> on average</div>
+    <div>Barracks ${rel === "o" ? "lost" : "taken"} in <b>${rax(rel)}</b> of ${n} games</div></div>`;
+  const mine = slots.filter((s) => s.mine);
+  const count = (f) => mine.filter((s) => f(s.b)).reduce((a, s) => a + s.mine, 0);
+  fig.querySelector(".wm-side").innerHTML = stat("e", "s-a", "Their team took", "taken") + stat("o", "s-b", "Their team lost", "lost")
+    + `<div class="wm-stat s-mine"><div class="wm-who">${attr(d.name)}</div>
+      <div>Last hit <b>${count(isTower)}</b> tower${count(isTower) === 1 ? "" : "s"} · <b>${count((b) => !isTower(b) && b !== "fort")}</b> barracks${count((b) => b === "fort") ? ` · <b>${count((b) => b === "fort")}</b> Ancient` : ""} in ${n} games</div></div>
+    <p class="wm-note">${n} parsed game${n === 1 ? "" : "s"}; Dire games flipped so their base is bottom left. ● tower, ■ barracks; the more often it fell, the fainter the fill and the stronger the ✕. Times are the average fall time. Gold ring = ${attr(d.name)} last-hit it at least once. Denies don't count as taken or lost.</p>`;
+}
+
 export function wireTowerMaps(root) {
+  root.querySelectorAll("figure.towermap[data-summary]").forEach((fig) => {
+    drawSummary(fig);
+    fig.querySelector(".wm-seg").addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      fig.dataset.res = b.dataset.v;
+      fig.querySelectorAll(".wm-seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      drawSummary(fig);
+    });
+  });
   root.querySelectorAll("figure.towermap[data-buildings]").forEach((fig) => {
     draw(fig);
     fig.querySelectorAll(".wm-seg").forEach((seg) => seg.addEventListener("click", (e) => {
