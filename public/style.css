@@ -85,6 +85,9 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   color: var(--dust); background: none; border: 1px solid var(--seam); padding: 9px 12px; border-radius: 2px; clip-path: none;
 }
 .league-btn:hover, .league-btn[aria-expanded="true"] { color: var(--bone); border-color: var(--dust); }
+/* In a league, the button wears that league's colour. */
+body[data-league]:not([data-league="scrim"]) .league-btn { color: var(--accent); border-color: rgba(var(--accent-rgb), .45); }
+body[data-league]:not([data-league="scrim"]) .league-btn:hover, body[data-league]:not([data-league="scrim"]) .league-btn[aria-expanded="true"] { color: var(--ink); background: var(--accent); border-color: var(--accent); }
 .caret { width: 6px; height: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); margin-left: 2px; transition: transform .15s; }
 .league-btn[aria-expanded="true"] .caret { transform: rotate(-135deg) translate(-2px, -2px); }
 .league-menu {
@@ -94,10 +97,18 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   animation: rise .18s cubic-bezier(.2, .8, .2, 1);
 }
 .menu-label { font: 600 10px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); padding: 8px 10px 10px; }
-.league-menu a { display: block; padding: 11px 12px; color: var(--bone); border-left: 3px solid transparent; }
-.league-menu a:hover { background: #262219; text-decoration: none; }
-.league-menu a.current { border-left-color: var(--accent); background: rgba(var(--accent-rgb), .06); }
-.league-menu b { display: block; font: 800 18px/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; }
+/* Every entry in its own league's colour (--lc), so the menu is a key to the site's colours. */
+.league-menu a { --lc: var(--gold); --lc-rgb: 232, 182, 76; display: block; padding: 11px 12px; color: var(--bone); border-left: 3px solid rgba(var(--lc-rgb), .45); margin-bottom: 2px; }
+.league-menu a[data-league="scrim"] { --lc: var(--jade); --lc-rgb: 95, 211, 155; }
+.league-menu a[data-league="heroic"] { --lc: #a58bff; --lc-rgb: 165, 139, 255; }
+.league-menu a[data-league="conqueror"] { --lc: #5aa9e6; --lc-rgb: 90, 169, 230; }
+.league-menu a[data-league="warrior"] { --lc: #ff9a3c; --lc-rgb: 255, 154, 60; }
+.league-menu a[data-league="challenger"] { --lc: #9bd34a; --lc-rgb: 155, 211, 74; }
+.league-menu a[data-league="voyager"] { --lc: #ef6b73; --lc-rgb: 239, 107, 115; }
+.league-menu a[data-league="explorer"] { --lc: #3cc6c6; --lc-rgb: 60, 198, 198; }
+.league-menu a:hover { background: rgba(var(--lc-rgb), .1); border-left-color: var(--lc); text-decoration: none; }
+.league-menu a.current { border-left-color: var(--lc); background: rgba(var(--lc-rgb), .14); }
+.league-menu b { display: block; font: 800 18px/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--lc); }
 .league-menu span { display: block; font-size: 12px; color: var(--dust); margin-top: 3px; }
 /* AD2L mode tints the mark so the current league is obvious at a glance. */
 body[data-league="ad2l"] .brand-mark i { background: var(--gold); }
@@ -106,37 +117,31 @@ body[data-league="ad2l"] .brand-mark i + i { background: #b98a2e; }
 body[data-league="heroic"] .brand-mark i { background: #a58bff; }
 body[data-league="heroic"] .brand-mark i + i { background: #6a4fd6; }
 body[data-league="heroic"] .brand-word b { color: #b9a6ff; }
-body[data-league="heroic"] .league-menu a.current { border-left-color: #a58bff; background: rgba(165, 139, 255, .08); }
 body[data-league="heroic"] { --accent: #a58bff; --accent-rgb: 165, 139, 255; }
 /* Conqueror: steel blue, clear of gold, violet, jade and ember. */
 body[data-league="conqueror"] .brand-mark i { background: #5aa9e6; }
 body[data-league="conqueror"] .brand-mark i + i { background: #2f78b5; }
 body[data-league="conqueror"] .brand-word b { color: #8cc4f0; }
-body[data-league="conqueror"] .league-menu a.current { border-left-color: #5aa9e6; background: rgba(90, 169, 230, .08); }
 body[data-league="conqueror"] { --accent: #5aa9e6; --accent-rgb: 90, 169, 230; }
 /* Warrior: orange, between Champion's gold and the scrims' red-orange ember. */
 body[data-league="warrior"] .brand-mark i { background: #ff9a3c; }
 body[data-league="warrior"] .brand-mark i + i { background: #c4671c; }
 body[data-league="warrior"] .brand-word b { color: #ffb870; }
-body[data-league="warrior"] .league-menu a.current { border-left-color: #ff9a3c; background: rgba(255, 154, 60, .08); }
 body[data-league="warrior"] { --accent: #ff9a3c; --accent-rgb: 255, 154, 60; }
 /* Challenger: lime green, yellower than the scrims' (and Radiant's) jade. */
 body[data-league="challenger"] .brand-mark i { background: #9bd34a; }
 body[data-league="challenger"] .brand-mark i + i { background: #5e8f22; }
 body[data-league="challenger"] .brand-word b { color: #c2e88e; }
-body[data-league="challenger"] .league-menu a.current { border-left-color: #9bd34a; background: rgba(155, 211, 74, .08); }
 body[data-league="challenger"] { --accent: #9bd34a; --accent-rgb: 155, 211, 74; }
 /* Voyager: coral red. */
 body[data-league="voyager"] .brand-mark i { background: #ef6b73; }
 body[data-league="voyager"] .brand-mark i + i { background: #a83a44; }
 body[data-league="voyager"] .brand-word b { color: #f7b3b8; }
-body[data-league="voyager"] .league-menu a.current { border-left-color: #ef6b73; background: rgba(239, 107, 115, .08); }
 body[data-league="voyager"] { --accent: #ef6b73; --accent-rgb: 239, 107, 115; }
 /* Explorer: teal, bluer than the scrims' jade. */
 body[data-league="explorer"] .brand-mark i { background: #3cc6c6; }
 body[data-league="explorer"] .brand-mark i + i { background: #1f8585; }
 body[data-league="explorer"] .brand-word b { color: #9fe6e6; }
-body[data-league="explorer"] .league-menu a.current { border-left-color: #3cc6c6; background: rgba(60, 198, 198, .08); }
 body[data-league="explorer"] { --accent: #3cc6c6; --accent-rgb: 60, 198, 198; }
 .div-badge {
   font: 600 11px/1 var(--mono); font-style: normal; letter-spacing: .12em; text-transform: uppercase;
