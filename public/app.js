@@ -2992,7 +2992,9 @@ async function renderPlayer(src, key) {
     s.team ? `${teamLink(src, s.team, roster?.team.id ?? null)}${s.standin ? " · stand-in" : ""}` : "",
     roster?.captain ? "Captain" : "",
     rank ? esc(rank) : "",
-    src.ad2l ? `<a href="https://www.opendota.com/players/${encodeURIComponent(key)}" target="_blank" rel="noopener">OpenDota ↗</a>` : "",
+    // The same /players/<account ID> path on OpenDota, Dotabuff and Stratz.
+    src.ad2l && /^\d+$/.test(key) ? [["OpenDota", "https://www.opendota.com"], ["Dotabuff", "https://www.dotabuff.com"], ["Stratz", "https://stratz.com"]]
+      .map(([name, base]) => `<a href="${base}/players/${key}" target="_blank" rel="noopener">${name} ↗</a>`).join(" · ") : "",
   ].filter(Boolean).join(" · ");
 
   const cards = [
