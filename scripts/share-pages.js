@@ -19,11 +19,12 @@ const plural = (n, w) => `${n} ${n === 1 ? w : w === "hero" ? "heroes" : w === "
 const pages = [];
 const page = (p, title, description, color) => {
   if (sharePath(`#/${p}`) !== (p ? `/${p}/` : "/")) throw new Error(`${p} isn't a shareable route in lib/share.js`);
-  pages.push({ p, title, description, color });
+  pages.push({ p, title, description, color, route: routeOf(p) });
 };
 
 // ---------- Scrim League ----------
 const scrim = (tab, title, d) => page(tab, `${title} · Scrim League`, d, COLOR.scrim);
+scrim("scrims", "Standings", "Every scrim team ranked by game wins, with win %, kill difference, form and streak.");
 scrim("week", "Weekly recap", "This week's scrims: every game, drafts in pick/ban order, player of the week and the standout games.");
 scrim("teams", "Teams", "Every scrim team: record, roster, series history and the heroes they play.");
 scrim("players", "Players", "Scrim leaderboards and the tier list: KDA, GPM, damage, win rate and more.");
@@ -93,8 +94,12 @@ function league(root, key, name, d, view) {
 }
 
 const load = async (f) => JSON.parse(await readFile(path.join(OUT, "data", f), "utf8"));
+page("ad2l", "Pick a league · Scrim League", "Our scrims and AD2L Season 48: Explorer, Voyager, Challenger, Warrior, Conqueror, Champion and Heroic/Aegis.", COLOR.ad2l);
 const champ = await load("ad2l.json");
-league("ad2l", "ad2l", "AD2L S48 Champion", champ);
+league("champion", "ad2l", "AD2L S48 Champion", champ);
+// Champion used to live at /ad2l/...: keep those links working by forwarding to /champion/....
+for (const pg of pages.filter((x) => x.p.startsWith("champion/")))
+  pages.push({ ...pg, p: pg.p.replace(/^champion/, "ad2l"), canonical: pg.p });
 const heroic = await load("heroic.json");
 league("heroic", "heroic", "AD2L S48 Heroic/Aegis", heroic, null);
 for (const div of ["A", "B"]) league(`heroic/${div.toLowerCase()}`, "heroic", "AD2L S48 Heroic/Aegis", inDivision(heroic, div), `Division ${div}`);
@@ -105,9 +110,8 @@ league("voyager", "voyager", "AD2L S48 Voyager", await load("voyager.json"));
 league("explorer", "explorer", "AD2L S48 Explorer", await load("explorer.json"));
 
 // ---------- write ----------
-for (const { p, title, description, color } of pages) {
-  const route = routeOf(p);
-  const url = `${SITE}/${p}/`;
+for (const { p, title, description, color, route, canonical = p } of pages) {
+  const url = `${SITE}/${canonical}/`;
   const html = `<!doctype html>
 <html lang="en">
 <head>

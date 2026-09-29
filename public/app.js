@@ -863,8 +863,10 @@ function wireDraft() {
 // rosters + OpenDota match details by `npm run <division>:sync`). Each division has its own
 // unticketed uploads and predictions under its key; the scrim team lists use Champion's
 // ("ad2l"). `views`: the division is played in sub-divisions (Heroic/Aegis: A and B).
+// `slug`: the address when it isn't the key (Champion is keyed "ad2l" in the data files,
+// Firestore and predictions, but lives at #/champion; #/ad2l is the league picker).
 const DIVISIONS = {
-  ad2l: { name: "S48 Champion", short: "Champion", file: "data/ad2l.json" },
+  ad2l: { name: "S48 Champion", short: "Champion", file: "data/ad2l.json", slug: "champion" },
   heroic: { name: "S48 Heroic/Aegis", short: "Heroic/Aegis", file: "data/heroic.json", views: ["a", "b"] },
   conqueror: { name: "S48 Conqueror", short: "Conqueror", file: "data/conqueror.json" },
   warrior: { name: "S48 Warrior", short: "Warrior", file: "data/warrior.json" },
@@ -921,15 +923,16 @@ async function divGames(src) {
 const SOURCES = {
   scrim: {
     key: "scrim", kicker: "The ledger", load: allMatches,
-    link: (m) => `#/match/${m.id}`, base: "#/",
+    link: (m) => `#/match/${m.id}`, base: "#/scrims",
     empty: `The ledger is empty. <a href="#/upload">Upload the first scrim</a>.`,
-    nav: [["#/", "matches", "Standings"], ["#/week", "week", "Weekly"], ["#/teams", "teams", "Teams"], ["#/players", "players", "Players"], ["#/heroes", "heroes", "Heroes"], ["#/predict", "predict", "Predict"], ["#/upload", "upload", "Upload", "nav-cta"]],
+    nav: [["#/scrims", "matches", "Standings"], ["#/week", "week", "Weekly"], ["#/teams", "teams", "Teams"], ["#/players", "players", "Players"], ["#/heroes", "heroes", "Heroes"], ["#/predict", "predict", "Predict"], ["#/upload", "upload", "Upload", "nav-cta"]],
   },
 };
 // AD2L divisions: `ad2l` marks the PlayOn/OpenDota pages, `root` prefixes their routes
-// (#/ad2l for Champion, #/<key> for the rest), `data`/`cache` give that division's file.
+// (#/<slug>, else #/<key>), `data`/`cache` give that division's file.
+const bySlug = Object.fromEntries(Object.entries(DIVISIONS).map(([key, dv]) => [dv.slug ?? key, key]));
 for (const [key, dv] of Object.entries(DIVISIONS)) {
-  const root = `#/${key}`;
+  const root = `#/${dv.slug ?? key}`;
   SOURCES[key] = {
     key, ad2l: true, root, data: () => divData(key), cache: () => divCache[key],
     division: dv.name, kicker: `AD2L · ${dv.name}`, load: () => divGames(SOURCES[key]),
@@ -1057,7 +1060,7 @@ async function renderMatch(id, src) {
       try {
         await deleteMatch(m.id, m.unticketed ? src.key : "scrim");
         if (m.unticketed) { await divUploaded(src.key, true); location.hash = src.base; }
-        else { await allMatches(true); location.hash = "#/"; }
+        else { await allMatches(true); location.hash = "#/scrims"; }
       } catch (e) {
         b.disabled = false;
         b.textContent = `Delete this ${noun}`;
@@ -4386,7 +4389,7 @@ function divisionBar(src, h) {
   const views = DIVISIONS[src.key]?.views;
   bar.hidden = !views;
   if (bar.hidden) return;
-  const base = `#/${src.key}`;
+  const base = SOURCES[src.key].root;
   const rest = h.slice(src.root.length).replace(/^\/+/, "");
   const [first] = rest.split("/");
   const keep = { game: "week", games: "week", edit: "week", teams: "", player: "players", tiers: "players", draft: "heroes" };
@@ -4629,30 +4632,46 @@ const onNav = () => {
   route();
 };
 
+// The home page (#/, and #/ad2l): pick a league. Scrim standings live at #/scrims; Champion's
+// pages moved from #/ad2l/... to #/champion/... (route() forwards old links). Same order as
+// the menu: the scrims, then AD2L lowest division first.
+function renderHub() {
+  const order = [...leagueMenu.querySelectorAll("a")].map((a) => a.dataset.league);
+  const link = (key) => key === "scrim"
+    ? `<a href="#/scrims" data-league="scrim" class="hub-scrim"><b>Scrim League</b><span>Our scrims</span></a>`
+    : `<a href="${SOURCES[key].root}/" data-league="${key}"><b>${esc(DIVISIONS[key].short)}</b><span>AD2L S48</span></a>`;
+  app.innerHTML = `<section class="hub">
+    <div class="kicker">Dota 2 · Scrims and AD2L Season 48</div>
+    <h1 class="hub-title">Pick a league</h1>
+    <nav class="hub-list">${order.map(link).join("")}</nav>
+  </section>`;
+}
+
 function route() {
   setMenu(false);
-  const h = here();
+  let h = here();
+  if (/^#\/ad2l\/./.test(h)) h = h.replace(/^#\/ad2l/, SOURCES.ad2l.root); // old Champion links
   // Show this page's /path/ form (replaceState: no reload, no new history entry).
   const want = addressOf(h);
   if (location.pathname + location.hash !== want) history.replaceState(history.state, "", want + location.search);
   routedAt = location.href;
+  if (h === "#/" || /^#\/ad2l\/?$/.test(h)) return routeHub();
   // #/<division>/..., or #/<division>/<view>/... for a sub-division.
-  const [, key, view] = /^#\/([a-z0-9]+)(?:\/([a-z])(?=\/|$))?/.exec(h) ?? [];
-  const src = !isDiv(key) ? SOURCES.scrim : view && SOURCES[`${key}_${view}`] || SOURCES[key];
+  const [, slug, view] = /^#\/([a-z0-9]+)(?:\/([a-z])(?=\/|$))?/.exec(h) ?? [];
+  const key = bySlug[slug];
+  const src = !key ? SOURCES.scrim : view && SOURCES[`${key}_${view}`] || SOURCES[key];
   const isAd2l = src.ad2l, r = src.root;
   document.body.dataset.league = src.key;
   const divLabel = DIVISIONS[src.key]?.views ? (src.view ? `Division ${src.view.toUpperCase()}` : "Combined") : "";
   document.title = isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""} · Scrim League` : "Scrim League";
   document.getElementById("league-name").innerHTML = isAd2l ? `AD2L<b>${src.division}</b>${divLabel ? `<em class="div-badge">${src.view ? `Div ${src.view.toUpperCase()}` : DIVISIONS[src.key].views.join(" + ").toUpperCase()}</em>` : ""}` : "Scrim<b>League</b>";
   leagueMenu.querySelectorAll("a").forEach((a) => a.classList.toggle("current", a.dataset.league === src.key));
-  // The brand goes home: this league's first page (Teams in AD2L, Standings for scrims).
-  document.getElementById("home-link").href = src.nav[0][0];
 
   // Pages that read through the time machine; `tm` marks them so its bar shows.
   const t = timeSrc(src);
   let section, page, tm = false;
   if (isAd2l) {
-    // Every AD2L division (#/ad2l, #/heroic, #/conqueror, #/warrior, #/challenger, #/voyager, #/explorer) shares these pages.
+    // Every AD2L division (#/champion, #/heroic, #/conqueror, #/warrior, #/challenger, #/voyager, #/explorer) shares these pages.
     const gameId = new RegExp(`^${r}/game/(\\d+|[0-9a-f]{32})$`).exec(h)?.[1];
     if (gameId) { section = "week"; page = () => renderMatch(gameId, src); }
     else if (h.startsWith(`${r}/games`)) { section = "week"; page = () => renderWeek(src, 0); } // old Games tab: Weekly lists every game
@@ -4704,11 +4723,26 @@ function route() {
   const tab = { standings: "", matches: "", teams: "" }[section] ?? section;
   leagueMenu.querySelectorAll("a").forEach((a) => {
     const l = a.dataset.league;
-    a.href = l === "scrim" ? `#/${tab}` : `${SOURCES[l].root}/${tab}`;
+    a.href = l === "scrim" ? `#/${tab || "scrims"}` : `${SOURCES[l].root}/${tab}`;
   });
   divisionBar(src, h);
   timeBar(src, tm);
   return page();
+}
+
+// The picker page: no tabs, no time machine, and the menu opens each league's first page.
+function routeHub() {
+  document.body.dataset.league = "hub";
+  document.title = "Scrim League";
+  document.getElementById("league-name").innerHTML = "Scrim<b>League</b>";
+  leagueMenu.querySelectorAll("a").forEach((a) => {
+    a.classList.remove("current");
+    a.href = a.dataset.league === "scrim" ? "#/scrims" : `${SOURCES[a.dataset.league].root}/`;
+  });
+  document.getElementById("nav").innerHTML = "";
+  document.getElementById("div-switch").hidden = true;
+  timeBar(null, false);
+  return renderHub();
 }
 
 document.getElementById("hero-list").innerHTML = HEROES.map((h) => `<option value="${esc(h)}">`).join("");

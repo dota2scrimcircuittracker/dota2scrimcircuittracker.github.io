@@ -4,8 +4,8 @@ import { routeOf, sharePath } from "../public/lib/share.js";
 
 test("shareable routes map to preview paths and back", () => {
   for (const [hash, path] of [
-    ["#/", "/"], ["", "/"], ["#/week", "/week/"], ["#/ad2l/", "/ad2l/"], ["#/heroic/b/week", "/heroic/b/week/"],
-    ["#/heroic/a/", "/heroic/a/"], ["#/heroic/teams/14999", "/heroic/teams/14999/"], ["#/ad2l/game/8969465019", "/ad2l/game/8969465019/"],
+    ["#/", "/"], ["", "/"], ["#/week", "/week/"], ["#/scrims", "/scrims/"], ["#/ad2l/", "/ad2l/"], ["#/champion/", "/champion/"], ["#/champion/players", "/champion/players/"], ["#/heroic/b/week", "/heroic/b/week/"],
+    ["#/heroic/a/", "/heroic/a/"], ["#/heroic/teams/14999", "/heroic/teams/14999/"], ["#/champion/game/8969465019", "/champion/game/8969465019/"],
     ["#/conqueror/", "/conqueror/"], ["#/conqueror/players", "/conqueror/players/"], ["#/conqueror/teams/14095", "/conqueror/teams/14095/"],
     ["#/warrior/", "/warrior/"], ["#/warrior/week", "/warrior/week/"], ["#/challenger/players", "/challenger/players/"],
     ["#/voyager/", "/voyager/"], ["#/explorer/predict", "/explorer/predict/"], ["#/voyager/teams/15000", "/voyager/teams/15000/"],
@@ -15,6 +15,8 @@ test("shareable routes map to preview paths and back", () => {
   }
   assert.equal(routeOf("/heroic/b/"), "#/heroic/b/");
   assert.equal(routeOf("/heroic/b/week/"), "#/heroic/b/week");
+  assert.equal(routeOf("/ad2l/"), "#/ad2l/");
+  assert.equal(routeOf("/champion/"), "#/champion/");
   assert.equal(routeOf("/conqueror/"), "#/conqueror/");
   assert.equal(routeOf("/warrior/"), "#/warrior/");
   assert.equal(routeOf("/challenger/"), "#/challenger/");
@@ -23,6 +25,6 @@ test("shareable routes map to preview paths and back", () => {
 });
 
 test("routes without a preview page return null", () => {
-  for (const hash of ["#/heroic/a/game/123", "#/player/abc", "#/heroic/game/0123456789abcdef0123456789abcdef", "#/heroic/week/2", "#/ad2l/player/1", "#/match/abc"])
+  for (const hash of ["#/heroic/a/game/123", "#/player/abc", "#/heroic/game/0123456789abcdef0123456789abcdef", "#/heroic/week/2", "#/champion/player/1", "#/ad2l/week", "#/ad2l/teams/1", "#/match/abc"])
     assert.equal(sharePath(hash), null, hash);
 });

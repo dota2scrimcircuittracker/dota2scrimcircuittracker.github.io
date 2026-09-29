@@ -1,7 +1,8 @@
 // Guided tour: a first-visit invite, then a walk through real pages. Each stop darkens the
 // page around one element (a gold box), shows a caption, and on mouse devices a fake cursor
 // glides over and clicks what the tour clicks. The tour runs in the league you're on; stops
-// whose element never shows up (an empty league, a private game) are skipped.
+// whose element never shows up (an empty league, a private game) are skipped. It only tours
+// AD2L divisions (the scrims have far fewer stats): the first stop makes you pick one.
 // Design: docs/superpowers/specs/2026-09-29-guided-tour-design.md
 
 const SEEN_KEY = "tour-seen";
@@ -43,11 +44,27 @@ const standingsKey = (ctx) => (ctx.ad2l ? "standings" : "matches");
 const CORE = [
   {
     title: "Pick a league",
-    text: "Our scrims and every AD2L S48 division live here. Switching keeps you on the same tab: Players stays Players. Pick one and the tour carries on there.",
-    enter: async (t) => { const btn = document.getElementById("league-btn"); await t.click(btn); return document.getElementById("league-menu"); },
-    // Clicks on a league go through: the tour switches to it and carries on.
-    pass: (t, el) => { const a = el.closest("#league-menu a[data-league]"); if (a) t.switchLeague(a); },
-    leave: () => { const m = document.getElementById("league-menu"); if (!m.hidden) document.getElementById("league-btn").click(); },
+    text: "Every AD2L S48 division has its own standings, games, players and heroes. Switching keeps you on the same tab: Players stays Players. Pick one to tour it.",
+    // No Next: the tour waits for a pick. The home page's buttons, else the league menu;
+    // the scrims are hidden while it waits (body.tour-pick).
+    pick: true,
+    enter: async (t) => {
+      document.body.classList.add("tour-pick");
+      const hub = document.querySelector("#app .hub-list");
+      if (visible(hub)) return hub;
+      const btn = document.getElementById("league-btn");
+      if (document.getElementById("league-menu").hidden) await t.click(btn);
+      return document.getElementById("league-menu");
+    },
+    // Clicks on a division go through: the tour switches to it and carries on.
+    pass: (t, el) => {
+      const a = el.closest("#league-menu a[data-league], .hub-list a[data-league]");
+      if (a && a.dataset.league !== "scrim") t.switchLeague(a);
+    },
+    leave: () => {
+      document.body.classList.remove("tour-pick");
+      const m = document.getElementById("league-menu"); if (!m.hidden) document.getElementById("league-btn").click();
+    },
   },
   {
     title: "The main tabs",
@@ -454,7 +471,7 @@ class Tour {
     this.onKey = (e) => {
       if (!e.isTrusted) return;
       if (e.key === "Escape") { e.preventDefault(); this.pause(); }
-      else if (e.key === "ArrowRight" && !this.busy) { e.preventDefault(); this.next(); }
+      else if (e.key === "ArrowRight" && !this.busy && !this.stops?.[this.i]?.pick) { e.preventDefault(); this.next(); }
       else if (e.key === "ArrowLeft" && !this.busy) { e.preventDefault(); this.back(); }
     };
     document.addEventListener("keydown", this.onKey, true);
@@ -467,6 +484,25 @@ class Tour {
       const under = document.elementsFromPoint(e.clientX, e.clientY).find((el) => !this.ui.root.contains(el));
       if (under && this.target.some((el) => el.contains(under))) s.pass(this, under);
     });
+    // The overlay also swallows hover: on a stop with pass(), mark the link under the pointer
+    // (.tour-hover, styled like :hover) so the choices still light up as you point at them.
+    let hovered = null;
+    const setHover = (el) => {
+      if (el === hovered) return;
+      hovered?.classList.remove("tour-hover");
+      hovered = el;
+      el?.classList.add("tour-hover");
+      this.ui.block.style.cursor = el ? "pointer" : "";
+    };
+    this.clearHover = () => setHover(null);
+    this.ui.block.addEventListener("mousemove", (e) => {
+      const s = this.stops?.[this.i];
+      if (this.busy || !s?.pass || !this.target) return setHover(null);
+      const under = document.elementsFromPoint(e.clientX, e.clientY).find((el) => !this.ui.root.contains(el));
+      const link = under?.closest("a[data-league]");
+      setHover(link && this.target.some((el) => el.contains(link)) ? link : null);
+    });
+    this.ui.block.addEventListener("mouseleave", () => setHover(null));
     const follow = () => { if (this.dead) return; this.place(); this.raf = requestAnimationFrame(follow); };
     this.raf = requestAnimationFrame(follow);
     document.body.classList.add("touring");
@@ -493,6 +529,7 @@ class Tour {
     this.busy = true;
     this.ui.card.hidden = true;
     const prev = this.stops[this.i];
+    this.clearHover();
     try { prev?.leave?.(this); } catch { /* leaving is best effort */ }
     try {
       for (; i >= 0 && i < this.stops.length; i += dir) {
@@ -553,7 +590,7 @@ class Tour {
     this.card(`${s.group ? `${s.group} · ` : ""}${this.i + 1} of ${this.stops.length}`, title, text, [
       ["skip", "Pause tour", () => this.pause()],
       this.i > 0 && ["back", "Back", () => this.back()],
-      ["next", this.i === this.stops.length - 1 ? "Finish" : "Next", () => this.next()],
+      !s.pick && ["next", this.i === this.stops.length - 1 ? "Finish" : "Next", () => this.next()],
     ]);
     this.setPath(breadcrumb(this.target));
     this.bringIntoView(this.target); // after the card, so a docked card's height is known
@@ -808,6 +845,7 @@ class Tour {
   close() {
     if (this.dead) return false;
     const s = this.stops?.[this.i];
+    this.clearHover();
     try { s?.leave?.(this); } catch { /* best effort */ }
     this.dead = true;
     cancelAnimationFrame(this.raf);
@@ -928,15 +966,18 @@ export async function startTour({ resume = false } = {}) {
   const spot = resume ? pausedSpot() : null;
   if (!resume) { try { localStorage.removeItem(PAUSE_KEY); } catch { /* private mode */ } }
   const league = document.body.dataset.league || "scrim";
+  // Only AD2L divisions are toured. From the home page or the scrims, the first stop (pick a
+  // league) moves the tour into one; a paused spot there can't be resumed.
   const ad2l = !!navHref("standings");
+  const at = ad2l ? spot : null;
   // Picked pages (a team, a game...) only carry over within the same league.
-  const same = spot?.league === league;
-  const t = (run = new Tour({ league, ad2l, picked: same ? spot.picked ?? {} : {}, query: same ? spot.query ?? "" : "" }));
-  if (spot?.start) t.start = spot.start;
+  const same = at?.league === league;
+  const t = (run = new Tour({ league, ad2l: true, picked: same ? at.picked ?? {} : {}, query: same ? at.query ?? "" : "" }));
+  if (at?.start) t.start = at.start;
   syncTopBar();
   // Search types the start of a real name from this league.
   if (!t.ctx.query) t.ctx.query = (document.querySelector('#standings a.team-link, #t tbody a[href*="/teams/"]')?.textContent ?? "").trim().slice(0, 3) || "a";
-  await t.chapter(spot?.chapter in CHAPTERS ? spot.chapter : "core", spot?.at ?? null);
+  await t.chapter(at?.chapter in CHAPTERS ? at.chapter : "core", at?.at ?? null);
 }
 
 // Top bar: "New here?" normally; "Resume tour" plus "Restart" while a tour is paused.

@@ -20,7 +20,7 @@ const heroic = {
   games: [],
 };
 const leagues = [
-  { key: "ad2l", label: "Champion", root: "#/ad2l", data: champ },
+  { key: "ad2l", label: "Champion", root: "#/champion", data: champ },
   { key: "heroic", label: "Heroic/Aegis", root: "#/heroic", data: heroic, views: ["a", "b"] },
 ];
 const scrims = { label: "Scrims", matches: [{ createdAt: 5, team_a: "Void Walkers", team_b: "Pub Stars", players: [{ team: "b", name: "Solo Andy" }] }] };
@@ -31,8 +31,8 @@ test("players carry their team and league; teams their league", () => {
   assert.equal(hex.team, "Void Walkers");
   assert.equal(hex.leagueLabel, "Champion");
   assert.equal(hex.captain, true);
-  assert.equal(hex.href, "#/ad2l/player/11");
-  assert.equal(hex.teamHref, "#/ad2l/teams/1");
+  assert.equal(hex.href, "#/champion/player/11");
+  assert.equal(hex.teamHref, "#/champion/teams/1");
 });
 
 test("sub-division teams and players link into their division", () => {

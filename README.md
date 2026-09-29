@@ -6,11 +6,17 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
 
 - **Scrims** — paste two post-game screenshots; the stats are read **in your browser**
   (Tesseract OCR — no AI, no API keys), you check them, and the game is saved.
-- **Scrim standings** — the scrim home page: every team ranked by game wins (then fewest
+- **Scrim standings** (`/scrims/`) — the scrim home page: every team ranked by game wins (then fewest
   losses), with win %, average kill difference, last-five form and streak, above the match
   list. Private scrims count.
 - **AD2L S48 Champion** — switch league in the top-left: standings, every ticketed game
-  with full stats, players and heroes, pulled from PlayOn + OpenDota.
+  with full stats, players and heroes, pulled from PlayOn + OpenDota. Lives at `/champion/`
+  (`slug` in `DIVISIONS`); its key stays `ad2l` for the data file, Firestore and predictions.
+- **Home page** — `/` (also `/ad2l/`) is a league picker: Scrim League and every AD2L division,
+  centred, in the menu's order and colours. The guided tour ("New here?") only tours AD2L
+  divisions: its first stop waits for you to pick one (no Next; Scrim League is hidden). Old
+  `/ad2l/<page>` links forward to `/champion/<page>` (in the app, and via preview pages the deploy
+  writes at the old paths).
 - **AD2L S48 Heroic/Aegis** — a second division in the same switcher (PlayOn runs Heroic
   and Aegis as one season, 676), from its own `public/data/heroic.json` (`npm run heroic:sync`).
   Everything Champion has, under `#/heroic/`: standings, weekly, players, heroes, teams,

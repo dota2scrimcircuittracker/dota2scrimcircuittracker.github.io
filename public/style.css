@@ -99,14 +99,14 @@ body[data-league]:not([data-league="scrim"]) .league-btn:hover, body[data-league
 .menu-label { font: 600 10px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); padding: 8px 10px 10px; }
 /* Every entry in its own league's colour (--lc), so the menu is a key to the site's colours. */
 .league-menu a { --lc: var(--gold); --lc-rgb: 232, 182, 76; display: block; padding: 11px 12px; color: var(--bone); border-left: 3px solid rgba(var(--lc-rgb), .45); margin-bottom: 2px; }
-.league-menu a[data-league="scrim"] { --lc: var(--jade); --lc-rgb: 95, 211, 155; }
-.league-menu a[data-league="heroic"] { --lc: #a58bff; --lc-rgb: 165, 139, 255; }
-.league-menu a[data-league="conqueror"] { --lc: #5aa9e6; --lc-rgb: 90, 169, 230; }
-.league-menu a[data-league="warrior"] { --lc: #ff9a3c; --lc-rgb: 255, 154, 60; }
-.league-menu a[data-league="challenger"] { --lc: #9bd34a; --lc-rgb: 155, 211, 74; }
-.league-menu a[data-league="voyager"] { --lc: #ef6b73; --lc-rgb: 239, 107, 115; }
-.league-menu a[data-league="explorer"] { --lc: #3cc6c6; --lc-rgb: 60, 198, 198; }
-.league-menu a:hover { background: rgba(var(--lc-rgb), .1); border-left-color: var(--lc); text-decoration: none; }
+.league-menu a[data-league="scrim"], .hub-list a[data-league="scrim"] { --lc: var(--jade); --lc-rgb: 95, 211, 155; }
+.league-menu a[data-league="heroic"], .hub-list a[data-league="heroic"] { --lc: #a58bff; --lc-rgb: 165, 139, 255; }
+.league-menu a[data-league="conqueror"], .hub-list a[data-league="conqueror"] { --lc: #5aa9e6; --lc-rgb: 90, 169, 230; }
+.league-menu a[data-league="warrior"], .hub-list a[data-league="warrior"] { --lc: #ff9a3c; --lc-rgb: 255, 154, 60; }
+.league-menu a[data-league="challenger"], .hub-list a[data-league="challenger"] { --lc: #9bd34a; --lc-rgb: 155, 211, 74; }
+.league-menu a[data-league="voyager"], .hub-list a[data-league="voyager"] { --lc: #ef6b73; --lc-rgb: 239, 107, 115; }
+.league-menu a[data-league="explorer"], .hub-list a[data-league="explorer"] { --lc: #3cc6c6; --lc-rgb: 60, 198, 198; }
+.league-menu a:hover, .league-menu a.tour-hover { background: rgba(var(--lc-rgb), .1); border-left-color: var(--lc); text-decoration: none; }
 .league-menu a.current { border-left-color: var(--lc); background: rgba(var(--lc-rgb), .14); }
 .league-menu b { display: block; font: 800 18px/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--lc); }
 .league-menu span { display: block; font-size: 12px; color: var(--dust); margin-top: 3px; }
@@ -280,6 +280,15 @@ main { width: 100%; max-width: 2400px; margin: 0 auto; padding: clamp(24px, 4vw,
 .kicker { font: 600 11px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 10px; }
 .kicker::before { content: ""; width: 28px; height: 1px; background: currentColor; }
 h1 { font: 900 clamp(44px, 7vw, 84px)/.9 var(--display); text-transform: uppercase; letter-spacing: .01em; margin: 12px 0 0; }
+/* #/ad2l: the AD2L league picker, centred in the page. Each league in its own colour. */
+.hub { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 28px; padding: 32px 0; }
+.hub .kicker::after { content: ""; width: 28px; height: 1px; background: currentColor; }
+.hub-title { margin: 0; }
+.hub-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; max-width: 780px; }
+.hub-list a { --lc: var(--gold); --lc-rgb: 232, 182, 76; flex: 0 1 180px; display: block; padding: 18px 14px; background: var(--stone-2); border: 1px solid rgba(var(--lc-rgb), .35); border-bottom: 3px solid var(--lc); color: var(--lc); transition: background .15s, transform .15s; }
+.hub-list a:hover, .hub-list a.tour-hover { background: rgba(var(--lc-rgb), .12); transform: translateY(-2px); text-decoration: none; }
+.hub-list b { display: block; font: 800 24px/1 var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.hub-list span { display: block; margin-top: 6px; font: 600 10px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dust); }
 .page-head p { max-width: 68ch; color: var(--dust); margin: 14px 0 0; }
 h2 {
   font: 800 22px/1 var(--display); text-transform: uppercase; letter-spacing: .06em;
@@ -2363,6 +2372,8 @@ button.tour-open.paused:hover:not(:disabled) { background: color-mix(in srgb, va
 button.tour-restart { color: var(--dust); border-color: var(--seam); }
 button.tour-restart[hidden] { display: none; }
 .tour-block { position: fixed; inset: 0; z-index: 90; }
+/* The tour only visits AD2L divisions: while it waits for a pick, the scrims are hidden. */
+body.tour-pick #league-menu a[data-league="scrim"], body.tour-pick .hub-list a[data-league="scrim"] { display: none; }
 .tour-block.dim { background: rgba(6, 5, 4, .66); transition: background .25s; }
 /* The spotlight: a transparent box whose huge shadow darkens everything else. */
 .tour-box {
