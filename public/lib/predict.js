@@ -7,8 +7,10 @@
 // PlayOn medal of the team's top three players. How hard it's pulled (lambda) and how much
 // medals are worth (beta) are shared by all divisions (MODEL_PARAMS), picked by replaying every
 // division week by week (log loss). So far medals have predicted far better than results, so
-// the pull is strong. A series is two games, treated as independent:
-// 2-0 = p², 1-1 = 2p(1-p), 0-2 = (1-p)².
+// the pull is strong. A series is two games, but not independent ones: whoever is better on the
+// night tends to win both (only 35% of 175 series ended 1-1, where independent games would give
+// ~48%). With game-to-game correlation rho (SERIES_CORR):
+// 2-0 = p² + rho·p(1-p), 1-1 = 2p(1-p)(1-rho), 0-2 = (1-p)² + rho·p(1-p).
 
 import { phasedDraft } from "./draft.js";
 
@@ -55,9 +57,13 @@ export function fitRatings(teams, series, { lambda = 0.5, beta = 0.05, before = 
   return r;
 }
 
+// rho = 1/3 makes an even match 33/33/33. The best fit to the 175 series so far was 0.25
+// (31/38/31), with 1/3 close behind; independent games (rho 0, 25/50/25) fit far worse.
+export const SERIES_CORR = 1 / 3;
+
 export function seriesOdds(ra, rb) {
-  const p = sig(ra - rb);
-  return { game: p, home: p * p, tie: 2 * p * (1 - p), away: (1 - p) * (1 - p) };
+  const p = sig(ra - rb), both = SERIES_CORR * p * (1 - p);
+  return { game: p, home: p * p + both, tie: 2 * p * (1 - p) - 2 * both, away: (1 - p) * (1 - p) + both };
 }
 export const outcomeOf = (s) => (s.home_score > s.away_score ? "home" : s.home_score < s.away_score ? "away" : "tie");
 export const favourite = (o) => ["home", "tie", "away"].sort((a, b) => o[b] - o[a])[0];

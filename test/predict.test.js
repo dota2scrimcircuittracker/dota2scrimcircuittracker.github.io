@@ -11,11 +11,12 @@ const series = [
 ];
 const at = (sec) => new Date(sec * 1000);
 
-test("odds add to 1 and a series is two independent games", () => {
+test("odds add to 1 and an even series splits three ways", () => {
   const o = seriesOdds(0.4, 0);
   assert.ok(Math.abs(o.home + o.tie + o.away - 1) < 1e-9);
-  assert.ok(Math.abs(o.home - o.game ** 2) < 1e-9);
-  assert.ok(Math.abs(seriesOdds(0, 0).tie - 0.5) < 1e-9);
+  assert.ok(o.home > o.game ** 2); // games are correlated: a sweep beats p²
+  const even = seriesOdds(0, 0);
+  for (const k of ["home", "tie", "away"]) assert.ok(Math.abs(even[k] - 1 / 3) < 1e-9);
 });
 
 test("ratings move toward results and are pulled back by lambda", () => {
