@@ -1489,62 +1489,129 @@ async function renderStandings(src) {
   let d;
   try { d = await src.data(); } catch (e) { app.innerHTML = `${pageHead(kicker, "Standings")}${errorBox(e)}`; return; }
 
-  const played = d.series.filter((s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0);
-  const upcoming = d.series.filter((s) => !played.includes(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3);
+  const played = d.series.filter((s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+  const upcoming = d.series.filter((s) => !played.includes(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).sort((a, b) => a.time - b.time);
+  const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
+  // The model behind Predict, so Rating and the Up next odds match that page.
+  const params = tune(d.teams, d.series);
+  const ratings = fitRatings(d.teams, d.series, params);
   const rows = d.teams.map((t) => {
-    const mine = played.filter((s) => s.home === t.id || s.away === t.id);
-    let w = 0, tie = 0, l = 0, gw = 0, gl = 0;
-    for (const s of mine) {
+    const mine = played.filter((s) => s.home === t.id || s.away === t.id).map((s) => {
       const [us, them] = s.home === t.id ? [s.home_score, s.away_score] : [s.away_score, s.home_score];
-      gw += us; gl += them;
-      if (us > them) w++; else if (us < them) l++; else tie++;
-    }
+      return { us, them, opp: s.home === t.id ? s.away : s.home, result: us > them ? "w" : us < them ? "l" : "t" };
+    });
+    let w = 0, tie = 0, l = 0, gw = 0, gl = 0;
+    for (const x of mine) { gw += x.us; gl += x.them; if (x.result === "w") w++; else if (x.result === "l") l++; else tie++; }
+    let streak = 0;
+    for (let i = mine.length - 1; i >= 0 && mine[i].result === "w"; i--) streak++;
+    const last5 = mine.slice(-5);
     const tracked = d.games.filter((g) => g.team_a_id === t.id || g.team_b_id === t.id).length;
-    return { team: t.name, id: t.id, division: t.division, series: mine.length, w, tie, l, gw, gl, game_rate: gw + gl ? gw / (gw + gl) : null, tracked };
+    return { team: t.name, id: t.id, division: t.division, series: mine.length, w, tie, l, gw, gl, game_rate: gw + gl ? gw / (gw + gl) : null, tracked,
+      form: last5, series_form: last5.reduce((a, x) => a + (x.result === "w" ? 1 : x.result === "l" ? -1 : 0), 0), streak,
+      model_rating: ratings.get(t.id) ?? null };
   });
+  const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+  const sos = strengthOfSchedule(d.teams.map((t) => t.id), d.series);
+
+  // Highlight cards. Biggest upset: the decided series whose result the model, fitted only on
+  // the nights before it, thought least likely.
+  const leader = [...rows].sort((a, b) => b.gw - a.gw || (b.game_rate ?? 0) - (a.game_rate ?? 0))[0];
+  const hot = [...rows].sort((a, b) => b.streak - a.streak)[0];
+  const tough = sos.filter((x) => x.sos != null && byId[x.id]?.series).sort((a, b) => b.sos - a.sos)[0];
+  const upset = played.filter((s) => s.home_score !== s.away_score && !bye.has(s.home) && !bye.has(s.away)).map((s) => {
+    const r = fitRatings(d.teams, d.series, { ...params, before: s.time ?? 0 });
+    const o = seriesOdds(r.get(s.home) ?? 0, r.get(s.away) ?? 0), won = s.home_score > s.away_score ? "home" : "away";
+    return { s, p: o[won], w: won === "home" ? s.home : s.away, l: won === "home" ? s.away : s.home };
+  }).sort((a, b) => a.p - b.p)[0];
+  const score = (s) => `${Math.max(s.home_score, s.away_score)}–${Math.min(s.home_score, s.away_score)}`;
+  const cards = [
+    leader?.series && ["League leader", teamLink(src, leader.team, leader.id), `<b>${leader.gw}–${leader.gl}</b> in games · ${leader.w}–${leader.tie}–${leader.l} in series`, "standings_leader"],
+    hot?.streak >= 2 && ["Hottest team", teamLink(src, hot.team, hot.id), `<b>${hot.streak} series</b> won in a row`, "standings_streak"],
+    tough && ["Toughest schedule so far", teamLink(src, name[tough.id], tough.id), `Strength of schedule <b>${pct(tough.sos)}</b>`, "sos"],
+    upset && upset.p < 0.4 && ["Biggest upset", teamLink(src, name[upset.w], upset.w),
+      `beat <b>${esc(name[upset.l])}</b> ${score(upset.s)}; the model gave that <b>${pct(upset.p)}</b>`, "standings_upset"],
+  ].filter(Boolean);
+
+  // Race: each team's game wins after each league night.
+  const nights = [...new Set(played.map((s) => s.time).filter(Boolean))];
+  const race = d.teams.filter((t) => !bye.has(t.id)).map((t) => {
+    let acc = 0;
+    return { t, values: nights.map((n) => {
+      for (const s of played) if (s.time === n) acc += s.home === t.id ? s.home_score : s.away === t.id ? s.away_score : 0;
+      return acc;
+    }) };
+  }).sort((a, b) => b.values.at(-1) - a.values.at(-1));
+  const top = Math.max(0, ...race.map((r) => r.values.at(-1) ?? 0));
+  const raceHtml = nights.length >= 2 ? `${lineChart(race.map((r, i) => ({ label: r.t.name, values: r.values, cls: `s-c${(i % 10) + 1}`, end: `${r.values.at(-1)} · ${r.t.name}` })),
+      { endLabels: true, height: 320, xLabels: nights.map((_, i) => `Wk ${i + 1}`), step: top > 12 ? 4 : 2,
+        caption: "Game wins after each league night. Hover for every team's total that week; hover a name to pick out one team." })}
+    <p class="table-note">Steep = winning games; flat = a stall. A week is a league night with results.</p>` : "";
 
   const date = (s) => new Date(s * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const oddsBar = (o) => `<div class="st-odds" title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}">${
+    [["home", "2–0", "h"], ["tie", "1–1", "t"], ["away", "0–2", "a"]].map(([k, lbl, c]) => `<span class="${c}" style="flex:${o[k].toFixed(3)}">${o[k] >= 0.14 ? `${lbl} ${pct(o[k])}` : ""}</span>`).join("")}</div>`;
+  const nextHtml = upcoming.length ? `<div class="fixtures reveal">${upcoming.slice(0, 10).map((s, i) => {
+      const real = name[s.home] && name[s.away] && !bye.has(s.home) && !bye.has(s.away);
+      const o = real && seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0);
+      return `<div class="fixture st-next" style="--i:${i}">
+        <div class="fx-team a">${name[s.home] ? teamLink(src, name[s.home], s.home) : "TBD"}</div>
+        <div class="fx-score"><div class="meta">${date(s.time)}</div>
+          ${real ? `${oddsBar(o)}<div class="meta">Model leans ${esc(name[o.home >= o.away ? s.home : s.away])} · <a href="${src.root}/predict">draft read on Predict</a></div>` : `<div class="n" style="font-size:22px">VS</div>`}</div>
+        <div class="fx-team b">${name[s.away] ? teamLink(src, name[s.away], s.away) : "TBD"}</div>
+      </div>`;
+    }).join("")}</div>
+    <p class="table-note">Odds from the same model as Predict. Green = the left team wins 2–0, grey = 1–1, red = the right team wins 2–0.</p>` : "";
+
+  const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const tabs = playerTabs([
+    ["table", "Table", `<div id="t" class="reveal"></div>
+      <p class="table-note">Sorted by game wins; official standings and tiebreakers live on
+        <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.
+        <b>Form</b>: the last five series, newest on the right. <b>Rating</b>: the model's strength for the team; 0 = an average team.
+        "Stats" = games whose full stats were found (players whose match history is private can hide a game).</p>`],
+    ["schedule", "Schedule", `<div id="sos" class="reveal"></div>
+      <p class="table-note"><b>SOS</b> = (2 × opponents' game win % + their opponents' game win %) ÷ 3, the same idea as RPI.
+        Opponents' records leave out their games against the team in question, so beating a team doesn't make your own
+        schedule look easier. Each series counts once. <b>Still to play</b> = average game win % of the opponents left.
+        Squares: every series played, oldest first (green won, red lost, grey tied); hover for details, click for the team.</p>`],
+    ["race", "Race", raceHtml],
+    ["next", `Up next · ${upcoming.length}`, nextHtml],
+  ], { store: "standingsTab", label: "Standings sections" });
   app.innerHTML = `
     ${pageHead(kicker, "Standings", `Series results from PlayOn; game stats from ${d.games.length} ticketed games found on OpenDota. Click a team for its roster, series history and heroes.
-      Updated ${new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`)}
-    <div id="t" class="reveal"></div>
-    <p class="table-note">Sorted by game wins; official standings and tiebreakers live on
-      <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.
-      "Stats" = games whose full stats were found (players whose match history is private can hide a game).</p>
-    <h2>Strength of schedule${info("strength_of_schedule")}</h2>
-    <div id="sos" class="reveal"></div>
-    <p class="table-note"><b>SOS</b> = (2 × opponents' game win % + their opponents' game win %) ÷ 3, the same idea as RPI.
-      Opponents' records leave out their games against the team in question, so beating a team doesn't make your own
-      schedule look easier. Each series counts once. <b>Still to play</b> = average game win % of the opponents left.
-      Squares: every series played, oldest first (green won, red lost, grey tied); hover for details, click for the team.</p>
-    ${upcoming.length ? `<h2>Up next</h2><div class="fixtures reveal">${upcoming.slice(0, 10).map((s, i) => `
-      <div class="fixture" style="--i:${i}">
-        <div class="fx-team a">${name[s.home] ? teamLink(src, name[s.home], s.home) : "TBD"}</div>
-        <div class="fx-score"><div class="n" style="font-size:22px">VS</div><div class="meta">${date(s.time)}</div></div>
-        <div class="fx-team b">${name[s.away] ? teamLink(src, name[s.away], s.away) : "TBD"}</div>
-      </div>`).join("")}</div>` : ""}`;
+      Updated ${updated}.`)}
+    ${cards.length ? `<div class="cards reveal st-cards">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>` : ""}
+    <div class="st-tabs">${tabs.bar}</div>
+    ${tabs.panels}`;
+
+  const initials = (n) => { const w = n.split(/[\s-]+/).filter(Boolean); return (w.length > 1 ? w.map((x) => x[0]).join("") : n).slice(0, 3).toUpperCase(); };
+  const squares = (fs) => fs.map((f) => `<a class="sos-sq ${f.result}" href="${src.root}/teams/${f.opp}"
+      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${f.opp_rate != null ? ` (their other games: ${pct(f.opp_rate)})` : ""}">${esc(initials(name[f.opp] ?? "?"))}</a>`).join("");
+  // Form: five slots, empty ones first, so the newest series always sits in the last column.
+  const form = (fs) => `<span class="sos-faced st-form">${'<span class="sos-sq e"></span>'.repeat(5 - fs.length)}${squares(fs)}</span>`;
+  const rmax = Math.max(0.01, ...rows.map((r) => Math.abs(r.model_rating ?? 0)));
+  const rating = (v) => v == null ? "—" : `<span class="st-rating"><span class="st-track"><i class="${v >= 0 ? "up" : "down"}" style="width:${(Math.min(1, Math.abs(v) / rmax) * 50).toFixed(1)}%"></i></span>${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}</span>`;
+
   // Combined Heroic view: both divisions in one table, so say which each team plays in.
   const divCol = d.teams.some((t) => t.division) && !d.division ? [["division", "Div", (v) => (v ? `<span class="div-tag">${esc(v)}</span>` : "—"), "", null, false]] : [];
   sortableTable(document.getElementById("t"), [
     ["team", "Team", (v, r) => teamLink(src, v, r.id), "l"], ...divCol, ["series", "Series"], ["w", "W"], ["tie", "T"], ["l", "L"],
-    ["gw", "Games won", null, "", "jade"], ["gl", "Games lost"], ["game_rate", "Game win %", pct, "", "jade"], ["tracked", "Stats"],
+    ["gw", "Games won", null, "", "jade"], ["gl", "Games lost"], ["game_rate", "Game win %", pct, "", "jade"],
+    ["series_form", "Form", (v, r) => form(r.form), "l"], ["model_rating", "Rating", rating], ["tracked", "Stats"],
   ], rows, "gw");
 
-  const sos = strengthOfSchedule(d.teams.map((t) => t.id), d.series);
-  const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
-  const initials = (n) => { const w = n.split(/[\s-]+/).filter(Boolean); return (w.length > 1 ? w.map((x) => x[0]).join("") : n).slice(0, 3).toUpperCase(); };
-  const faced = (fs) => `<span class="sos-faced">${fs.map((f) => `<a class="sos-sq ${f.result}" href="${src.root}/teams/${f.opp}"
-      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])} (their other games: ${pct(f.opp_rate)})">${esc(initials(name[f.opp] ?? "?"))}</a>`).join("")}</span>`;
   sortableTable(document.getElementById("sos"), [
     ["team", "Team", (v, r) => teamLink(src, v, r.id), "l"], ...divCol,
     ["record", "Series W–T–L", null],
     ["sos", "SOS", pct, "", "gold"],
     ["owp", "Opp. win %", pct],
     ["oowp", "Opp. opp. win %", pct],
-    ["faced", "Opponents faced", (v) => faced(v), "l"],
+    ["faced", "Opponents faced", (v) => `<span class="sos-faced">${squares(v)}</span>`, "l"],
     ["remaining_sos", "Still to play", (v, r) => r.remaining.length ? `${pct(v)} <span class="muted">· ${r.remaining.length} left</span>` : "—", "", "ember"],
   ], sos.map((x) => ({ ...x, team: name[x.id], division: byId[x.id].division, record: `${byId[x.id].w}–${byId[x.id].tie}–${byId[x.id].l}` })), "sos");
+  wirePlayerTabs();
+  wireCharts(app);
 }
 
 // ---------- Leaderboards ----------
@@ -1932,10 +1999,12 @@ async function renderPlayers(src) {
     ["name", "Player", (v, r) => playerLink(src, r), "l name"], ...teamCol, ["games", "Games"], ["win_rate", "Win %", pct, "", "jade"],
     ["kills", "K"], ["deaths", "D"], ["assists", "A"], ["kda", "KDA", (v) => v.toFixed(2), "", "jade"],
     ["avg_gpm", "GPM", null, "", "gold"], ["avg_xpm", "XPM"], ["dmg_per_min", "Dmg/min", fmt, "", "ember"], ["dmg_per_1k_nw", "Dmg per 1k NW", fmt, "", "ember"],
+    ...(data.some((r) => r.dmg_taken_pg != null) ? [["dmg_taken_pg", "Dmg taken/g", (v) => fmt(v == null ? null : Math.round(v)), "", "ember"]] : []),
     ["avg_kp", "Avg KP", pct],
     ...(data.some((r) => r.map_games) ? [
       ["stacks_pg", "Stacks/g", dec], ["obs_pg", "Obs/g", dec, "", "jade"], ["sen_pg", "Sentries/g", dec], ["dewards_pg", "Dewards/g", dec, "", "ember"],
       ["lane_pg", "Lane creeps/g", dec], ["neutral_pg", "Neutrals/g", dec], ["neutral_share", "Neutral %", pct], ["roshans", "Roshans"], ["tormentors", "Tormentors"],
+      ["buybacks_pg", "Buybacks/g", dec],
     ] : []),
     ...(src.ad2l && src.cache()?.pubs ? [
       ["pub_games", `Pubs (${PUB_DAYS} days)`, null, "", "gold"], ["pub_win_rate", "Pub win %", pct, "", "jade"], ["pub_kda", "Pub KDA", dec],
@@ -2228,7 +2297,7 @@ async function renderPredict(src) {
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks.</p>` : `<div class="panel empty">No picks yet.</div>`}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model = what it would have picked that week from earlier results only. Crowd = most-picked call (count after it). Picks saved after a series started don't count.</p></details>` : ""}
     <details class="how"><summary>How the model works</summary>
-      <p>Each team has a strength rating fitted to every game result so far (PlayOn's series scores, so games OpenDota never saw still count). With only ${playedNights.length} weeks played, results alone jump around, so each rating is pulled toward a starting point from the roster's average PlayOn medal. How hard to pull, and how much medals matter, were chosen by replaying the season: predicting each week from only the weeks before it and keeping what did best.</p>
+      <p>Each team has a strength rating fitted to every game result so far (PlayOn's series scores, so games OpenDota never saw still count). With only ${playedNights.length} weeks played, results alone jump around, so each rating is pulled toward a starting point from the average PlayOn medal of the team's top three players. How hard to pull, and how much medals matter, were chosen by replaying all seven divisions together: predicting each week from only the weeks before it and keeping what did best. So far medals have predicted results far better than past results have, so the pull is strong.</p>
       <p>The model's call is bold: it takes the favourite to win 2–0, even when a 1–1 split is the single likeliest result, and only calls 1–1 when the teams are a true coin flip (per-game odds within ${TIE_EDGE * 100} points of 50%). The odds bar stays honest: results so far haven't predicted the next week much better than a coin flip, so the settings lean on medals and most series look close. Replayed over the season, the bold calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>Game odds are treated as independent, so a 2–0 is the single-game chance squared. Settings in use: pull ${params.lambda}, medal weight ${params.beta}.</p>
     </details>`;

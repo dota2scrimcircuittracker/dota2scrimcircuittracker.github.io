@@ -145,6 +145,8 @@ export function playerLeaderboard(matches) {
     building_pg: perGameOf(r.played, "tower_damage"),
     healing_pg: perGameOf(r.played, "hero_healing"),
     stuns_pg: perGameOf(r.played, "stuns"),
+    dmg_taken_pg: perGameOf(r.played, "dmg_taken"),
+    buybacks_pg: perGameOf(r.played.map((p) => ({ n: p.buybacks?.length ?? null })), "n"),
     ...(mapSummary(r.played) ?? NO_MAP),
   }));
 }

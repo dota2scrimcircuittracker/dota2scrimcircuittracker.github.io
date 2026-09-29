@@ -14,7 +14,9 @@ const niceMax = (v) => {
 };
 const xOf = (n) => (i) => L + (n > 1 ? i / (n - 1) : 0) * (W - L - R);
 const path = (vals, x, y) => vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
-const xTicks = (n, x, h = H) => {
+// Minute ticks every 5' (10' past 50), or one named tick per point when labels are given.
+const xTicks = (n, x, h = H, labels = null) => {
+  if (labels) return labels.map((t, m) => `<text class="tick" x="${x(m)}" y="${h - 8}" text-anchor="middle">${attr(t)}</text>`).join("");
   const step = n > 50 ? 10 : 5;
   let s = "";
   for (let m = 0; m < n; m += step) s += `<line class="grid" x1="${x(m)}" x2="${x(m)}" y1="${T}" y2="${h - B}"/><text class="tick" x="${x(m)}" y="${h - 8}" text-anchor="middle">${m}'</text>`;
@@ -117,31 +119,36 @@ function stack(items, top, bottom) {
   for (const a of at) a.y -= over;
   return at;
 }
+// A line with no portrait gets a short colour swatch in the frame's place.
 const tag = (s, i, x0, cy, text, cls = "end-label") => `<g class="${cls} ${s.cls ?? ""}${s.dash ? " dash" : ""}" data-i="${i}"><title>${attr(s.label)}</title>
-  <rect class="end-frame" x="${x0 - 1}" y="${(cy - PH / 2 - 1).toFixed(1)}" width="${PW + 2}" height="${PH + 2}"/>${s.img ? `<image href="${attr(s.img)}" x="${x0}" y="${(cy - PH / 2).toFixed(1)}" width="${PW}" height="${PH}" preserveAspectRatio="xMidYMid slice"/>` : ""}
+  ${s.img ? `<rect class="end-frame" x="${x0 - 1}" y="${(cy - PH / 2 - 1).toFixed(1)}" width="${PW + 2}" height="${PH + 2}"/>` : `<rect class="end-swatch" x="${/flip/.test(cls) ? x0 : x0 + PW - 14}" y="${(cy - 1.5).toFixed(1)}" width="14" height="3"/>`}${s.img ? `<image href="${attr(s.img)}" x="${x0}" y="${(cy - PH / 2).toFixed(1)}" width="${PW}" height="${PH}" preserveAspectRatio="xMidYMid slice"/>` : ""}
   ${/flip/.test(cls) ? `<text x="${x0 - 6}" y="${(cy + 4).toFixed(1)}" text-anchor="end">` : `<text x="${x0 + PW + 7}" y="${(cy + 4).toFixed(1)}">`}${attr(text)}</text></g>`;
 
 // Several lines on one 0-based axis (gold over time). series: { label, values, cls, dash?, strong?,
 // end?, img? }. endLabels: at the right end of each line, the series' `img` (a hero portrait)
 // framed in the line's colour and its `end` text (or label); hovering then shows the same
 // portraits with each value up the crosshair. height: taller plot when there are many labels.
-export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H } = {}) {
+// xLabels: a name per point (e.g. "Wk 1") instead of minutes. step: gridlines at whole multiples
+// of step (small counts, where quarter ticks would land between whole numbers).
+export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H, xLabels = null, step = null } = {}) {
   const n = Math.max(...series.map((s) => s.values.length));
-  const max = fixed ?? niceMax(Math.max(...series.flatMap((s) => s.values)));
+  const top = Math.max(...series.flatMap((s) => s.values));
+  const max = fixed ?? (step ? Math.max(step, Math.ceil(top / step) * step) : niceMax(top));
   const r = endLabels ? 168 : R, h = height;
   const x = (i) => L + (n > 1 ? i / (n - 1) : 0) * (W - L - r), y = (v) => T + (1 - v / max) * (h - T - B);
   let grid = "";
-  for (const v of [max, max * 0.75, max / 2, max / 4]) grid += `<line class="grid" x1="${L}" x2="${W - r}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${tick(v)}</text>`;
+  const levels = step ? Array.from({ length: max / step }, (_, j) => max - j * step) : [max, max * 0.75, max / 2, max / 4];
+  for (const v of levels) grid += `<line class="grid" x1="${L}" x2="${W - r}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${tick(v)}</text>`;
   const lines = series.map((s, i) => `<path class="line ${s.cls ?? ""}${s.dash ? " dash" : ""}${s.strong ? " strong" : ""}" data-i="${i}" d="${path(s.values, x, y)}"><title>${attr(s.label)}</title></path>`).join("");
   const cut = (t) => (t.length > 16 ? `${t.slice(0, 15)}…` : t);
   const ends = endLabels
     ? stack(series.map((s, i) => ({ i, s, y: y(s.values[s.values.length - 1] ?? 0) })), T + PH / 2, h - B - PH / 2)
       .map(({ i, s, y: cy }) => tag(s, i, W - r + 10, cy, cut(s.end ?? s.label))).join("")
     : "";
-  const svg = `${grid}${xTicks(n, x, h)}<line class="zero" x1="${L}" x2="${W - r}" y1="${y(0)}" y2="${y(0)}"/>${lines}${ends}`;
+  const svg = `${grid}${xTicks(n, x, h, xLabels)}<line class="zero" x1="${L}" x2="${W - r}" y1="${y(0)}" y2="${y(0)}"/>${lines}${ends}`;
   // With end labels the portraits name every line, so no legend underneath.
   const legend = endLabels ? "" : `<div class="chart-legend">${series.map((s, i) => `<span class="lg-item ${s.cls ?? ""}${s.dash ? " dash" : ""}" data-i="${i}"><i></i>${attr(s.label)}</span>`).join("")}</div>`;
-  const data = { kind: "lines", n, x: [L, W - r], y: [T, h - B], max, tags: endLabels,
+  const data = { kind: "lines", n, x: [L, W - r], y: [T, h - B], max, tags: endLabels, xl: xLabels,
     series: series.map((s) => ({ label: s.label, values: s.values, ...(endLabels ? { img: s.img, cls: s.cls, dash: s.dash } : {}) })) };
   return figure(svg, data, caption, h).replace("</figure>", `${legend}</figure>`);
 }
@@ -172,7 +179,7 @@ export function wireCharts(root) {
         }).join(" · ")}${d.counts?.[i] != null ? ` · <span>${d.counts[i]} game${d.counts[i] === 1 ? "" : "s"} this long</span>` : ""}`;
       } else {
         const rows = d.series.map((s) => [s.label, s.values[i]]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
-        read.innerHTML = `<b>${i}'</b> ${rows.map(([l, v]) => `<span>${attr(l)} <b>${k(v)}</b></span>`).join(" · ")}`;
+        read.innerHTML = `<b>${d.xl ? attr(d.xl[i]) : `${i}'`}</b> ${rows.map(([l, v]) => `<span>${attr(l)} <b>${k(v)}</b></span>`).join(" · ")}`;
         if (d.tags) {
           // Up the crosshair: a dot on each line, and its portrait + value beside it (left of the
           // line once it's past the middle, so the column stays inside the plot).

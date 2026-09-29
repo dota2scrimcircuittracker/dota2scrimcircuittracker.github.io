@@ -28,6 +28,11 @@ export const INFO = {
   oowp: "How tough the opponents' own schedules were: their opponents' game win %.",
   faced: "Every series played, oldest first: green won, red lost, grey tied. Hover a square for the score.",
   remaining_sos: "Average game win % of the opponents still to play. Higher = harder run-in.",
+  series_form: "The last five series, newest on the right: green won, red lost, grey tied. Sorting ranks wins minus losses over those five.",
+  model_rating: "The team's strength in the model behind Predict: fitted to every game result so far and, pulled toward the average medal of the team's top three players (so far, medals have predicted better than results). 0 = an average team; the gap between two teams sets the odds.",
+  standings_leader: "Most games won; game win % breaks a tie.",
+  standings_streak: "Most series won in a row, counting back from the latest.",
+  standings_upset: "The 2–0 result the model thought least likely, using only the results from before that series.",
 
   // Scrim standings
   gp: "Games played, private scrims included.",
@@ -42,6 +47,8 @@ export const INFO = {
   dmg_per_min: "Damage to enemy heroes ÷ minutes played.",
   dmg_per_1k_nw: "Hero damage per 1,000 net worth: how much damage a player gets out of their gold. Supports often score high.",
   avg_kp: "Kill participation: (kills + assists) ÷ team kills, averaged over games.",
+  dmg_taken_pg: "Damage taken from enemy heroes per game (parsed replays). Who soaks the most in fights; creeps, towers and neutrals don't count.",
+  buybacks_pg: "Buybacks per game (parsed replays).",
   stacks_pg: "Neutral camps stacked per game (parsed replays).",
   obs_pg: "Observer wards placed per game (parsed replays).",
   sen_pg: "Sentry wards placed per game (parsed replays).",

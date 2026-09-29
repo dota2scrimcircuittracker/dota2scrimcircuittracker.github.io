@@ -300,6 +300,8 @@ for (const id of [...candidates].sort()) {
       // Laning (see public/lib/lanes.js): the replay's lane, and last hits / denies at 10 min.
       ...laneFields(p),
       dmg_taken: p.damage_taken ? Object.entries(p.damage_taken).filter(([k]) => k.startsWith("npc_dota_hero_")).reduce((t, [, v]) => t + v, 0) : null,
+      // Seconds of each buyback (OpenDota buyback_log; its length always equals buyback_count).
+      buybacks: Array.isArray(p.buyback_log) ? p.buyback_log.map((b) => b.time) : null,
       dust_used: p.item_uses ? p.item_uses.dust ?? 0 : null, smoke_used: p.item_uses ? p.item_uses.smoke_of_deceit ?? 0 : null,
       // From the per-unit kill counts: OpenDota's own roshan_kills field disagreed with the
       // Roshan kill events and Aegis pickups in 12 of 38 S48 games; these always agree.

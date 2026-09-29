@@ -49,10 +49,10 @@ const OBJ = { roshan: ["aegis", "Roshan"], tormentor: ["aghanims_shard", "Tormen
 const bIcon = (b) => (/^t\d/.test(b) ? "tower" : b === "fort" ? "ancient" : "barracks");
 const bName = (b) => (b === "fort" ? "Ancient" : /^t\d_/.test(b) ? `T${b[1]} ${b.slice(3)}` : b === "t4" ? "T4" : `${b[0].toUpperCase()}${b.slice(1).replace("_", " rax ")}`);
 // Layers the chart can show; all on unless `show` turns one off.
-export const LAYERS = [["items", "Items"], ["deaths", "Hero deaths"], ["objectives", "Roshan & Tormentor"], ["towers", "Towers"]];
+export const LAYERS = [["items", "Items"], ["deaths", "Hero deaths"], ["objectives", "Roshan & Tormentor"], ["towers", "Towers"], ["buybacks", "Buybacks"]];
 
 // Empty string without a lead series or any item timings.
-// show: { items, deaths, objectives, towers } — false leaves that layer out (an empty
+// show: { items, deaths, objectives, towers, buybacks } — false leaves that layer out (an empty
 // lane takes no height), for a simpler chart.
 export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {}) {
   const W = Math.max(800, Math.round(width));
@@ -71,6 +71,13 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
   // Buildings a team destroyed go in that team's lane.
   const towers = (t) => (m.buildings ?? []).filter((b) => (b.by ?? (b.side === "a" ? "b" : "a")) === t && b.time >= 0 && b.time <= (n - 1) * 60)
     .map((b) => ({ bld: b, sec: b.time })).sort((p, q) => p.sec - q.sec);
+  // Buybacks go on the buyer's side, with when that player next died (a "dieback" if soon).
+  const allDeaths = hasDeaths(m) ? deathsOf(m) : null;
+  const buybacks = (t) => m.players.flatMap((p, i) => (p.team === t && Array.isArray(p.buybacks) ? p.buybacks : [])
+    .filter((sec) => sec >= 0 && sec <= Math.max(m.duration_sec, (n - 1) * 60))
+    // Drawn at the lead series' last minute if later (the series stops before the game ends).
+    .map((sec) => ({ bb: p, sec: Math.min(sec, (n - 1) * 60), at: sec, next: allDeaths ? allDeaths.filter((d) => d.i === i && d.t > sec).sort((a, b) => a.t - b.t)[0] ?? null : undefined })))
+    .sort((p, q) => p.sec - q.sec);
   const lane = (t) => lanes(on.items ? items(t) : [], x);
   const top = lane("a"), bottom = lane("b");
   const rows = (list) => (list.length ? Math.max(...list.map((i) => i.row + 1)) : on.items ? 1 : 0);
@@ -132,7 +139,7 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
   // ringed in the colour of the team that took them. Ones that would overlap stack away from the
   // line on the taker's side (team A up, team B down).
   const MK = 7.8;
-  const marks = ["a", "b"].flatMap((t) => [...(on.objectives ? objs(t) : []), ...(on.towers ? towers(t) : [])].map((mk) => ({ ...mk, t })))
+  const marks = ["a", "b"].flatMap((t) => [...(on.objectives ? objs(t) : []), ...(on.towers ? towers(t) : []), ...(on.buybacks ? buybacks(t) : [])].map((mk) => ({ ...mk, t })))
     .sort((p, q) => p.sec - q.sec);
   const placed = [];
   const markParts = marks.map((mk) => {
@@ -146,6 +153,15 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
       return `<g class="mk obj s-${mk.t}"><title>${attr(`${label} killed by ${name[mk.t]} at ${clock(mk.sec)}`)}</title>
         <circle class="mk-bg" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${MK}"/>
         <image href="${attr(itemImg(key))}" x="${(cx - MK).toFixed(1)}" y="${(cy - MK).toFixed(1)}" width="${2 * MK}" height="${2 * MK}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id}-face)"/>
+        <circle class="mk-ring" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${MK}"/></g>`;
+    }
+    if (mk.bb) {
+      const p = mk.bb, img = heroImg(p.hero);
+      const after = mk.next === undefined ? "" : mk.next ? ` · died again ${clock(mk.next.t - mk.at)} later` : " · didn't die again";
+      return `<g class="mk bb s-${mk.t}"><title>${attr(`${p.name} (${p.hero}) bought back at ${clock(mk.at)}${after}`)}</title>
+        <circle class="mk-bb" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${MK + 1.6}"/>
+        <circle class="mk-bg" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${MK}"/>
+        ${img ? `<image href="${attr(img)}" x="${(cx - MK).toFixed(1)}" y="${(cy - MK).toFixed(1)}" width="${2 * MK}" height="${2 * MK}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id}-face)"/>` : ""}
         <circle class="mk-ring" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${MK}"/></g>`;
     }
     const b = mk.bld;
@@ -196,6 +212,7 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
     (on.objectives || on.towers) && "Circles on the line, ringed in the colour of the team that took it:",
     on.objectives && "Aegis = Roshan, Shard = Tormentor;",
     on.towers && "tower, barracks or Ancient icons for buildings (hover for which).",
+    on.buybacks && m.players.some((p) => p.buybacks?.length) && "A hero in a gold ring on the line is a buyback, on the buyer's side (hover for when they died next).",
     on.deaths && `Portraits are the heroes who died (${attr(name.a)}'s above the line, ${attr(name.b)}'s below), teamfights and pickoffs alike; the dot is coloured by the side that lost fewer. Shaded bands are teamfights.`,
     !on.deaths && "Shaded bands are teamfights; the dot is sized by deaths and coloured by the side that lost fewer.",
   ].filter(Boolean).join(" ");

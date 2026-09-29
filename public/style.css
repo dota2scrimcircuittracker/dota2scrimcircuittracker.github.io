@@ -564,6 +564,12 @@ figure.chart .s-c2, .chart-legend .lg-item.s-c2 { --c: #d95926; }
 figure.chart .s-c3, .chart-legend .lg-item.s-c3 { --c: #199e70; }
 figure.chart .s-c4, .chart-legend .lg-item.s-c4 { --c: #c98500; }
 figure.chart .s-c5, .chart-legend .lg-item.s-c5 { --c: #d55181; }
+/* six to ten: the standings race draws a line per team */
+figure.chart .s-c6, .chart-legend .lg-item.s-c6 { --c: #8f7ce6; }
+figure.chart .s-c7, .chart-legend .lg-item.s-c7 { --c: #2fb5c4; }
+figure.chart .s-c8, .chart-legend .lg-item.s-c8 { --c: #a3b53a; }
+figure.chart .s-c9, .chart-legend .lg-item.s-c9 { --c: #e08a5b; }
+figure.chart .s-c10, .chart-legend .lg-item.s-c10 { --c: #9b9184; }
 figure.chart path.line[class*="s-c"] { stroke: var(--c); stroke-width: 2; }
 figure.chart path.line[class*="s-c"].dash { stroke-dasharray: 7 4; opacity: .8; }
 .chart-legend .lg-item[class*="s-c"] { color: var(--dust); }
@@ -572,6 +578,7 @@ figure.chart path.line[class*="s-c"].dash { stroke-dasharray: 7 4; opacity: .8; 
 figure.chart .end-label { transition: opacity .15s; }
 figure.chart .end-label text { font: 500 11px var(--mono); fill: var(--dust); stroke: none; }
 figure.chart .end-frame { fill: var(--stone-2); stroke: var(--c); stroke-width: 2; }
+figure.chart .end-swatch { fill: var(--c); }
 figure.chart .dash .end-frame { stroke-dasharray: 4 2; }
 figure.chart .hover-tag { pointer-events: none; }
 figure.chart .hover-tag text { font: 600 11px var(--mono); fill: var(--bone); stroke: var(--ink); stroke-width: 3px; paint-order: stroke; }
@@ -661,6 +668,26 @@ a.team-link:hover, span.team-link:hover, span.team-link:focus-visible { color: v
 .sos-sq.l { background: var(--ember); }
 .sos-sq.t { background: var(--dust); }
 .sos-sq:hover { outline: 1px solid var(--accent); outline-offset: 1px; text-decoration: none; }
+.st-form { flex-wrap: nowrap; }
+.st-form .sos-sq { min-width: 26px; }
+.sos-sq.e { background: none; outline: 1px dashed var(--seam-2); outline-offset: -1px; }
+
+/* standings: highlight cards, tabs, model rating, up-next odds */
+.st-cards { margin-bottom: 26px; }
+.st-tabs { border-bottom: 1px solid var(--seam-2); margin-bottom: 18px; }
+.st-rating { display: inline-flex; align-items: center; gap: 8px; }
+.st-track { width: 48px; height: 6px; background: var(--seam); position: relative; }
+.st-track i { position: absolute; top: 0; bottom: 0; }
+.st-track i.up { left: 50%; background: var(--jade); }
+.st-track i.down { right: 50%; background: var(--ember); }
+.st-next .fx-score { min-width: min(300px, 100%); }
+.st-next .fx-score .meta a { color: var(--accent); }
+.st-odds { display: flex; height: 22px; margin: 8px 0; font: 600 10px/22px var(--mono); color: var(--ink); white-space: nowrap; }
+.st-odds span { overflow: hidden; text-align: center; min-width: 0; }
+.st-odds .h { background: var(--jade); }
+.st-odds .t { background: var(--dust); }
+.st-odds .a { background: var(--ember); }
+@media (max-width: 640px) { .st-next { grid-template-columns: 1fr; text-align: center; } .st-next .fx-team { text-align: center; } }
 
 /* week picker: every week, top right of the Weekly page */
 .week-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px 40px; flex-wrap: wrap; margin-bottom: 28px; }
@@ -2280,3 +2307,4 @@ figure.chart.item-lead .mk.s-b .mk-ring { stroke: var(--ember); }
 figure.chart.item-lead .mk.obj .mk-ring { stroke-width: 1.75; }
 figure.chart.item-lead .mk-icon path { fill: var(--bone); }
 figure.chart.item-lead .mk:hover .mk-ring { stroke: var(--bone); stroke-width: 2; }
+figure.chart.item-lead .mk-bb { fill: none; stroke: var(--gold); stroke-width: 1.5; }
