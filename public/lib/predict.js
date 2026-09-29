@@ -2,11 +2,12 @@
 //
 // Series odds. Each team gets a strength rating fitted to every game result so far (PlayOn
 // series scores, so games OpenDota never saw still count), Bradley-Terry style: the chance
-// team i beats team j in one game is 1 / (1 + e^(r_j - r_i)). Early on four weeks of results
-// can't carry a rating alone, so each rating is pulled toward a starting point set by the
-// roster's average PlayOn medal. How hard it's pulled (lambda) and how much medals are worth
-// (beta) are picked by replaying the season week by week and keeping the pair that predicted
-// the following week best (log loss). A series is two games, treated as independent:
+// team i beats team j in one game is 1 / (1 + e^(r_j - r_i)). A few weeks of results can't
+// carry a rating alone, so each rating is pulled toward a starting point set by the average
+// PlayOn medal of the team's top three players. How hard it's pulled (lambda) and how much
+// medals are worth (beta) are shared by all divisions (MODEL_PARAMS), picked by replaying every
+// division week by week (log loss). So far medals have predicted far better than results, so
+// the pull is strong. A series is two games, treated as independent:
 // 2-0 = p², 1-1 = 2p(1-p), 0-2 = (1-p)².
 
 import { phasedDraft } from "./draft.js";
@@ -19,11 +20,15 @@ export const medalSteps = (t) => (t == null ? null : t >= 80 ? 35 : (Math.floor(
 
 export const isPlayed = (s) => (s.home_score ?? 0) + (s.away_score ?? 0) > 0;
 
+// A team's medal is the average of its top three players: replayed over every division, that
+// predicted results better than the whole-roster average, the median or the single best player.
+export const teamMedal = (players) => {
+  const m = players.map((p) => medalSteps(p.rank_tier)).filter((v) => v != null).sort((a, b) => b - a).slice(0, 3);
+  return m.length ? m.reduce((a, b) => a + b, 0) / m.length : null;
+};
+
 function medalPrior(teams, beta) {
-  const avg = new Map(teams.map((t) => {
-    const m = t.players.map((p) => medalSteps(p.rank_tier)).filter((v) => v != null);
-    return [t.id, m.length ? m.reduce((a, b) => a + b, 0) / m.length : null];
-  }));
+  const avg = new Map(teams.map((t) => [t.id, teamMedal(t.players)]));
   const known = [...avg.values()].filter((v) => v != null);
   const mean = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 0;
   return new Map([...avg].map(([id, v]) => [id, v == null ? 0 : beta * (v - mean)]));
@@ -74,22 +79,25 @@ export function backtest(teams, series, params) {
   return out;
 }
 
-// Pick lambda / beta by week-by-week log loss on the games played so far.
+// One pull / medal weight for every division, picked by replaying all seven divisions together
+// (weeks 3-6 of the 2026 season, 224 games, each week predicted from the weeks before it).
+// Tuning each division on its own ~50 games chased noise and did barely better than a coin flip.
+// The best pair was a near-total pull: results barely move a rating yet (log loss 0.6697 vs
+// 0.6931 for a coin flip). Re-run the replay as the season fills in; results may earn weight.
+export const MODEL_PARAMS = { lambda: 1000, beta: 0.3 };
+
+// The shared settings, plus how they've done replaying this division week by week (log loss).
 export function tune(teams, series) {
-  let best = null;
-  for (const lambda of [0.5, 1, 2, 5, 10, 20, 50]) for (const beta of [0, 0.05, 0.1, 0.2, 0.3, 0.4]) {
-    let loss = 0, n = 0;
-    for (const t of nights(series)) {
-      const r = fitRatings(teams, series, { lambda, beta, before: t });
-      for (const s of series.filter((x) => x.time === t && isPlayed(x))) {
-        const p = sig((r.get(s.home) ?? 0) - (r.get(s.away) ?? 0));
-        loss -= s.home_score * Math.log(p) + s.away_score * Math.log(1 - p);
-        n += s.home_score + s.away_score;
-      }
+  let loss = 0, n = 0;
+  for (const t of nights(series)) {
+    const r = fitRatings(teams, series, { ...MODEL_PARAMS, before: t });
+    for (const s of series.filter((x) => x.time === t && isPlayed(x))) {
+      const p = sig((r.get(s.home) ?? 0) - (r.get(s.away) ?? 0));
+      loss -= s.home_score * Math.log(p) + s.away_score * Math.log(1 - p);
+      n += s.home_score + s.away_score;
     }
-    if (n && (!best || loss / n < best.loss)) best = { lambda, beta, loss: loss / n, games: n };
   }
-  return best ?? { lambda: 0.5, beta: 0.05, loss: null, games: 0 };
+  return { ...MODEL_PARAMS, loss: n ? loss / n : null, games: n };
 }
 
 // ---------- draft read ----------
