@@ -82,6 +82,12 @@ export function mapSummary(playerGames) {
 }
 const NO_MAP = { map_games: 0, lane_pg: null, neutral_pg: null, ancient_pg: null, neutral_share: null, stacks_pg: null, obs_pg: null, sen_pg: null, dewards_pg: null, roshans: null, tormentors: null };
 
+// Average of one field over the player-games that have it; null if none do.
+function perGameOf(played, field) {
+  const g = played.filter((p) => p[field] != null);
+  return g.length ? g.reduce((s, p) => s + p[field], 0) / g.length : null;
+}
+
 export function playerLeaderboard(matches) {
   const rows = new Map();
   for (const m of matches) {
@@ -135,6 +141,10 @@ export function playerLeaderboard(matches) {
     // Same heroes with games played, most played first (for portrait strips).
     hero_list: [...r.played.reduce((m, p) => m.set(p.hero, (m.get(p.hero) ?? 0) + 1), new Map())]
       .map(([hero, n]) => ({ hero, n })).sort((a, b) => b.n - a.n || a.hero.localeCompare(b.hero)),
+    // Parsed-replay numbers a game, over the games that record them.
+    building_pg: perGameOf(r.played, "tower_damage"),
+    healing_pg: perGameOf(r.played, "hero_healing"),
+    stuns_pg: perGameOf(r.played, "stuns"),
     ...(mapSummary(r.played) ?? NO_MAP),
   }));
 }

@@ -77,8 +77,12 @@ export function teamHistory(matches, team) {
       h.picks++; if (won) h.wins++;
       heroes.set(p.hero, h);
       const key = p.player_key ?? p.name.trim().toLowerCase();
-      const pl = players.get(key) ?? { key, name: p.name, games: 0, wins: 0, standin: false };
+      const pl = players.get(key) ?? { key, name: p.name, account_id: p.account_id ?? null, games: 0, wins: 0, standin: false, kills: 0, deaths: 0, assists: 0, positions: {}, heroes: {} };
       pl.games++; if (won) pl.wins++; if (p.standin) pl.standin = true;
+      pl.kills += p.kills ?? 0; pl.deaths += p.deaths ?? 0; pl.assists += p.assists ?? 0;
+      if (p.position) pl.positions[p.position] = (pl.positions[p.position] ?? 0) + 1;
+      const ph = (pl.heroes[p.hero] ??= { hero: p.hero, games: 0, wins: 0 });
+      ph.games++; if (won) ph.wins++;
       players.set(key, pl);
     }
   }
@@ -96,6 +100,25 @@ export function teamHistory(matches, team) {
   }
   const top = (map) => [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([hero, n]) => ({ hero, n }));
 
+  // Head-to-head: record against each opponent (every game, private ones included).
+  const opp = new Map();
+  for (const { m, side } of games) {
+    const o = side === "a" ? { name: m.team_b, id: m.team_b_id ?? null } : { name: m.team_a, id: m.team_a_id ?? null };
+    const k = o.id != null ? `id:${o.id}` : o.name.trim().toLowerCase();
+    const r = opp.get(k) ?? { ...o, games: 0, wins: 0, last: null };
+    r.games++; if (m.winner === side) r.wins++;
+    r.last ??= m.createdAt ?? null; // games are newest first
+    opp.set(k, r);
+  }
+
+  // Players: KDA, their usual position (most games there) and heroes, most played first.
+  const playerList = [...players.values()].map(({ positions, heroes: hs, ...pl }) => ({
+    ...pl,
+    kda: (pl.kills + pl.assists) / Math.max(1, pl.deaths),
+    position: Number(Object.entries(positions).sort((a, b) => b[1] - a[1])[0]?.[0]) || null,
+    heroes: Object.values(hs).sort((a, b) => b.games - a.games || b.wins - a.wins || a.hero.localeCompare(b.hero)),
+  }));
+
   return {
     wins: rec.wins,
     losses: rec.losses,
@@ -108,7 +131,8 @@ export function teamHistory(matches, team) {
     games,
     detailed: detailed.map((x) => x.m),
     heroes: [...heroes.values()].sort((a, b) => b.picks - a.picks || b.wins - a.wins || a.hero.localeCompare(b.hero)),
-    players: [...players.values()].sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
+    players: playerList.sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
+    opponents: [...opp.values()].sort((a, b) => b.games - a.games || b.wins - a.wins || a.name.localeCompare(b.name)),
     drafted,
     bans: top(bans),
     banned_against: top(bannedAgainst),

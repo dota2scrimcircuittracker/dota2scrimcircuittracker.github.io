@@ -40,11 +40,14 @@ const leadMax = (v) => {
   return [1, 2, 3, 4, 5, 6, 8, 10].map((m) => m * step).find((m) => m >= v * 1.08);
 };
 
-export function leadChart(adv, { xp = null, nameA = "Team A", nameB = "Team B", id = "lead", objectives = null } = {}) {
-  const n = adv.length;
-  const max = leadMax(Math.max(...adv.map(Math.abs), ...(xp ?? []).map(Math.abs)));
+// ghosts: [{ values, won, href, label }] drawn as thin lines behind the main one (each game in a
+// team's average; green = won, red = lost; each links to its game). counts: games behind each
+// minute of the average, shown in the hover readout. peaks: false drops the biggest-lead labels.
+export function leadChart(adv, { xp = null, nameA = "Team A", nameB = "Team B", id = "lead", objectives = null, ghosts = null, counts = null, peaks = true } = {}) {
+  const n = Math.max(adv.length, ...(ghosts ?? []).map((g) => g.values.length));
+  const max = leadMax(Math.max(...adv.map(Math.abs), ...(xp ?? []).map(Math.abs), ...(ghosts ?? []).flatMap((g) => g.values.map(Math.abs))));
   const x = xOf(n), y = (v) => T + (1 - (v + max) / (2 * max)) * (H - T - B), y0 = y(0);
-  const area = `${path(adv, x, y)}L${x(n - 1)},${y0}L${x(0)},${y0}Z`;
+  const area = `${path(adv, x, y)}L${x(adv.length - 1)},${y0}L${x(0)},${y0}Z`;
   let grid = "";
   for (const v of [max, max / 2, -max / 2, -max]) grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v > 0 ? "+" : "−"}${tick(Math.abs(v))}</text>`;
   // Gold lead at a fractional minute, for objective stems.
@@ -78,6 +81,7 @@ export function leadChart(adv, { xp = null, nameA = "Team A", nameB = "Team B", 
     ${grid}${xTicks(n, x)}
     <text class="side-label s-a" x="${L + 8}" y="${T + 13}">${attr(nameA)} ahead</text>
     <text class="side-label s-b" x="${L + 8}" y="${H - B - 7}">${attr(nameB)} ahead</text>
+    ${(ghosts ?? []).map((g) => `<a href="${attr(g.href)}" class="ghost ${g.won ? "s-a" : "s-b"}"><title>${attr(g.label)}</title><path d="${path(g.values, x, y)}"/></a>`).join("")}
     <path class="area" fill="url(#${id}-fa)" d="${area}" clip-path="url(#${id}-up)"/>
     <path class="area" fill="url(#${id}-fb)" d="${area}" clip-path="url(#${id}-down)"/>
     <line class="zero" x1="${L}" x2="${W - R}" y1="${y0}" y2="${y0}"/>
@@ -85,14 +89,14 @@ export function leadChart(adv, { xp = null, nameA = "Team A", nameB = "Team B", 
     ${xp ? `<path class="xp-line" d="${path(xp, x, y)}"/>` : ""}
     <path class="lead-line" d="${path(adv, x, y)}"/>
     ${markers.map(({ o, cx, ly }) => `<circle class="obj-dot s-${o.side}" cx="${cx}" cy="${ly}" r="2.5"/>`).join("")}
-    ${peak(1)}${peak(-1)}
+    ${peaks ? peak(1) + peak(-1) : ""}
     ${markers.map(({ o, cx, cy }) => {
       const name = o.type === "roshan" ? "Roshan" : "Tormentor";
       return `<g class="obj s-${o.side}"><title>${name} — ${attr(o.side === "a" ? nameA : nameB)} at ${Math.floor(o.time / 60)}:${String(o.time % 60).padStart(2, "0")}</title>
         <circle cx="${cx}" cy="${cy}" r="8"/><text x="${cx}" y="${cy + 3.5}" text-anchor="middle">${o.type === "roshan" ? "R" : "T"}</text></g>`;
     }).join("")}`;
-  return figure(svg, { kind: "lead", n, x: [L, W - R], nameA, nameB, series: [{ label: "Gold", values: adv }, ...(xp ? [{ label: "XP", values: xp }] : [])] },
-    `Hover for the lead at any minute. Solid: gold lead${xp ? "; dashed: XP lead" : ""}${objectives?.length ? "; R = Roshan, T = Tormentor (top: " + attr(nameA) + ", bottom: " + attr(nameB) + ")" : ""}.`);
+  return figure(svg, { kind: "lead", n, x: [L, W - R], nameA, nameB, counts, series: [{ label: ghosts ? "Average" : "Gold", values: adv }, ...(xp ? [{ label: "XP", values: xp }] : [])] },
+    ghosts ? `Bold: average lead${counts ? ` (drawn while at least half the games are still going)` : ""}. Thin lines: each game, green won, red lost; click one to open it.` : `Hover for the lead at any minute. Solid: gold lead${xp ? "; dashed: XP lead" : ""}${objectives?.length ? "; R = Roshan, T = Tormentor (top: " + attr(nameA) + ", bottom: " + attr(nameB) + ")" : ""}.`);
 }
 
 // Portrait tags (end labels and the hover column): hero art is 16:9, drawn 32×18 in a 2px frame
@@ -129,7 +133,8 @@ export function lineChart(series, { caption = "Hover for values at any minute.",
       .map(({ i, s, y: cy }) => tag(s, i, W - r + 10, cy, cut(s.end ?? s.label))).join("")
     : "";
   const svg = `${grid}${xTicks(n, x, h)}<line class="zero" x1="${L}" x2="${W - r}" y1="${y(0)}" y2="${y(0)}"/>${lines}${ends}`;
-  const legend = `<div class="chart-legend">${series.map((s, i) => `<span class="lg-item ${s.cls ?? ""}${s.dash ? " dash" : ""}" data-i="${i}"><i></i>${attr(s.label)}</span>`).join("")}</div>`;
+  // With end labels the portraits name every line, so no legend underneath.
+  const legend = endLabels ? "" : `<div class="chart-legend">${series.map((s, i) => `<span class="lg-item ${s.cls ?? ""}${s.dash ? " dash" : ""}" data-i="${i}"><i></i>${attr(s.label)}</span>`).join("")}</div>`;
   const data = { kind: "lines", n, x: [L, W - r], y: [T, h - B], max, tags: endLabels,
     series: series.map((s) => ({ label: s.label, values: s.values, ...(endLabels ? { img: s.img, cls: s.cls, dash: s.dash } : {}) })) };
   return figure(svg, data, caption, h).replace("</figure>", `${legend}</figure>`);
@@ -158,7 +163,7 @@ export function wireCharts(root) {
           if (v == null) return "";
           const who = v > 0 ? d.nameA : v < 0 ? d.nameB : "even";
           return `<span>${s.label}: <b class="${v > 0 ? "s-a" : v < 0 ? "s-b" : ""}">${sign(v)}${k(Math.abs(v))}</b> ${v ? attr(who) : ""}</span>`;
-        }).join(" · ")}`;
+        }).join(" · ")}${d.counts?.[i] != null ? ` · <span>${d.counts[i]} game${d.counts[i] === 1 ? "" : "s"} this long</span>` : ""}`;
       } else {
         const rows = d.series.map((s) => [s.label, s.values[i]]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
         read.innerHTML = `<b>${i}'</b> ${rows.map(([l, v]) => `<span>${attr(l)} <b>${k(v)}</b></span>`).join(" · ")}`;
@@ -177,8 +182,8 @@ export function wireCharts(root) {
       }
     });
     svg.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); read.innerHTML = idle; tags.innerHTML = ""; });
-    // Legend hover highlights one line.
-    fig.querySelectorAll(".lg-item").forEach((it) => {
+    // Hovering a legend entry or an end label highlights that line.
+    fig.querySelectorAll(".lg-item, .end-label").forEach((it) => {
       it.onmouseenter = () => {
         fig.classList.add("focus");
         fig.querySelectorAll(`svg [data-i="${it.dataset.i}"]`).forEach((el) => el.classList.add("on"));

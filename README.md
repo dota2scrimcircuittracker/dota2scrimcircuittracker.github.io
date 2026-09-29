@@ -55,6 +55,19 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
 - **Teams** — pick a team for its history: record, series/game results, roster, hero pool
   (W–L per hero), what they ban and what's banned against them (AD2L drafts), and player
   stats for that team. AD2L records come from PlayOn's series scores.
+- **Items** (AD2L only; OCR can't read item icons) — an Items tab on games (final items and
+  when each core item was finished), heroes (most-built items, average and fastest time, win %
+  built) and players (their timings vs the league's on the same hero), plus a "Fastest core
+  item" weekly highlight. The game's Gold tab adds "Items & fights": the gold lead with every
+  teamfight (sized by deaths, coloured by who lost fewer) and each team's core items on one
+  clock (`public/lib/itemlead.js`). Hero and player item tables show a "Lead swing": the team's
+  lead change in the 3 minutes after finishing the item minus the 3 minutes before — timing,
+  not cause (teams already ahead finish items sooner); greyed under 3 games.
+  Core = built from parts for 1,000+ gold, or Blink / Aghanim's Shard;
+  a part later upgraded (Yasha → Manta) counts as the upgrade. The sync stores `items` and
+  `item_times` per player (`public/lib/items.js`); `node scripts/items-backfill.js` refills
+  them from `.cache/opendota` with no network calls, and `node scripts/gen-item-meta.js`
+  regenerates the item catalog (`public/lib/items-data.js`) after a patch adds items.
 - **Private scrims** — tick "Private" on upload to post the result only (teams, winner,
   kill score, duration). Heroes, players and stats never leave the browser. Private games
   count toward team records but not the tier list, player or hero tables. The game ID is

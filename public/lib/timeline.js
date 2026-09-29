@@ -55,9 +55,17 @@ export function teamTimeline(games, sideOf) {
   if (!rows.length) return null;
   const pick = (f, cmp) => rows.filter(f).sort(cmp)[0] ?? null;
   const ahead20 = rows.filter((r) => r.at20 != null && r.at20 > 0), behind20 = rows.filter((r) => r.at20 != null && r.at20 < 0);
+  // Mean lead at a minute, over the games that lasted that long.
+  const leadAt = (min) => { const v = rows.map((r) => r.adv[min]).filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  // The average line stops once fewer than half the games are still going: past that, one game
+  // ending swings it by thousands, and the tail of a few long games isn't the team's usual game.
+  const curve = averageCurve(rows.map((r) => r.adv), Math.max(2, Math.ceil(rows.length / 2)));
   return {
     games: rows.length,
-    curve: averageCurve(rows.map((r) => r.adv)),
+    rows,
+    curve,
+    counts: curve.map((_, i) => rows.filter((r) => r.adv[i] != null).length),
+    lead10: leadAt(10), lead20: leadAt(20),
     comebacks: rows.filter((r) => r.won && r.trail >= BIG_LEAD).length,
     throws: rows.filter((r) => !r.won && r.led >= BIG_LEAD).length,
     best_comeback: pick((r) => r.won && r.trail > 0, (a, b) => b.trail - a.trail),

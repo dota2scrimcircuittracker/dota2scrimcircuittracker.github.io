@@ -130,10 +130,24 @@ function cardHtml(spec, id) {
     </div>
     <div class="dm-read" aria-live="polite"></div>
     <div class="dm-body">
-      <div class="dm-col"><div class="dm-h dm-h-map"></div><div class="wm-map"></div><div class="dm-fights"></div></div>
+      <div class="dm-col"><div class="dm-h dm-h-map"></div><p class="dm-cover"></p><div class="wm-map"></div><div class="dm-fights"></div></div>
       <div class="dm-col"><div class="dm-h dm-h-chart"></div><div class="dt-chart"></div><div class="dt-side"></div></div>
     </div>
     <p class="wm-note dm-note"></p>
+    <details class="dm-how"><summary>Why the map only shows teamfight deaths</summary>
+      <p>A Dota replay records where every hero is all game, but this site doesn't read replays itself: it uses
+        OpenDota's parse of the replay, and that parse keeps less.</p>
+      <ul>
+        <li><b>Every death</b> comes with its time and who got the last hit, so every death is on the timeline.</li>
+        <li><b>A spot on the map</b> is only kept inside what OpenDota calls a teamfight: a run of at least 3 deaths close
+          together. For each hero who died in it, OpenDota saves where.</li>
+        <li><b>Everything else</b> — a solo pickoff, a lane gank with one or two deaths, dying to a tower, creeps or
+          neutrals — has a time but no place, so it can't go on the map.</li>
+      </ul>
+      <p>Kills have no assists either: OpenDota credits each death to the last hit only. Some parsed games have no death
+        log at all; their deaths are rebuilt from the killers' kill logs, which covers every death to a hero but none to
+        towers, creeps or neutrals, and carries no gold lost or time dead.</p>
+    </details>
   </figure>`;
 }
 
@@ -210,7 +224,7 @@ function fightAt(fights, t) {
 
 function draw(fig) {
   const D = data(fig), player = D.mode === "player", Wd = WORDS[D.kills ? "kills" : "deaths"];
-  fig.querySelector(".dm-h-map").textContent = player ? (D.kills ? "Where they get teamfight kills" : "Where they die in teamfights") : (D.kills ? "Where: teamfight kills" : "Where: teamfight deaths");
+  fig.querySelector(".dm-h-map").textContent = player ? (D.kills ? "Where they get teamfight kills" : "Where they die in teamfights") : (D.kills ? "Where: teamfight kills only" : "Where: teamfight deaths only");
   fig.querySelector(".dm-h-chart").textContent = player ? (D.kills ? "When they get kills" : "When they die") : `When: every ${D.kills ? "kill" : "death"}, lane & pickoffs first`;
   const ph = PHASES.find(([v]) => v === fig.dataset.phase), side = fig.dataset.side;
   const cls = (g) => (player ? "mine" : g);
@@ -300,7 +314,12 @@ function draw(fig) {
   fig.querySelector(".dm-read").textContent = fig.dataset.idle;
 
   const unplaced = shown.filter((x) => x[4] === 0 && x[2] <= 0).length;
-  fig.querySelector(".dm-note").innerHTML = `${D.kills ? "Kills are the last hit on an enemy hero (OpenDota has no assists per death), shown where and when the victim died. " : ""}Only teamfight deaths have a place in the replay data, so the map shows those${player ? ", with Dire games mirrored so their own base is always bottom left" : ""}${unplaced ? ` (${unplaced} ${unplaced === 1 ? "has" : "have"} no recorded spot)` : ""}.
+  // How much of what's shown can be on the map at all: only teamfight deaths have a spot.
+  const onMap = shown.filter((x) => x[4] === 0 && x[2] > 0).length, off = shown.length - onMap;
+  fig.querySelector(".dm-cover").innerHTML = shown.length
+    ? `<b>${onMap} of ${shown.length}</b> ${Wd[0]} on the map.${off ? ` The other ${off} (${Wd[1]}, pickoffs${unplaced ? ", spots not recorded" : ""}) have a time but no place, so they're only on the ${player ? "chart" : "timeline"}.` : ""}`
+    : "";
+  fig.querySelector(".dm-note").innerHTML = `${D.kills ? "Kills are the last hit on an enemy hero, shown where and when the victim died. " : ""}${player ? "Dire games are mirrored so their own base is always bottom left. " : ""}
     Lane death = before 10:00, outside a teamfight; pickoff = after 10:00, outside a teamfight.
     ${!D.known ? `${player ? "Some of these replays have" : "This replay has"} no death log, so deaths are rebuilt from hero kills: no gold lost or time dead.` : player ? "" : "The bar after each death is time spent dead."}${D.missing ? ` ${D.missing} death${D.missing === 1 ? "" : "s"} to towers, creeps or neutrals ${D.missing === 1 ? "isn't" : "aren't"} shown.` : ""}`;
 }

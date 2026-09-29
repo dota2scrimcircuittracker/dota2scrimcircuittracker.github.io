@@ -25,6 +25,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildingsFrom } from "../public/lib/towermap.js";
 import { deathsFrom } from "../public/lib/deathmap.js";
+import { itemsFrom } from "../public/lib/items.js";
+import { leagueJson } from "./league-json.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = path.join(ROOT, ".cache");
@@ -307,6 +309,9 @@ for (const id of [...candidates].sort()) {
       // Every death, flat groups of 6 (see public/lib/deathmap.js): second, killer, gold
       // lost, seconds dead, x, y (a spot only for teamfight deaths).
       death_log: deaths?.players[i] ?? null,
+      // Final 6 slots + neutral (item keys), and the first purchase second of each core item,
+      // flat [key, sec, ...] (see public/lib/items.js).
+      ...itemsFrom(p),
     })),
   });
 }
@@ -328,8 +333,6 @@ const out = {
   ])])),
 };
 await mkdir(path.dirname(OUT), { recursive: true });
-// Pretty-printed, but arrays of numbers (the per-minute series) stay on one line.
-const json = JSON.stringify(out, null, 1).replace(/\[\s*(-?\d+(?:\s*,\s*-?\d+)*)\s*\]/g, (_, xs) => `[${xs.replace(/\s+/g, "")}]`);
-await writeFile(OUT, json + "\n");
+await writeFile(OUT, leagueJson(out));
 console.log(`  ${games.length} division games from league ${LEAGUE_ID}; ${odCalls} OpenDota calls this run`);
 console.log(`wrote ${path.relative(ROOT, OUT)}`);

@@ -5,7 +5,7 @@
 import { MIN_GAMES } from "./tiers.js";
 
 // Stat groups, in the order the player page shows them.
-export const RANK_GROUPS = [["results", "Results"], ["economy", "Economy"], ["damage", "Damage"], ["map", "Map & vision"]];
+export const RANK_GROUPS = [["results", "Results"], ["economy", "Economy"], ["damage", "Damage"], ["support", "Support"], ["objectives", "Objectives"]];
 
 // Stats you can rank by. `low`: fewer is better, so the top 3 are the lowest. `map`: from
 // parsed replays only (AD2L), missing for screenshot uploads.
@@ -20,14 +20,17 @@ export const RANK_STATS = [
   { key: "dmg_per_min", label: "Damage / min", group: "damage", fmt: "0" },
   { key: "dmg_per_1k_nw", label: "Damage per 1k net worth", group: "damage", fmt: "0" },
   { key: "avg_kp", label: "Kill participation", group: "results", fmt: "pct" },
-  { key: "obs_pg", label: "Observers a game", group: "map", fmt: "1", map: true },
-  { key: "sen_pg", label: "Sentries a game", group: "map", fmt: "1", map: true },
-  { key: "dewards_pg", label: "Dewards a game", group: "map", fmt: "1", map: true },
-  { key: "stacks_pg", label: "Stacks a game", group: "map", fmt: "1", map: true },
+  { key: "obs_pg", label: "Observers a game", group: "support", fmt: "1", map: true },
+  { key: "sen_pg", label: "Sentries a game", group: "support", fmt: "1", map: true },
+  { key: "dewards_pg", label: "Dewards a game", group: "support", fmt: "1", map: true },
+  { key: "stacks_pg", label: "Stacks a game", group: "support", fmt: "1", map: true },
+  { key: "healing_pg", label: "Healing a game", group: "support", fmt: "0", map: true },
+  { key: "stuns_pg", label: "Stun seconds a game", group: "support", fmt: "1", map: true },
   { key: "lane_pg", label: "Lane creeps a game", group: "economy", fmt: "0", map: true },
   { key: "neutral_pg", label: "Neutrals a game", group: "economy", fmt: "0", map: true },
-  { key: "roshans_pg", label: "Roshans a game", group: "map", fmt: "2", map: true },
-  { key: "tormentors_pg", label: "Tormentors a game", group: "map", fmt: "2", map: true },
+  { key: "building_pg", label: "Building damage a game", group: "objectives", fmt: "0", map: true },
+  { key: "roshans_pg", label: "Roshans a game", group: "objectives", fmt: "2", map: true },
+  { key: "tormentors_pg", label: "Tormentors a game", group: "objectives", fmt: "2", map: true },
 ];
 
 export function formatStat(stat, v) {
