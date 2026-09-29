@@ -26,24 +26,10 @@
   <div class="grain" aria-hidden="true"></div>
 
   <header class="top">
-    <div class="switcher">
-      <button class="brand" id="league-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="league-menu">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
-        <span class="brand-word" id="league-name">Scrim<b>League</b></span>
-        <span class="caret" aria-hidden="true"></span>
-      </button>
-      <div class="league-menu" id="league-menu" hidden>
-        <div class="menu-label">Switch league</div>
-        <a href="#/" data-league="scrim"><b>Scrim League</b><span>Our scrims · uploaded screenshots</span></a>
-        <a href="#/explorer/" data-league="explorer"><b>AD2L · S48 Explorer</b></a>
-        <a href="#/voyager/" data-league="voyager"><b>AD2L · S48 Voyager</b></a>
-        <a href="#/challenger/" data-league="challenger"><b>AD2L · S48 Challenger</b></a>
-        <a href="#/warrior/" data-league="warrior"><b>AD2L · S48 Warrior</b></a>
-        <a href="#/conqueror/" data-league="conqueror"><b>AD2L · S48 Conqueror</b></a>
-        <a href="#/ad2l/" data-league="ad2l"><b>AD2L · S48 Champion</b></a>
-        <a href="#/heroic/" data-league="heroic"><b>AD2L · S48 Heroic/Aegis</b></a>
-      </div>
-    </div>
+    <a class="brand" id="home-link" href="#/" title="Home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+      <span class="brand-word" id="league-name">Scrim<b>League</b></span>
+    </a>
     <nav id="nav"></nav>
     <div class="top-tools">
       <div class="search" id="search" role="search">
@@ -56,13 +42,25 @@
         <button class="tm-btn" id="tm-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="tm-pop">All weeks</button>
         <div class="tm-pop" id="tm-pop" hidden></div>
       </div>
-      <button class="share-btn" id="share-btn" type="button" title="Copy a link that previews this page in Discord">Copy link</button>
+      <div class="switcher">
+        <button class="league-btn" id="league-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="league-menu">League<span class="caret" aria-hidden="true"></span></button>
+        <div class="league-menu" id="league-menu" hidden>
+          <div class="menu-label">Switch league</div>
+          <a href="#/" data-league="scrim"><b>Scrim League</b><span>Our scrims · uploaded screenshots</span></a>
+          <a href="#/explorer/" data-league="explorer"><b>AD2L · S48 Explorer</b></a>
+          <a href="#/voyager/" data-league="voyager"><b>AD2L · S48 Voyager</b></a>
+          <a href="#/challenger/" data-league="challenger"><b>AD2L · S48 Challenger</b></a>
+          <a href="#/warrior/" data-league="warrior"><b>AD2L · S48 Warrior</b></a>
+          <a href="#/conqueror/" data-league="conqueror"><b>AD2L · S48 Conqueror</b></a>
+          <a href="#/ad2l/" data-league="ad2l"><b>AD2L · S48 Champion</b></a>
+          <a href="#/heroic/" data-league="heroic"><b>AD2L · S48 Heroic/Aegis</b></a>
+        </div>
+      </div>
     </div>
   </header>
   <div class="div-switch" id="div-switch" hidden></div>
   <main id="app"></main>
   <footer class="foot">
-    <span>Stats read from post-game screenshots, checked by the uploader.</span>
     <span>Not affiliated with Valve.</span>
   </footer>
   <datalist id="hero-list"></datalist>

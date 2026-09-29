@@ -95,9 +95,11 @@ const seg = (name, opts, on) => `<div class="wm-seg" role="group" data-ctl="${na
 
 // ---------- one card: where deaths happen (map) and when (chart), linked ----------
 // Two views share the card. A game: both teams, and a timeline with a row per hero. A player:
-// their deaths over all their games, Dire games mirrored so their own base is bottom left,
-// and a histogram of when in the game they die. Each death in the card's data is
+// their deaths over all their games, split into Radiant games and Dire games (the map is never
+// mirrored: each side plays it differently), and a histogram of when in the game they die.
+// Each death in the card's data is
 //   [row, second, x, y, kind (0 fight, 1 lane, 2 pickoff), gold, dead, tooltip, group, short, hero]
+// and on a player page also [11] victim (kills only) and [12] side ("a" Radiant / "b" Dire).
 // group = team ("a" / "b") in a game, win or loss ("w" / "l") on a player page; hero = the
 // hero the filter keys on (the one who died). The card also carries the same deaths seen as
 // kills (`k`, a Deaths | Kills toggle): each hero death credited to the hero with the last
@@ -109,19 +111,22 @@ const seg = (name, opts, on) => `<div class="wm-seg" role="group" data-ctl="${na
 
 const KIND = { fight: 0, lane: 1, pickoff: 2 };
 const KIND_NAME = ["Teamfight death", "Lane death", "Pickoff"];
-const CX = (74.6 + 182.9) / 2, CY = (78.0 + 177.9) / 2; // map centre, as in wardmap.js
 const BIN = 120; // player chart: seconds per bar
 
 function cardHtml(spec, id) {
   const phases = PHASES.filter(([, , from]) => from < spec.dur);
   const player = spec.mode === "player";
+  // A player's side switch: Radiant games or Dire games, starting on the side they played more.
+  const sides = player ? [["a", "Radiant"], ["b", "Dire"]].map(([v, l]) => [v, l, spec.games.filter((g) => g[2] === v).length]).filter(([, , n]) => n) : [];
+  const as = sides.length ? [...sides].sort((p, q) => q[2] - p[2])[0][0] : "";
   // Hero filter: a player's heroes by games played; a game's ten heroes by team.
   const heroOpts = player
     ? [...new Set(spec.games.map(([h]) => h))].map((h) => [h, spec.games.filter(([x]) => x === h).length])
       .sort((p, q) => q[1] - p[1] || p[0].localeCompare(q[0])).map(([h, n]) => `<option value="${attr(h)}">${attr(h)} (${n} game${n === 1 ? "" : "s"})</option>`).join("")
     : spec.groups.map(([g, name]) => `<optgroup label="${attr(name)}">${spec.rows.filter((r) => r[2] === g).map((r) => `<option value="${attr(r[0])}">${attr(r[0])} · ${attr(r[1])}</option>`).join("")}</optgroup>`).join("");
-  return `<figure class="wardmap deathmap" id="${id}" data-mode="${spec.mode}" data-what="deaths" data-phase="all" data-side="all" data-show="solo" data-hero="" data-deaths="${attr(JSON.stringify(spec))}">
+  return `<figure class="wardmap deathmap" id="${id}" data-mode="${spec.mode}" data-what="deaths" data-phase="all" data-side="all" data-show="solo" data-hero="" data-as="${as}" data-deaths="${attr(JSON.stringify(spec))}">
     <div class="wm-controls">
+      ${player ? seg("as", sides.map(([v, l, n]) => [v, `As ${l} (${n})`]), as) : ""}
       ${seg("what", [["deaths", "Deaths"], ["kills", "Kills"]], "deaths")}
       <label class="dm-pick"><span>Hero</span><select data-ctl="hero"><option value="">${player ? "Every hero" : "All ten heroes"}</option>${heroOpts}</select></label>
       ${seg("side", [["all", player ? "Every game" : "Both teams"], ...spec.groups], "all")}
@@ -182,24 +187,22 @@ export function playerDeathsHtml(games, match, { id = "player-deaths", name = "T
   const d = [], kills = [], played = []; // played: [hero, "w" | "l"] per game, for per-game averages
   let known = true, missing = 0, dur = 0;
   for (const { m, i } of mine) {
-    const p = m.players[i], g = m.winner === p.team ? "w" : "l", flip = p.team === "b";
-    played.push([p.hero, g]);
+    const p = m.players[i], g = m.winner === p.team ? "w" : "l", side = p.team;
+    played.push([p.hero, g, side]);
     dur = Math.max(dur, m.duration_sec);
     missing += Math.max(0, (p.deaths ?? 0) - p.death_log.length / 6);
     const opp = p.team === "a" ? m.team_b : m.team_a;
     for (const x of deathsOf(m).filter((x) => x.i === i)) {
       if (x.gold < 0) known = false;
-      const mx = x.x > 0 && flip ? +(2 * CX - x.x).toFixed(1) : x.x, my = x.y > 0 && flip ? +(2 * CY - x.y).toFixed(1) : x.y;
-      d.push([0, x.t, mx, my, KIND[x.kind], x.gold, x.dead,
+      d.push([0, x.t, x.x, x.y, KIND[x.kind], x.gold, x.dead,
         `${p.hero} vs ${opp} (${g === "w" ? "won" : "lost"}): died at ${clock(x.t)} to ${killerName(m, x.killer)}.${x.gold >= 0 ? ` Lost ${x.gold} gold, dead ${x.dead}s.` : ""}`, g,
-        `${clock(x.t)} · ${p.hero} vs ${opp} (${g === "w" ? "W" : "L"}) · by ${killerShort(m, x.killer)}`, p.hero]);
+        `${clock(x.t)} · ${p.hero} vs ${opp} (${g === "w" ? "W" : "L"}) · by ${killerShort(m, x.killer)}`, p.hero, null, side]);
     }
     for (const x of deathsOf(m).filter((x) => x.killer === i && x.team !== p.team)) {
       const v = m.players[x.i];
-      const mx = x.x > 0 && flip ? +(2 * CX - x.x).toFixed(1) : x.x, my = x.y > 0 && flip ? +(2 * CY - x.y).toFixed(1) : x.y;
-      kills.push([0, x.t, mx, my, KIND[x.kind], x.gold, x.dead,
+      kills.push([0, x.t, x.x, x.y, KIND[x.kind], x.gold, x.dead,
         `${p.hero} vs ${opp} (${g === "w" ? "won" : "lost"}): killed ${v.name} (${v.hero}) at ${clock(x.t)}.`, g,
-        `${clock(x.t)} · ${p.hero} killed ${v.hero} · vs ${opp} (${g === "w" ? "W" : "L"})`, p.hero, v.hero]);
+        `${clock(x.t)} · ${p.hero} killed ${v.hero} · vs ${opp} (${g === "w" ? "W" : "L"})`, p.hero, v.hero, side]);
     }
   }
   return cardHtml({ mode: "player", name, groups: [["w", "Wins"], ["l", "Losses"]], games: played, dur, known, missing, d, k: kills }, id);
@@ -232,11 +235,12 @@ function draw(fig) {
   const inSide = (g) => side === "all" || g === side;
   const hero = fig.dataset.hero || "";
   const inHero = (x) => !hero || x[10] === hero;
-  const keep = (x) => inSide(x[8]) && inHero(x);
+  const as = player ? fig.dataset.as : "";
+  const keep = (x) => inSide(x[8]) && inHero(x) && (!as || x[12] === as);
   const on = (x) => keep(x) && inPhase(x[1]);
   const shown = D.d.filter(on);
   // Games behind a player's per-game numbers: those the win/loss and hero filters keep.
-  const gamesIn = (g) => (player ? D.games.filter(([h, w]) => w === g && (!hero || h === hero)).length : 1);
+  const gamesIn = (g) => (player ? D.games.filter(([h, w, sd]) => w === g && (!hero || h === hero) && (!as || sd === as)).length : 1);
 
   // Where: teamfight deaths with a spot, each the dead hero's portrait in a team-coloured ring
   // (a cross if there's no portrait). data-k links a mark to its timeline mark, data-f to its
@@ -256,8 +260,8 @@ function draw(fig) {
     <defs><clipPath id="${clip}" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs>
     <image href="${IMG.src}" x="${VB.x}" y="${VB.y}" width="${VB.w}" height="${VB.h}" preserveAspectRatio="none"/>
     <rect class="wm-dim" x="${VB.x}" y="${VB.y}" width="${VB.w}" height="${VB.h}"/>
-    <text class="wm-lbl a" x="${VB.x + 3}" y="${VB.y + VB.h - 3}">${attr(player ? "Own side" : D.groups[0][1])}</text>
-    <text class="wm-lbl b" x="${VB.x + VB.w - 3}" y="${VB.y + 7}" text-anchor="end">${attr(player ? "Enemy side" : D.groups[1][1])}</text>${marks}</svg>`;
+    <text class="wm-lbl a" x="${VB.x + 3}" y="${VB.y + VB.h - 3}">${attr(player ? "Radiant" : D.groups[0][1])}</text>
+    <text class="wm-lbl b" x="${VB.x + VB.w - 3}" y="${VB.y + 7}" text-anchor="end">${attr(player ? "Dire" : D.groups[1][1])}</text>${marks}</svg>`;
   applyZoom(fig);
 
   // Under the map: a game's bloodiest fights (hover or tap one to light it up); a player's
@@ -309,8 +313,8 @@ function draw(fig) {
 
   const count = (k) => shown.filter((x) => x[4] === k).length;
   fig.dataset.idle = player
-    ? `${shown.length} ${Wd[0]} in ${nGames} game${nGames === 1 ? "" : "s"}${ph ? ` during ${ph[1]}` : ""}: ${count(1)} in lane, ${count(2)} pickoffs, ${count(0)} in teamfights. Hover a portrait or a bar to see it on both sides; pick a hero to see only those games.`
-    : `${shown.length} ${Wd[0]}${ph ? ` during ${ph[1]}` : ""}: ${count(1)} in lane, ${count(2)} pickoffs, ${count(0)} in teamfights. Hover a ${D.kills ? "kill" : "death"} or a teamfight on either side to find it on the other; click a hero name to see only their ${Wd[0]}.`;
+    ? `${shown.length} ${Wd[0]} in ${nGames} game${nGames === 1 ? "" : "s"}${ph ? ` during ${ph[1]}` : ""}: ${count(1)} in lane, ${count(2)} pickoffs, ${count(0)} in teamfights.`
+    : `${shown.length} ${Wd[0]}${ph ? ` during ${ph[1]}` : ""}: ${count(1)} in lane, ${count(2)} pickoffs, ${count(0)} in teamfights.`;
   fig.querySelector(".dm-read").textContent = fig.dataset.idle;
 
   const unplaced = shown.filter((x) => x[4] === 0 && x[2] <= 0).length;
@@ -319,7 +323,7 @@ function draw(fig) {
   fig.querySelector(".dm-cover").innerHTML = shown.length
     ? `<b>${onMap} of ${shown.length}</b> ${Wd[0]} on the map.${off ? ` The other ${off} (${Wd[1]}, pickoffs${unplaced ? ", spots not recorded" : ""}) have a time but no place, so they're only on the ${player ? "chart" : "timeline"}.` : ""}`
     : "";
-  fig.querySelector(".dm-note").innerHTML = `${D.kills ? "Kills are the last hit on an enemy hero, shown where and when the victim died. " : ""}${player ? "Dire games are mirrored so their own base is always bottom left. " : ""}
+  fig.querySelector(".dm-note").innerHTML = `${D.kills ? "Kills are the last hit on an enemy hero, shown where and when the victim died. " : ""}${player ? `Only games played as ${as === "b" ? "Dire" : "Radiant"}; switch sides above. ` : ""}
     Lane death = before 10:00, outside a teamfight; pickoff = after 10:00, outside a teamfight.
     ${!D.known ? `${player ? "Some of these replays have" : "This replay has"} no death log, so deaths are rebuilt from hero kills: no gold lost or time dead.` : player ? "" : "The bar after each death is time spent dead."}${D.missing ? ` ${D.missing} death${D.missing === 1 ? "" : "s"} to towers, creeps or neutrals ${D.missing === 1 ? "isn't" : "aren't"} shown.` : ""}`;
 }

@@ -79,7 +79,6 @@ function heroLink(src, hero, nested = false) {
 const dec = (v) => (v == null ? "—" : v.toFixed(1));
 // Short gold figure: 8,200 -> "8.2k".
 const kg = (v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v)));
-const GOLD_NOTE = "Gold = total gold earned per minute from the replay (OpenDota's graph); gold lost on death isn't subtracted, so it can differ from final net worth.";
 
 // Average gold curve for one player or hero against the division's core and support averages.
 function goldCurveSection(matches, match, what) {
@@ -90,15 +89,11 @@ function goldCurveSection(matches, match, what) {
       { label: what, values: c.mine, cls: "s-mine", strong: true },
       { label: "Average core", values: c.core, cls: "s-ref", dash: true },
       { label: "Average support", values: c.support, cls: "s-ref2", dash: true },
-    ], { caption: `Average gold at each minute over ${c.games} game${c.games === 1 ? "" : "s"}, against the division's average core and support. Hover for values.` })}
-    <p class="table-note">${GOLD_NOTE}</p>`;
+    ], { caption: `Average gold at each minute over ${c.games} game${c.games === 1 ? "" : "s"}, against the division's average core and support. Hover for values.` })}`;
 }
 
 // Where one player / hero / team puts wards, over all their parsed games (own side bottom left).
-function wardView(wards, what, games) {
-  const html = wardMapHtml([{ label: what, cls: "s-mine", wards }], { mirrored: true });
-  return html ? `<p class="table-note wm-intro">Every ward ${esc(what)} placed across ${games} parsed game${games === 1 ? "" : "s"}. Filter by ward type or game phase; hover a dot for that ward, or switch to heat for density.</p>${html}` : "";
-}
+const wardView = (wards, what) => wardMapHtml([{ label: what, cls: "s-mine", wards }], { mirrored: true });
 
 // The Map tabs: one card, one map at a time, picked with buttons above it. Views are
 // [id, label, glossary key, html]; empty ones are dropped. The pick is remembered across pages,
@@ -162,7 +157,7 @@ function gameLanesHtml(m, src, cuts) {
     <h2>First 10 minutes${info("lane_players")}</h2>
     <div class="table-wrap"><table class="ln-table"><thead><tr><th class="l">Player</th><th class="l">Hero</th><th class="l">Lane</th><th>Result</th><th>Gold+XP lead</th><th>LH</th><th>DN</th><th>Lane eff.</th><th>Kills</th><th>Deaths</th></tr></thead>
     <tbody>${["a", "b"].map((t) => rows.filter((x) => x.p.team === t).map(tr).join("")).join("")}</tbody></table></div>
-    <p class="table-note">${cutNote(cuts)} Lanes are the replay's (OpenDota's lane detection), so swaps and tri-lanes count as played. Lead = the whole lane's gold + XP against the other side of it. LH, DN, kills and deaths are before 10:00.</p>`;
+    <p class="table-note">${cutNote(cuts)} Lead = the whole lane's gold + XP against the other side of it. LH, DN, kills and deaths are before 10:00.</p>`;
 }
 
 // Player and hero pages, Laning tab: record, averages, by lane, then each game.
@@ -191,7 +186,7 @@ function lanesPageHtml(src, matches, pred, cuts, { name, hero = false }) {
         <td class="l ln-faces">${faces(src, r.mates) || '<span class="muted">solo</span>'}</td><td class="l ln-faces">${faces(src, r.foes) || '<span class="muted">nobody</span>'}</td>
         <td>${verdictTag(r.verdict)}</td><td>${r.margin == null ? "—" : signedK(r.margin)}</td><td>${r.lh10 ?? "—"}/${r.dn10 ?? "—"}</td><td>${r.won ? '<span class="ln-w">W</span>' : '<span class="ln-l">L</span>'}</td></tr>`).join("")}
     </tbody></table></div>
-    <p class="table-note">${cutNote(cuts)} Lead is the whole lane's gold + XP against the other side of it, so lane partners share it.</p>`;
+    <p class="table-note">${cutNote(cuts)}</p>`;
 }
 
 // Highest lane score among players with `min`+ lanes (a week: 2, or 1 if nobody has 2).
@@ -241,7 +236,6 @@ const weekOfFn = (d) => {
   const sched = new Map((d?.series ?? []).filter((s) => s.time).map((s) => [s.id, new Date(s.time * 1000)]));
   return (m) => weekStart(sched.get(m.series_id) ?? m.createdAt).getTime();
 };
-const gamesWith = (matches, match) => matches.filter((m) => m.players.some((p) => p.obs_pos && match(p, m))).length;
 
 const loading = (kicker, title) => `${pageHead(kicker, title)}<div class="panel empty">Loading…</div>`;
 
@@ -938,7 +932,7 @@ for (const [key, dv] of Object.entries(DIVISIONS)) {
     division: dv.name, kicker: `AD2L · ${dv.name}`, load: () => divGames(SOURCES[key]),
     link: (m) => `${root}/game/${m.id}`, base: `${root}/week`,
     empty: `No ticketed ${dv.short} games found yet.`,
-    nav: [[`${root}/`, "standings", "Standings"], [`${root}/week`, "week", "Weekly"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
+    nav: [[`${root}/`, "standings", "Teams"], [`${root}/week`, "week", "Weekly"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
   };
   // Sub-division views (#/heroic/a/..., #/heroic/b/...): same pages and league key, data
   // narrowed to that sub-division. Plain #/<key>/... is Combined.
@@ -969,7 +963,7 @@ async function renderMatches(src) {
     ${pageHead(src.kicker, title, data.length ? count : "")}
     ${src.key === "scrim" && data.length ? `<div id="standings" class="reveal"></div>
       <p class="table-note">Ranked by game wins, then fewest losses. Private scrims count. <b>Kill ±</b> = average kill score
-        difference per game. <b>Form</b> = last five games, oldest first. Click a team for its history.</p>
+        difference per game. <b>Form</b> = last five games, oldest first.</p>
       <h2>Matches</h2>` : ""}
     ${data.length ? `<div class="fixtures reveal">${data.map((m, i) => `
       <a class="fixture win-${m.winner}" href="${src.link(m)}" style="--i:${Math.min(i, 12)}">
@@ -1214,7 +1208,7 @@ async function renderMatch(id, src) {
         <tr class="sep a"><td colspan="${cols.length + 1}">${linkOf("a")}${m.winner === "a" ? ' <span class="win-badge">Win</span>' : ""}</td></tr>${rows("a")}
         <tr class="sep b"><td colspan="${cols.length + 1}">${linkOf("b")}${m.winner === "b" ? ' <span class="win-badge">Win</span>' : ""}</td></tr>${rows("b")}
       </tbody></table></div>
-    <p class="table-note">▲ best in the game. Dmg/min = hero damage ÷ minutes. Dmg per 1k NW = hero damage per 1,000 net worth (efficiency). KP = (kills + assists) ÷ team score.${rated.length ? " The number beside a name is their game rating (see Ratings)." : ""}</p>
+    <p class="table-note">▲ best in the game.</p>
     <h3 class="gm-h3">Team comparison</h3>${tapeHtml}`;
 
   // Ratings: every player's game rating, what drove it, and their season tier for comparison.
@@ -1244,7 +1238,7 @@ async function renderMatch(id, src) {
         <span class="rt-r t-${r.tier}"><b>${r.rating}</b><small>${r.tier}</small></span>
       </li>`;
     };
-    ratingsHtml = `<p class="table-note wm-intro">Each player's rating from this game alone${info("game_rating")}, on the tier list's scale. Green tags are what lifted it most, red what held it back. Season = their tier-list rating, for comparison. Open a player for the full breakdown under Games.</p>
+    ratingsHtml = `<p class="table-note wm-intro">Each player's rating from this game alone${info("game_rating")}, on the tier list's scale. Green tags are what lifted it most, red what held it back. Season = their tier-list rating.</p>
       <ol class="gm-ratings reveal">${rated.map(line).join("")}</ol>`;
   }
 
@@ -1284,7 +1278,6 @@ async function renderMatch(id, src) {
         <p class="swing-story">${story} Lead changed hands ${s.lead_changes} time${s.lead_changes === 1 ? "" : "s"}${s.at10 != null ? ` · at 10': ${esc(nameOf(s.at10 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at10))}` : ""}${s.at20 != null ? ` · at 20': ${esc(nameOf(s.at20 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at20))}` : ""}.</p>
       </div>
       ${views.map(([id, , tip, html]) => `<div class="gm-hc-view" data-view="${id}"${id === on ? "" : " hidden"}>${html}</div>`).join("")}
-      <p class="table-note">${GOLD_NOTE}</p>
     </section>`;
   }
 
@@ -1370,7 +1363,7 @@ function replayTableHtml(m, src) {
     <div class="table-wrap"><table>
       <thead><tr><th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}</tr></thead>
       <tbody>${side("a")}${side("b")}</tbody></table></div>
-    <p class="table-note">From the parsed replay (OpenDota). Stuns = seconds of disable on enemy heroes. Lane eff. = share of the gold a lane offers taken in the first 10 minutes. ▲ = best in the game (least time dead).</p>`;
+`;
 }
 
 // Map play per player (parsed replays only): creeps, stacks, wards, dewards, objectives.
@@ -1393,7 +1386,7 @@ function mapTableHtml(m, src) {
         <tr class="sep a"><td colspan="${cols.length + 2}">${teamLink(src, m.team_a, m.team_a_id)}</td></tr>${m.players.filter((p) => p.team === "a").map(row).join("")}${total("a")}
         <tr class="sep b"><td colspan="${cols.length + 2}">${teamLink(src, m.team_b, m.team_b_id)}</td></tr>${m.players.filter((p) => p.team === "b").map(row).join("")}${total("b")}
       </tbody></table></div>
-    <p class="table-note">From the parsed replay (OpenDota). Dewards = enemy observer + sentry wards killed. Roshan / Tormentor = last hits; the chips above show which team took each one.</p>`;
+`;
 }
 
 // ---------- items (AD2L, parsed replays) ----------
@@ -1415,7 +1408,7 @@ function gameItemsHtml(m, src) {
     <div class="table-wrap items-table"><table>
       <thead><tr><th class="l">Player</th><th class="l">Hero</th><th class="l">Final items</th><th class="l">Core items finished</th></tr></thead>
       <tbody>${side("a")}${side("b")}</tbody></table></div>
-    <p class="table-note">Final items: the six slots and the neutral item at the end of the game. Core items in the order they were finished, with the game clock. Hover an icon for its name.</p>`;
+`;
 }
 
 // Hero page: that hero's core items over the league: how often, when, and how it went.
@@ -1485,9 +1478,9 @@ function wireItemHeroes() {
 
 async function renderStandings(src) {
   const kicker = src.kicker;
-  app.innerHTML = loading(kicker, "Standings");
+  app.innerHTML = loading(kicker, "Teams");
   let d;
-  try { d = await src.data(); } catch (e) { app.innerHTML = `${pageHead(kicker, "Standings")}${errorBox(e)}`; return; }
+  try { d = await src.data(); } catch (e) { app.innerHTML = `${pageHead(kicker, "Teams")}${errorBox(e)}`; return; }
 
   const played = d.series.filter((s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
   const upcoming = d.series.filter((s) => !played.includes(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).sort((a, b) => a.time - b.time);
@@ -1546,7 +1539,7 @@ async function renderStandings(src) {
   const raceHtml = nights.length >= 2 ? `${lineChart(race.map((r, i) => ({ label: r.t.name, values: r.values, cls: `s-c${(i % 10) + 1}`, end: `${r.values.at(-1)} · ${r.t.name}` })),
       { endLabels: true, height: 320, xLabels: nights.map((_, i) => `Wk ${i + 1}`), step: top > 12 ? 4 : 2,
         caption: "Game wins after each league night. Hover for every team's total that week; hover a name to pick out one team." })}
-    <p class="table-note">Steep = winning games; flat = a stall. A week is a league night with results.</p>` : "";
+` : "";
 
   const date = (s) => new Date(s * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const oddsBar = (o) => `<div class="st-odds" title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}">${
@@ -1567,20 +1560,15 @@ async function renderStandings(src) {
   const tabs = playerTabs([
     ["table", "Table", `<div id="t" class="reveal"></div>
       <p class="table-note">Sorted by game wins; official standings and tiebreakers live on
-        <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.
-        <b>Form</b>: the last five series, newest on the right. <b>Rating</b>: the model's strength for the team; 0 = an average team.
-        "Stats" = games whose full stats were found (players whose match history is private can hide a game).</p>`],
+        <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.</p>`],
     ["schedule", "Schedule", `<div id="sos" class="reveal"></div>
       <p class="table-note"><b>SOS</b> = (2 × opponents' game win % + their opponents' game win %) ÷ 3, the same idea as RPI.
-        Opponents' records leave out their games against the team in question, so beating a team doesn't make your own
-        schedule look easier. Each series counts once. <b>Still to play</b> = average game win % of the opponents left.
-        Squares: every series played, oldest first (green won, red lost, grey tied); hover for details, click for the team.</p>`],
+        <b>Still to play</b> = average game win % of the opponents left.</p>`],
     ["race", "Race", raceHtml],
     ["next", `Up next · ${upcoming.length}`, nextHtml],
   ], { store: "standingsTab", label: "Standings sections" });
   app.innerHTML = `
-    ${pageHead(kicker, "Standings", `Series results from PlayOn; game stats from ${d.games.length} ticketed games found on OpenDota. Click a team for its roster, series history and heroes.
-      Updated ${updated}.`)}
+    ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`)}
     ${cards.length ? `<div class="cards reveal st-cards">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>` : ""}
     <div class="st-tabs">${tabs.bar}</div>
     ${tabs.panels}`;
@@ -1980,14 +1968,13 @@ async function renderPlayers(src) {
     const weekOf = weekOfFn(await src.data()), latest = Math.max(...matches.map(weekOf));
     lanes = lanesSection(src, matches, await laneCutsOf(src), matches.filter((m) => weekOf(m) === latest));
   }
-  app.innerHTML = `${pageHead(src.kicker, "Players", data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}: the tier list first, then every stat below. Click a name for that player's page.` : "")}
+  app.innerHTML = `${pageHead(src.kicker, "Players", data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}.` : "")}
     ${data.length ? `${tiers.html}
     ${leaders.html}
     ${lanes?.html ?? ""}
     <h2 id="player-stats">All stats</h2>
-    <p class="table-note wm-intro">Sort by any stat with the menu or by clicking a column header.</p>
     <div id="t" class="reveal"></div>
-    <p class="table-note">GPM, XPM, Dmg/min and Dmg per 1k NW are totals across all games, not averages of averages. ${src.ad2l ? "Players are matched by their PlayOn name (smurfs included). Per-game map stats (/g) come from parsed replays; Roshans and Tormentors are last-hit totals." : "Players are matched by name."} Bars compare against the column's best.</p>`
+    ${src.ad2l ? `<p class="table-note">Players are matched by their PlayOn name (smurfs included).</p>` : ""}`
     : `<div class="panel empty"><strong>No players yet</strong>${src.empty}</div>`}`;
   if (!data.length) return;
   tiers.draw();
@@ -2207,7 +2194,7 @@ async function renderPredict(src) {
       </div>
       <p class="table-note pd-g2note" hidden>Game 2 assumes ${esc(fav.name)} (the model's favourite) won game 1 with the model's game 1 draft.</p>
       ${drafts.map(([k, st], i) => `<div class="pd" data-for="${k}"${i ? " hidden" : ""}>${draftHtml(st, home, away)}</div>`).join("")}
-      <p class="table-note">All 24 steps in S48's Captains Mode order: the first-pick team bans 3, 2 and 2 across the phases and the other team 4, 1 and 2. Each ban weighs how often (and how recently) that team bans the hero in that phase, what the other team's players still to pick have been playing (league games from the last few weeks count most, plus pubs since ${sinceLabel(d)}), and the division's usual bans. Each pick gives an unpicked player the best hero left in their pool; early picks lean toward heroes that get contested. Hover any step for why.</p>
+      <p class="table-note">All 24 steps in S48's Captains Mode order: the first-pick team bans 3, 2 and 2 across the phases and the other team 4, 1 and 2. Each ban weighs how often (and how recently) that team bans the hero in that phase, what the other team's players still to pick have been playing (league games from the last few weeks count most, plus pubs since ${sinceLabel(d)}), and the division's usual bans.</p>
       <div class="dr-sub">Player pools${info("player_pools")}</div>
       <div class="dr-cols">${pools(home, away)}${pools(away, home)}</div></details>`;
   };
@@ -2291,7 +2278,7 @@ async function renderPredict(src) {
     <div id="pred-msg"></div>
     <h2>${night ? new Date(night * 1000).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) : "No upcoming series"}${night ? ` <span class="pred-time">${new Date(night * 1000).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>` : ""}</h2>
     ${week.length ? `<div class="pred-grid reveal">${week.map(card).join("")}</div>
-      <p class="table-note">Each button shows the model's odds for that result and how many people picked it. <b>model</b> marks the model's own call.</p>`
+`
       : `<div class="panel empty">PlayOn hasn't posted the next week's schedule yet. It shows up here after the next sync.</div>`}
     <h2>Leaderboard</h2>
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks.</p>` : `<div class="panel empty">No picks yet.</div>`}
@@ -2460,10 +2447,10 @@ async function renderScrimPredict() {
     </details>
     <h2>Upcoming</h2>
     ${upcoming.length ? `<div class="pred-grid reveal">${upcoming.map(card).join("")}</div>
-      <p class="table-note">Each button shows the model's odds and how many people picked it; <b>model</b> marks its call. When the scrim's played, press <b>Upload game</b> on its card (screenshots) or <b>Private result</b> (score only). Games between the same two teams uploaded from 2 hours before the start to 3 days after count toward it automatically.</p>`
+      <p class="table-note">When the scrim's played, press <b>Upload game</b> on its card (screenshots) or <b>Private result</b> (score only). Games between the same two teams uploaded from 2 hours before the start to 3 days after count toward it automatically.</p>`
       : `<div class="panel empty">Nothing scheduled. Add the next scrim above.</div>`}
     <h2>Leaderboard</h2>
-    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / scrims called. The model replays each scrim from the games uploaded before it.</p>` : `<div class="panel empty">No scrims decided yet.</div>`}
+    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / scrims called.</p>` : `<div class="panel empty">No scrims decided yet.</div>`}
     ${results ? `<h2>Results</h2><div class="table-wrap"><table><thead><tr><th class="l">Date</th><th class="l">Scrim</th><th>Result</th><th class="l">Model${info("model_col")}</th><th class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${results}</tbody></table></div>` : ""}
     <details class="how"><summary>How it works</summary>
       <p>Odds come from a strength rating per team fitted to every scrim result on the site (private results included), each pulled toward even so one lucky win doesn't make a team a lock. A Bo2 is two independent games (2–0 = p²); a Bo3 is first to two. With no games between the teams the model calls a coin flip: 1–1 in a Bo2, Team A otherwise.</p>
@@ -2798,7 +2785,7 @@ function gameAnalysisHtml(src, mode, games, gi, rated) {
     </div>
     <details class="ga-more"><summary>Every part of the rating</summary>
       <div class="ga-bars">${role.stats.map(bar).join("")}<div class="ga-bars-h">Survival</div>${role.survival.map((x) => bar({ ...x, surv: true })).join("")}</div>
-      <p class="table-note">Each stat scored 0–100 against what position ${p.position ?? "?"} does in ${leagueShort(src)} (50 = average), weighted like the tier list. One game is a small sample, so the rating is pulled toward the middle the same way a hero rating is.</p>
+      <p class="table-note">Each stat scored 0–100 against what position ${p.position ?? "?"} does in ${leagueShort(src)} (50 = average), weighted like the tier list.</p>
     </details>`;
   }
 
@@ -2976,16 +2963,15 @@ async function renderPlayer(src, key) {
       ["lanes", "Laning", lanesPageHtml(src, matches, byPlayer(key), laneCuts_, { name: s.name })],
       ["items", "Items", playerItemsHtml(src, matches, h.games)],
       ["map", "Map", mapCard([
-        ["wards", "Wards", "ward_map", wardView(collectWards(matches, byPlayer(key)), s.name, gamesWith(matches, byPlayer(key)))],
+        ["wards", "Wards", "ward_map", wardView(collectWards(matches, byPlayer(key)), s.name)],
         ["deaths", "Deaths", "player_deaths", playerDeathsHtml(matches, byPlayer(key), { name: s.name })],
         ["towers", "Towers", "player_towers", towerSummaryHtml(matches, byPlayer(key), { name: s.name })],
       ])],
       ["games", "Games", `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
-        <p class="table-note wm-intro">Pick a game to see how ${esc(s.name)} played it: their game rating and what built it, where every number placed among the ten players, their gold and events over the game, and where they warded.</p>
         <div id="game-box" data-key="${esc(key)}">${gameAnalysisHtml(src, "player", h.games, 0, gameRated)}</div>
         <h2>Every game</h2>
         <div id="t"></div>
-        <p class="table-note">Newest first. Sort with the menu or any column header; the arrow opens the game.</p>`],
+`],
   ]);
 
   // One compact header: back link and league on one line, then name, tier, team line and the
@@ -3080,9 +3066,9 @@ async function renderHeroes(src) {
     merged.push({ hero: h.hero, picks: 0, pick_rate: 0, wins: 0, win_rate: null, bans: h.ban_total, ban_rate: h.ban_total / matches.length, contest_rate: h.contest_rate,
       b1: h.bans[0], b2: h.bans[1], b3: h.bans[2], p1_ban_share: h.p1_ban_share, p1: 0, p2: 0, p3: 0, w1: null, w2: null, w3: null, avg_damage: null, avg_kda: null });
   }
-  app.innerHTML = `${pageHead(src.kicker, "Heroes", merged.length ? `${rows.length} heroes picked across ${matches.length} ${matches.length === 1 ? "game" : "games"}${a.games ? `, with bans and picks by draft phase from ${a.games} Captains Mode drafts` : ""}. Click a hero for who plays it and how they do; sort with the menu or any column header.` : "")}
+  app.innerHTML = `${pageHead(src.kicker, "Heroes", merged.length ? `${rows.length} heroes picked across ${matches.length} ${matches.length === 1 ? "game" : "games"}${a.games ? `, with bans and picks by draft phase from ${a.games} Captains Mode drafts` : ""}.` : "")}
     ${merged.length ? `${cards}${minBar(a.games ? "Show heroes picked or banned at least" : "Show heroes picked at least", "times", MIN_DEFAULT(matches))}<div id="t" class="reveal"></div>
-    ${a.games ? `<p class="table-note">B1–B3 = bans in draft phase 1–3; P1–P3 = picks, with the win % when picked in that phase (P3 = last picks). Phase 1 = the opening 7 bans and first 2 picks, phase 2 = 3 bans and 6 picks, phase 3 = the last 4 bans and 2 last picks. “1st-phase ban share” = how many of its bans came in the opening phase: high means teams remove it on sight.</p>` : ""}`
+    ${a.games ? `<p class="table-note">B1–B3 = bans in draft phase 1–3; P1–P3 = picks, with the win % when picked in that phase (P3 = last picks).</p>` : ""}`
     : `<div class="panel empty"><strong>No picks yet</strong>${src.empty}</div>`}`;
   if (!merged.length) return;
   wireMinBar(merged, (r) => (r.picks ?? 0) + (a.games ? r.bans ?? 0 : 0), (shown) => sortableTable(document.getElementById("t"), [
@@ -3208,7 +3194,6 @@ function heroPhaseHtml(row, drafted) {
     </div>`;
   };
   return `<h2>Draft phases${info("hero_phases")}</h2>
-    <p class="table-note wm-intro">When ${esc(row.hero)} gets banned or picked across ${drafted} Captains Mode drafts, and how it does when picked in each phase.</p>
     <div class="sr-summary dp-compare">
       <div><b>${row.ban_total}</b><small>bans · ${pct(row.ban_total / drafted)} of drafts</small></div>
       <div><b>${row.pick_total}</b><small>picks</small></div>
@@ -3299,14 +3284,13 @@ async function renderHero(src, slug) {
     ["lanes", "Laning", lanesPageHtml(src, matches, byHero(hero), laneCuts_, { name: hero, hero: true })],
     ["items", "Items", heroItemsHtml(src, h.games, hero)],
     ["map", "Map", mapCard([
-      ["wards", "Wards", "ward_map", wardView(collectWards(matches, byHero(hero)), hero, gamesWith(matches, byHero(hero)))],
+      ["wards", "Wards", "ward_map", wardView(collectWards(matches, byHero(hero)), hero)],
       ["deaths", "Deaths", "hero_deaths", playerDeathsHtml(matches, byHero(hero), { id: "hero-deaths", name: hero })],
       ["towers", "Towers", "hero_towers", towerSummaryHtml(matches, byHero(hero), { id: "hero-towers", name: hero })],
     ])],
     ["games", "Games", h.games.length ? `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
-      <p class="table-note wm-intro">Pick a game to see how ${esc(hero)} was played in it: the player's game rating and what built it, where every number placed among the ten players, their gold and events over the game, and where they warded.</p>
       <div id="game-box" data-hero="${esc(hero)}">${gameAnalysisHtml(src, "hero", h.games, 0, gameRated)}</div>
-      <h2>Every game</h2><div id="t"></div><p class="table-note">Newest first. Sort with the menu or any column header; Analyze opens the game above, the arrow opens the full game.</p>` : ""],
+      <h2>Every game</h2><div id="t"></div>` : ""],
   ], { store: "heroTab", label: "Hero sections" });
 
   app.innerHTML = `${header(tabs.bar)}${tabs.panels}`;
@@ -3649,7 +3633,7 @@ async function renderTeams(src, slug) {
       </a>`;
     };
     app.innerHTML = `
-      ${pageHead(src.kicker, "Teams", teams.length ? `${teams.length} teams, ranked by game wins. Pick one for its roster, games, heroes and draft.` : "")}
+      ${pageHead(src.kicker, "Teams", teams.length ? `${teams.length} teams, ranked by game wins.` : "")}
       ${teams.length ? `<div class="team-grid reveal">${teams.map(card).join("")}</div>`
       : `<div class="panel empty"><strong>No teams yet</strong>${src.empty}</div>`}`;
     return;
@@ -3768,7 +3752,7 @@ async function renderTeams(src, slug) {
       <span class="h2h-bar" aria-hidden="true"><i style="width:${Math.round((o.wins / o.games) * 100)}%"></i></span>
       <span class="h2h-rec"><b>${o.wins}</b>–${o.games - o.wins}</span>
       <span class="h2h-last">${o.last ? shortDate(new Date(o.last)) : ""}</span></div>`).join("")}</div>
-    <p class="table-note">Game record against each team${ad2l ? ", from games with stats" : ", private scrims included"}. The date is the last meeting.</p>` : "";
+` : "";
 
   const chips = (list, count, n = 6) => list.length ? `<div class="hero-chips">${list.slice(0, n).map((x) => `<div class="hero-chip">${portrait(x.hero)}<span>${heroLink(src, x.hero)}</span><b>${count(x)}</b></div>`).join("")}</div>` : `<span class="muted">—</span>`;
   const phases = (() => {
@@ -3781,7 +3765,7 @@ async function renderTeams(src, slug) {
         ${line("Banned against them", ph.against, (x) => `×${x.n}`)}
         ${line("They pick", ph.picks, (x) => `${x.wins}–${x.n - x.wins}`)}
       </div>
-      <p class="table-note">From ${plural(ph.drafted, "drafted game")}. Phase 1 = opening 7 bans and first 2 picks, phase 2 = 3 bans and 6 picks, phase 3 = last 4 bans and last 2 picks. Picks show win–loss.</p>`;
+`;
   })();
   const top = h.heroes[0];
   const goto = (tab, label) => `<p class="table-note"><button type="button" class="link-btn" data-goto-tab="${tab}">${label} →</button></p>`;
@@ -3809,14 +3793,13 @@ async function renderTeams(src, slug) {
         ...(h.banned_against[0] ? [["Banned against", esc(h.banned_against[0].hero), `${h.banned_against[0].n} time${h.banned_against[0].n === 1 ? "" : "s"} by opponents`]] : []),
       ])}
       <h2>Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
-      <p class="table-note">Every hero ${esc(team.name)} has picked, most played first, with win–loss.</p>
       ${phases}` : ""],
     ["map", "Map", `${teamMapHtml(src, matches, teams, team, h)}
       ${(() => { const gs = h.games.map(({ m }) => m), mine = (p, m) => p.team === sideOf(m, team);
         const fights = teamFightMapHtml(gs, (m) => sideOf(m, team), { name: team.name });
         return mapCard([
-          ["wards", "Wards", "ward_map", wardView(collectWards(gs, mine), team.name, gamesWith(gs, mine))],
-          ["fights", "Team fights", "team_fights", fights ? `<p class="table-note wm-intro">Where ${esc(team.name)} fight, from every teamfight death in their parsed games, theirs and the enemy's.</p>${fights}` : ""],
+          ["wards", "Wards", "ward_map", wardView(collectWards(gs, mine), team.name)],
+          ["fights", "Team fights", "team_fights", fights || ""],
         ]); })()}`],
   ], { store: "teamTab", label: "Team sections" });
 
@@ -3824,7 +3807,7 @@ async function renderTeams(src, slug) {
   // then name, the record line and the tabs.
   app.innerHTML = `
     <header class="page-head pp-head reveal">
-      <div class="kicker" style="--i:0"><a href="${base}">← ${src.ad2l ? "Standings" : "All teams"}</a><span class="pp-league">${src.kicker}</span>
+      <div class="kicker" style="--i:0"><a href="${base}">← ${src.ad2l ? "Teams" : "All teams"}</a><span class="pp-league">${src.kicker}</span>
         <label class="team-picker"><span class="sr-only">Team</span>
           <select id="team-select" aria-label="Team">${teams.map((t) => `<option value="${t.slug}" ${t.slug === slug ? "selected" : ""}>${esc(t.name)} (${t.wins}–${t.losses})</option>`).join("")}</select></label></div>
       <div class="pp-row" style="--i:1">
@@ -4026,7 +4009,7 @@ function tierSection(src, matches, model) {
     });
   };
   const html = list.eligible ? `<h2 id="tier-list">Tier list${info("tier_list")}</h2>
-    <p class="table-note wm-intro">${list.eligible} players ranked from ${matches.length} ${matches.length === 1 ? "game" : "games"}. Click a player for how their rating was built.</p>
+    <p class="table-note wm-intro">${list.eligible} players ranked from ${matches.length} ${matches.length === 1 ? "game" : "games"}.</p>
     <div id="tiers"></div>
     ${tierHow(list.model, src)}`
     : `<p class="table-note">Tier list: players need ${MIN_GAMES}+ games to be ranked.</p>`;
@@ -4370,18 +4353,6 @@ document.addEventListener("click", (e) => {
 let routedAt = null;
 const onNav = () => { if (location.href !== routedAt) route(); };
 
-// Copy link: the /path/ form of this page when it has a preview page (lib/share.js), so
-// Discord shows this page's title instead of the site's; otherwise the address as is.
-const shareBtn = document.getElementById("share-btn");
-shareBtn.onclick = async () => {
-  const p = sharePath(here());
-  const url = p ? `${location.origin}${p}` : location.href;
-  try { await navigator.clipboard.writeText(url); shareBtn.textContent = "Copied"; }
-  catch { prompt("Copy this link:", url); }
-  shareBtn.classList.add("done");
-  setTimeout(() => { shareBtn.textContent = "Copy link"; shareBtn.classList.remove("done"); }, 1800);
-};
-
 function route() {
   setMenu(false);
   const h = here();
@@ -4398,6 +4369,8 @@ function route() {
   document.title = isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""} · Scrim League` : "Scrim League";
   document.getElementById("league-name").innerHTML = isAd2l ? `AD2L<b>${src.division}</b>${divLabel ? `<em class="div-badge">${src.view ? `Div ${src.view.toUpperCase()}` : DIVISIONS[src.key].views.join(" + ").toUpperCase()}</em>` : ""}` : "Scrim<b>League</b>";
   leagueMenu.querySelectorAll("a").forEach((a) => a.classList.toggle("current", a.dataset.league === src.key));
+  // The brand goes home: this league's first page (Teams in AD2L, Standings for scrims).
+  document.getElementById("home-link").href = src.nav[0][0];
 
   // Pages that read through the time machine; `tm` marks them so its bar shows.
   const t = timeSrc(src);

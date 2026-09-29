@@ -139,7 +139,7 @@ function draw(fig) {
         : `<div class="muted">Lost nothing${ph ? " in this phase" : ""}</div>`}</div>`;
   };
   fig.querySelector(".wm-side").innerHTML = side("a") + side("b") +
-    `<p class="wm-note">Map at ${clock(to)}${ph ? `, end of ${ph[1]}` : ", end of game"}. ● tower, ■ barracks; ✕ = fallen (bright: ${ph ? "in this phase" : "during the game"}, faded: earlier). Hover a building for when and who.</p>`;
+    `<p class="wm-note">Map at ${clock(to)}${ph ? `, end of ${ph[1]}` : ", end of game"}. ● tower, ■ barracks; ✕ = fallen (bright: ${ph ? "in this phase" : "during the game"}, faded: earlier).</p>`;
 }
 
 // Many games at once (player page): per building, how often it fell and when on average.

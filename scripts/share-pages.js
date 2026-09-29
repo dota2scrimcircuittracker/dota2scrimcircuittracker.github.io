@@ -55,7 +55,7 @@ function league(root, key, name, d, view) {
   const color = COLOR[key];
   const top = standings(d).slice(0, 3).map((r, i) => `${i + 1}. ${r.t.name} (${r.gw}–${r.gl})`).join(" · ");
   const games = d.games.length;
-  page(root, `Standings · ${label}`, `${top}. Series results from PlayOn, stats from ${plural(games, "ticketed game")}.`, color);
+  page(root, `Teams · ${label}`, `${top}. Series results from PlayOn, stats from ${plural(games, "ticketed game")}.`, color);
 
   // Latest week: games in the 7 days up to the newest one.
   const newest = Math.max(0, ...d.games.map((g) => g.start_time));

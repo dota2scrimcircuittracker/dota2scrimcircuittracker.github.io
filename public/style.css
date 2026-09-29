@@ -77,18 +77,18 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .brand { display: flex; align-items: center; gap: 12px; color: var(--bone); }
 .brand:hover { text-decoration: none; }
 
-/* League switcher: the brand is the control. */
-.switcher { position: relative; }
-button.brand {
-  background: none; border: 1px solid transparent; clip-path: none; padding: 6px 12px 6px 6px; margin-left: -6px;
-  text-transform: none; letter-spacing: 0; font: inherit; cursor: pointer;
+/* League switcher: a small button in the header's top-right tools; the brand links home. */
+.switcher { position: relative; margin-left: auto; }
+.league-btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap;
+  font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dust); background: none; border: 1px solid var(--seam); padding: 9px 12px; border-radius: 2px; clip-path: none;
 }
-button.brand:hover:not(:disabled) { background: var(--stone-2); border-color: var(--seam); }
-button.brand[aria-expanded="true"] { background: var(--stone-2); border-color: var(--seam-2); }
-.caret { width: 8px; height: 8px; border-right: 2px solid var(--dust); border-bottom: 2px solid var(--dust); transform: rotate(45deg) translate(-2px, -2px); margin-left: 4px; transition: transform .15s; }
-button.brand[aria-expanded="true"] .caret { transform: rotate(-135deg) translate(-2px, -2px); }
+.league-btn:hover, .league-btn[aria-expanded="true"] { color: var(--bone); border-color: var(--dust); }
+.caret { width: 6px; height: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); margin-left: 2px; transition: transform .15s; }
+.league-btn[aria-expanded="true"] .caret { transform: rotate(-135deg) translate(-2px, -2px); }
 .league-menu {
-  position: absolute; top: calc(100% + 8px); left: -6px; min-width: 300px; z-index: 20;
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 300px; max-width: calc(100vw - 32px); z-index: 20;
   background: var(--stone-2); border: 1px solid var(--seam-2); padding: 8px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
   animation: rise .18s cubic-bezier(.2, .8, .2, 1);
@@ -158,7 +158,7 @@ body[data-league="explorer"] { --accent: #3cc6c6; --accent-rgb: 60, 198, 198; }
 .div-note { font-size: 12px; color: var(--dust); margin-left: 8px; }
 .div-tag { font: 600 11px/1 var(--mono); color: #b9a6ff; }
 /* Time machine: a small header button; its panel picks the weeks. Tinted while it narrows the page. */
-.top-tools { display: flex; align-items: center; gap: 8px; }
+.top-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .tm { position: relative; }
 .tm[hidden] { display: none; }
 .tm-btn {
@@ -262,12 +262,6 @@ nav a.nav-cta:hover { background: #f5c862; color: var(--ink); }
   .search-pop { left: 0; right: auto; width: calc(100vw - 32px); }
   .search-hit { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; }
 }
-.share-btn {
-  font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
-  color: var(--dust); background: none; border: 1px solid var(--seam); padding: 9px 12px; border-radius: 2px;
-}
-.share-btn:hover { color: var(--bone); border-color: var(--dust); }
-.share-btn.done { color: var(--jade); border-color: var(--jade); }
 
 /* ---------- page frame ---------- */
 main { width: 100%; max-width: 2400px; margin: 0 auto; padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 48px) 72px; flex: 1; }
@@ -1120,6 +1114,11 @@ figure.wardmap { margin: 0 0 8px; padding: 14px; background: var(--stone); borde
 .wm-seg button:last-child { border-right: 0; }
 .wm-seg button:hover { color: var(--bone); }
 .wm-seg button[aria-pressed="true"] { background: var(--accent); color: var(--ink); }
+.wm-player {
+  background: var(--ink); color: var(--bone); border: 1px solid var(--seam-2); padding: 6px 8px; max-width: 260px;
+  font: 600 11px/1 var(--mono); letter-spacing: .04em; cursor: pointer;
+}
+.wm-player:focus { outline: none; border-color: var(--accent); }
 .wm-body { display: grid; grid-template-columns: minmax(0, 560px) minmax(200px, 1fr); gap: 20px; align-items: start; }
 .wm-map svg { width: 100%; height: auto; display: block; border: 1px solid var(--seam-2); }
 .wm-dim { fill: rgba(8, 8, 6, .35); }

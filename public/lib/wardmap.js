@@ -3,7 +3,7 @@
 // seconds it lived (-1 = still up at the end), 1 if the enemy killed it.
 //
 // wardMapHtml() returns a <figure> with the wards embedded; wireWardMaps() draws it and wires
-// the controls (observers / sentries, game phase, dots / heat). No library: heat is a density
+// the controls (observers / sentries, game phase, player, dots / heat). No library: heat is a density
 // grid drawn as SVG cells with a light blur.
 
 // The minimap picture (public/img/minimap.webp, 634×599) placed on the grid by its two fountain
@@ -30,7 +30,7 @@ export function wardsOf(p, { flip = false } = {}) {
     if (!Array.isArray(arr)) continue;
     for (let i = 0; i + 4 < arr.length; i += 5) {
       const x = arr[i], y = arr[i + 1];
-      out.push({ kind, x: mirror ? +(2 * CX - x).toFixed(1) : x, y: mirror ? +(2 * CY - y).toFixed(1) : y, t: arr[i + 2], life: arr[i + 3], killed: arr[i + 4] === 1 });
+      out.push({ kind, x: mirror ? +(2 * CX - x).toFixed(1) : x, y: mirror ? +(2 * CY - y).toFixed(1) : y, t: arr[i + 2], life: arr[i + 3], killed: arr[i + 4] === 1, who: p.name ?? null, hero: p.hero ?? null });
     }
   }
   return out;
@@ -60,16 +60,31 @@ export function wardSummary(wards) {
 
 // layers: [{ label, cls, wards }]. One layer = a player / hero / team;
 // two layers (a game) = each team in its colour. Dots by default, heat on toggle.
+// Wards from more than one player get a player picker, busiest warder first; a player who
+// warded on one hero only (always so in a game) is shown with it.
 export function wardMapHtml(layers, { mirrored = false, mode = null, id = "wards" } = {}) {
   const total = layers.reduce((s, l) => s + l.wards.length, 0);
   if (!total) return "";
-  const compact = layers.map((l) => ({ label: l.label, cls: l.cls, w: l.wards.map((w) => [w.kind === "obs" ? 1 : 0, w.x, w.y, w.t, w.life, w.killed ? 1 : 0]) }));
+  const count = new Map(), heroesOf = new Map();
+  for (const l of layers) for (const w of l.wards) if (w.who) {
+    count.set(w.who, (count.get(w.who) ?? 0) + 1);
+    if (!heroesOf.has(w.who)) heroesOf.set(w.who, new Set());
+    if (w.hero && w.hero !== l.label) heroesOf.get(w.who).add(w.hero); // not on a hero's own page
+  }
+  const people = [...count].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([who, n]) => { const hs = heroesOf.get(who); return [who, n, hs.size === 1 ? `${who} · ${[...hs][0]}` : who]; });
+  const pi = new Map(people.map(([who], i) => [who, i]));
+  const compact = layers.map((l) => ({ label: l.label, cls: l.cls, w: l.wards.map((w) => [w.kind === "obs" ? 1 : 0, w.x, w.y, w.t, w.life, w.killed ? 1 : 0, pi.get(w.who) ?? -1]) }));
   const start = mode ?? "dots";
   const seg = (name, opts, on) => `<div class="wm-seg" role="group" data-ctl="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === on}">${l}</button>`).join("")}</div>`;
-  return `<figure class="wardmap" id="${id}" data-mode="${start}" data-mirrored="${mirrored ? 1 : 0}" data-wards="${attr(JSON.stringify(compact))}">
+  const pick = people.length > 1
+    ? `<select class="wm-player" aria-label="Player"><option value="all">All players</option>${people.map(([, n, label], i) => `<option value="${i}">${attr(label)} (${n})</option>`).join("")}</select>`
+    : "";
+  return `<figure class="wardmap" id="${id}" data-mode="${start}" data-mirrored="${mirrored ? 1 : 0}" data-people="${attr(JSON.stringify(people.map(([, , label]) => label)))}" data-wards="${attr(JSON.stringify(compact))}">
     <div class="wm-controls">
       ${seg("kind", [["all", "All wards"], ["obs", "Observers"], ["sen", "Sentries"]], "all")}
       ${seg("phase", [["all", "Whole game"], ["0", "0–10'"], ["1", "10–20'"], ["2", "20–35'"], ["3", "35'+"]], "all")}
+      ${pick}
       ${seg("mode", [["dots", "Dots"], ["heat", "Heat"]], start)}
     </div>
     <div class="wm-body"><div class="wm-map"></div><div class="wm-side"></div></div>
@@ -114,9 +129,11 @@ function terrain(mirrored) {
 
 function draw(fig) {
   const layers = JSON.parse(fig.dataset.wards);
-  const mode = fig.dataset.mode, kind = fig.dataset.kind ?? "all", phase = fig.dataset.phase ?? "all";
+  const mode = fig.dataset.mode, kind = fig.dataset.kind ?? "all", phase = fig.dataset.phase ?? "all", who = fig.dataset.who ?? "all";
+  const people = JSON.parse(fig.dataset.people ?? "[]");
   const keep = (w) => (kind === "all" || (kind === "obs") === (w[0] === 1)) &&
-    (phase === "all" || (w[3] >= PHASES[+phase][0] && w[3] < PHASES[+phase][1]));
+    (phase === "all" || (w[3] >= PHASES[+phase][0] && w[3] < PHASES[+phase][1])) &&
+    (who === "all" || w[6] === +who);
   const shown = layers.map((l) => ({ ...l, w: l.w.filter(keep) }));
   const n = shown.reduce((s, l) => s + l.w.length, 0);
   const fid = `${fig.id}-heat`;
@@ -135,7 +152,7 @@ function draw(fig) {
     body = `<defs><filter id="${fid}"><feGaussianBlur stdDeviation="0.9"/></filter></defs><g class="wm-heat" filter="url(#${fid})">${cells}</g>`;
   } else {
     body = shown.map((l) => `<g class="wm-dots ${l.cls ?? ""}">${l.w.map((w) => {
-      const tip = `${attr(l.label)} · ${w[0] === 1 ? "Observer" : "Sentry"} at ${clock(w[3])}${w[4] >= 0 ? `, lasted ${clock(w[4])}${w[5] ? " (dewarded)" : ""}` : ", up at game end"}`;
+      const tip = `${attr(l.label)}${people[w[6]] && people[w[6]] !== l.label ? ` (${attr(people[w[6]])})` : ""} · ${w[0] === 1 ? "Observer" : "Sentry"} at ${clock(w[3])}${w[4] >= 0 ? `, lasted ${clock(w[4])}${w[5] ? " (dewarded)" : ""}` : ", up at game end"}`;
       return w[0] === 1
         // Drawn at 0,0 and moved into place, so wards keep their size when the map is zoomed.
         ? `<circle class="obs${w[5] ? " killed" : ""}" r="1.5" style="transform:translate(${w[1]}px,${Y(w[2])}px) scale(var(--ms,1))"><title>${tip}</title></circle>`
@@ -155,7 +172,7 @@ function draw(fig) {
       <div><b>${obs.length}</b> observers · <b>${sen.length}</b> sentries</div>
       ${obs.length ? `<div><b>${Math.round((killed / obs.length) * 100)}%</b> of observers dewarded</div>` : ""}
       ${life != null ? `<div>Observers lasted <b>${clock(Math.round(life))}</b> on average (max 6:00)</div>` : ""}</div>`;
-  }).join("") + `<p class="wm-note">${mode === "heat" ? "Brighter = more wards placed there (scaled to the busiest spot)." : "● observer, ◆ sentry; hollow = dewarded. Hover a ward for its time."}
+  }).join("") + `<p class="wm-note">${mode === "heat" ? "Brighter = more wards placed there (scaled to the busiest spot)." : "● observer, ◆ sentry; hollow = dewarded."}
     ${fig.dataset.mirrored === "1" ? " Dire games are mirrored so every ward is from the placer's own side (own base bottom left)." : ""}</p>`;
 }
 
@@ -170,5 +187,6 @@ export function wireWardMaps(root) {
       seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
       draw(fig);
     }));
+    fig.querySelector(".wm-player")?.addEventListener("change", (e) => { fig.dataset.who = e.target.value; draw(fig); });
   });
 }
