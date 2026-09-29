@@ -259,6 +259,18 @@ Measured on one real game (`npm run ocr:robustness`, needs the local test screen
 ~83% when the screenshot has been shrunk to 1440p-size (real 1440p captures are sharper
 than that test). One game is a small sample — the review step is there for the misses.
 
+Wider screenshots (the whole monitor, the Dota menu bar, a browser or Discord window beside
+the game): the reading above is version 1, and it's left as is. When it fails or reads
+fewer than 8 players on a screenshot, version 2 (`public/lib/ocr/locate.js`) cuts away bright
+windows, finds the hero cards (ten equal cards with the gap between the teams) or the
+scoreboard headers anywhere in the image, crops to the framing version 1 was tuned on and
+reads the crop with version 1. It's used only if it reads more (and at least 5 players), so
+a good version 1 reading is never replaced. It also rescues a screenshot that was taken
+for the wrong screen because the words GPM/XPM were visible in another window.
+`npm run ocr:wide` pastes the test screenshots into wider frames and scores both games:
+every frame reads as well as the original (the one miss left is a full-monitor capture
+at 1920 wide, which is the shrunk-resolution problem above, not a finding problem).
+
 ## AD2L view (top-left switcher)
 
 The switcher flips between our scrims and **AD2L S48 Champion**: standings, every
@@ -290,6 +302,7 @@ npm install
 npm start               # http://localhost:3000 — serves public/ like GitHub Pages does
 npm test                # logic tests; the OCR test runs only if test-screenshots/ exists
 npm run ocr:check       # OCR accuracy on the local test screenshots
+npm run ocr:wide        # OCR on the test screenshots inside wider captures (version 2)
 npm run rules:test      # evaluate the Firestore rules against sample requests (no deploy)
 ```
 

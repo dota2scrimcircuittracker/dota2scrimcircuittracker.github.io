@@ -8,6 +8,7 @@
     "test": "node --test test/*.test.js",
     "ocr:check": "node scripts/ocr-check.js",
     "ocr:robustness": "node scripts/ocr-robustness.js",
+    "ocr:wide": "node scripts/ocr-wide.js",
     "rules:test": "node scripts/rules-dry-test.cjs",
     "ad2l:sync": "node scripts/ad2l-sync.js",
     "heroic:sync": "node scripts/ad2l-sync.js --season 676 --out heroic.json",

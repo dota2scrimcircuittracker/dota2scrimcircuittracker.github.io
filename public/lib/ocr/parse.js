@@ -1,7 +1,38 @@
 import { loadImage, findWords } from "./core.js";
 import { readOverview } from "./overview.js";
 import { readScoreboard, isScoreboard } from "./scoreboard.js";
+import { trimBright, locateCards, cropImage } from "./locate.js";
 import { matchHero } from "../heroes.js";
+
+// How much of a screen was read: players with their core numbers (the scoreboard's hero and
+// GPM/XPM, the overview's K/D/A and net worth). -1 for an error.
+const GOOD = 8;
+// Version 2 must read at least this many players to be used at all, so a stray pattern in
+// a screenshot that isn't Dota can't replace version 1's error with a mostly empty reading.
+const ENOUGH = 5;
+export const quality = (kind, r) => (!r || r.error ? -1 : r.players.filter(kind === "scoreboard"
+  ? (p) => matchHero(p.heroRaw ?? "") && (p.gpm != null || p.xpm != null)
+  : (p) => p.kda && p.net_worth != null).length);
+
+// Version 2, for a screenshot version 1 couldn't read well: cut away bright windows beside
+// the game (locate.js), find the hero cards or scoreboard headers anywhere in what's left,
+// crop to the framing version 1 expects and read that crop with version 1. `kinds`: which
+// screens to try. Returns the best reading, or null.
+async function readWider(engine, image, kinds) {
+  const trim = trimBright(image);
+  const base = trim ? cropImage(image, trim) : image;
+  let best = null;
+  const keep = (kind, r) => { const q = quality(kind, r); if (q > (best?.q ?? -1)) best = { kind, r, q }; };
+  if (kinds.includes("overview")) {
+    const loc = locateCards(base);
+    if (loc) keep("overview", await readOverview(engine, cropImage(base, loc.rect)));
+  }
+  if (kinds.includes("scoreboard") && (best?.q ?? -1) < GOOD) {
+    const words = await findWords(engine, base);
+    if (isScoreboard(words)) keep("scoreboard", await readScoreboard(engine, base, words));
+  }
+  return best;
+}
 
 // Parse 1–2 post-game screenshots into a draft match (the review form's shape) plus
 // notes about anything that couldn't be read. `inputs` are whatever engine.decode accepts.
@@ -13,14 +44,36 @@ export async function parseScreenshots(engine, inputs, { onProgress } = {}) {
     onProgress?.(`Reading screenshot ${i + 1} of ${inputs.length}…`);
     const image = await loadImage(engine, input);
     const words = await findWords(engine, image);
+    // Version 2 (readWider) only runs when version 1 below fails or reads under GOOD players,
+    // and only replaces version 1's reading when it reads more.
+    const wider = async (kinds) => {
+      onProgress?.(`Screenshot ${i + 1}: looking for the game in a wider screenshot…`);
+      return readWider(engine, image, kinds.filter((k) => (k === "scoreboard" ? !scoreboard : !overview)));
+    };
+    const use = (w) => { if (w.kind === "scoreboard") scoreboard = w.r; else overview = w.r; };
     if (isScoreboard(words)) {
-      if (scoreboard) { notes.push(`Screenshot ${i + 1} is a second Scoreboard tab — ignored.`); continue; }
+      if (scoreboard) {
+        // Maybe an overview with scoreboard words beside it (this site open in another window).
+        const w = !overview && await wider(["overview"]);
+        if (w?.q >= GOOD) use(w); else notes.push(`Screenshot ${i + 1} is a second Scoreboard tab — ignored.`);
+        continue;
+      }
       const r = await readScoreboard(engine, image, words);
-      if (r.error) notes.push(`Screenshot ${i + 1}: ${r.error}`); else scoreboard = r;
+      const q = quality("scoreboard", r);
+      const w = q < GOOD ? await wider(["scoreboard", "overview"]) : null;
+      if (w && w.q > q && w.q >= ENOUGH) use(w);
+      else if (r.error) notes.push(`Screenshot ${i + 1}: ${r.error}`); else scoreboard = r;
     } else {
-      if (overview) { notes.push(`Screenshot ${i + 1} looks like a second overview — ignored.`); continue; }
+      if (overview) {
+        const w = !scoreboard && await wider(["scoreboard"]);
+        if (w?.q >= GOOD) use(w); else notes.push(`Screenshot ${i + 1} looks like a second overview — ignored.`);
+        continue;
+      }
       const r = await readOverview(engine, image);
-      if (r.error) notes.push(`Screenshot ${i + 1}: ${r.error} Use the post-game overview (hero cards) or the Scoreboard tab.`);
+      const q = quality("overview", r);
+      const w = q < GOOD ? await wider(["overview", "scoreboard"]) : null;
+      if (w && w.q > q && w.q >= ENOUGH) use(w);
+      else if (r.error) notes.push(`Screenshot ${i + 1}: ${r.error} Use the post-game overview (hero cards) or the Scoreboard tab.`);
       else overview = r;
     }
   }
