@@ -61,8 +61,13 @@ export function fitRatings(teams, series, { lambda = 0.5, beta = 0.05, before = 
 // (31/38/31), with 1/3 close behind; independent games (rho 0, 25/50/25) fit far worse.
 export const SERIES_CORR = 1 / 3;
 
+// Rating gaps are stretched by ODDS_SPREAD before becoming odds, so matchups differ more on
+// the page. 1.5 costs a little accuracy (series log loss 1.0813 vs 1.0710 unstretched) but still
+// beats calling every series 33/33/33 (1.0986); 2 would not.
+export const ODDS_SPREAD = 1.5;
+
 export function seriesOdds(ra, rb) {
-  const p = sig(ra - rb), both = SERIES_CORR * p * (1 - p);
+  const p = sig(ODDS_SPREAD * (ra - rb)), both = SERIES_CORR * p * (1 - p);
   return { game: p, home: p * p + both, tie: 2 * p * (1 - p) - 2 * both, away: (1 - p) * (1 - p) + both };
 }
 export const outcomeOf = (s) => (s.home_score > s.away_score ? "home" : s.home_score < s.away_score ? "away" : "tie");
