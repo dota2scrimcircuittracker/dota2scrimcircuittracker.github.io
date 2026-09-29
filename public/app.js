@@ -1736,10 +1736,15 @@ async function renderStandings(src) {
     }) };
   }).sort((a, b) => b.values.at(-1) - a.values.at(-1));
   const top = Math.max(0, ...race.map((r) => r.values.at(-1) ?? 0));
-  const raceHtml = nights.length >= 2 ? `${lineChart(race.map((r, i) => ({ label: r.t.name, values: r.values, cls: `s-c${(i % 10) + 1}`, end: `${r.values.at(-1)} · ${r.t.name}` })),
-      { endLabels: true, height: 320, xLabels: nights.map((_, i) => `Wk ${i + 1}`), step: top > 12 ? 4 : 2,
-        caption: "Game wins after each league night. Hover for every team's total that week; hover a name to pick out one team." })}
-` : "";
+  // Drawn at the panel's real width (not scaled from 800), so it spans the page with normal-size
+  // text; the height grows with the team count so every end label gets its own row.
+  const raceChart = (width) => {
+    const gap = race.length > 12 ? 16 : 23;
+    return lineChart(race.map((r, i) => ({ label: r.t.name, values: r.values, cls: `s-c${(i % 10) + 1}`, end: `${r.values.at(-1)} · ${r.t.name}` })),
+      { endLabels: true, width, gap, height: Math.max(280, 16 + 28 + 18 + (race.length - 1) * gap), xLabels: nights.map((_, i) => `Wk ${i + 1}`), step: top > 12 ? 4 : 2,
+        caption: "Game wins after each league night. Hover for every team's total that week; hover a name to pick out one team." });
+  };
+  const raceHtml = nights.length >= 2 ? `<div class="race"></div>` : "";
 
   const date = (s) => new Date(s * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const oddsBar = (o) => `<div class="st-odds" title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}">${
@@ -1792,6 +1797,26 @@ async function renderStandings(src) {
 
   wirePlayerTabs();
   wireCharts(app);
+  // The race panel may be hidden, so measure the tab bar (same width); the figure's padding and
+  // border take 30px of it.
+  const raceBox = app.querySelector(".race"), bar = app.querySelector(".st-tabs");
+  if (raceBox && bar) {
+    let drawn = 0;
+    const draw = () => {
+      const w = Math.max(320, Math.round(bar.clientWidth - 30));
+      if (w === drawn) return;
+      drawn = w;
+      raceBox.innerHTML = raceChart(w);
+      wireCharts(raceBox);
+    };
+    draw();
+    if ("ResizeObserver" in window) {
+      let timer;
+      // Kept on the element: an observer nothing references can be collected and stop firing.
+      raceBox._ro = new ResizeObserver(() => { clearTimeout(timer); timer = setTimeout(draw, 120); });
+      raceBox._ro.observe(bar);
+    }
+  }
   app.querySelector(".mx-jump")?.addEventListener("click", () => document.getElementById("mx-next")?.scrollIntoView({ block: "center" }));
 }
 

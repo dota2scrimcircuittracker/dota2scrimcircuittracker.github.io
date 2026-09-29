@@ -23,9 +23,9 @@ const xTicks = (n, x, h = H, labels = null) => {
   return s;
 };
 
-function figure(svg, data, caption, h = H) {
+function figure(svg, data, caption, h = H, w = W) {
   return `<figure class="chart" data-chart="${attr(JSON.stringify(data))}">
-    <svg viewBox="0 0 ${W} ${h}" role="img" aria-label="${attr(caption)}">${svg}
+    <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${attr(caption)}">${svg}
       <line class="cross" x1="0" x2="0" y1="${T}" y2="${h - B}" visibility="hidden"/><g class="hover-tags"></g></svg>
     <figcaption class="chart-read">${caption}</figcaption></figure>`;
 }
@@ -111,12 +111,14 @@ export function leadChart(adv, { xp = null, nameA = "Team A", nameB = "Team B", 
 // of the line's colour, rows at least 23px apart.
 const PW = 32, PH = 18, GAP = 23;
 // items: [{ y }] → same items, y nudged apart (in order) and kept between top and bottom.
-function stack(items, top, bottom) {
+function stack(items, top, bottom, gap = GAP) {
   const at = [...items].sort((a, b) => a.y - b.y);
   if (at.length) at[0].y = Math.max(at[0].y, top);
-  for (let j = 1; j < at.length; j++) at[j].y = Math.max(at[j].y, at[j - 1].y + GAP);
-  const over = at.length ? Math.max(0, at[at.length - 1].y - bottom) : 0; // pushed past the axis: shift all up
-  for (const a of at) a.y -= over;
+  for (let j = 1; j < at.length; j++) at[j].y = Math.max(at[j].y, at[j - 1].y + gap);
+  // Pushed past the axis: pull the bottom ones back up, only as far as they need, so a crowd at
+  // the bottom doesn't shove the top labels off the chart.
+  if (at.length) at[at.length - 1].y = Math.min(at[at.length - 1].y, bottom);
+  for (let j = at.length - 2; j >= 0; j--) at[j].y = Math.min(at[j].y, at[j + 1].y - gap);
   return at;
 }
 // A line with no portrait gets a short colour swatch in the frame's place.
@@ -129,28 +131,30 @@ const tag = (s, i, x0, cy, text, cls = "end-label") => `<g class="${cls} ${s.cls
 // framed in the line's colour and its `end` text (or label); hovering then shows the same
 // portraits with each value up the crosshair. height: taller plot when there are many labels.
 // xLabels: a name per point (e.g. "Wk 1") instead of minutes. step: gridlines at whole multiples
-// of step (small counts, where quarter ticks would land between whole numbers).
-export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H, xLabels = null, step = null } = {}) {
+// of step (small counts, where quarter ticks would land between whole numbers). width: draw at
+// this many units wide (the box's real pixel width, so text isn't scaled up); a wide chart gets
+// longer end labels. gap: rows between end labels, when many lines share the right edge.
+export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H, xLabels = null, step = null, width = W, gap = GAP } = {}) {
   const n = Math.max(...series.map((s) => s.values.length));
   const top = Math.max(...series.flatMap((s) => s.values));
   const max = fixed ?? (step ? Math.max(step, Math.ceil(top / step) * step) : niceMax(top));
-  const r = endLabels ? 168 : R, h = height;
+  const r = endLabels ? (width >= 1000 ? 230 : 168) : R, h = height, W = width;
   const x = (i) => L + (n > 1 ? i / (n - 1) : 0) * (W - L - r), y = (v) => T + (1 - v / max) * (h - T - B);
   let grid = "";
   const levels = step ? Array.from({ length: max / step }, (_, j) => max - j * step) : [max, max * 0.75, max / 2, max / 4];
   for (const v of levels) grid += `<line class="grid" x1="${L}" x2="${W - r}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${tick(v)}</text>`;
   const lines = series.map((s, i) => `<path class="line ${s.cls ?? ""}${s.dash ? " dash" : ""}${s.strong ? " strong" : ""}" data-i="${i}" d="${path(s.values, x, y)}"><title>${attr(s.label)}</title></path>`).join("");
-  const cut = (t) => (t.length > 16 ? `${t.slice(0, 15)}…` : t);
+  const room = Math.floor((r - 55) / 7.5), cut = (t) => (t.length > room ? `${t.slice(0, room - 1)}…` : t);
   const ends = endLabels
-    ? stack(series.map((s, i) => ({ i, s, y: y(s.values[s.values.length - 1] ?? 0) })), T + PH / 2, h - B - PH / 2)
+    ? stack(series.map((s, i) => ({ i, s, y: y(s.values[s.values.length - 1] ?? 0) })), T + PH / 2, h - B - PH / 2, gap)
       .map(({ i, s, y: cy }) => tag(s, i, W - r + 10, cy, cut(s.end ?? s.label))).join("")
     : "";
   const svg = `${grid}${xTicks(n, x, h, xLabels)}<line class="zero" x1="${L}" x2="${W - r}" y1="${y(0)}" y2="${y(0)}"/>${lines}${ends}`;
   // With end labels the portraits name every line, so no legend underneath.
   const legend = endLabels ? "" : `<div class="chart-legend">${series.map((s, i) => `<span class="lg-item ${s.cls ?? ""}${s.dash ? " dash" : ""}" data-i="${i}"><i></i>${attr(s.label)}</span>`).join("")}</div>`;
-  const data = { kind: "lines", n, x: [L, W - r], y: [T, h - B], max, tags: endLabels, xl: xLabels,
+  const data = { kind: "lines", n, w: W, gap, x: [L, W - r], y: [T, h - B], max, tags: endLabels, xl: xLabels,
     series: series.map((s) => ({ label: s.label, values: s.values, ...(endLabels ? { img: s.img, cls: s.cls, dash: s.dash } : {}) })) };
-  return figure(svg, data, caption, h).replace("</figure>", `${legend}</figure>`);
+  return figure(svg, data, caption, h, W).replace("</figure>", `${legend}</figure>`);
 }
 
 // Hover crosshair + readout for every chart under root.
@@ -187,7 +191,7 @@ export function wireCharts(root) {
           const live = d.series.map((s, j) => ({ i: j, s, v: s.values[i] })).filter((t) => t.v != null).map((t) => ({ ...t, y: yv(t.v), dot: yv(t.v) }));
           const left = cx > (d.x[0] + d.x[1]) / 2, x0 = left ? cx - 12 - PW : cx + 12;
           // Ten portraits need more height than the values span, so each gets a leader from its dot.
-          const placed = stack(live, d.y[0] + PH / 2, d.y[1] - PH / 2), ex = left ? cx - 10 : cx + 10;
+          const placed = stack(live, d.y[0] + PH / 2, d.y[1] - PH / 2, d.gap ?? GAP), ex = left ? cx - 10 : cx + 10;
           tags.innerHTML = placed.map((t) => `<path class="hover-lead ${t.s.cls ?? ""}" d="M${cx},${t.dot.toFixed(1)}L${ex},${t.y.toFixed(1)}"/>`).join("") +
             live.map((t) => `<circle class="hover-dot ${t.s.cls ?? ""}" cx="${cx}" cy="${t.dot.toFixed(1)}" r="3"/>`).join("") +
             placed.map((t) => tag(t.s, t.i, x0, t.y, t.v >= 1000 ? `${(t.v / 1000).toFixed(1)}k` : String(t.v), `hover-tag${left ? " flip" : ""}`)).join("");
