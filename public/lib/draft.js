@@ -64,20 +64,33 @@ export function draftAnalysis(matches) {
 export function teamDraftPhases(games) {
   const mk = () => PHASES.map(() => new Map());
   const bans = mk(), against = mk(), picks = mk();
-  let drafted = 0;
+  // Per list and phase: slots filled and how many of those came in wins.
+  const sum = () => PHASES.map(() => ({ n: 0, wins: 0 }));
+  const totals = { bans: sum(), against: sum(), picks: sum() };
+  let drafted = 0, wins = 0, layout = null;
   for (const { m, side } of games) {
     if (!m.draft?.length) continue;
     drafted++;
-    for (const s of phasedDraft(m.draft)) {
+    const won = m.winner === side;
+    if (won) wins++;
+    const steps = phasedDraft(m.draft);
+    // The whole draft's shape (both teams) per phase, from the first game that has one.
+    if (!layout) {
+      layout = PHASES.map(() => ({ bans: 0, picks: 0 }));
+      for (const s of steps) layout[Math.min(s.phase, 3) - 1][s.kind === "ban" ? "bans" : "picks"]++;
+    }
+    for (const s of steps) {
       const i = Math.min(s.phase, 3) - 1;
-      const target = s.kind === "ban" ? (s.side === side ? bans : against) : s.side === side ? picks : null;
-      if (!target) continue;
+      const key = s.kind === "ban" ? (s.side === side ? "bans" : "against") : s.side === side ? "picks" : null;
+      if (!key) continue;
+      const target = { bans, against, picks }[key];
       const e = target[i].get(s.hero) ?? { hero: s.hero, n: 0, wins: 0 };
       e.n++;
-      if (m.winner === side) e.wins++;
+      totals[key][i].n++;
+      if (won) { e.wins++; totals[key][i].wins++; }
       target[i].set(s.hero, e);
     }
   }
-  const top = (maps) => maps.map((mp) => [...mp.values()].sort((a, b) => b.n - a.n || a.hero.localeCompare(b.hero)));
-  return drafted ? { drafted, bans: top(bans), against: top(against), picks: top(picks) } : null;
+  const top = (maps) => maps.map((mp) => [...mp.values()].sort((a, b) => b.n - a.n || b.wins - a.wins || a.hero.localeCompare(b.hero)));
+  return drafted ? { drafted, wins, layout, totals, bans: top(bans), against: top(against), picks: top(picks) } : null;
 }

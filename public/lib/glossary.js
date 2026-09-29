@@ -111,7 +111,7 @@ export const INFO = {
   best_last_pick: "Best record as a team's last pick, among heroes last-picked 3+ times.",
   draft_slot: "Average position of its pick in the draft, counting all 24 steps (bans and picks). Lower = taken earlier.",
   by_draft_pick: "Record by which of the team's five picks this hero came in (1st pick … last pick). A big last-pick gap means it works best as a counter-pick. Under each record: the average game rating (0–100, same curve as the tier list), KDA, GPM, damage per minute and kill participation from that slot, green or red when clearly above or below its average across all slots.",
-  draft_by_phase: "What this team bans, what gets banned against them and what they pick, split by draft phase. Phase 1 = opening 7 bans and first 2 picks; phase 2 = 3 bans and 6 picks; phase 3 = last 4 bans and last 2 picks.",
+  draft_by_phase: "What this team bans, what gets banned against them and what they pick, split by draft phase. Phase 1 = opening 7 bans and first 2 picks; phase 2 = 3 bans and 6 picks; phase 3 = last 4 bans and last 2 picks. Count = times; % of drafts = how often it comes up; Win % = the team's record in those games (for picks, with the hero).",
   hero_phases: "When this hero gets banned or picked in Captains Mode drafts, split by phase.",
 
   // Player / team cards

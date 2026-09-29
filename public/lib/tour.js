@@ -24,6 +24,8 @@ const rectOf = (els) => els.filter(visible).map((e) => e.getBoundingClientRect()
   top: Math.min(a.top, r.top), left: Math.min(a.left, r.left), bottom: Math.max(a.bottom, r.bottom), right: Math.max(a.right, r.right),
 }), { top: Infinity, left: Infinity, bottom: -Infinity, right: -Infinity });
 const navHref = (key) => document.querySelector(`#nav a[data-nav="${key}"]`)?.getAttribute("href");
+// The first letters of a real team or player name on the page, for the search stop to type.
+const nameStart = () => (document.querySelector('#standings a.team-link, #app a[href*="/teams/"], #app a[href*="player/"]')?.textContent ?? "").trim().slice(0, 3) || "a";
 
 let deps = null; // { go, here } from app.js
 let run = null;  // the running tour
@@ -41,8 +43,10 @@ const standingsKey = (ctx) => (ctx.ad2l ? "standings" : "matches");
 const CORE = [
   {
     title: "Pick a league",
-    text: "Our scrims and every AD2L S48 division live here. Switching keeps you on the same tab: Players stays Players.",
+    text: "Our scrims and every AD2L S48 division live here. Switching keeps you on the same tab: Players stays Players. Pick one and the tour carries on there.",
     enter: async (t) => { const btn = document.getElementById("league-btn"); await t.click(btn); return document.getElementById("league-menu"); },
+    // Clicks on a league go through: the tour switches to it and carries on.
+    pass: (t, el) => { const a = el.closest("#league-menu a[data-league]"); if (a) t.switchLeague(a); },
     leave: () => { const m = document.getElementById("league-menu"); if (!m.hidden) document.getElementById("league-btn").click(); },
   },
   {
@@ -65,7 +69,7 @@ const CORE = [
   },
   {
     title: "What does that mean?",
-    text: "Tap any little i next to a stat and it explains how that number is worked out.",
+    text: "Tap ⓘ next to any stat to see how it's worked out.",
     enter: async (t) => {
       await t.visit(navHref(standingsKey(t.ctx)));
       if (t.ctx.ad2l) await t.tab("table");
@@ -91,7 +95,7 @@ const CORE = [
       const panel = await t.tab("heroes");
       // AD2L drafts: box the phase grid and its heading. Scrims have no draft: the hero pool.
       const grid = panel && (await t.find("#pp-panel-heroes .phase-grid", 1500));
-      return grid ? [grid, grid.previousElementSibling].filter(Boolean) : panel;
+      return grid ? [grid, grid.previousElementSibling, grid.previousElementSibling?.previousElementSibling].filter(Boolean) : panel;
     },
     alt: { selector: ".pp-panel", title: "Hero pool", text: "Heroes shows what this team plays, with its W–L on each." },
   },
@@ -119,6 +123,7 @@ const CORE = [
       const box = document.getElementById("search"), input = document.getElementById("search-in");
       await t.point(input);
       input.focus();
+      if (!t.ctx.query) t.ctx.query = nameStart();
       for (const ch of t.ctx.query) { t.live(); input.value += ch; input.dispatchEvent(new Event("input")); await sleep(calm() ? 0 : 140); }
       const pop = await t.find("#search-pop", 2500);
       return pop ? [box, pop] : box;
@@ -448,6 +453,15 @@ class Tour {
       else if (e.key === "ArrowLeft" && !this.busy) { e.preventDefault(); this.back(); }
     };
     document.addEventListener("keydown", this.onKey, true);
+    // Clicks on the dimmed page stop here, so the page's own "click outside" handlers (which
+    // close the league menu) don't fire. A stop with pass() lets clicks inside its box through.
+    this.ui.block.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const s = this.stops?.[this.i];
+      if (this.busy || !s?.pass || !this.target) return;
+      const under = document.elementsFromPoint(e.clientX, e.clientY).find((el) => !this.ui.root.contains(el));
+      if (under && this.target.some((el) => el.contains(under))) s.pass(this, under);
+    });
     const follow = () => { if (this.dead) return; this.place(); this.raf = requestAnimationFrame(follow); };
     this.raf = requestAnimationFrame(follow);
     document.body.classList.add("touring");
@@ -498,6 +512,24 @@ class Tour {
     }
   }
 
+  // The visitor picked a league from the menu: go there and carry on from the next stop, with
+  // this league's stops and freshly picked pages.
+  async switchLeague(a) {
+    const league = a.dataset.league;
+    if (league === this.ctx.league) return this.next();
+    this.busy = true;
+    const at = stopKey(this.stops[this.i]);
+    a.click(); // the site's own link handler routes there
+    const until = Date.now() + 5000;
+    while (document.body.dataset.league !== league && Date.now() < until) { await sleep(50); if (this.dead) return; }
+    Object.assign(this.ctx, { league: document.body.dataset.league, ad2l: !!navHref("standings"), picked: {}, query: "" });
+    this.start = deps.here(); // Done lands in the new league
+    this.stops = CHAPTERS[this.chapterName].stops.filter((s) => !s.when || s.when(this.ctx));
+    this.i = Math.max(this.stops.findIndex((s) => stopKey(s) === at), 0);
+    this.busy = false;
+    return this.go(this.i + 1, 1);
+  }
+
   next() { this.go(this.i + 1, 1); }
   back() { if (this.i > 0) this.go(this.i - 1, -1); }
 
@@ -534,7 +566,8 @@ class Tour {
     u.count.textContent = count;
     u.count.hidden = !count;
     u.title.textContent = title;
-    u.text.textContent = text;
+    // "ⓘ" in a caption draws the site's own info dot.
+    u.text.replaceChildren(...text.split("ⓘ").flatMap((part, i) => (i ? [Object.assign(document.createElement("span"), { className: "tour-i", textContent: "i" }), part] : [part])));
     u.btns.innerHTML = "";
     for (const b of buttons.filter(Boolean)) {
       const [cls, label, fn] = b;
@@ -558,6 +591,7 @@ class Tour {
       return i ? [Object.assign(document.createElement("i"), { textContent: "›", ariaHidden: "true" }), b] : [b];
     }));
     el.hidden = !parts.length;
+    el.scrollLeft = el.scrollWidth; // phones show it on one line: keep the page you're on in view
     el.setAttribute("aria-label", parts.length ? `You are on ${parts.join(", ")}` : "");
     this.place();
   }
@@ -567,6 +601,7 @@ class Tour {
     const u = this.ui, els = this.target;
     const phone = innerWidth < 640;
     u.card.classList.toggle("docked", phone || !els);
+    if (!phone || !els) u.card.classList.remove("up");
     if (!els || !els[0].isConnected || !visible(els[0])) {
       u.box.hidden = true; u.block.classList.add("dim");
       u.card.classList.toggle("center", !els);
@@ -575,8 +610,16 @@ class Tour {
     }
     u.block.classList.remove("dim"); u.card.classList.remove("center");
     const pad = 6, r = rectOf(els);
-    const top = Math.max(r.top - pad, 4), left = Math.max(r.left - pad, 4);
-    const bottom = Math.min(r.bottom + pad, innerHeight - 4), right = Math.min(r.right + pad, innerWidth - 4);
+    let top = Math.max(r.top - pad, 4), bottom = Math.min(r.bottom + pad, innerHeight - 4);
+    const left = Math.max(r.left - pad, 4), right = Math.min(r.right + pad, innerWidth - 4);
+    if (phone && !u.card.hidden) {
+      // The caption docks at the bottom, or at the top when only that leaves the whole box
+      // clear (the league menu, which can't scroll). The box stops at the caption's edge.
+      const ch = u.card.offsetHeight + 16;
+      const up = bottom > innerHeight - ch && top >= ch && bottom - top <= innerHeight - ch;
+      u.card.classList.toggle("up", up);
+      if (up) top = Math.max(top, ch); else bottom = Math.min(bottom, innerHeight - ch);
+    }
     u.box.hidden = false;
     Object.assign(u.box.style, { top: `${top}px`, left: `${left}px`, width: `${Math.max(right - left, 0)}px`, height: `${Math.max(bottom - top, 0)}px` });
     if (phone || u.card.hidden) { u.card.style.left = u.card.style.top = ""; return; }
@@ -593,16 +636,20 @@ class Tour {
     u.card.style.left = `${x}px`; u.card.style.top = `${y}px`;
   }
 
-  // Scroll so the element sits in view below the sticky header.
+  // Scroll so the element sits in view below the sticky header (phones: the header scrolls
+  // away during the tour) and clear of a docked caption.
   bringIntoView(els) {
-    els = [els].flat().filter((e) => !e.closest(".top") && getComputedStyle(e).position !== "fixed");
+    const bar = document.querySelector(".top");
+    const sticky = bar && getComputedStyle(bar).position === "sticky";
+    els = [els].flat().filter((e) => !(sticky && e.closest(".top")) && getComputedStyle(e).position !== "fixed");
     if (!els.length) return;
-    const head = document.querySelector(".top")?.getBoundingClientRect().bottom ?? 0;
+    const card = this.ui.card, docked = !card.hidden && card.classList.contains("docked");
+    const cr = card.getBoundingClientRect();
+    let head = sticky ? bar.getBoundingClientRect().bottom : 0;
+    if (docked && card.classList.contains("up")) head = Math.max(head, cr.bottom);
     const r = rectOf(els);
     r.height = r.bottom - r.top;
-    // Phones: the caption docks at the bottom, so the room ends at its top edge.
-    const card = this.ui.card;
-    const floor = !card.hidden && card.classList.contains("docked") ? card.getBoundingClientRect().top - 8 : innerHeight - 8;
+    const floor = docked && !card.classList.contains("up") ? cr.top - 8 : innerHeight - 8;
     const room = floor - head;
     if (r.top >= head + 8 && r.bottom <= floor) return;
     const y = r.height > room - 40 ? r.top - head - 16 : r.top - head - (room - r.height) / 2;

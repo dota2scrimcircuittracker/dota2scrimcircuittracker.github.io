@@ -13,7 +13,7 @@ import { towerMapHtml, towerSummaryHtml, wireTowerMaps } from "./lib/towermap.js
 import { gameGoldHtml, wireGameGold } from "./lib/gamegold.js";
 import { itemLeadHtml, LAYERS } from "./lib/itemlead.js";
 import { buildPlayerIndex, matchPlayers, nameKey } from "./lib/players.js";
-import { draftAnalysis, teamDraftPhases } from "./lib/draft.js";
+import { draftAnalysis, teamDraftPhases, PHASES } from "./lib/draft.js";
 import { aliasOf, asAd2l, guessTeams, openGames, rosterQuestions, sameTeams, teamByName } from "./lib/unticketed.js";
 import { tune, backtest, fitRatings, seriesOdds, isPlayed, outcomeOf, favourite, draftRead, pubsSince, pubSummary, standings, crowd, validPicks, modelCall, TIE_EDGE, predictDraft } from "./lib/predict.js";
 import { strengthOfSchedule } from "./lib/schedule.js";
@@ -26,7 +26,7 @@ import { RANK_STATS, RANK_GROUPS, formatStat, withPerGame, rankStat, ends, place
 import { routeOf, sharePath } from "./lib/share.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
 import { initTour } from "./lib/tour.js";
-import { itemIcon, itemName, itemStats, averageTimes, fastestCore, timingsOf, hasItems, clock } from "./lib/items.js";
+import { itemIcon, itemName, itemStats, averageTimes, timingsOf, hasItems, clock } from "./lib/items.js";
 import { gameLanes, laneCuts, cutFor, verdict, playerLane, laneSummary, laneBoard, laneRoleOf, LANE_LABEL, LANE_GROUPS, MAP_LANE } from "./lib/lanes.js";
 
 const app = document.getElementById("app");
@@ -3376,7 +3376,6 @@ function weekHighlights(games, src, league = games) {
   const gpm = best(({ p }) => p.gpm);
   const kills = best(({ p }) => p.kills);
   const vs = (m) => `${esc(m.team_a)} vs ${esc(m.team_b)}`;
-  const core = fastestCore(games, league);
   const cuts = src.ad2l ? laneCuts(league.filter(hasDetails)) : null;
   const laner = cuts ? bestLaner(laneBoard(games, cuts, playerKey, 0)) : null;
   return [
@@ -3387,8 +3386,6 @@ function weekHighlights(games, src, league = games) {
     ["Most kills", fmt(kills.p.kills), `<b>${playerLink(src, kills.p)}</b> · ${heroLink(src, kills.p.hero)} · ${vs(kills.m)}`, kills.p.hero],
     ...(laner ? [["Best laner", signedK(laner.margin),
       `gold + XP lead at 10', won ${laner.won} of ${laner.lanes} lane${laner.lanes === 1 ? "" : "s"} · <b>${playerLink(src, laner.p)}</b> · ${esc(LANE_GROUPS.find(([k]) => k === laner.group)[1])}`, laner.p.hero, "lane_best_week"]] : []),
-    ...(core ? [["Fastest core item", `${itemIcon(core.key)} ${clock(core.sec)}`,
-      `${esc(itemName(core.key))}, ${clock(core.ahead)} ahead of the league's ${esc(core.p.hero)} average · <b>${playerLink(src, core.p)}</b> · ${heroLink(src, core.p.hero)} · ${vs(core.m)}`, core.p.hero, "fastest_core"]] : []),
   ];
 }
 
@@ -3759,12 +3756,36 @@ async function renderTeams(src, slug) {
   const phases = (() => {
     const ph = h.drafted ? teamDraftPhases(h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side)) : null;
     if (!ph) return "";
-    const line = (label, lists, count) => `<div class="ph-row"><div class="ph-label">${label}</div>${lists.map((l, i) => `<div class="ph-cell"><div class="ph-head">Phase ${i + 1}</div>${chips(l, count)}</div>`).join("")}</div>`;
+    // Each chip carries all three readings; the toggle above the grid picks which one shows.
+    const SHOW = 6, n = ph.drafted, rec = (x) => `${x.wins}–${x.n - x.wins}`;
+    const wr = (x) => x.wins / x.n, tone = (x) => (wr(x) > 0.5 ? "up" : wr(x) < 0.5 ? "down" : "");
+    const verb = { bans: "Banned by", against: "Banned against", picks: "Picked by" };
+    const chip = (key, x, i, j) => `<div class="hero-chip ph-chip${j >= SHOW ? " ph-extra" : ""}" title="${esc(`${x.hero}: ${verb[key].toLowerCase()} ${team.name} ${plural(x.n, "time")} in phase ${i + 1} (${pct0(x.n / n)} of ${plural(n, "draft")}). ${key === "picks" ? "Record with it" : "Their record in those games"}: ${rec(x)}.`)}">
+        ${portrait(x.hero)}<span>${heroLink(src, x.hero)}</span>
+        <b class="pv pv-n">${key === "picks" ? rec(x) : `×${x.n}`}</b>
+        <b class="pv pv-r">${pct0(x.n / n)}</b>
+        <b class="pv pv-w ${tone(x)}">${pct0(wr(x))}<small>${rec(x)}</small></b></div>`;
+    const cell = (key, list, i) => {
+      const t = ph.totals[key][i], heroes = list.length;
+      const sum = t.n ? `${plural(t.n, key === "picks" ? "pick" : "ban")} · ${(t.n / n).toFixed(1)} per draft · ${heroes} hero${heroes === 1 ? "" : "es"}` : "None";
+      return `<div class="ph-cell"><div class="ph-sum"><b class="ph-mob">Phase ${i + 1} · </b>${sum}</div>
+        ${list.length ? `<div class="hero-chips">${list.map((x, j) => chip(key, x, i, j)).join("")}</div>` : ""}
+        ${list.length > SHOW ? `<button type="button" class="link-btn ph-more" data-more="${list.length - SHOW}">+${list.length - SHOW} more</button>` : ""}</div>`;
+    };
+    const line = (key, label, sub) => `<div class="ph-row"><div class="ph-label">${label}<small>${sub}</small></div>${ph[key].map((l, i) => cell(key, l, i)).join("")}</div>`;
+    const shape = (l) => (l ? `${plural(l.bans, "ban")} · ${plural(l.picks, "pick")}` : "");
+    const view = (() => { try { return localStorage.getItem("phaseView") || "n"; } catch { return "n"; } })();
+    const seg = ([id, label]) => `<button type="button" class="seg${id === view ? " on" : ""}" data-ph-view="${id}" aria-pressed="${id === view}">${label}</button>`;
     return `<h2>Draft by phase${info("draft_by_phase")}</h2>
-      <div class="phase-grid reveal">
-        ${line("They ban", ph.bans, (x) => `×${x.n}`)}
-        ${line("Banned against them", ph.against, (x) => `×${x.n}`)}
-        ${line("They pick", ph.picks, (x) => `${x.wins}–${x.n - x.wins}`)}
+      <div class="ph-bar">
+        <div class="row segs ph-segs" role="group" aria-label="Show">${[["n", "Count"], ["r", "% of drafts"], ["w", "Win %"]].map(seg).join("")}</div>
+        <span class="ph-note">${plural(n, "draft")} · ${ph.wins}–${n - ph.wins} in them</span>
+      </div>
+      <div class="phase-grid reveal" data-view="${view}">
+        <div class="ph-row ph-top"><div class="ph-label"></div>${PHASES.map((p, i) => `<div class="ph-head">Phase ${p}<small>${shape(ph.layout?.[i])} in the whole draft</small></div>`).join("")}</div>
+        ${line("bans", "They ban", "Win % = their record in those games")}
+        ${line("against", "Banned against them", "Win % = their record when it was taken away")}
+        ${line("picks", "They pick", "Win % = their record with the hero")}
       </div>
 `;
   })();
@@ -3824,6 +3845,18 @@ async function renderTeams(src, slug) {
   wireWardMaps(app);
   wireFightMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
   app.querySelectorAll("[data-goto-tab]").forEach((b) => (b.onclick = () => document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click()));
+  // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
+  app.querySelector(".ph-segs")?.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-ph-view]");
+    if (!b) return;
+    app.querySelector(".phase-grid").dataset.view = b.dataset.phView;
+    for (const x of app.querySelectorAll(".ph-segs .seg")) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }
+    try { localStorage.setItem("phaseView", b.dataset.phView); } catch {}
+  });
+  app.querySelectorAll(".ph-more").forEach((b) => (b.onclick = () => {
+    const open = b.closest(".ph-cell").classList.toggle("open");
+    b.textContent = open ? "Show less" : `+${b.dataset.more} more`;
+  }));
 
   document.getElementById("team-select").onchange = (e) => { location.hash = `${base}/${e.target.value}`; };
   if (h.detailed.length) {
@@ -3981,7 +4014,8 @@ function tierSection(src, matches, model) {
       return `<div class="chip ${p.role}${open ? " open" : ""}" style="--i:${i}" data-key="${esc(p.key)}" tabindex="0" role="button" aria-expanded="${open}" title="${open ? "Click to close" : "Click for the breakdown"}">
         <div class="chip-top"><span class="chip-name">${playerLink(src, p)}</span><span class="chip-rating">${p.rating}</span></div>
         <div class="chip-meta">${p.team ? teamLink(src, p.team) : ""}${p.standin ? " · stand-in" : ""}</div>
-        <div class="chip-foot"><span class="role-tag">${p.role === "core" ? "Core" : "Support"}</span><span>${p.wins}–${p.games - p.wins}</span>${rank ? `<span>${esc(rank)}</span>` : ""}<span class="chip-caret">${open ? "▴" : "▾"}</span></div>
+        <div class="chip-foot"><span class="role-tag">${p.role === "core" ? "Core" : "Support"}</span><span>${p.wins}–${p.games - p.wins}</span>${rank ? `<span>${esc(rank)}</span>` : ""}</div>
+        <div class="chip-caret" aria-hidden="true">${open ? "Close <b>▴</b>" : "Breakdown <b>▾</b>"}</div>
         ${open ? tierBreakdown(src, p) : ""}
       </div>`;
     };

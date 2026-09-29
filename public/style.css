@@ -954,7 +954,11 @@ button.seg.on { background: var(--accent); border-color: var(--accent); color: v
 /* expandable tier card: the rating breakdown */
 .tier-band .chip { cursor: pointer; }
 .chip:focus-visible { outline: 2px solid var(--tc); outline-offset: 2px; }
-.chip-caret { margin-left: auto; color: var(--dim); }
+.chip-caret { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px -12px -10px; padding: 7px 0; border-top: 1px solid var(--seam); background: rgba(0, 0, 0, .18); color: var(--dust); font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; transition: color .15s, background .15s; }
+.chip:hover .chip-caret, .chip:focus-visible .chip-caret { color: var(--tc); background: rgba(0, 0, 0, .3); }
+.chip.open .chip-caret { color: var(--tc); }
+.chip-caret b { font-size: 14px; font-weight: 400; letter-spacing: 0; }
+@media (pointer: coarse) { .chip-caret { padding: 11px 0; font-size: 11px; } }
 .chip.open { flex-basis: 100%; width: 100%; min-width: 0; cursor: default; border-color: var(--seam-2); border-left-color: var(--tc); }
 .chip.open:hover { transform: none; }
 .chip.open > .chip-top, .chip.open > .chip-meta, .chip.open > .chip-foot { cursor: pointer; }
@@ -1023,6 +1027,7 @@ button.seg.on { background: var(--accent); border-color: var(--accent); color: v
   .chip.open > .bd { display: contents; }
   .chip.open .bd-left { grid-column: 1; grid-row: 4; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--seam); }
   .chip.open .bd-right { grid-column: 2; grid-row: 1 / span 4; }
+  .chip.open > .chip-caret { grid-column: 1 / -1; grid-row: 5; margin-top: 16px; }
 }
 /* how it's scored */
 @media (min-width: 1100px) {
@@ -1050,6 +1055,7 @@ details.how h4 { margin: 0 0 6px; font: 600 11px var(--mono); letter-spacing: .1
   .bd { overflow-x: clip; } /* every card fits (checked at 375px); this only hides a 1px rounding sliver */
   .tier-chips:has(.chip.open) { padding: 8px 6px 8px 8px; }
   .chip.open { padding: 10px 8px; }
+  .chip.open > .chip-caret { margin-inline: -8px; }
   .bd-100 { min-width: 44px; width: auto; }
   .bd-raw { white-space: normal; line-height: 1.25; }
   .bd-table .bd-note { display: none; }
@@ -1166,9 +1172,24 @@ figure.wardmap[data-mode="dots"] .wm-dim { fill: rgba(8, 8, 6, .5); }
 .phase-grid { display: grid; gap: 1px; background: var(--seam); border: 1px solid var(--seam); }
 .ph-row { display: grid; grid-template-columns: 160px repeat(3, minmax(0, 1fr)); gap: 1px; }
 .ph-row > div { background: var(--stone); padding: 12px; }
-.ph-label { font: 800 15px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--bone); display: flex; align-items: center; }
-.ph-head { font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
+.ph-label { font: 800 15px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--bone); display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.ph-label small { font: 400 11px/1.35 var(--mono); letter-spacing: 0; text-transform: none; color: var(--dim); }
+.ph-top > div { padding: 10px 12px; }
+.ph-head { font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--bone); display: flex; flex-direction: column; gap: 5px; }
+.ph-head small { letter-spacing: .04em; text-transform: none; font-size: 11px; color: var(--dim); }
+.ph-sum { font: 11px/1.3 var(--mono); color: var(--dust); margin-bottom: 8px; }
 .ph-cell .hero-chips { gap: 6px; }
+.ph-chip .pv small { font-size: 10px; color: var(--dim); margin-left: 5px; font-weight: 400; }
+.ph-chip .pv-w.up { color: var(--jade); }
+.ph-chip .pv-w.down { color: var(--ember); }
+.phase-grid[data-view="n"] .pv:not(.pv-n), .phase-grid[data-view="r"] .pv:not(.pv-r), .phase-grid[data-view="w"] .pv:not(.pv-w) { display: none; }
+.ph-cell:not(.open) .ph-extra { display: none; }
+.ph-more { margin-top: 8px; font: 11px var(--mono); }
+.ph-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+.ph-bar .segs { margin-bottom: 0; }
+.ph-note { font: 11px var(--mono); color: var(--dust); }
+.ph-mob { display: none; color: var(--bone); }
+@media (max-width: 900px) { .ph-top { display: none; } .ph-mob { display: inline; } }
 tr.muted td { color: var(--dim); }
 @media (max-width: 900px) { .ph-row { grid-template-columns: 1fr; } }
 
@@ -2346,6 +2367,11 @@ button.tour-restart[hidden] { display: none; }
 .tour-path[hidden] { display: none; }
 .tour-path i { font-style: normal; color: var(--dim); }
 .tour-path .here { color: var(--bone); }
+/* "ⓘ" in a caption: the site's info dot. */
+.tour-i {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; margin: 0 1px; vertical-align: 1px;
+  border: 1px solid var(--seam-2); border-radius: 50%; color: var(--bone); font: 600 10px/1 var(--mono);
+}
 .tour-title { margin: 0 0 6px; font: 800 22px/1.05 var(--display); letter-spacing: .02em; text-transform: uppercase; }
 .tour-text { margin: 0 0 14px; color: var(--dust); }
 .tour-btns { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
@@ -2382,7 +2408,19 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
 .tour-invite b { font: 800 20px/1.05 var(--display); text-transform: uppercase; letter-spacing: .02em; }
 .tour-invite span { color: var(--dust); margin-bottom: 8px; }
 @keyframes tour-in { from { transform: translateY(16px); opacity: 0; } }
-@media (max-width: 640px) { .tour-invite { left: 16px; right: 16px; bottom: 16px; width: auto; } }
+@media (max-width: 640px) {
+  .tour-invite { left: 16px; right: 16px; bottom: 16px; width: auto; }
+  /* Phones: the header scrolls away during the tour, and the docked caption is compact. */
+  body.touring .top { position: static; }
+  .tour-card.docked:not(.center) { left: 8px !important; right: 8px; bottom: 8px; padding: 10px 12px; font-size: 13px; }
+  .tour-card.docked.up:not(.center) { top: 8px !important; bottom: auto; }
+  .tour-card.docked .tour-count { margin-bottom: 5px; }
+  .tour-card.docked .tour-path { flex-wrap: nowrap; white-space: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 0 4px; }
+  .tour-card.docked .tour-path::-webkit-scrollbar { display: none; }
+  .tour-card.docked .tour-title { font-size: 17px; margin-bottom: 3px; }
+  .tour-card.docked .tour-text { margin-bottom: 8px; line-height: 1.4; }
+  .tour-card.docked .tour-btn { padding: 8px 10px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .tour-box, .tour-card, .tour-block.dim { transition: none; }
   .tour-invite, .tour-ripple.go { animation: none; }
