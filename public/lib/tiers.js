@@ -40,6 +40,8 @@
 // games (tierModel on them; the Heroic A/B views pass the whole division's model). Ratings
 // compare players within a league, not across leagues.
 
+import { tierLaneResult } from "./lanes.js";
+
 export const MIN_GAMES = 3;
 export const K_PRIOR = 6;
 export const K_SPEED = 3;
@@ -77,7 +79,7 @@ export const METRICS = {
   xp: { label: "XP share", def: "Share of the team's experience: the player's XPM over the team's total." },
   kills: { label: "Kill share", def: "Share of the team's kills the player got the last hit on." },
   assists: { label: "Assist share", def: "Share of the team's kills the player assisted. Kill share + assist share = kill participation." },
-  lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over the lane opponent. Cores: against the enemy core in their lane (pos 1 vs pos 3, mid vs mid). Supports: their lane pair against the enemy pair." },
+  lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over who they laned against, from the replay's lanes. Cores: against the enemy core(s) in their lane. Supports: their whole lane against the enemy's. Jungling: no lane result." },
   lane: { label: "Laning", def: "Laning efficiency: gold earned in the first 10 minutes as a % of the most a lane can give (OpenDota's lane efficiency)." },
   stuns: { label: "Stun time", def: "Seconds of disable dealt to enemy heroes per minute (OpenDota's stun figure)." },
   vision: { label: "Ward uptime", def: "Observer wards the player had up at once, on average: every ward's lifetime (up to its 6 minutes) added up, over the game's length." },
@@ -134,33 +136,13 @@ function observerUptime(obs, durSec) {
   return sec / durSec;
 }
 
-// Gold + XP at 10 minutes (null if the replay doesn't have both).
-const at10 = (p) => (Array.isArray(p.gold_t) && p.gold_t[10] != null && p.xp10 != null ? p.gold_t[10] + p.xp10 : null);
-// Who a position lanes against: cores their opposite core, supports their lane pair vs the
-// enemy pair (safe lane 1+5 vs off lane 3+4, and the reverse).
-const LANE_US = { 1: [1], 2: [2], 3: [3], 4: [3, 4], 5: [1, 5] };
-const LANE_THEM = { 1: [3], 2: [2], 3: [1], 4: [1, 5], 5: [3, 4] };
-function laneResult(pos, team, enemy) {
-  const sum = (side, ps) => {
-    let t = 0;
-    for (const q of ps) {
-      const pl = side.find((x) => x.position === q), v = pl && at10(pl);
-      if (v == null) return null;
-      t += v;
-    }
-    return t;
-  };
-  const us = sum(team, LANE_US[pos]), them = sum(enemy, LANE_THEM[pos]);
-  return us == null || them == null ? null : us - them;
-}
-
 // One row per player per game: role, position, metrics (null = not in this game's data) and
 // the raw numbers the breakdown shows next to the shares.
 function gameRows(m) {
   const minutes = m.duration_sec / 60;
   const rows = [];
   for (const t of ["a", "b"]) {
-    const team = m.players.filter((p) => p.team === t), enemy = m.players.filter((p) => p.team !== t);
+    const team = m.players.filter((p) => p.team === t);
     const sum = (f) => team.reduce((s, p) => s + (f(p) ?? 0), 0);
     const kills = t === "a" ? m.score_a : m.score_b;
     const gold = sum((p) => p.gpm), xp = sum((p) => p.xpm), dmg = sum((p) => p.hero_damage);
@@ -180,7 +162,7 @@ function gameRows(m) {
           dmg: share(p.hero_damage, dmg), xp: share(p.xpm, xp),
           tower: tower ? share(p.tower_damage, tower) : null,
           kills: kills ? p.kills / kills : null, assists: kills ? p.assists / kills : null,
-          lanewin: p.position != null ? laneResult(p.position, team, enemy) : null,
+          lanewin: tierLaneResult(m, p),
           lane: p.lane_eff ?? null,
           stuns: p.stuns != null ? p.stuns / minutes : null,
           vision: parsed ? observerUptime(p.obs_pos, m.duration_sec) : null,

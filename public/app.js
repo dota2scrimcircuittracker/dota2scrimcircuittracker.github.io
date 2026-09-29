@@ -11,7 +11,7 @@ import { deathMapHtml, playerDeathsHtml, wireDeathMaps } from "./lib/deathmap.js
 import { teamFightMapHtml, wireFightMaps } from "./lib/fightmap.js";
 import { towerMapHtml, towerSummaryHtml, wireTowerMaps } from "./lib/towermap.js";
 import { gameGoldHtml, wireGameGold } from "./lib/gamegold.js";
-import { itemLeadHtml } from "./lib/itemlead.js";
+import { itemLeadHtml, LAYERS } from "./lib/itemlead.js";
 import { buildPlayerIndex, matchPlayers, nameKey } from "./lib/players.js";
 import { draftAnalysis, teamDraftPhases } from "./lib/draft.js";
 import { aliasOf, asAd2l, guessTeams, openGames, rosterQuestions, sameTeams, teamByName } from "./lib/unticketed.js";
@@ -24,7 +24,9 @@ import { createBrowserEngine } from "./lib/ocr/engine-browser.js";
 import { info, wireInfo } from "./lib/glossary.js";
 import { RANK_STATS, RANK_GROUPS, formatStat, withPerGame, rankStat, ends, placeOf, ordinal } from "./lib/ranks.js";
 import { routeOf, sharePath } from "./lib/share.js";
+import { buildSearchIndex, searchIndex } from "./lib/search.js";
 import { itemIcon, itemName, itemStats, averageTimes, fastestCore, timingsOf, hasItems, clock } from "./lib/items.js";
+import { gameLanes, laneCuts, cutFor, verdict, playerLane, laneSummary, laneBoard, laneRoleOf, LANE_LABEL, LANE_GROUPS, MAP_LANE } from "./lib/lanes.js";
 
 const app = document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -93,10 +95,152 @@ function goldCurveSection(matches, match, what) {
 }
 
 // Where one player / hero / team puts wards, over all their parsed games (own side bottom left).
-function wardSection(wards, what, games) {
+function wardView(wards, what, games) {
   const html = wardMapHtml([{ label: what, cls: "s-mine", wards }], { mirrored: true });
-  return html ? `<h2>Ward map${info("ward_map")}</h2><p class="table-note wm-intro">Every ward ${esc(what)} placed across ${games} parsed game${games === 1 ? "" : "s"}. Filter by ward type or game phase; hover a dot for that ward, or switch to heat for density.</p>${html}` : "";
+  return html ? `<p class="table-note wm-intro">Every ward ${esc(what)} placed across ${games} parsed game${games === 1 ? "" : "s"}. Filter by ward type or game phase; hover a dot for that ward, or switch to heat for density.</p>${html}` : "";
 }
+
+// The Map tabs: one card, one map at a time, picked with buttons above it. Views are
+// [id, label, glossary key, html]; empty ones are dropped. The pick is remembered across pages,
+// so going from a game's deaths to a player's opens their deaths.
+const MAP_KEY = "mapView";
+function mapCard(views) {
+  const shown = views.filter(([, , , html]) => html?.trim());
+  if (!shown.length) return "";
+  let want = null;
+  try { want = localStorage.getItem(MAP_KEY); } catch {}
+  const open = shown.some(([id]) => id === want) ? want : shown[0][0];
+  const btn = ([id, label]) => `<button type="button" class="seg${id === open ? " on" : ""}" data-view="${id}" aria-pressed="${id === open}">${label}</button>`;
+  return `<section class="map-card">
+    ${shown.length > 1 ? `<div class="row segs map-segs" role="group" aria-label="Map">${shown.map(btn).join("")}</div>` : ""}
+    ${shown.map(([id, label, tip, html]) => `<div class="map-view" data-view="${id}"${id === open ? "" : " hidden"}><h2>${label}${info(tip)}</h2>${html}</div>`).join("")}
+  </section>`;
+}
+function wireMapCards(root) {
+  for (const card of root.querySelectorAll(".map-card")) {
+    card.querySelector(".map-segs")?.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-view]");
+      if (!b) return;
+      const id = b.dataset.view;
+      for (const x of card.querySelectorAll(".map-segs .seg")) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }
+      for (const v of card.querySelectorAll(".map-view")) v.hidden = v.dataset.view !== id;
+      try { localStorage.setItem(MAP_KEY, id); } catch {}
+    });
+  }
+}
+
+// ---------- Laning (lib/lanes.js) ----------
+// Won / even / lost cut-offs come from the whole division, like the tier list's reference.
+const laneCutsOf = async (src) => (src.ad2l ? laneCuts((await SOURCES[src.key].load()).filter(hasDetails)) : null);
+const VERDICT = { won: "Won", even: "Even", lost: "Lost" };
+const verdictTag = (v) => (v ? `<span class="lane-v ${v}">${VERDICT[v]}</span>` : '<span class="muted">—</span>');
+const laneName = (r) => `${LANE_LABEL[r.role]}${r.roaming ? ' <span class="tag">roaming</span>' : ""}`;
+const cutNote = (cuts) => `Won = more than ${fmt(cuts.side)} gold + XP ahead at 10:00 in a side lane, ${fmt(cuts.mid)} in mid (a third of this division's lanes each way); lost = that far behind; even = in between.`;
+const faces = (src, ps) => ps.map((q) => `<a href="${heroHref(src, q.hero)}" title="${esc(q.name)} (${esc(q.hero)})">${portrait(q.hero)}</a>`).join("");
+
+// Match page, Laning tab: the three lanes, then every player's first 10 minutes.
+function gameLanesHtml(m, src, cuts) {
+  const lanes = gameLanes(m);
+  if (!cuts || !lanes.some((l) => l.margin != null)) return "";
+  const name = (t) => esc(t === "a" ? m.team_a : m.team_b);
+  const card = (l, i) => {
+    const v = verdict(l.margin, cutFor(cuts, l.lane));
+    const who = v === "even" ? "Even" : v ? `${name(v === "won" ? "a" : "b")} won` : "No result";
+    const side = (t, ps, role) => `<div class="ln-side ${t}"><div class="ln-role">${name(t)} · ${LANE_LABEL[role]}</div>
+      ${ps.length ? ps.map((p) => `<div class="ln-p">${portrait(p.hero)}<span>${playerLink(src, p)}<small>${p.lh10 ?? "—"}/${p.dn10 ?? "—"} LH/DN · ${kg((p.gold_t?.[10] ?? 0) + (p.xp10 ?? 0))} gold+XP</small></span></div>`).join("") : '<div class="muted">Nobody</div>'}</div>`;
+    return `<div class="card ln-card ${v ?? ""}" style="--i:${i}">
+      <div class="k">${MAP_LANE[l.lane]}</div>
+      <div class="ln-verdict">${who}${l.margin == null ? "" : v !== "even" ? ` <small>by ${kg(Math.abs(l.margin))}</small>` : ` <small>${name(l.margin >= 0 ? "a" : "b")} +${kg(Math.abs(l.margin))}</small>`}</div>
+      ${side("a", l.a, l.lane)}${side("b", l.b, { 1: 3, 2: 2, 3: 1 }[l.lane])}
+    </div>`;
+  };
+  const rows = m.players.map((p) => ({ p, r: playerLane(m, p, cuts) })).filter((x) => x.r);
+  const tr = ({ p, r }) => `<tr class="side-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td><td class="l">${laneName(r)}</td>
+    <td>${verdictTag(r.verdict)}</td><td>${r.margin == null ? "—" : signedK(r.margin)}</td><td>${r.lh10 ?? "—"}</td><td>${r.dn10 ?? "—"}</td>
+    <td>${r.eff == null ? "—" : `${Math.round(r.eff)}%`}</td><td>${r.kills10 ?? "—"}</td><td>${r.deaths10 ?? "—"}</td></tr>`;
+  return `<div class="cards ln-cards reveal">${lanes.map(card).join("")}</div>
+    <h2>First 10 minutes${info("lane_players")}</h2>
+    <div class="table-wrap"><table class="ln-table"><thead><tr><th class="l">Player</th><th class="l">Hero</th><th class="l">Lane</th><th>Result</th><th>Gold+XP lead</th><th>LH</th><th>DN</th><th>Lane eff.</th><th>Kills</th><th>Deaths</th></tr></thead>
+    <tbody>${["a", "b"].map((t) => rows.filter((x) => x.p.team === t).map(tr).join("")).join("")}</tbody></table></div>
+    <p class="table-note">${cutNote(cuts)} Lanes are the replay's (OpenDota's lane detection), so swaps and tri-lanes count as played. Lead = the whole lane's gold + XP against the other side of it. LH, DN, kills and deaths are before 10:00.</p>`;
+}
+
+// Player and hero pages, Laning tab: record, averages, by lane, then each game.
+function lanesPageHtml(src, matches, pred, cuts, { name, hero = false }) {
+  if (!cuts) return "";
+  const rows = matches.flatMap((m) => m.players.filter((p) => pred(p, m)).map((p) => { const r = playerLane(m, p, cuts); return r && { ...r, m, p }; })).filter(Boolean);
+  if (!rows.length) return "";
+  const s = laneSummary(rows);
+  const cards = [
+    ["Lanes", `${s.won}–${s.even}–${s.lost}`, "won–even–lost", "lane_record"],
+    ["Lane win %", pct(s.lane_rate), "even counts half", "lane_rate"],
+    ["Avg lead at 10'", s.margin == null ? "—" : signedK(s.margin), "gold + XP, whole lane", "lane_margin"],
+    ["Last hits at 10'", dec(s.lh10), `denies ${dec(s.dn10)}`, "lane_lh"],
+    ["Deaths before 10'", s.deaths10 == null ? "—" : s.deaths10.toFixed(2), `kills ${s.kills10 == null ? "—" : s.kills10.toFixed(2)}`, "lane_deaths"],
+    ["Win % after winning lane", pct(s.win_when_won), `${s.won_lane_games} lane${s.won_lane_games === 1 ? "" : "s"} won`, "lane_convert"],
+  ];
+  const byRole = [1, 2, 3].map((role) => ({ role, s: laneSummary(rows.filter((r) => r.role === role)) })).filter((x) => x.s.lanes);
+  const sorted = [...rows].sort((a, b) => (b.m.start_time ?? 0) - (a.m.start_time ?? 0));
+  return `<div class="cards player-cards reveal" style="--cols:3">${cards.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${t}</div></div>`).join("")}</div>
+    ${byRole.length > 1 ? `<h2>By lane</h2><div class="table-wrap"><table><thead><tr><th class="l">Lane</th><th>Lanes</th><th>Won–even–lost</th><th>Lane win %</th><th>Avg lead</th><th>LH at 10'</th></tr></thead><tbody>
+      ${byRole.map(({ role, s: x }) => `<tr><td class="l">${LANE_LABEL[role]}</td><td>${x.lanes}</td><td>${x.won}–${x.even}–${x.lost}</td><td>${pct(x.lane_rate)}</td><td>${x.margin == null ? "—" : signedK(x.margin)}</td><td>${dec(x.lh10)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    <h2>Every lane</h2>
+    <div class="table-wrap"><table class="ln-table"><thead><tr><th class="l">Game</th><th class="l">${hero ? "Player" : "Hero"}</th><th class="l">Lane</th><th class="l">With</th><th class="l">Against</th><th>Result</th><th>Lead</th><th>LH/DN</th><th>Game</th></tr></thead><tbody>
+      ${sorted.map((r) => `<tr><td class="l"><a href="${src.link(r.m)}">${esc(r.p.team === "a" ? r.m.team_b : r.m.team_a)}</a> <span class="muted">${shortDate(r.m.createdAt)}</span></td>
+        <td class="l">${hero ? playerLink(src, r.p) : heroLink(src, r.p.hero)}</td><td class="l">${laneName(r)}</td>
+        <td class="l ln-faces">${faces(src, r.mates) || '<span class="muted">solo</span>'}</td><td class="l ln-faces">${faces(src, r.foes) || '<span class="muted">nobody</span>'}</td>
+        <td>${verdictTag(r.verdict)}</td><td>${r.margin == null ? "—" : signedK(r.margin)}</td><td>${r.lh10 ?? "—"}/${r.dn10 ?? "—"}</td><td>${r.won ? '<span class="ln-w">W</span>' : '<span class="ln-l">L</span>'}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="table-note">${cutNote(cuts)} Lead is the whole lane's gold + XP against the other side of it, so lane partners share it.</p>`;
+}
+
+// Highest lane score among players with `min`+ lanes (a week: 2, or 1 if nobody has 2).
+function bestLaner(rows, min = 2) {
+  const top = (n) => rows.filter((r) => r.lanes >= n).sort((a, b) => b.score - a.score || b.lanes - a.lanes)[0];
+  return top(min) ?? (min === 2 ? top(1) : null);
+}
+
+// Players tab: best laner this week and this season, then everyone ranked by position.
+let laneGroup = "safe";
+function lanesSection(src, matches, cuts, weekGames) {
+  if (!cuts) return null;
+  const board = laneBoard(matches, cuts, playerKey).filter((r) => r.lanes);
+  if (!board.length) return null;
+  const groupLabel = Object.fromEntries(LANE_GROUPS.map(([k, l]) => [k, l]));
+  const week = bestLaner(laneBoard(weekGames, cuts, playerKey, 0));
+  const season = bestLaner(board, MIN_GAMES);
+  const hl = (title, r, tip, i) => r ? `<div class="card hl" style="--i:${i}">${portrait(r.p.hero, "card-hero")}<div class="k">${title}${info(tip)}</div>
+    <div class="v small">${playerLink(src, r.p)}</div>
+    <div class="s">${groupLabel[r.group]} · won ${r.won} of ${r.lanes} lane${r.lanes === 1 ? "" : "s"} · <b>${signedK(r.margin)}</b> avg gold + XP at 10'</div></div>` : "";
+  const html = `<h2 id="laning">Laning${info("lane_rank")}</h2>
+    <div class="cards ln-best reveal">${hl("Best laner this week", week, "lane_best_week", 0)}${hl("Best laner this season", season, "lane_best_season", 1)}</div>
+    <div id="lane-board"></div>
+    <p class="table-note">${cutNote(cuts)} Ranked within the position played (${MIN_GAMES}+ lanes); lane score = average lead ÷ the won cut-off, padded with 2 even lanes, so 1.0 is a player who wins every lane by just enough.</p>`;
+  const draw = () => {
+    const el = document.getElementById("lane-board");
+    const rows = board.filter((r) => r.group === laneGroup && r.lanes >= MIN_GAMES)
+      .map((r) => ({ ...r, name: r.p.name, team: r.p.team_name, wel: `${r.won}–${r.even}–${r.lost}` }));
+    const tab = ([k, label]) => `<button type="button" class="seg${laneGroup === k ? " on" : ""}" data-group="${k}">${label}</button>`;
+    el.innerHTML = `<div class="row segs">${LANE_GROUPS.map(tab).join("")}</div><div id="lane-table"></div>`;
+    el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { laneGroup = b.dataset.group; draw(); }));
+    if (!rows.length) { el.querySelector("#lane-table").innerHTML = `<p class="muted">Nobody has ${MIN_GAMES}+ lanes here yet.</p>`; return; }
+    sortableTable(el.querySelector("#lane-table"), [
+      ["name", "Player", (v, r) => playerLink(src, r.p), "l name"], ["team", "Team", (v) => (v ? teamLink(src, v) : ""), "l name"],
+      ["lanes", "Lanes"], ["wel", "W–E–L", null, "l"], ["lane_rate", "Lane win %", pct, "", "jade"],
+      ["score", "Lane score", (v) => v.toFixed(2), "", "gold"], ["margin", "Avg lead", signedK],
+      ["lh10", "LH at 10'", dec], ["dn10", "DN at 10'", dec], ["eff", "Lane eff.", (v) => (v == null ? "—" : `${Math.round(v)}%`)],
+      ["kills10", "Kills <10'", (v) => (v == null ? "—" : v.toFixed(2))], ["deaths10", "Deaths <10'", (v) => (v == null ? "—" : v.toFixed(2))],
+      ["win_when_won", "Win % after won lane", pct],
+    ], rows, "score");
+  };
+  return { html, draw };
+}
+
+// The week a game counts toward: its series' scheduled week (AD2L), else its date.
+const weekOfFn = (d) => {
+  const sched = new Map((d?.series ?? []).filter((s) => s.time).map((s) => [s.id, new Date(s.time * 1000)]));
+  return (m) => weekStart(sched.get(m.series_id) ?? m.createdAt).getTime();
+};
 const gamesWith = (matches, match) => matches.filter((m) => m.players.some((p) => p.obs_pos && match(p, m))).length;
 
 const loading = (kicker, title) => `${pageHead(kicker, title)}<div class="panel empty">Loading…</div>`;
@@ -1070,7 +1214,8 @@ async function renderMatch(id, src) {
         <tr class="sep a"><td colspan="${cols.length + 1}">${linkOf("a")}${m.winner === "a" ? ' <span class="win-badge">Win</span>' : ""}</td></tr>${rows("a")}
         <tr class="sep b"><td colspan="${cols.length + 1}">${linkOf("b")}${m.winner === "b" ? ' <span class="win-badge">Win</span>' : ""}</td></tr>${rows("b")}
       </tbody></table></div>
-    <p class="table-note">▲ best in the game. Dmg/min = hero damage ÷ minutes. Dmg per 1k NW = hero damage per 1,000 net worth (efficiency). KP = (kills + assists) ÷ team score.${rated.length ? " The number beside a name is their game rating (see Ratings)." : ""}</p>`;
+    <p class="table-note">▲ best in the game. Dmg/min = hero damage ÷ minutes. Dmg per 1k NW = hero damage per 1,000 net worth (efficiency). KP = (kills + assists) ÷ team score.${rated.length ? " The number beside a name is their game rating (see Ratings)." : ""}</p>
+    <h3 class="gm-h3">Team comparison</h3>${tapeHtml}`;
 
   // Ratings: every player's game rating, what drove it, and their season tier for comparison.
   let ratingsHtml = "";
@@ -1103,8 +1248,9 @@ async function renderMatch(id, src) {
       <ol class="gm-ratings reveal">${rated.map(line).join("")}</ol>`;
   }
 
-  // Gold: the lead and every player's gold, side by side on wide screens.
-  let goldHtml = "";
+  // Hero chart, under the draft: the gold lead with items and teamfights, or toggle to every
+  // player's net worth. The choice is remembered.
+  let heroHtml = "";
   if (hasTimeline(m)) {
     const winner = nameOf(m.winner), loser = nameOf(s.loser);
     const story = s.thrown >= BIG_LEAD
@@ -1114,24 +1260,45 @@ async function renderMatch(id, src) {
     const lines = ["a", "b"].flatMap((t) => rank(t).map((p, i) => ({
       label: `${p.name} (${p.hero})`, end: p.name, img: heroImg(p.hero), values: p.gold_t, cls: `s-c${i + 1}`, dash: t === "b",
     })));
-    goldHtml = `<p class="swing-story">${story} Lead changed hands ${s.lead_changes} time${s.lead_changes === 1 ? "" : "s"}${s.at10 != null ? ` · at 10': ${esc(nameOf(s.at10 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at10))}` : ""}${s.at20 != null ? ` · at 20': ${esc(nameOf(s.at20 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at20))}` : ""}.</p>
-      <div class="gm-charts">
-        <div><h3 class="gm-h3">Gold lead${info("gold_lead")}</h3>${leadChart(m.gold_adv, { xp: m.xp_adv, nameA: m.team_a, nameB: m.team_b, id: `lead-${m.id}`, objectives: m.objectives })}</div>
-        ${lines.length ? `<div><h3 class="gm-h3">Gold by player${info("gold_players")}</h3>${lineChart(lines, { endLabels: true, height: 300,
-          caption: `Solid: ${esc(m.team_a)} · dashed: ${esc(m.team_b)}; richest first within each team. Hover for everyone's gold at that minute.` })}</div>` : ""}
+    // Layers on the items & fights chart (items, hero deaths, Roshan/Tormentor, towers),
+    // each a checkbox; what's hidden is remembered.
+    let show = {};
+    try { show = JSON.parse(localStorage.getItem("gameLayers") ?? "{}") ?? {}; } catch {}
+    // About 1.2 screen pixels per chart unit, so the icons don't blow up on a wide screen.
+    const chartWidth = () => Math.min(1800, (app.clientWidth - 30) / 1.2);
+    const fightsChart = (layers) => itemLeadHtml(m, { id: `item-lead-${m.id}`, show: layers, width: chartWidth() });
+    const hasFights = !!fightsChart({});
+    const views = [
+      ["fights", "Items & fights", "items_fights", fightsChart(show) || leadChart(m.gold_adv, { xp: m.xp_adv, nameA: m.team_a, nameB: m.team_b, id: `lead-${m.id}`, objectives: m.objectives })],
+      ["worth", "Net worth by player", "gold_players", lines.length ? lineChart(lines, { endLabels: true, height: 300,
+        caption: `Solid: ${esc(m.team_a)} · dashed: ${esc(m.team_b)}; richest first within each team. Hover for everyone's gold at that minute.` }) : ""],
+    ].filter(([, , , html]) => html);
+    let want = null;
+    try { want = localStorage.getItem("gameChart"); } catch {}
+    const on = views.some(([id]) => id === want) ? want : views[0][0];
+    heroHtml = `<section class="gm-hero-chart">
+      <div class="gm-hc-head">
+        <div class="segs gm-hc-segs" role="group" aria-label="Chart">${views.map(([id, label]) => `<button type="button" class="seg${id === on ? " on" : ""}" data-chart-view="${id}" aria-pressed="${id === on}">${label}</button>`).join("")}</div>
+        ${hasFights ? `<fieldset class="gm-hc-layers"${on === "fights" ? "" : " hidden"}><legend>Show</legend>${LAYERS.map(([k, label]) =>
+          `<label><input type="checkbox" data-layer="${k}" ${show[k] === false ? "" : "checked"}> ${label}</label>`).join("")}</fieldset>` : ""}
+        <p class="swing-story">${story} Lead changed hands ${s.lead_changes} time${s.lead_changes === 1 ? "" : "s"}${s.at10 != null ? ` · at 10': ${esc(nameOf(s.at10 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at10))}` : ""}${s.at20 != null ? ` · at 20': ${esc(nameOf(s.at20 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at20))}` : ""}.</p>
       </div>
-      ${(() => { const chart = itemLeadHtml(m, { id: `item-lead-${m.id}` }); return chart ? `<div class="gm-wide"><h3 class="gm-h3">Items &amp; fights${info("items_fights")}</h3>${chart}</div>` : ""; })()}
-      <p class="table-note">${GOLD_NOTE}</p>`;
+      ${views.map(([id, , tip, html]) => `<div class="gm-hc-view" data-view="${id}"${id === on ? "" : " hidden"}>${html}</div>`).join("")}
+      <p class="table-note">${GOLD_NOTE}</p>
+    </section>`;
   }
 
   // Map tab: wards, towers, deaths.
   const deaths = deathMapHtml(m);
-  const mapHtml = `${m.players.some((p) => p.obs_pos) ? `<h2>Ward map${info("match_wards")}</h2>${wardMapHtml([
+  const laneCuts_ = src.ad2l && !m.unticketed ? await laneCutsOf(src) : null;
+  const mapHtml = mapCard([
+    ["wards", "Wards", "match_wards", m.players.some((p) => p.obs_pos) ? wardMapHtml([
       { label: m.team_a, cls: "s-a", wards: teamOf("a").flatMap((p) => wardsOf(p)) },
       { label: m.team_b, cls: "s-b", wards: teamOf("b").flatMap((p) => wardsOf(p)) },
-    ], { id: "match-wards" })}` : ""}
-    ${m.buildings?.length ? `<h2>Tower map${info("tower_map")}</h2>${towerMapHtml(m, { id: "match-towers" })}` : ""}
-    ${deaths ? `<h2>Deaths${info("fight_deaths")}</h2>${deaths}` : ""}`;
+    ], { id: "match-wards" }) : ""],
+    ["towers", "Towers", "tower_map", m.buildings?.length ? towerMapHtml(m, { id: "match-towers" }) : ""],
+    ["deaths", "Deaths", "fight_deaths", deaths],
+  ]);
 
   const footer = m.unticketed
     ? `Unticketed AD2L game, uploaded ${when(m.createdAt)} from post-game screenshots, so no draft, gold graph or ward data.
@@ -1145,7 +1312,7 @@ async function renderMatch(id, src) {
   const tabs = playerTabs([
     ["board", "Scoreboard", scoreHtml],
     ["ratings", "Ratings", ratingsHtml],
-    ["gold", "Gold", goldHtml],
+    ["lanes", "Laning", gameLanesHtml(m, src, laneCuts_)],
     ["farm", "Farm &amp; vision", mapTableHtml(m, src) + replayTableHtml(m, src)],
     ["items", "Items", gameItemsHtml(m, src)],
     ["map", "Map", mapHtml],
@@ -1159,16 +1326,31 @@ async function renderMatch(id, src) {
     </section>
     ${seriesHtml}
     ${factsHtml}
-    <div class="gm-top">
-      ${m.draft?.length ? `<div class="gm-draft"><h3 class="gm-h3">Draft</h3>${draftStrip(m, src)}</div>` : ""}
-      ${tapeHtml}
-    </div>
+    ${m.draft?.length ? `<div class="gm-draft"><h3 class="gm-h3">Draft</h3>${draftStrip(m, src)}</div>` : ""}
+    ${heroHtml}
     ${tabs.bar.replace('class="pp-tabs"', 'class="pp-tabs gm-tabs"')}
     ${tabs.panels}
     <p class="table-note">${footer}</p>${deleteBtn}`;
   wireDelete();
   wirePlayerTabs();
   wireCharts(app);
+  app.querySelectorAll("[data-chart-view]").forEach((b) => (b.onclick = () => {
+    for (const x of app.querySelectorAll("[data-chart-view]")) { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); }
+    for (const v of app.querySelectorAll(".gm-hc-view")) v.hidden = v.dataset.view !== b.dataset.chartView;
+    const box = app.querySelector(".gm-hc-layers");
+    if (box) box.hidden = b.dataset.chartView !== "fights";
+    try { localStorage.setItem("gameChart", b.dataset.chartView); } catch {}
+  }));
+  // Layer checkboxes: redraw the items & fights chart with just what's ticked.
+  const layerBox = app.querySelector(".gm-hc-layers");
+  if (layerBox) layerBox.onchange = () => {
+    const layers = Object.fromEntries([...layerBox.querySelectorAll("[data-layer]")].map((c) => [c.dataset.layer, c.checked]));
+    const view = app.querySelector('.gm-hc-view[data-view="fights"]');
+    view.innerHTML = itemLeadHtml(m, { id: `item-lead-${m.id}`, show: layers, width: Math.min(1800, (app.clientWidth - 30) / 1.2) });
+    wireCharts(view);
+    try { localStorage.setItem("gameLayers", JSON.stringify(layers)); } catch {}
+  };
+  wireMapCards(app);
   wireWardMaps(app);
   wireTowerMaps(app);
   wireDeathMaps(app);
@@ -1726,9 +1908,15 @@ async function renderPlayers(src) {
   const data = playerLeaderboard(matches);
   const tiers = data.length ? tierSection(src, matches, await tierRef(src)) : null;
   const leaders = data.length ? leadersSection(src, statRows(matches)) : null;
+  let lanes = null;
+  if (data.length && src.ad2l) {
+    const weekOf = weekOfFn(await src.data()), latest = Math.max(...matches.map(weekOf));
+    lanes = lanesSection(src, matches, await laneCutsOf(src), matches.filter((m) => weekOf(m) === latest));
+  }
   app.innerHTML = `${pageHead(src.kicker, "Players", data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}: the tier list first, then every stat below. Click a name for that player's page.` : "")}
     ${data.length ? `${tiers.html}
     ${leaders.html}
+    ${lanes?.html ?? ""}
     <h2 id="player-stats">All stats</h2>
     <p class="table-note wm-intro">Sort by any stat with the menu or by clicking a column header.</p>
     <div id="t" class="reveal"></div>
@@ -1737,6 +1925,7 @@ async function renderPlayers(src) {
   if (!data.length) return;
   tiers.draw();
   leaders.draw();
+  lanes?.draw();
   const teamCol = src.ad2l
     ? [["team", "Team", (v, r) => `${v ? teamLink(src, v) : ""}${r.standin ? ' <span class="tag">stand-in</span>' : r.standin_games ? ` <span class="tag">+${r.standin_games} as stand-in</span>` : ""}`, "l name"]] : [];
   sortableTable(document.getElementById("t"), [
@@ -2664,6 +2853,7 @@ async function renderPlayer(src, key) {
 
   // Tier-list line, if they have enough games.
   const detailed = matches.filter(hasDetails), model = await tierRef(src);
+  const laneCuts_ = await laneCutsOf(src);
   const tl = tierList(detailed, { model });
   const rows = statRows(detailed), ratings = heroRanks(detailed, model);
   const gameRated = h.games.map((g) => gameRatings(g.m, detailed, { model }));
@@ -2714,10 +2904,13 @@ async function renderPlayer(src, key) {
       ["heroes", "Heroes", `<div id="hero-ranks-box" data-key="${esc(key)}">${heroRanksHtml(src, key, h, ratings, null)}</div>
         ${draftSlotHtml(draftSlotRecord(matches, byPlayer(key)), src, s.name, rateOf(h.games, gameRated))}
         ${src.ad2l ? pubSection(src, key) : ""}`],
+      ["lanes", "Laning", lanesPageHtml(src, matches, byPlayer(key), laneCuts_, { name: s.name })],
       ["items", "Items", playerItemsHtml(src, matches, h.games)],
-      ["map", "Map", `${wardSection(collectWards(matches, byPlayer(key)), s.name, gamesWith(matches, byPlayer(key)))}
-        ${(() => { const card = playerDeathsHtml(matches, byPlayer(key), { name: s.name }); return card ? `<h2>Deaths${info("player_deaths")}</h2>${card}` : ""; })()}
-        ${(() => { const card = towerSummaryHtml(matches, byPlayer(key), { name: s.name }); return card ? `<h2>Towers${info("player_towers")}</h2>${card}` : ""; })()}`],
+      ["map", "Map", mapCard([
+        ["wards", "Wards", "ward_map", wardView(collectWards(matches, byPlayer(key)), s.name, gamesWith(matches, byPlayer(key)))],
+        ["deaths", "Deaths", "player_deaths", playerDeathsHtml(matches, byPlayer(key), { name: s.name })],
+        ["towers", "Towers", "player_towers", towerSummaryHtml(matches, byPlayer(key), { name: s.name })],
+      ])],
       ["games", "Games", `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
         <p class="table-note wm-intro">Pick a game to see how ${esc(s.name)} played it: their game rating and what built it, where every number placed among the ten players, their gold and events over the game, and where they warded.</p>
         <div id="game-box" data-key="${esc(key)}">${gameAnalysisHtml(src, "player", h.games, 0, gameRated)}</div>
@@ -2753,6 +2946,7 @@ async function renderPlayer(src, key) {
   wireItemHeroes();
   wireCharts(app);
   wireTierModal();
+  wireMapCards(app);
   wireWardMaps(app);
   wireDeathMaps(app);
   wireTowerMaps(app);
@@ -2966,6 +3160,7 @@ async function renderHero(src, slug) {
   const h = heroHistory(matches, hero);
   const S = h.summary;
   const detailed = matches.filter(hasDetails), model = await tierRef(src);
+  const laneCuts_ = await laneCutsOf(src);
   const rated = heroRanks(detailed, model).get(hero) ?? [];
   const ratingOfKey = new Map(rated.map((p) => [p.key, p.rating]));
   const lines = new Map(h.players.map((p) => [p.key, p]));
@@ -3032,10 +3227,13 @@ async function renderHero(src, slug) {
       <p class="table-note">Win % is that team's record when they picked ${esc(hero)}.${S.drafted ? " Bans come from Captains Mode drafts; “Banned vs them” = opponents banned it against that team." : ""}</p>`],
     ["draft", "Draft", `${(() => { const da = draftAnalysis(matches); return heroPhaseHtml(da.heroes.find((x) => x.hero === hero), da.games); })()}
       ${draftSlotHtml(draftSlotRecord(matches, byHero(hero)), src, hero, rateOf(h.games, gameRated))}`],
+    ["lanes", "Laning", lanesPageHtml(src, matches, byHero(hero), laneCuts_, { name: hero, hero: true })],
     ["items", "Items", heroItemsHtml(src, h.games, hero)],
-    ["map", "Map", `${wardSection(collectWards(matches, byHero(hero)), hero, gamesWith(matches, byHero(hero)))}
-      ${(() => { const card = playerDeathsHtml(matches, byHero(hero), { id: "hero-deaths", name: hero }); return card ? `<h2>Deaths${info("hero_deaths")}</h2>${card}` : ""; })()}
-      ${(() => { const card = towerSummaryHtml(matches, byHero(hero), { id: "hero-towers", name: hero }); return card ? `<h2>Towers${info("hero_towers")}</h2>${card}` : ""; })()}`],
+    ["map", "Map", mapCard([
+      ["wards", "Wards", "ward_map", wardView(collectWards(matches, byHero(hero)), hero, gamesWith(matches, byHero(hero)))],
+      ["deaths", "Deaths", "hero_deaths", playerDeathsHtml(matches, byHero(hero), { id: "hero-deaths", name: hero })],
+      ["towers", "Towers", "hero_towers", towerSummaryHtml(matches, byHero(hero), { id: "hero-towers", name: hero })],
+    ])],
     ["games", "Games", h.games.length ? `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
       <p class="table-note wm-intro">Pick a game to see how ${esc(hero)} was played in it: the player's game rating and what built it, where every number placed among the ten players, their gold and events over the game, and where they warded.</p>
       <div id="game-box" data-hero="${esc(hero)}">${gameAnalysisHtml(src, "hero", h.games, 0, gameRated)}</div>
@@ -3046,6 +3244,7 @@ async function renderHero(src, slug) {
   wirePlayerTabs();
   wireTowerMaps(app);
   wireCharts(app);
+  wireMapCards(app);
   wireWardMaps(app);
   wireDeathMaps(app);
   sortableTable(document.getElementById("teams"), [
@@ -3124,12 +3323,16 @@ function weekHighlights(games, src, league = games) {
   const kills = best(({ p }) => p.kills);
   const vs = (m) => `${esc(m.team_a)} vs ${esc(m.team_b)}`;
   const core = fastestCore(games, league);
+  const cuts = src.ad2l ? laneCuts(league.filter(hasDetails)) : null;
+  const laner = cuts ? bestLaner(laneBoard(games, cuts, playerKey, 0)) : null;
   return [
     ["Player of the week", playerLink(src, pow.p), `${pow.n} MVP${pow.n === 1 ? "" : "s"} in ${gamesOf(pow.p)} game${gamesOf(pow.p) === 1 ? "" : "s"}`, pow.p.hero, "mvp"],
     ["Biggest damage game", fmt(dmg.p.hero_damage), `<b>${playerLink(src, dmg.p)}</b> · ${heroLink(src, dmg.p.hero)} · ${vs(dmg.m)}`, dmg.p.hero],
     ["Best KDA", `${kda.p.kills}/${kda.p.deaths}/${kda.p.assists}`, `<b>${playerLink(src, kda.p)}</b> · ${heroLink(src, kda.p.hero)} · ${vs(kda.m)}`, kda.p.hero],
     ["Top GPM", fmt(gpm.p.gpm), `<b>${playerLink(src, gpm.p)}</b> · ${heroLink(src, gpm.p.hero)} · ${vs(gpm.m)}`, gpm.p.hero],
     ["Most kills", fmt(kills.p.kills), `<b>${playerLink(src, kills.p)}</b> · ${heroLink(src, kills.p.hero)} · ${vs(kills.m)}`, kills.p.hero],
+    ...(laner ? [["Best laner", signedK(laner.margin),
+      `gold + XP lead at 10', won ${laner.won} of ${laner.lanes} lane${laner.lanes === 1 ? "" : "s"} · <b>${playerLink(src, laner.p)}</b> · ${esc(LANE_GROUPS.find(([k]) => k === laner.group)[1])}`, laner.p.hero, "lane_best_week"]] : []),
     ...(core ? [["Fastest core item", `${itemIcon(core.key)} ${clock(core.sec)}`,
       `${esc(itemName(core.key))}, ${clock(core.ahead)} ahead of the league's ${esc(core.p.hero)} average · <b>${playerLink(src, core.p)}</b> · ${heroLink(src, core.p.hero)} · ${vs(core.m)}`, core.p.hero, "fastest_core"]] : []),
   ];
@@ -3194,8 +3397,7 @@ async function renderWeek(src, back = 0) {
   } catch (e) { app.innerHTML = `${pageHead(src.kicker, "Weekly recap")}${errorBox(e)}`; return; }
   // AD2L games count toward their series' scheduled week, so a series played early or
   // late still lands in the right week. Anything without a scheduled series uses its date.
-  const sched = new Map((ad2l?.series ?? []).filter((s) => s.time).map((s) => [s.id, new Date(s.time * 1000)]));
-  const weekOf = (m) => weekStart(sched.get(m.series_id) ?? m.createdAt).getTime();
+  const weekOf = weekOfFn(ad2l);
   const weeks = [...new Set(games.map(weekOf))].sort((a, b) => b - a);
   if (!weeks.length) {
     app.innerHTML = `${pageHead(src.kicker, "Weekly recap")}<div class="panel empty"><strong>No games yet</strong>${src.empty}</div>`;
@@ -3542,9 +3744,11 @@ async function renderTeams(src, slug) {
       ${phases}` : ""],
     ["map", "Map", `${teamMapHtml(src, matches, teams, team, h)}
       ${(() => { const gs = h.games.map(({ m }) => m), mine = (p, m) => p.team === sideOf(m, team);
-        return wardSection(collectWards(gs, mine), team.name, gamesWith(gs, mine)); })()}
-      ${(() => { const card = teamFightMapHtml(h.games.map(({ m }) => m), (m) => sideOf(m, team), { name: team.name });
-        return card ? `<h2>Team fight map${info("team_fights")}</h2><p class="table-note wm-intro">Where ${esc(team.name)} fight, from every teamfight death in their parsed games, theirs and the enemy's.</p>${card}` : ""; })()}`],
+        const fights = teamFightMapHtml(gs, (m) => sideOf(m, team), { name: team.name });
+        return mapCard([
+          ["wards", "Wards", "ward_map", wardView(collectWards(gs, mine), team.name, gamesWith(gs, mine))],
+          ["fights", "Team fights", "team_fights", fights ? `<p class="table-note wm-intro">Where ${esc(team.name)} fight, from every teamfight death in their parsed games, theirs and the enemy's.</p>${fights}` : ""],
+        ]); })()}`],
   ], { store: "teamTab", label: "Team sections" });
 
   // Same compact header as the player and hero pages: back link, league and team picker,
@@ -3563,6 +3767,7 @@ async function renderTeams(src, slug) {
     ${tabs.panels}`;
   wirePlayerTabs();
   wireCharts(app);
+  wireMapCards(app);
   wireWardMaps(app);
   wireFightMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
   app.querySelectorAll("[data-goto-tab]").forEach((b) => (b.onclick = () => document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click()));
@@ -4000,6 +4205,77 @@ tmPop.addEventListener("click", (e) => {
   }
   saveTimeSel();
   route();
+});
+
+// Header search: every player and team in every league. The index loads every division's
+// file and the saved scrims on first focus (then the pages reuse them); a division that
+// can't load is left out rather than failing the search.
+const searchEl = document.getElementById("search"), searchIn = document.getElementById("search-in"), searchPop = document.getElementById("search-pop");
+let searchReady = null, searchIdx = null, searchHits = [], searchAt = -1;
+function loadSearch() {
+  searchReady ??= Promise.all([
+    Promise.all(Object.entries(DIVISIONS).map(async ([key, dv]) => {
+      try { return { key, label: dv.short, root: SOURCES[key].root, views: dv.views, data: await divData(key) }; }
+      catch (e) { console.warn(`search: ${key} unavailable`, e); return null; }
+    })),
+    allMatches().catch((e) => { console.warn("search: scrims unavailable", e); return null; }),
+  ]).then(([leagues, scrims]) => (searchIdx = buildSearchIndex(leagues.filter(Boolean), scrims && { label: "Scrims", matches: scrims })))
+    .catch((e) => { searchReady = null; throw e; });
+  return searchReady;
+}
+const setSearch = (open) => {
+  searchPop.hidden = !open; searchIn.setAttribute("aria-expanded", String(open));
+  // Open toward whichever side has room: the header wraps on narrow screens.
+  if (open) { searchPop.classList.remove("flip"); if (searchPop.getBoundingClientRect().left < 8) searchPop.classList.add("flip"); }
+};
+const mark = (name, q) => {
+  const i = name.toLowerCase().indexOf(q.trim().toLowerCase());
+  return i < 0 || !q.trim() ? esc(name) : `${esc(name.slice(0, i))}<mark>${esc(name.slice(i, i + q.trim().length))}</mark>${esc(name.slice(i + q.trim().length))}`;
+};
+async function showSearch() {
+  const q = searchIn.value;
+  if (!q.trim()) { searchHits = []; setSearch(false); return; }
+  if (!searchIdx) {
+    searchPop.innerHTML = `<div class="search-note">Loading every league…</div>`; setSearch(true);
+    try { await loadSearch(); } catch { searchPop.innerHTML = `<div class="search-note">Search couldn't load. Try again.</div>`; return; }
+    if (searchIn.value !== q) return showSearch();
+  }
+  searchHits = searchIndex(searchIdx, q);
+  searchAt = searchHits.length ? 0 : -1;
+  const lg = (r) => `<span class="lg-chip" data-lg="${r.league}">${esc(r.leagueLabel)}</span>`;
+  searchPop.innerHTML = searchHits.length ? searchHits.map((r, i) => {
+    const sub = r.kind === "team"
+      ? (r.players.length ? esc(r.players.join(", ")) : "Team")
+      : `${r.standin ? "Stand-in for " : ""}${r.team ? `<b>${esc(r.team)}</b>` : "No team"}${r.captain ? " · Captain" : ""}${r.alias ? ` · plays as ${mark(r.alias, q)}` : ""}`;
+    return `<a class="search-hit${i === searchAt ? " on" : ""}" href="${r.href}" role="option" id="sh-${i}" aria-selected="${i === searchAt}">
+      <span class="sh-kind sh-${r.kind}">${r.kind === "team" ? "Team" : "Player"}</span>
+      <span class="sh-main"><span class="sh-name">${mark(r.name, q)}</span><span class="sh-sub">${sub}</span></span>${lg(r)}</a>`;
+  }).join("") : `<div class="search-note">No player or team matches “${esc(q.trim())}”.</div>`;
+  searchIn.setAttribute("aria-activedescendant", searchAt >= 0 ? `sh-${searchAt}` : "");
+  setSearch(true);
+}
+const moveSearch = (d) => {
+  if (!searchHits.length) return;
+  searchAt = (searchAt + d + searchHits.length) % searchHits.length;
+  searchPop.querySelectorAll(".search-hit").forEach((a, i) => { a.classList.toggle("on", i === searchAt); a.setAttribute("aria-selected", String(i === searchAt)); });
+  searchPop.querySelector(".search-hit.on")?.scrollIntoView({ block: "nearest" });
+  searchIn.setAttribute("aria-activedescendant", `sh-${searchAt}`);
+};
+searchIn.addEventListener("focus", () => { loadSearch().catch(() => {}); if (searchIn.value.trim()) showSearch(); });
+searchIn.addEventListener("input", showSearch);
+searchIn.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown") { e.preventDefault(); moveSearch(1); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); moveSearch(-1); }
+  else if (e.key === "Enter" && searchAt >= 0) { e.preventDefault(); searchPop.querySelectorAll(".search-hit")[searchAt]?.click(); }
+  else if (e.key === "Escape") { setSearch(false); searchIn.blur(); }
+});
+// Picking a result: close and clear (the in-app link handler below does the navigating).
+searchPop.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) { setSearch(false); searchIn.value = ""; searchIn.blur(); } });
+document.addEventListener("click", (e) => { if (!e.target.closest(".search")) setSearch(false); });
+// "/" focuses the search from anywhere that isn't a text field.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
+  e.preventDefault(); searchIn.focus();
 });
 
 // Addresses: routes are "#/..." inside the app, but the address bar shows the /path/ form

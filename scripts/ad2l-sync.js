@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { buildingsFrom } from "../public/lib/towermap.js";
 import { deathsFrom } from "../public/lib/deathmap.js";
 import { itemsFrom } from "../public/lib/items.js";
+import { laneFields } from "./lane-fields.js";
 import { leagueJson } from "./league-json.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -296,6 +297,8 @@ for (const id of [...candidates].sort()) {
       // Lane result (gold and XP at 10 min, against the lane opponent), hero damage taken
       // (survival), and utility used by supports: dust and smokes (sentries are sen_placed).
       xp10: Array.isArray(p.xp_t) ? p.xp_t[10] ?? null : null,
+      // Laning (see public/lib/lanes.js): the replay's lane, and last hits / denies at 10 min.
+      ...laneFields(p),
       dmg_taken: p.damage_taken ? Object.entries(p.damage_taken).filter(([k]) => k.startsWith("npc_dota_hero_")).reduce((t, [, v]) => t + v, 0) : null,
       dust_used: p.item_uses ? p.item_uses.dust ?? 0 : null, smoke_used: p.item_uses ? p.item_uses.smoke_of_deceit ?? 0 : null,
       // From the per-unit kill counts: OpenDota's own roshan_kills field disagreed with the

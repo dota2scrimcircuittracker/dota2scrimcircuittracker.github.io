@@ -46,6 +46,12 @@
     </div>
     <nav id="nav"></nav>
     <div class="top-tools">
+      <div class="search" id="search" role="search">
+        <input id="search-in" type="search" placeholder="Find a player or team" autocomplete="off" spellcheck="false"
+          aria-label="Find a player or team in any league" aria-controls="search-pop" aria-expanded="false" aria-autocomplete="list" role="combobox">
+        <kbd class="search-key" aria-hidden="true">/</kbd>
+        <div class="search-pop" id="search-pop" role="listbox" aria-label="Players and teams" hidden></div>
+      </div>
       <div class="tm" id="tm" hidden>
         <button class="tm-btn" id="tm-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="tm-pop">All weeks</button>
         <div class="tm-pop" id="tm-pop" hidden></div>

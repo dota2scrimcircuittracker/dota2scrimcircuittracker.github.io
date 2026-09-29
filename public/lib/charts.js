@@ -32,24 +32,30 @@ function figure(svg, data, caption, h = H) {
 // dashed line, and a marker on each side's biggest lead.
 // objectives: [{ type: "roshan" | "tormentor", time (s), side }] drawn as R / T markers,
 // team A's along the top edge and team B's along the bottom.
-// The lead axis fits the game: a 27k peak gets ±30k, not ±50k. Steps whose half is a clean
-// gridline too (30k → 15k).
-const leadMax = (v) => {
-  if (v <= 0) return 1000;
-  const step = 10 ** Math.floor(Math.log10(v));
-  return [1, 2, 3, 4, 5, 6, 8, 10].map((m) => m * step).find((m) => m >= v * 1.08);
-};
+// The lead axis fits each side on its own: a game where one team led by 16k and the other by
+// 2.5k gets +20k / −5k, not ±50k, so the swings aren't squashed into a flat line. One clean
+// gridline step (1k, 2k, 2.5k, 5k…, at most 4 steps on the bigger side) is shared by both
+// sides, and each side gets at least one step so its "ahead" label has room.
+export function leadScale(values) {
+  const hi = Math.max(0, ...values), lo = Math.max(0, ...values.map((v) => -v)), big = Math.max(hi, lo, 1000) * 1.08;
+  const mag = 10 ** Math.floor(Math.log10(big / 4));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => big / s <= 4);
+  const top = Math.max(1, Math.ceil((hi * 1.08) / step)) * step, bot = Math.max(1, Math.ceil((lo * 1.08) / step)) * step;
+  const ticks = [];
+  for (let v = top; v >= -bot; v -= step) if (v) ticks.push(v);
+  return { top, bot, ticks, y: (T0, H0) => (v) => T0 + ((top - v) / (top + bot)) * H0 };
+}
 
 // ghosts: [{ values, won, href, label }] drawn as thin lines behind the main one (each game in a
 // team's average; green = won, red = lost; each links to its game). counts: games behind each
 // minute of the average, shown in the hover readout. peaks: false drops the biggest-lead labels.
 export function leadChart(adv, { xp = null, nameA = "Team A", nameB = "Team B", id = "lead", objectives = null, ghosts = null, counts = null, peaks = true } = {}) {
   const n = Math.max(adv.length, ...(ghosts ?? []).map((g) => g.values.length));
-  const max = leadMax(Math.max(...adv.map(Math.abs), ...(xp ?? []).map(Math.abs), ...(ghosts ?? []).flatMap((g) => g.values.map(Math.abs))));
-  const x = xOf(n), y = (v) => T + (1 - (v + max) / (2 * max)) * (H - T - B), y0 = y(0);
+  const sc = leadScale([...adv, ...(xp ?? []), ...(ghosts ?? []).flatMap((g) => g.values)]);
+  const x = xOf(n), y = sc.y(T, H - T - B), y0 = y(0);
   const area = `${path(adv, x, y)}L${x(adv.length - 1)},${y0}L${x(0)},${y0}Z`;
   let grid = "";
-  for (const v of [max, max / 2, -max / 2, -max]) grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v > 0 ? "+" : "−"}${tick(Math.abs(v))}</text>`;
+  for (const v of sc.ticks) grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v > 0 ? "+" : "−"}${tick(Math.abs(v))}</text>`;
   // Gold lead at a fractional minute, for objective stems.
   const at = (m) => { const i = Math.min(Math.max(m, 0), n - 1), a = Math.floor(i), b = Math.min(a + 1, n - 1); return adv[a] + (adv[b] - adv[a]) * (i - a); };
   // Objective markers ride the top (A) or bottom (B) edge; ones that would overlap step inward.
@@ -149,7 +155,7 @@ export function wireCharts(root) {
     const sign = (v) => (v > 0 ? "+" : v < 0 ? "−" : "±");
     const at = (e) => {
       const r = svg.getBoundingClientRect();
-      const vx = ((e.clientX - r.left) / r.width) * W;
+      const vx = ((e.clientX - r.left) / r.width) * (d.w ?? W);
       const i = Math.round(((vx - d.x[0]) / (d.x[1] - d.x[0])) * (d.n - 1));
       return Math.max(0, Math.min(d.n - 1, i));
     };

@@ -41,6 +41,11 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   Challenger, Warrior, Conqueror, Champion, Heroic/Aegis.
 - **League switching** — the league menu keeps the tab you're on: Players in Champion →
   Warrior opens Warrior's Players. A team, game or player page opens that tab's list.
+- **Search** (top bar, or press `/`) — finds any player or team in any league: every AD2L
+  division's rosters, stand-ins seen in its games (by the team they last played for), and
+  scrim players and teams. Each result shows its league (Heroic/Aegis with its division) and,
+  for players, their team and captain/stand-in status; in-game names find the rostered
+  player. The first search loads every division's file (`public/lib/search.js`).
 - **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
   pasted into Discord previews as that page, not the home page. The deploy writes a preview
   page at each of those paths (`scripts/share-pages.js`) that forwards into the app; pages
@@ -128,11 +133,25 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   team's pick number (1st … last pick) and flag a big last-pick gap; team pages split their
   bans, bans against them and picks by phase. Heroes and Draft tables hide heroes under a
   minimum number of games (default 3, changeable) so one-off 100% heroes don't top the list.
+- **Laning** (AD2L, parsed replays) — a Laning tab on games: each lane (top, middle, bottom)
+  called won, even or lost at 10:00 on the whole lane's gold + XP lead, with each side's heroes,
+  then every player's last hits, denies, lane efficiency, kills and deaths before 10:00. Lanes are
+  the replay's own (OpenDota's `lane_role`), so swaps and tri-lanes count as played; games synced
+  before that field fall back to positions (1+5 safe, 2 mid, 3+4 off). Won/lost cut-offs are fitted
+  per division, a third of lanes each way, side lanes and mid separately (S48 Champion: ~1,000
+  side, ~850 mid). Player and hero pages get a Laning tab (record, averages, by lane, every lane
+  with who they laned with and against). The Players tab ranks laning by position (safe, mid, off,
+  supports; 3+ lanes) with best-laner cards for the latest week and the season; Weekly adds a
+  "Best laner" highlight. Lane score = average lead ÷ the won cut-off, padded with 2 even lanes.
+  `public/lib/lanes.js`; `node scripts/lanes-backfill.js` refills `lane_role`, `roaming`, `lh10`,
+  `dn10` from `.cache/opendota` with no network calls.
 - **Ward maps** (AD2L) — every observer and sentry position from the replay. Game pages show
   both teams as dots (hover for time placed, how long it lasted, dewarded or not); player,
   hero and team pages show a heat map of all their wards with Dire games mirrored so it's
   always "own base bottom left". Filter by ward type and game phase (0–10', 10–20', 20–35',
-  35'+). Drawn on the minimap picture in `public/img/minimap.webp`, lined up by its two
+  35'+). Every Map tab (game, player, hero, team) shows one map at a time in a single card, with
+  buttons to switch between wards, towers, deaths and team fights; the last pick is remembered
+  from page to page. Drawn on the minimap picture in `public/img/minimap.webp`, lined up by its two
   fountains against where players stand before the horn (both axes 4.25 px per map unit).
 - **Tower maps** (AD2L game pages) — every tower, barracks and Ancient on the same minimap,
   by the same game phases: what's standing at the end of the phase, what fell in it (with
@@ -183,8 +202,9 @@ to the stat points and each multiplier shows the points it adds or removes.
 - **Stats** — each game, each stat is a z-score against the same position (capped at ±2.5).
   Farm, hero damage, building damage, XP, kills and assists are shares of the team's total, so
   long games don't inflate them. GPM, net worth and support stacks (per game) are compared with the position's
-  straight-line fit on game length. Lane result = gold + XP lead at 10 min over the lane
-  opponent (cores: the opposite core; supports: lane pair vs pair). Each stat is then on its own
+  straight-line fit on game length. Lane result = gold + XP lead at 10 min over who they
+  actually laned against, from the replay's lanes (cores: the enemy core(s) in their lane; supports:
+  their lane vs the enemy's; jungling: none). Each stat is then on its own
   0–100 per role: a player's average, padded with 3 games at the position average; 100 = the
   league's best such average (players with 3+ games in the role), 0 = the worst. Support
   stacks are easier: 100 sits 70% of the way from the worst stacker to the best.
