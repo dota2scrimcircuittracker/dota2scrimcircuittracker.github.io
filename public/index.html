@@ -45,7 +45,13 @@
       </div>
     </div>
     <nav id="nav"></nav>
-    <button class="share-btn" id="share-btn" type="button" title="Copy a link that previews this page in Discord">Copy link</button>
+    <div class="top-tools">
+      <div class="tm" id="tm" hidden>
+        <button class="tm-btn" id="tm-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="tm-pop">All weeks</button>
+        <div class="tm-pop" id="tm-pop" hidden></div>
+      </div>
+      <button class="share-btn" id="share-btn" type="button" title="Copy a link that previews this page in Discord">Copy link</button>
+    </div>
   </header>
   <div class="div-switch" id="div-switch" hidden></div>
   <main id="app"></main>
