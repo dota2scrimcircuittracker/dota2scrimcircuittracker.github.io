@@ -35,6 +35,9 @@ const fixture = (extra = {}) => ({ v: 1, team_a: "Rules Test A", team_b: "Rules 
 const fixReq = (data, auth = { uid: "u1" }, path = FIX_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
 const fixUpd = (existing, data, auth = { uid: "u2" }) => ({ request: { auth, method: "update", path: FIX_PATH, time: NOW, resource: { data } }, resource: { data: existing } });
 const SCRIM_PRED_PATH = `/databases/(default)/documents/scrimLeague/data/predictions/${FIX_ID}_u1`;
+const CAST_PATH = `/databases/(default)/documents/scrimLeague/data/casts/${FIX_ID}`;
+const cast = (extra = {}) => ({ v: 1, league: "ad2l", game: "8412345678", url: "https://www.youtube.com/watch?v=abc123", caster: "Rules Test", uid: "u1", createdAt: NOW, ...extra });
+const castReq = (data, auth = { uid: "u1" }, path = CAST_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
 const withPlayer = (i, change) => ({ ...match(), players: match().players.map((p, j) => (j === i ? change({ ...p }) : p)) });
 const cases = [
   ["valid match", req(match()), "ALLOW"],
@@ -160,6 +163,27 @@ const cases = [
   ["prediction: voyager", predReq(pred({ league: "voyager" })), "ALLOW"],
   ["prediction: explorer", predReq(pred({ league: "explorer" })), "ALLOW"],
   ["prediction: unknown league", predReq(pred({ league: "knight" })), "DENY"],
+  ["cast: valid", castReq(cast()), "ALLOW"],
+  ["cast: scrim upload id", castReq(cast({ league: "scrim", game: "0123456789abcdef0123456789abcdef" })), "ALLOW"],
+  ["cast: twitch, 40-char caster", castReq(cast({ url: "https://www.twitch.tv/videos/123", caster: "C".repeat(40) })), "ALLOW"],
+  ["cast: signed out", castReq(cast(), null), "DENY"],
+  ["cast: someone else's uid", castReq(cast({ uid: "u2" })), "DENY"],
+  ["cast: client createdAt", castReq(cast({ createdAt: "2020-01-01T00:00:00Z" })), "DENY"],
+  ["cast: http url", castReq(cast({ url: "http://youtube.com/x" })), "DENY"],
+  ["cast: javascript url", castReq(cast({ url: "javascript:alert(1)" })), "DENY"],
+  ["cast: url with a space", castReq(cast({ url: "https://a.com/x y" })), "DENY"],
+  ["cast: url with a quote", castReq(cast({ url: 'https://a.com/x"onclick=1' })), "DENY"],
+  ["cast: 400-char url", castReq(cast({ url: "https://a.com/" + "x".repeat(390) })), "DENY"],
+  ["cast: empty caster", castReq(cast({ caster: "" })), "DENY"],
+  ["cast: 41-char caster", castReq(cast({ caster: "C".repeat(41) })), "DENY"],
+  ["cast: bad game id", castReq(cast({ game: "../matches/x" })), "DENY"],
+  ["cast: game as number", castReq(cast({ game: 8412345678 })), "DENY"],
+  ["cast: unknown league", castReq(cast({ league: "nba" })), "DENY"],
+  ["cast: extra field", castReq(cast({ views: 9 })), "DENY"],
+  ["cast: bad id", castReq(cast(), undefined, CAST_PATH.replace(FIX_ID, "short")), "DENY"],
+  ["cast: update denied", { request: { auth: { uid: "u1" }, method: "update", path: CAST_PATH, time: NOW, resource: { data: cast({ caster: "Other" }) } }, resource: { data: cast() } }, "DENY"],
+  ["cast: delete (anyone signed in)", { request: { auth: { uid: "u2" }, method: "delete", path: CAST_PATH, time: NOW }, resource: { data: cast() } }, "ALLOW"],
+  ["cast: signed-out delete", { request: { auth: null, method: "delete", path: CAST_PATH, time: NOW }, resource: { data: cast() } }, "DENY"],
   ["prediction: heroic with a fixture id", { ...predReq(pred({ league: "heroic", series_id: FIX_ID })), path: SCRIM_PRED_PATH }, "DENY"],
 ];
 

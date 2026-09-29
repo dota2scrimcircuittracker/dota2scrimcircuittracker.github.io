@@ -17,7 +17,7 @@ import { draftAnalysis, teamDraftPhases, PHASES } from "./lib/draft.js";
 import { aliasOf, asAd2l, guessTeams, openGames, rosterQuestions, sameTeams, teamByName } from "./lib/unticketed.js";
 import { tune, backtest, fitRatings, seriesOdds, isPlayed, outcomeOf, favourite, draftRead, pubsSince, pubSummary, standings, crowd, validPicks, modelCall, TIE_EDGE, predictDraft } from "./lib/predict.js";
 import { strengthOfSchedule } from "./lib/schedule.js";
-import { submitMatch, editMatch, listMatches, getMatch, deleteMatch, moveMatch, currentUid, listPredictions, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "./lib/store.js";
+import { submitMatch, editMatch, listMatches, getMatch, deleteMatch, moveMatch, currentUid, listPredictions, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture, listCasts, addCast, deleteCast, MAX_CASTS } from "./lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureOdds, fixtureCall, fixtureBacktest, outcomes, outcomeLabel } from "./lib/fixtures.js";
 import { parseScreenshots } from "./lib/ocr/parse.js";
 import { createBrowserEngine } from "./lib/ocr/engine-browser.js";
@@ -1075,8 +1075,10 @@ async function renderMatch(id, src) {
         <div class="banner-meta">${esc(m.game_mode || "Match")} · <b>${dur(m.duration_sec)}</b></div></section>
       <div class="panel empty"><strong>Private scrim</strong>Only the result was posted. Heroes, players and stats were never uploaded.<br>
         It counts toward both teams' records; it's left out of the tier list, player and hero tables.</div>
+      ${CASTS_BOX}
       <p class="table-note">Posted ${when(m.createdAt)}.</p>${deleteBtn}`;
     wireDelete();
+    wireCasts(m.id, src.key);
     return;
   }
 
@@ -1319,6 +1321,7 @@ async function renderMatch(id, src) {
       <div class="banner-meta">${esc(m.game_mode || "Match")} · <b>${dur(m.duration_sec)}</b>${m.createdAt ? ` · ${shortDate(m.createdAt)}` : ""}</div>
     </section>
     ${seriesHtml}
+    ${CASTS_BOX}
     ${factsHtml}
     ${m.draft?.length ? `<div class="gm-draft"><h3 class="gm-h3">Draft</h3>${draftStrip(m, src)}</div>` : ""}
     ${heroHtml}
@@ -1326,6 +1329,7 @@ async function renderMatch(id, src) {
     ${tabs.panels}
     <p class="table-note">${footer}</p>${deleteBtn}`;
   wireDelete();
+  wireCasts(m.id, src.key);
   wirePlayerTabs();
   wireCharts(app);
   app.querySelectorAll("[data-chart-view]").forEach((b) => (b.onclick = () => {
@@ -1348,6 +1352,73 @@ async function renderMatch(id, src) {
   wireWardMaps(app);
   wireTowerMaps(app);
   wireDeathMaps(app);
+}
+
+// Casts: links to a cast of the game (YouTube, Twitch, …) with the caster's name. Anyone can
+// add one; whoever added it (same browser) can remove it, anyone else needs the league
+// password. Loaded after the page so a slow read doesn't hold it up.
+const CASTS_BOX = `<section class="gm-casts" id="gm-casts" aria-label="Casts" hidden></section>`;
+const castSite = (url) => {
+  const host = new URL(url).hostname.replace(/^www\.|^m\./, "");
+  return { "youtube.com": "YouTube", "youtu.be": "YouTube", "twitch.tv": "Twitch", "kick.com": "Kick" }[host] ?? host;
+};
+// What was typed → an https URL the rules accept, or null.
+function castUrl(raw) {
+  let s = raw.trim();
+  if (!s) return null;
+  if (!/^[a-z]+:\/\//i.test(s)) s = `https://${s}`;
+  try {
+    const u = new URL(s);
+    if (u.protocol === "http:") u.protocol = "https:";
+    if (u.protocol !== "https:" || !u.hostname.includes(".")) return null;
+    return u.href.length <= 300 ? u.href : null;
+  } catch { return null; }
+}
+async function wireCasts(game, league) {
+  const box = document.getElementById("gm-casts");
+  if (!box) return;
+  let list, uid;
+  try { [list, uid] = await Promise.all([listCasts(game, league), currentUid()]); }
+  catch { return; } // no casts box rather than an error on the game page
+  if (!box.isConnected) return;
+  let name = "";
+  try { name = localStorage.getItem("castName") ?? ""; } catch {}
+  const full = list.length >= MAX_CASTS;
+  box.hidden = false;
+  box.innerHTML = `<span class="gm-series-k">Casts</span>
+    ${list.map((c) => `<span class="gm-cast"><a href="${esc(c.url)}" target="_blank" rel="noopener nofollow ugc">
+        <small>${esc(castSite(c.url))}</small>${esc(c.caster)}</a><button type="button" class="gm-cast-x" data-cast="${esc(c.id)}" data-mine="${c.uid === uid ? 1 : ""}" title="Remove this cast" aria-label="Remove ${esc(c.caster)}'s cast">×</button></span>`).join("")}
+    ${full ? "" : `<details class="gm-cast-add"${list.length ? "" : " open"}><summary>${list.length ? "Add a cast" : "No casts yet · add one"}</summary>
+      <form class="row" id="cast-form">
+        <input name="url" type="text" inputmode="url" placeholder="Link (YouTube, Twitch…)" maxlength="300" required autocomplete="off">
+        <input name="caster" type="text" placeholder="Caster name(s)" maxlength="40" required value="${esc(name)}">
+        <button type="submit">Add</button><span class="muted" id="cast-msg" role="status"></span></form></details>`}`;
+  const msg = (t) => { const el = document.getElementById("cast-msg"); if (el) el.textContent = t; };
+  const form = document.getElementById("cast-form");
+  if (form) form.onsubmit = async (e) => {
+    e.preventDefault();
+    const url = castUrl(form.url.value), caster = form.caster.value.trim();
+    if (!url) return msg("That doesn't look like a link.");
+    if (!caster) return msg("Add the caster's name.");
+    if (list.some((c) => c.url === url)) return msg("That cast is already here.");
+    try { localStorage.setItem("castName", caster); } catch {}
+    form.querySelector("button").disabled = true;
+    msg("Saving…");
+    try { await addCast(game, league, { url, caster }); wireCasts(game, league); }
+    catch (err) { form.querySelector("button").disabled = false; msg(`Couldn't save it: ${err.message}`); }
+  };
+  box.querySelectorAll("[data-cast]").forEach((b) => (b.onclick = async () => {
+    const c = list.find((x) => x.id === b.dataset.cast);
+    if (!b.dataset.mine && !editUnlocked()) {
+      const pw = window.prompt("Only whoever added this cast can remove it. League password:");
+      if (pw == null) return;
+      if (!unlockEdit(pw)) return window.alert("Wrong password.");
+    }
+    if (!window.confirm(`Remove ${c.caster}'s cast (${castSite(c.url)}) for everyone?`)) return;
+    b.disabled = true;
+    try { await deleteCast(c.id); wireCasts(game, league); }
+    catch (err) { b.disabled = false; window.alert(`Couldn't remove it: ${err.message}`); }
+  }));
 }
 
 // Replay extras per player (parsed replays only): fighting, laning and survival numbers.

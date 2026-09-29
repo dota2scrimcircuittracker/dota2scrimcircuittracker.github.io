@@ -170,3 +170,29 @@
         && request.resource.data.start < request.time + duration.value(60, 'd');
       allow delete: if request.auth != null;
     }
+
+    // Casts: links to a cast of a game with the caster's name, shown on the game page.
+    // `game` is the page's ID (OpenDota match ID or 32-hex upload ID), `league` the division
+    // key. No updates (delete and add again). Delete is open to anyone signed in; the site
+    // lets whoever added a cast remove it and puts everyone else behind the league password.
+    match /scrimLeague/data/casts/{castId} {
+      allow get: if true;
+      allow list: if request.query.limit <= 20;
+      allow create: if request.auth != null
+        && castId.matches('[A-Za-z0-9]{20}')
+        && request.resource.data.keys().hasOnly(['v', 'league', 'game', 'url', 'caster', 'uid', 'createdAt'])
+        && request.resource.data.keys().size() == 7
+        && request.resource.data.v == 1
+        && request.resource.data.league in ['scrim', 'ad2l', 'heroic', 'conqueror', 'warrior', 'challenger', 'voyager', 'explorer']
+        && request.resource.data.game is string
+        && request.resource.data.game.matches('[0-9]{1,15}|[0-9a-f]{32}')
+        && request.resource.data.url is string
+        && request.resource.data.url.size() <= 300
+        // Printable ASCII minus space, " < and > (the site sends URL().href, which encodes the rest).
+        && request.resource.data.url.matches('https://[!#-;=?-~]+')
+        && request.resource.data.caster is string
+        && request.resource.data.caster.size() >= 1 && request.resource.data.caster.size() <= 40
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow delete: if request.auth != null;
+    }

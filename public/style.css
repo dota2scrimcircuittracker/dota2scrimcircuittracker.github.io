@@ -2064,6 +2064,20 @@ button.tm-close:hover:not(:disabled) { border-color: var(--tc); color: var(--tc)
 a.gm-chip:hover { border-color: var(--seam-2); border-left-color: var(--c); text-decoration: none; background: var(--stone-2); }
 .gm-chip.on { background: var(--stone-2); outline: 1px solid var(--accent); outline-offset: -1px; }
 
+/* Casts: links to casts of the game, anyone can add */
+.gm-casts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 0; }
+.gm-cast { display: flex; align-items: stretch; background: var(--stone); border: 1px solid var(--seam); border-left: 3px solid var(--accent); }
+.gm-cast a { display: flex; flex-direction: column; gap: 3px; padding: 6px 4px 6px 12px; color: var(--bone); font: 600 12px/1.2 var(--body); max-width: 240px; }
+.gm-cast a:hover { text-decoration: none; background: var(--stone-2); }
+.gm-cast small { font: 500 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.gm-cast-x { border: 0; background: none; color: var(--dim); padding: 0 8px; min-width: 0; font-size: 14px; cursor: pointer; }
+.gm-cast-x:hover { color: var(--ember); background: var(--stone-2); }
+.gm-cast-add { font-size: 12px; color: var(--dust); }
+.gm-cast-add summary { cursor: pointer; width: max-content; padding: 6px 4px; }
+.gm-cast-add form { margin-top: 6px; flex-wrap: wrap; gap: 6px; }
+.gm-cast-add input { min-width: 0; flex: 1 1 180px; }
+.gm-cast-add[open] { flex-basis: 100%; }
+
 /* Key facts */
 .gm-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin: 14px 0; background: var(--seam); border: 1px solid var(--seam); }
 .gm-fact { background: var(--stone); padding: 12px 14px; min-width: 0; }

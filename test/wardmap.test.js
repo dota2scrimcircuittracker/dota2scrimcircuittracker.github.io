@@ -8,8 +8,8 @@ const dire = { team: "b", name: "D", obs_pos: [160, 170, 50, 200, 1], sen_pos: [
 test("wardsOf reads flat groups of 5", () => {
   const w = wardsOf(radiant);
   assert.equal(w.length, 3);
-  assert.deepEqual(w[1], { kind: "obs", x: 120, y: 130, t: 700, life: 45, killed: true });
-  assert.deepEqual(w[2], { kind: "sen", x: 80, y: 80, t: 10, life: -1, killed: false });
+  assert.deepEqual(w[1], { kind: "obs", x: 120, y: 130, t: 700, life: 45, killed: true, who: "R", hero: null });
+  assert.deepEqual(w[2], { kind: "sen", x: 80, y: 80, t: 10, life: -1, killed: false, who: "R", hero: null });
 });
 
 test("flip mirrors Dire wards to the placer's own side, leaves Radiant alone", () => {

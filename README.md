@@ -110,6 +110,11 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   hero, weekly and tier pages; standings stay PlayOn's series scores. No draft, gold or ward
   data (those come from replays). Stored in Firestore `scrimLeague/data/ad2l_unticketed`,
   same rules as scrims.
+- **Casts** — every game page (scrim, ticketed or unticketed AD2L) has a Casts strip under
+  the score: anyone pastes a link (YouTube, Twitch, any https page) and the caster's name, and
+  it's there for everyone. Whoever added a cast can remove it from that browser; anyone else
+  needs the league password. Up to 20 per game. Stored in Firestore `scrimLeague/data/casts`
+  (`league`, `game` = the page's game ID, `url`, `caster`).
 - **Editing and deleting** — whoever uploaded a game can edit or delete it from the browser
   they uploaded it in; anyone else needs the league password (see "Editing and deleting").
 - **Player pages** — click any player name: record, KDA, GPM, damage, kill participation,

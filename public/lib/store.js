@@ -5,7 +5,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp, Timestamp,
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp, Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { FIREBASE_CONFIG } from "../firebase-config.js";
 import { matchId } from "./stats.js";
@@ -188,4 +188,35 @@ export async function moveFixture(id, start, best_of) {
 export async function deleteFixture(id) {
   await signedIn();
   await deleteDoc(doc(fixtures, id));
+}
+
+// ---------- casts ----------
+// Links to a cast of a game (YouTube, Twitch, …) with the caster's name, shown on the game
+// page for anyone to click. `game` is the page's game ID (an OpenDota match ID or a 32-hex
+// upload ID); `league` is the collection key ("scrim", "ad2l", "heroic", …). No edits:
+// delete and add again.
+const casts = collection(db, "scrimLeague", "data", "casts");
+export const MAX_CASTS = 20;
+
+export async function listCasts(game, league = "scrim") {
+  const snap = await getDocs(query(casts, where("game", "==", String(game)), limit(MAX_CASTS)));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate?.() ?? null }))
+    .filter((c) => c.league === league)
+    .sort((a, b) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity));
+}
+
+export async function addCast(game, league, { url, caster }) {
+  await signedIn();
+  const ref = doc(casts); // random 20-character ID
+  await setDoc(ref, {
+    v: 1, league, game: String(game), url, caster: caster.trim().slice(0, 40),
+    uid: auth.currentUser.uid, createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function deleteCast(id) {
+  await signedIn();
+  await deleteDoc(doc(casts, id));
 }

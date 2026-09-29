@@ -86,16 +86,16 @@ test("the game card carries every death with its killer; empty without data", ()
   assert.equal(deathMapHtml({ ...game(), players: game().players.map((p) => ({ ...p, death_log: null })) }), "");
 });
 
-test("the player card keeps only that player, mirrors Dire games, splits wins and losses", () => {
+test("the player card keeps only that player, keeps Dire games unmirrored with their side, splits wins and losses", () => {
   const won = { ...game(), id: "1", winner: "a" };
   const lost = { ...game(), id: "2", winner: "a" }; // Axe (Dire) lost this one
   const D = card(playerDeathsHtml([won, lost], (p) => p.hero === "Axe"));
   assert.equal(D.mode, "player");
-  assert.deepEqual(D.games, [["Axe", "l"], ["Axe", "l"]]);
+  assert.deepEqual(D.games, [["Axe", "l", "b"], ["Axe", "l", "b"]]); // hero, result, side (Dire)
   assert.equal(D.d[0][10], "Axe");
   assert.equal(D.d.length, 2);
-  // 118,131 mirrored about the map centre (128.75, 127.95)
-  assert.deepEqual([D.d[0][2], D.d[0][3], D.d[0][8]], [139.5, 124.9, "l"]);
+  // Never mirrored (each side plays the map differently); the side goes in [12].
+  assert.deepEqual([D.d[0][2], D.d[0][3], D.d[0][8], D.d[0][12]], [118, 131, "l", "b"]);
   assert.equal(D.d[0][7], "Axe vs Rad (lost): died at 15:30 to P0 (Anti-Mage). Lost 200 gold, dead 33s.");
   assert.equal(D.d[0][9], "15:30 · Axe vs Rad (L) · by Anti-Mage");
   assert.equal(playerDeathsHtml([won], (p) => p.hero === "Nobody"), "");
