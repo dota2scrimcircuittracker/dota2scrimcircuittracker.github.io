@@ -123,7 +123,7 @@ for (const { p, title, description, color } of pages) {
 <meta name="theme-color" content="${color}">
 <link rel="canonical" href="${url}">
 <meta http-equiv="refresh" content="0; url=/${esc(route)}">
-<script>location.replace("/" + ${JSON.stringify(route)});</script>
+<script>location.replace("/" + location.search + ${JSON.stringify(route)});</script>
 </head>
 <body><a href="/${esc(route)}">${esc(title)}</a></body>
 </html>

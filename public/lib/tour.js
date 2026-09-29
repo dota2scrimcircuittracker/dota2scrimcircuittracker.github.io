@@ -59,7 +59,7 @@ const CORE = [
   {
     title: "Standings",
     text: (ctx) => ctx.ad2l
-      ? "Every team by games won, with strength of schedule, form and the model's rating. Click a team for its page."
+      ? "Every team by games won, with form, the model's rating and strength of schedule (how tough its opponents have been, and the ones still to play). Click a team for its page."
       : "Every scrim team by game wins, with win %, kill difference and form. Private scrims count here too.",
     enter: async (t) => {
       await t.visit(navHref(standingsKey(t.ctx)));
@@ -84,7 +84,7 @@ const CORE = [
   },
   {
     title: "Pages have tabs",
-    text: "Team, player, hero and game pages split into tabs like these. Your last pick is remembered.",
+    text: "Team, player, hero and game pages split into tabs like these. Your last pick is remembered, and Back takes you to the tab you were on before.",
     enter: async (t) => { if (!(await t.visitPicked("team"))) return null; return t.find(".pp-tabs"); },
   },
   {
@@ -205,6 +205,13 @@ const filter = ({ page, tab, view: v, scope: sc, act, box, title, text, when = a
     return box ? t.findIn(app, box, 1500) : scope;
   },
 });
+// Click whichever Radiant / Dire side button isn't showing (ward, fight and death maps).
+const otherSide = async (t, scope) => {
+  const b = [...scope.querySelectorAll(".wm-seg button")].find((x) => visible(x) && /^As (Radiant|Dire)/.test(x.textContent.trim()) && x.getAttribute("aria-pressed") !== "true");
+  if (!b) return false;
+  await t.click(b);
+  return true;
+};
 // Click the segment button whose label matches re.
 const seg = (re) => async (t, scope) => {
   const b = [...scope.querySelectorAll(".wm-seg button, .segs button")].find((x) => visible(x) && re.test(x.textContent.trim()));
@@ -228,8 +235,10 @@ const choose = (sel, pick) => async (t, scope) => {
 
 const DEEP = [
   ...group("Standings", [
-    part({ page: "standings", tab: "schedule", sel: "#sos", btn: true, when: ad2l, title: "Schedule",
-      text: "Strength of schedule: how tough each team's opponents have been so far, and how tough the rest of its season is." }),
+    part({ page: "standings", tab: "matches", sel: ".mx-grid", btn: true, when: ad2l, title: "Matches",
+      text: "Every series week by week, played and coming up: green won, red lost, gold tied. G1 and G2 open each game." }),
+    part({ page: "standings", tab: "cross", sel: "table.ct", btn: true, when: ad2l, title: "Crosstable",
+      text: "Every team against every other. Read across: the row team's score and the week. Empty cells haven't met yet." }),
     part({ page: "standings", tab: "race", sel: "figure.chart", btn: true, when: ad2l, title: "Race",
       text: "Every team's wins, week by week. Hover a line for its week-by-week totals." }),
     part({ page: "standings", tab: "next", sel: ".fixtures", btn: true, when: ad2l, title: "Up next",
@@ -271,7 +280,9 @@ const DEEP = [
       text: "Where the team ranks in the league on objectives, gold and vision: its best and worst." }),
     part({ page: "team", tab: "map", sel: ".tg-grid", head: true, when: ad2l, title: "Gold",
       text: "The gold lead in every game on one chart: when the team gets ahead, and whether it holds." }),
-    view("team", "wards", "Team wards", "Where the team places its wards over every parsed game. Own base is always bottom left."),
+    view("team", "wards", "Team wards", "Where the team places its wards over every parsed game. Both sides shows Radiant and Dire games together, with Dire games flipped so own base is bottom left."),
+    filter({ page: "team", view: "wards", act: otherSide, title: "Radiant or Dire",
+      text: "Pick a side to see only those games, at their real spots on the map. Team fights has the same switch." }),
     filter({ page: "team", view: "wards", act: seg(/^0–10'$/), title: "Filter by time",
       text: "Every map filters by stretch of the game. Here: only wards placed in the first 10 minutes. You can also pick observers or sentries, one player, or switch dots to heat." }),
     view("team", "fights", "Team fights", "Where the team takes its fights. Heat shows where they happen; Net shows where it comes out ahead or behind."),
@@ -339,17 +350,11 @@ const DEEP = [
       text: "Pick a hero to see their item timings on it." }),
     part({ page: "player", tab: "items", sel: ".ih-view", when: ad2l, title: "Their timings",
       text: "Each core item: how often they build it, their average time, the league's on the same heroes, and the lead swing after it." }),
-    view("player", "wards", "Their wards", "Where they place wards over every parsed game. Own base is always bottom left."),
+    view("player", "wards", "Their wards", "Where they place wards over every parsed game, both sides together or only their Radiant or Dire games."),
     view("player", "deaths", "Their deaths", "Where and when they die, as Radiant or as Dire."),
     filter({ page: "player", view: "deaths", title: "Radiant or Dire",
       text: "The map flips with the side they played: switch between their Radiant games and their Dire games. You can also filter by hero, wins or losses, and time.",
-      act: async (t, scope) => {
-        // Click whichever side isn't showing.
-        const b = [...scope.querySelectorAll(".wm-seg button")].find((x) => visible(x) && /^As (Radiant|Dire)/.test(x.textContent.trim()) && x.getAttribute("aria-pressed") !== "true");
-        if (!b) return false;
-        await t.click(b);
-        return true;
-      } }),
+      act: otherSide }),
     filter({ page: "player", tab: "games", act: choose("select.sort-key", /^GPM$/), box: "#pp-panel-games #t", when: always, title: "Sort any table",
       text: "Every table sorts by any column: pick from the list, or click a column header." }),
     part({ page: "player", tab: "games", sel: "#game-box", head: true, btn: true, title: "Game analysis",
@@ -964,11 +969,10 @@ try { const k = JSON.parse(sessionStorage.getItem(KEPT_KEY)); if (k) restoreKept
 // go(href, { rerender }) navigates in-app; here() is the current "#/..." route.
 export function initTour({ go, here }) {
   deps = { go, here };
-  // Top bar: New here? / Resume tour, and Restart. The footer link starts over too.
+  // Top bar: New here? / Resume tour, and Restart.
   const on = (id, fn) => document.getElementById(id)?.addEventListener("click", (e) => { e.preventDefault(); fn(); });
   on("tour-open", () => startTour({ resume: !!pausedSpot() }));
   on("tour-restart", () => startTour());
-  on("tour-replay", () => startTour());
   syncTopBar();
   if (localGet(SEEN_KEY)) return;
   // Wait for the first page to render, then a moment more.

@@ -93,9 +93,11 @@ export function backtest(teams, series, params) {
 // One pull / medal weight for every division, picked by replaying all seven divisions together
 // (weeks 3-6 of the 2026 season, 224 games, each week predicted from the weeks before it).
 // Tuning each division on its own ~50 games chased noise and did barely better than a coin flip.
-// The best pair was a near-total pull: results barely move a rating yet (log loss 0.6697 vs
-// 0.6931 for a coin flip). Re-run the replay as the season fills in; results may earn weight.
-export const MODEL_PARAMS = { lambda: 1000, beta: 0.3 };
+// The best pair was a near-total pull (1000: log loss 0.6697 vs 0.6931 for a coin flip), but
+// then results never count, and in Heroic every team's top three are Immortal, so every team
+// came out dead even. Pull 10 costs almost nothing (0.6712) and lets results separate teams
+// whose medals can't. Re-run the replay as the season fills in; results may earn more weight.
+export const MODEL_PARAMS = { lambda: 10, beta: 0.3 };
 
 // The shared settings, plus how they've done replaying this division week by week (log loss).
 export function tune(teams, series) {

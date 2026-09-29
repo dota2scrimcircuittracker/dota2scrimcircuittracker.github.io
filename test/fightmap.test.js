@@ -14,7 +14,7 @@ const game = (winner) => ({
 
 test("teamFights: one entry per fight, won when the enemy lost more, pickoffs left out", () => {
   const out = teamFights([game("a")], (m) => "a");
-  assert.deepEqual(out.games, [["Them", 1, "g1"]]);
+  assert.deepEqual(out.games, [["Them", 1, "g1", "a"]]);
   assert.deepEqual(out.fights, [[106, 102, 900, 1, 2, 0]]); // centre of the three deaths; 1 own, 2 enemy
   assert.equal(out.pts.length, 3); // the 20:00 pickoff has no spot
   assert.equal(out.pts.filter((p) => p[2] === 1).length, 1);
@@ -22,7 +22,7 @@ test("teamFights: one entry per fight, won when the enemy lost more, pickoffs le
 
 test("teamFights mirrors Dire so the team's own base is bottom left", () => {
   const out = teamFights([game("a")], (m) => "b");
-  assert.deepEqual(out.games, [["Us", 0, "g1"]]);
+  assert.deepEqual(out.games, [["Us", 0, "g1", "b"]]);
   // (106, 102) mirrored about (128.75, 127.95); now 2 own deaths, 1 enemy
   assert.deepEqual(out.fights, [[151.5, 153.9, 900, 2, 1, 0]]);
   assert.equal(ownHalf(100, 100), true);

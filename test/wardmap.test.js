@@ -26,3 +26,9 @@ test("collectWards filters players and mirrors; summary counts", () => {
   assert.deepEqual({ obs: s.obs, sen: s.sen, obs_killed: s.obs_killed }, { obs: 3, sen: 1, obs_killed: 2 });
   assert.equal(Math.round(s.obs_life), Math.round((360 + 45 + 200) / 3));
 });
+
+test("collectWards keeps each ward's side and game so the map can split them again", () => {
+  const games = [{ id: "g1", players: [radiant, dire] }, { id: "g2", players: [dire] }];
+  const all = collectWards(games, () => true);
+  assert.deepEqual(all.map((w) => [w.side, w.game]), [["a", "g1"], ["a", "g1"], ["a", "g1"], ["b", "g1"], ["b", "g2"]]);
+});

@@ -51,8 +51,18 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   page at each of those paths (`scripts/share-pages.js`) that forwards into the app; pages
   without one (player pages, a week other than the latest, uploaded games) keep `/#/…`.
   Old `#/` links still work. Locally, `npm start` serves the app for any extensionless path.
+  Page tabs (a team's Overview / Roster / Games…, a player's, hero's or game's) add `?tab=<id>`
+  and a history step, so Back returns to the previous tab and a copied link opens on that tab;
+  the preview pages pass `?tab=` through when they forward.
 - **Tier list** (top of the Players tab) — every player with 3+ games, ranked S–D by in-season performance
   against same-role players plus win rate (see "Tier list" below).
+- **Matches and Crosstable** (AD2L, tabs on the Teams page) — Matches lists every series,
+  one box per week (per division in Combined Heroic), like a Liquipedia group stage: winner
+  green, loser red, a tie gold; upcoming pairings with the model's odds on hover; G1/G2 links to
+  each ticketed game. PlayOn posts pairings about a week ahead, so the last box is as far as it
+  goes. Crosstable is every team against every other in standings order: the row team's score
+  and week in each cell, "vs" for the coming week, empty where two teams haven't met (AD2L
+  isn't a round robin); one table per division in Combined Heroic.
 - **Weekly recap** — one week at a time: highlights (player of the week, biggest damage,
   best KDA, top GPM, most kills) and every game with lineups and MVP. AD2L games also show
   the full Captains Mode draft in pick/ban order, grouped by series. (Scrims have no draft:
@@ -152,8 +162,9 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   `dn10` from `.cache/opendota` with no network calls.
 - **Ward maps** (AD2L) — every observer and sentry position from the replay. Game pages show
   both teams as dots (hover for time placed, how long it lasted, dewarded or not); player,
-  hero and team pages show a heat map of all their wards with Dire games mirrored so it's
-  always "own base bottom left". Filter by ward type and game phase (0–10', 10–20', 20–35',
+  hero and team pages show all their wards with a side switch: Both sides (Dire games mirrored
+  so it's always "own base bottom left"), or As Radiant / As Dire (only those games, at their
+  real spots). The team fight map has the same switch. Filter by ward type and game phase (0–10', 10–20', 20–35',
   35'+). Every Map tab (game, player, hero, team) shows one map at a time in a single card, with
   buttons to switch between wards, towers, deaths and team fights; the last pick is remembered
   from page to page. Drawn on the minimap picture in `public/img/minimap.webp`, lined up by its two
@@ -166,9 +177,9 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
 - **Hero pages** — click any hero: record, pick and ban rates, average draft slot (AD2L),
   best team and player on it, biggest games, a teams table (picks, W–L, win % on the hero,
   who played it, bans for and against), a players table and every game it was in.
-- **Strength of schedule** (AD2L standings) — RPI-style: opponents' game win % (without
-  their games against you) and their opponents' win %, plus how tough the remaining
-  schedule is. Team names link to team pages everywhere on the site.
+- **Strength of schedule** (SOS and Still to play columns on the standings Table) — RPI-style:
+  opponents' game win % (without their games against you) and their opponents' win %, plus
+  how tough the remaining schedule is (a coming bye week doesn't count as an opponent). Team names link to team pages everywhere on the site.
 - Every table sorts: click a column header (↕), or use the "Sort by" menu on player tables.
 - Match pages with standouts (damage per net worth, kill participation, damage share),
   sortable player and hero leaderboards.

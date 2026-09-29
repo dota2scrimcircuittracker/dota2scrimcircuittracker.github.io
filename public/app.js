@@ -1546,6 +1546,124 @@ function wireItemHeroes() {
   if (more) more.onclick = () => { app.querySelectorAll(".ih-more").forEach((r) => { r.hidden = false; }); more.remove(); };
 }
 
+// ---------- AD2L matches and crosstable (tabs on the Teams page) ----------
+
+// What both views need: series with a date (oldest first), teams by id, bye placeholders,
+// each series' ticketed games, and week numbers counted from the first scheduled week (the
+// same numbers Weekly uses). Split = Combined Heroic, where each division gets its own box
+// (only leagues with sub-divisions: elsewhere `division` can hold PlayOn sign-up table names).
+function seriesContext(src, d) {
+  const series = d.series.filter((s) => s.time).sort((a, b) => a.time - b.time || a.id - b.id);
+  const team = Object.fromEntries(d.teams.map((t) => [t.id, t]));
+  const bye = (id) => /\bbye week\b/i.test(team[id]?.name ?? "");
+  const gamesOf = new Map();
+  for (const g of [...d.games].sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0))) (gamesOf.get(g.series_id) ?? gamesOf.set(g.series_id, []).get(g.series_id)).push(g);
+  const wk = (s) => weekStart(new Date(s.time * 1000)).getTime(), first = series.length ? wk(series[0]) : 0;
+  const weekNo = (s) => Math.round((wk(s) - first) / (7 * 864e5)) + 1;
+  const split = !!DIVISIONS[src.key]?.views && !src.view;
+  const divOf = (s) => (split ? team[s.home]?.division ?? team[s.away]?.division ?? "" : "");
+  return { series, team, bye, gamesOf, wk, weekNo, split, divOf };
+}
+const dayTime = (t) => new Date(t * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const dayOnly = (t) => new Date(t * 1000).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+const soon = (s) => !isPlayed(s) && s.time * 1000 > Date.now() - 6 * 3600e3;
+const teamInitials = (n) => { const w = n.split(/[\s-]+/).filter(Boolean); return (w.length > 1 ? w.map((x) => x[0]).join("") : n).slice(0, 3).toUpperCase(); };
+
+// Matches: every series, played and upcoming, one box per week (per division in Combined
+// Heroic), laid out like a Liquipedia group stage. PlayOn only publishes the next week's
+// pairings, so the last box is as far ahead as anyone knows. "" when nothing is scheduled.
+function matchesHtml(src, d, ratings) {
+  const { series, team, bye, gamesOf, wk, weekNo, split, divOf } = seriesContext(src, d);
+  if (!series.length) return "";
+  const boxes = new Map();
+  for (const s of series) {
+    const key = `${wk(s)}|${divOf(s)}`;
+    if (!boxes.has(key)) boxes.set(key, { n: weekNo(s), div: divOf(s), list: [] });
+    boxes.get(key).list.push(s);
+  }
+  const name = (id) => team[id] ? teamLink(src, team[id].name, id) : "TBD";
+  const row = (s, night) => {
+    const done = isPlayed(s), [h, a] = [s.home_score, s.away_score];
+    const cls = (us, them) => !done ? "" : us > them ? " w" : us < them ? " l" : " t";
+    const gs = gamesOf.get(s.id) ?? [];
+    const o = !done && team[s.home] && team[s.away] && !bye(s.home) && !bye(s.away) && seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0);
+    const title = o ? ` title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}"` : "";
+    const extra = [s.time !== night ? `<span class="mx-when">${done ? dayOnly(s.time) : dayTime(s.time)}</span>` : "",
+      ...gs.map((g, i) => `<a class="mx-g" href="${src.link(g)}" title="Game ${i + 1}: ${esc(g.winner === "a" ? g.team_a : g.team_b)} won">G${i + 1}</a>`)].join("");
+    return `<div class="mx-row${done ? "" : " up"}${bye(s.home) || bye(s.away) ? " bye" : ""}"${title}>
+      <span class="mx-t h${cls(h, a)}">${name(s.home)}</span>
+      ${done ? `<span class="mx-s${cls(h, a)}">${h}</span><span class="mx-s${cls(a, h)}">${a}</span>` : `<span class="mx-vs">vs</span>`}
+      <span class="mx-t a${cls(a, h)}">${name(s.away)}</span>
+      ${extra ? `<span class="mx-x">${extra}</span>` : ""}
+    </div>`;
+  };
+  // The next box with anything left to play, so the tab can point at it.
+  const all = [...boxes.values()];
+  const next = all.find((b) => b.list.some(soon));
+  const left = series.filter(soon).length;
+  const html = all.map((b, i) => {
+    // The week's league night: the time most of its series share.
+    const counts = new Map();
+    for (const s of b.list) counts.set(s.time, (counts.get(s.time) ?? 0) + 1);
+    const night = [...counts].sort((x, y) => y[1] - x[1] || x[0] - y[0])[0][0];
+    const played = b.list.filter(isPlayed).length, state = played === b.list.length ? "done" : played ? "live" : "up";
+    return `<section class="mx-box ${state}${b === next ? " next" : ""}" style="--i:${Math.min(i, 12)}"${b === next ? ' id="mx-next"' : ""}>
+      <header class="mx-head"><span class="mx-wk">Week ${b.n}${b.div ? ` · Division ${esc(b.div)}` : ""}</span>
+        <span class="mx-date">${state === "done" ? dayOnly(night) : dayTime(night)}</span>
+        ${state !== "done" ? `<span class="mx-tag">${state === "live" ? `${played}/${b.list.length} played` : "Upcoming"}</span>` : ""}</header>
+      ${b.list.map((s) => row(s, night)).join("")}
+    </section>`;
+  }).join("");
+  return `<p class="table-note mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
+      PlayOn posts each week's pairings about a week ahead, so the last box is as far as the schedule goes.
+      ${next ? `<button type="button" class="week-btn mx-jump">Jump to the next week ↓</button>` : ""}</p>
+    <div class="mx-grid${split ? " split" : ""} reveal">${html}</div>
+    <p class="table-note">Hover an upcoming series for the model's odds (same model as <a href="${src.root}/predict">Predict</a>). G1, G2 open each ticketed game.</p>`;
+}
+
+// Crosstable: every team against every other, like a Liquipedia group table. Teams run in
+// standings order (`order`: team ids) down the side and across the top; a cell is the row
+// team's score against the column team with the week it was played, or "vs" and the week
+// when it's coming up. AD2L isn't a round robin, so most pairs haven't met and their cell is
+// empty. Combined Heroic gets one table per division (they never play each other). "" before
+// any series is played.
+function crossTableHtml(src, d, order) {
+  const { series, team, bye, gamesOf, weekNo, split } = seriesContext(src, d);
+  if (!series.some(isPlayed)) return "";
+  const meet = new Map();
+  for (const s of series) {
+    if (bye(s.home) || bye(s.away) || !(isPlayed(s) || soon(s))) continue;
+    for (const [us, them] of [[s.home, s.away], [s.away, s.home]]) {
+      const k = `${us}|${them}`;
+      (meet.get(k) ?? meet.set(k, []).get(k)).push(s);
+    }
+  }
+  const cell = (us, them) => {
+    if (us === them) return `<td class="ct-self"></td>`;
+    const list = meet.get(`${us}|${them}`) ?? [];
+    if (!list.length) return `<td class="ct-none"></td>`;
+    return `<td class="ct-c">${list.map((s) => {
+      if (!isPlayed(s)) return `<span class="ct-m up" title="${esc(team[us].name)} vs ${esc(team[them].name)}: ${dayTime(s.time)}">vs<small>Wk ${weekNo(s)}</small></span>`;
+      const [a, b] = s.home === us ? [s.home_score, s.away_score] : [s.away_score, s.home_score];
+      const res = a > b ? "w" : a < b ? "l" : "t", g = gamesOf.get(s.id)?.[0];
+      const tip = `${esc(team[us].name)} ${a}–${b} ${esc(team[them].name)} · week ${weekNo(s)}, ${dayOnly(s.time)}${g ? " · click for game 1" : ""}`;
+      const inner = `${a}–${b}<small>Wk ${weekNo(s)}</small>`;
+      return g ? `<a class="ct-m ${res}" href="${src.link(g)}" title="${tip}">${inner}</a>` : `<span class="ct-m ${res}" title="${tip}">${inner}</span>`;
+    }).join("")}</td>`;
+  };
+  const table = (ids, div) => `<div class="ct-wrap reveal">${div ? `<h3 class="ct-div">Division ${esc(div)}</h3>` : ""}<table class="ct">
+    <thead><tr><th class="ct-corner"></th>${ids.map((id) => `<th class="ct-col" title="${esc(team[id].name)}"><a href="${src.root}/teams/${id}">${esc(teamInitials(team[id].name))}</a></th>`).join("")}</tr></thead>
+    <tbody>${ids.map((id, i) => `<tr><th class="ct-row"><span class="ct-rank">${i + 1}</span>${teamLink(src, team[id].name, id)}<span class="ct-ab">${esc(teamInitials(team[id].name))}</span></th>${ids.map((o) => cell(id, o)).join("")}</tr>`).join("")}</tbody>
+  </table></div>`;
+  const ids = order.filter((id) => team[id] && !bye(id));
+  const groups = split
+    ? [...new Set(ids.map((id) => team[id].division ?? ""))].sort().map((div) => [ids.filter((id) => (team[id].division ?? "") === div), div])
+    : [[ids, ""]];
+  return `${groups.map(([g, div]) => table(g, div)).join("")}
+    <p class="table-note">Read across: each cell is the row team's series score against the column team, with the week. Green won, red lost, gold tied; "vs" is coming up.
+      Rows run in the Table tab's order (game wins). Empty cell: those two haven't met, since AD2L isn't a round robin. Click a score for game 1.</p>`;
+}
+
 // ---------- AD2L standings ----------
 
 async function renderStandings(src) {
@@ -1577,7 +1695,8 @@ async function renderStandings(src) {
       model_rating: ratings.get(t.id) ?? null };
   });
   const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
-  const sos = strengthOfSchedule(d.teams.map((t) => t.id), d.series);
+  // A coming bye week isn't an opponent: keep it out of "Still to play".
+  const sos = strengthOfSchedule(d.teams.map((t) => t.id), d.series.filter((s) => isPlayed(s) || (!bye.has(s.home) && !bye.has(s.away))));
 
   // Highlight cards. Biggest upset: the decided series whose result the model, fitted only on
   // the nights before it, thought least likely.
@@ -1626,16 +1745,15 @@ async function renderStandings(src) {
         <div class="fx-team b">${name[s.away] ? teamLink(src, name[s.away], s.away) : "TBD"}</div>
       </div>`;
     }).join("")}</div>
-    <p class="table-note">Odds from the same model as Predict. Green = the left team wins 2–0, grey = 1–1, red = the right team wins 2–0.</p>` : "";
+    <p class="table-note">Odds from the same model as Predict. Green = the left team wins 2–0, gold = 1–1, red = the right team wins 2–0.</p>` : "";
 
   const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const tabs = playerTabs([
     ["table", "Table", `<div id="t" class="reveal"></div>
       <p class="table-note">Sorted by game wins; official standings and tiebreakers live on
         <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.</p>`],
-    ["schedule", "Schedule", `<div id="sos" class="reveal"></div>
-      <p class="table-note"><b>SOS</b> = (2 × opponents' game win % + their opponents' game win %) ÷ 3, the same idea as RPI.
-        <b>Still to play</b> = average game win % of the opponents left.</p>`],
+    ["matches", "Matches", matchesHtml(src, d, ratings)],
+    ["cross", "Crosstable", crossTableHtml(src, d, [...rows].sort((a, b) => b.gw - a.gw || a.gl - b.gl).map((r) => r.id))],
     ["race", "Race", raceHtml],
     ["next", `Up next · ${upcoming.length}`, nextHtml],
   ], { store: "standingsTab", label: "Standings sections" });
@@ -1645,33 +1763,27 @@ async function renderStandings(src) {
     <div class="st-tabs">${tabs.bar}</div>
     ${tabs.panels}`;
 
-  const initials = (n) => { const w = n.split(/[\s-]+/).filter(Boolean); return (w.length > 1 ? w.map((x) => x[0]).join("") : n).slice(0, 3).toUpperCase(); };
   const squares = (fs) => fs.map((f) => `<a class="sos-sq ${f.result}" href="${src.root}/teams/${f.opp}"
-      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${f.opp_rate != null ? ` (their other games: ${pct(f.opp_rate)})` : ""}">${esc(initials(name[f.opp] ?? "?"))}</a>`).join("");
+      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${f.opp_rate != null ? ` (their other games: ${pct(f.opp_rate)})` : ""}">${esc(teamInitials(name[f.opp] ?? "?"))}</a>`).join("");
   // Form: five slots, empty ones first, so the newest series always sits in the last column.
   const form = (fs) => `<span class="sos-faced st-form">${'<span class="sos-sq e"></span>'.repeat(5 - fs.length)}${squares(fs)}</span>`;
   const rmax = Math.max(0.01, ...rows.map((r) => Math.abs(r.model_rating ?? 0)));
   const rating = (v) => v == null ? "—" : `<span class="st-rating"><span class="st-track"><i class="${v >= 0 ? "up" : "down"}" style="width:${(Math.min(1, Math.abs(v) / rmax) * 50).toFixed(1)}%"></i></span>${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}</span>`;
 
-  // Combined Heroic view: both divisions in one table, so say which each team plays in.
-  const divCol = d.teams.some((t) => t.division) && !d.division ? [["division", "Div", (v) => (v ? `<span class="div-tag">${esc(v)}</span>` : "—"), "", null, false]] : [];
+  // Strength of schedule (lib/schedule.js) rides along on each team's row.
+  const sosOf = new Map(sos.map((x) => [x.id, x]));
   sortableTable(document.getElementById("t"), [
-    ["team", "Team", (v, r) => teamLink(src, v, r.id), "l"], ...divCol, ["series", "Series"], ["w", "W"], ["tie", "T"], ["l", "L"],
+    ["team", "Team", (v, r) => teamLink(src, v, r.id), "l"], ["series", "Series"], ["w", "W"], ["tie", "T"], ["l", "L"],
     ["gw", "Games won", null, "", "jade"], ["gl", "Games lost"], ["game_rate", "Game win %", pct, "", "jade"],
-    ["series_form", "Form", (v, r) => form(r.form), "l"], ["model_rating", "Rating", rating], ["tracked", "Stats"],
-  ], rows, "gw");
-
-  sortableTable(document.getElementById("sos"), [
-    ["team", "Team", (v, r) => teamLink(src, v, r.id), "l"], ...divCol,
-    ["record", "Series W–T–L", null],
+    ["series_form", "Form", (v, r) => form(r.form), "l"], ["model_rating", "Rating", rating],
     ["sos", "SOS", pct, "", "gold"],
-    ["owp", "Opp. win %", pct],
-    ["oowp", "Opp. opp. win %", pct],
-    ["faced", "Opponents faced", (v) => `<span class="sos-faced">${squares(v)}</span>`, "l"],
-    ["remaining_sos", "Still to play", (v, r) => r.remaining.length ? `${pct(v)} <span class="muted">· ${r.remaining.length} left</span>` : "—", "", "ember"],
-  ], sos.map((x) => ({ ...x, team: name[x.id], division: byId[x.id].division, record: `${byId[x.id].w}–${byId[x.id].tie}–${byId[x.id].l}` })), "sos");
+    ["remaining_sos", "Still to play", (v, r) => r.remaining.length && v != null ? `${pct(v)} <span class="muted">· ${r.remaining.length} left</span>` : "—", "", "ember"],
+    ["tracked", "Stats"],
+  ], rows.map((r) => ({ ...r, sos: sosOf.get(r.id)?.sos ?? null, remaining_sos: sosOf.get(r.id)?.remaining_sos ?? null, remaining: sosOf.get(r.id)?.remaining ?? [] })), "gw");
+
   wirePlayerTabs();
   wireCharts(app);
+  app.querySelector(".mx-jump")?.addEventListener("click", () => document.getElementById("mx-next")?.scrollIntoView({ block: "center" }));
 }
 
 // ---------- Leaderboards ----------
@@ -2931,12 +3043,14 @@ window.addEventListener("hashchange", () => document.documentElement.classList.r
 
 // Player and hero page tabs: one panel shows at a time. Empty panels (no map data in scrims) get
 // no tab. The open tab is remembered per kind of page, so going player to player (or hero to
-// hero) keeps you on Map or Games.
+// hero) keeps you on Map or Games. Each tab click is its own history step with ?tab=<id> in the
+// address, so Back goes to the previous tab and a copied link opens on that tab.
 const TAB_KEY = "playerTab";
+const tabInUrl = () => history.state?.tab ?? new URLSearchParams(location.search).get("tab");
 function playerTabs(tabs, { store = TAB_KEY, label = "Player sections" } = {}) {
   const shown = tabs.filter(([, , html]) => html.trim());
-  let want = null;
-  try { want = localStorage.getItem(store); } catch {}
+  let want = tabInUrl();
+  if (!shown.some(([id]) => id === want)) try { want = localStorage.getItem(store); } catch {}
   const open = shown.some(([id]) => id === want) ? want : shown[0][0];
   return {
     bar: `<div class="pp-tabs" role="tablist" aria-label="${label}" data-store="${store}">${shown.map(([id, label]) => `<button type="button" role="tab" id="pp-tab-${id}"
@@ -2948,7 +3062,10 @@ function wirePlayerTabs() {
   const bar = app.querySelector(".pp-tabs");
   if (!bar) return;
   const btns = [...bar.querySelectorAll("[role=tab]")];
-  const pick = (b, focus = false) => {
+  const withTab = (id) => { const u = new URL(location.href); u.searchParams.set("tab", id); return u.pathname + u.search + u.hash; };
+  // The tab this history entry shows, so Back to it (or a reload) opens it again.
+  history.replaceState({ ...history.state, tab: btns.find((x) => x.getAttribute("aria-selected") === "true")?.dataset.tab }, "");
+  const pick = (b, focus = false, push = true) => {
     for (const x of btns) {
       const on = x === b;
       x.setAttribute("aria-selected", String(on));
@@ -2957,6 +3074,11 @@ function wirePlayerTabs() {
     }
     if (focus) b.focus();
     try { localStorage.setItem(bar.dataset.store, b.dataset.tab); } catch {}
+    if (push && history.state?.tab !== b.dataset.tab) {
+      history.pushState({ ...history.state, tab: b.dataset.tab }, "", withTab(b.dataset.tab));
+      routedAt = location.href;
+    }
+    if (!push) return;
     // Switching from far down a long tab: bring the bar back up, just under the sticky header.
     const head = document.querySelector(".top")?.offsetHeight ?? 0, top = bar.getBoundingClientRect().top;
     if (top < head) scrollTo({ top: scrollY + top - head - 12 });
@@ -2968,7 +3090,10 @@ function wirePlayerTabs() {
     e.preventDefault();
     pick(btns[(i + step + btns.length) % btns.length], true);
   });
+  showTab = (id) => { const b = btns.find((x) => x.dataset.tab === id) ?? btns[0]; pick(b, false, false); };
 }
+// Set by the page's tab bar: opens a tab without a new history step (Back / Forward).
+let showTab = null;
 
 async function renderPlayer(src, key) {
   app.innerHTML = loading(src.kicker, "Player");
@@ -4459,14 +4584,23 @@ document.addEventListener("click", (e) => {
 });
 // hashchange and popstate both fire on some back/forward steps: route once per address.
 let routedAt = null;
-const onNav = () => { if (location.href !== routedAt) route(); };
+const samePage = (a, b) => { const x = new URL(a), y = new URL(b); return x.pathname === y.pathname && x.hash === y.hash; };
+const onNav = () => {
+  if (location.href === routedAt) return;
+  // Back / Forward between tabs of the same page: switch the tab, don't rebuild the page.
+  if (routedAt && showTab && samePage(location.href, routedAt) && app.querySelector(".pp-tabs")) {
+    routedAt = location.href;
+    return showTab(tabInUrl());
+  }
+  route();
+};
 
 function route() {
   setMenu(false);
   const h = here();
   // Show this page's /path/ form (replaceState: no reload, no new history entry).
   const want = addressOf(h);
-  if (location.pathname + location.hash !== want) history.replaceState(history.state, "", want);
+  if (location.pathname + location.hash !== want) history.replaceState(history.state, "", want + location.search);
   routedAt = location.href;
   // #/<division>/..., or #/<division>/<view>/... for a sub-division.
   const [, key, view] = /^#\/([a-z0-9]+)(?:\/([a-z])(?=\/|$))?/.exec(h) ?? [];
@@ -4563,8 +4697,8 @@ window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();
 route();
-// Guided tour (lib/tour.js): invites first-time visitors; "New here?" in the top bar and the
-// footer link start it. rerender re-routes the current page (after the tour puts back the
+// Guided tour (lib/tour.js): invites first-time visitors; "New here?" and Restart in the top
+// bar start it. rerender re-routes the current page (after the tour puts back the
 // choices it changed).
 initTour({
   here,

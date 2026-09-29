@@ -660,7 +660,7 @@ a.team-link:hover, span.team-link:hover, span.team-link:focus-visible { color: v
 }
 .sos-sq.w { background: var(--jade); }
 .sos-sq.l { background: var(--ember); }
-.sos-sq.t { background: var(--dust); }
+.sos-sq.t { background: var(--gold); }
 .sos-sq:hover { outline: 1px solid var(--accent); outline-offset: 1px; text-decoration: none; }
 .st-form { flex-wrap: nowrap; }
 .st-form .sos-sq { min-width: 26px; }
@@ -679,7 +679,7 @@ a.team-link:hover, span.team-link:hover, span.team-link:focus-visible { color: v
 .st-odds { display: flex; height: 22px; margin: 8px 0; font: 600 10px/22px var(--mono); color: var(--ink); white-space: nowrap; }
 .st-odds span { overflow: hidden; text-align: center; min-width: 0; }
 .st-odds .h { background: var(--jade); }
-.st-odds .t { background: var(--dust); }
+.st-odds .t { background: var(--gold); }
 .st-odds .a { background: var(--ember); }
 @media (max-width: 640px) { .st-next { grid-template-columns: 1fr; text-align: center; } .st-next .fx-team { text-align: center; } }
 
@@ -2345,7 +2345,6 @@ figure.chart.item-lead .mk-bb { fill: none; stroke: var(--gold); stroke-width: 1
 
 /* ---------- guided tour (lib/tour.js) ----------
    Gold on purpose in every league: the tour's box and buttons are the tour's, not the league's. */
-.foot #tour-replay { color: var(--gold); }
 /* "New here?" in the top bar: always there, in the tour's gold. */
 button.tour-open {
   font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
@@ -2439,3 +2438,61 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
   .tour-box, .tour-card, .tour-block.dim { transition: none; }
   .tour-invite, .tour-ripple.go { animation: none; }
 }
+
+/* ---------- AD2L Matches: one box per week, like a Liquipedia group stage ---------- */
+.mx-jump { margin-left: 8px; vertical-align: middle; }
+.mx-lead { margin: 0 0 14px; }
+.mx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 14px; align-items: start; }
+.mx-box { background: var(--stone); border: 1px solid var(--seam); }
+.mx-box.next { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(var(--accent-rgb), .25); }
+.mx-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--seam); background: var(--stone-2); }
+.mx-wk { font: 800 16px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; color: var(--bone); }
+.mx-date { font: 400 10px/1 var(--mono); color: var(--dust); }
+.mx-tag { margin-left: auto; font: 600 9px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: var(--accent); padding: 3px 6px; }
+.mx-row { display: grid; grid-template-columns: minmax(0, 1fr) 28px 28px minmax(0, 1fr); align-items: stretch; border-bottom: 1px solid var(--seam); font-size: 13px; }
+.mx-row:last-child { border-bottom: 0; }
+.mx-row.bye { opacity: .5; }
+.mx-t { padding: 7px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mx-t.h { text-align: right; }
+.mx-t.w { font-weight: 700; }
+.mx-t.l { color: var(--dust); }
+.mx-t.l a { color: inherit; }
+.mx-s { display: grid; place-items: center; font: 700 13px/1 var(--mono); color: var(--ink); background: var(--seam-2); }
+.mx-s.w { background: var(--jade); }
+.mx-s.l { background: var(--ember); }
+.mx-s.t { background: var(--gold); }
+.mx-t.h.w { box-shadow: inset -3px 0 0 var(--jade); background: rgba(95, 211, 155, .08); }
+.mx-t.a.w { box-shadow: inset 3px 0 0 var(--jade); background: rgba(95, 211, 155, .08); }
+.mx-t.t { background: rgba(232, 182, 76, .08); }
+.mx-vs { grid-column: span 2; display: grid; place-items: center; font: 600 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.mx-x { grid-column: 1 / -1; display: flex; justify-content: center; gap: 6px; padding: 0 10px 6px; font: 400 10px/1 var(--mono); color: var(--dim); }
+.mx-g { color: var(--dust); border: 1px solid var(--seam-2); padding: 2px 5px; }
+.mx-g:hover { color: var(--bone); border-color: var(--accent); text-decoration: none; }
+.mx-when { align-self: center; }
+/* Combined Heroic: Division A left, Division B right, one week per row. */
+.mx-grid.split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 860px) { .mx-grid.split { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- AD2L Crosstable: every team against every other, like a Liquipedia group table ---------- */
+.ct-wrap { overflow-x: auto; margin-bottom: 18px; }
+.ct-div { font: 800 18px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; color: var(--bone); margin: 0 0 8px; }
+.ct { border-collapse: collapse; font-size: 13px; }
+.ct th, .ct td { border: 1px solid var(--seam); }
+.ct-corner { background: none; border-top-color: transparent !important; border-left-color: transparent !important; }
+.ct-col { background: var(--stone-2); font: 700 11px/1 var(--mono); padding: 8px 4px; min-width: 50px; }
+.ct-col a { color: var(--dust); }
+.ct-col a:hover { color: var(--bone); text-decoration: none; }
+.ct-row { background: var(--stone-2); text-align: left; font-weight: 400; padding: 0 10px; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; height: 44px; }
+.ct-rank { display: inline-block; width: 22px; font: 700 11px/1 var(--mono); color: var(--dim); }
+.ct-ab { margin-left: 6px; font: 400 10px/1 var(--mono); color: var(--dim); }
+.ct-self { background: repeating-linear-gradient(135deg, var(--stone-2) 0 4px, var(--seam) 4px 5px); }
+.ct-none { background: var(--stone); }
+.ct-c { padding: 0; vertical-align: middle; }
+.ct-m { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 42px; padding: 4px; font: 700 13px/1 var(--mono); color: var(--bone); }
+.ct-m + .ct-m { border-top: 1px solid var(--seam); }
+.ct-m small { font: 400 9px/1 var(--mono); color: var(--dust); text-transform: uppercase; letter-spacing: .06em; }
+.ct-m.w { background: rgba(95, 211, 155, .28); }
+.ct-m.l { background: rgba(255, 90, 54, .26); }
+.ct-m.t { background: rgba(232, 182, 76, .3); }
+.ct-m.up { color: var(--dim); font-weight: 400; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; outline: 1px dashed var(--seam-2); outline-offset: -3px; }
+a.ct-m:hover { text-decoration: none; outline: 1px solid var(--accent); outline-offset: -1px; }
