@@ -492,6 +492,7 @@ function draftHtml(d) {
         <td><input class="num" data-path="players.${i}.pick" data-type="int-opt" inputmode="numeric" value="${p.pick ?? ""}" style="width:52px" placeholder="—"></td>
         ${STATS.map(([k]) => `<td>${numInput(`players.${i}.${k}`, p[k])}</td>`).join("")}
       </tr>`).join("");
+  const uploadHead = `<th class="l">Player</th><th class="l">Tag</th><th class="l">Hero</th><th title="Draft order, 1–10, from the Scoreboard's PICK column">Pick</th>${STATS.map(([, l]) => `<th>${l}</th>`).join("")}`;
 
   return `
     <h2>Review</h2>
@@ -516,10 +517,11 @@ function draftHtml(d) {
     ${upload.notes.length ? `<div class="notice warn"><b>Reader notes:</b><ul>${upload.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
     <div class="table-wrap edit" style="margin-top:12px">
       <table>
-        <thead><tr><th class="l">Player</th><th class="l">Tag</th><th class="l">Hero</th><th title="Draft order, 1–10, from the Scoreboard's PICK column">Pick</th>${STATS.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead>
+        <thead><tr>${uploadHead}</tr></thead>
         <tbody>
           <tr class="sep a"><td colspan="${STATS.length + 4}">Team A</td></tr>${teamRows("a")}
-          <tr class="sep b"><td colspan="${STATS.length + 4}">Team B</td></tr>${teamRows("b")}
+          <tr class="sep b"><td colspan="${STATS.length + 4}">Team B</td></tr>
+          <tr class="head-repeat">${uploadHead}</tr>${teamRows("b")}
         </tbody>
       </table>
     </div>
@@ -1203,13 +1205,16 @@ async function renderMatch(id, src) {
     ["Richest", top("net_worth", fmt), "net_worth"],
     ["Top GPM", top("gpm", fmt), "gpm"],
   ];
+  // Header cells, repeated under team B's banner so its columns read without scrolling up.
+  const headCells = `<th class="l">Player${rated.length ? " · rating" : ""}</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}`;
   const scoreHtml = `<div class="gm-standouts">${cards.map(([k, { p, v }, tip]) => `<div class="gm-stand">${portrait(p.hero, "fact-img")}
       <div><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${playerLink(src, p)}</div></div></div>`).join("")}</div>
     <div class="table-wrap gm-board"><table>
-      <thead><tr><th class="l">Player${rated.length ? " · rating" : ""}</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}</tr></thead>
+      <thead><tr>${headCells}</tr></thead>
       <tbody>
         <tr class="sep a"><td colspan="${cols.length + 1}">${linkOf("a")}${m.winner === "a" ? ' <span class="win-badge">Win</span>' : ""}</td></tr>${rows("a")}
-        <tr class="sep b"><td colspan="${cols.length + 1}">${linkOf("b")}${m.winner === "b" ? ' <span class="win-badge">Win</span>' : ""}</td></tr>${rows("b")}
+        <tr class="sep b"><td colspan="${cols.length + 1}">${linkOf("b")}${m.winner === "b" ? ' <span class="win-badge">Win</span>' : ""}</td></tr>
+        <tr class="head-repeat">${headCells}</tr>${rows("b")}
       </tbody></table></div>
     <p class="table-note">▲ best in the game.</p>
     <h3 class="gm-h3">Team comparison</h3>${tapeHtml}`;
@@ -1430,10 +1435,11 @@ function replayTableHtml(m, src) {
   const best = Object.fromEntries(cols.map(([k, , , low]) => [k, (low ? Math.min : Math.max)(...m.players.map((p) => p[k]))]));
   const row = (p) => `<tr class="team-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td>
     ${cols.map(([k, , f, low]) => `<td class="${p[k] === best[k] && (low || best[k] > 0) ? "best" : ""}">${(f ?? String)(p[k])}</td>`).join("")}</tr>`;
-  const side = (t) => `<tr class="sep ${t}"><td colspan="${cols.length + 2}">${t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id)}</td></tr>${m.players.filter((p) => p.team === t).map(row).join("")}`;
+  const head = `<th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}`;
+  const side = (t) => `<tr class="sep ${t}"><td colspan="${cols.length + 2}">${t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id)}</td></tr>${t === "b" ? `<tr class="head-repeat">${head}</tr>` : ""}${m.players.filter((p) => p.team === t).map(row).join("")}`;
   return `<h2>Fighting &amp; laning</h2>
     <div class="table-wrap"><table>
-      <thead><tr><th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}</tr></thead>
+      <thead><tr>${head}</tr></thead>
       <tbody>${side("a")}${side("b")}</tbody></table></div>
 `;
 }
@@ -1450,13 +1456,15 @@ function mapTableHtml(m, src) {
   const total = (t) => `<tr class="total team-${t}"><td class="l" colspan="2">Team total</td>${cols.map(([k]) => `<td>${m.players.filter((p) => p.team === t).reduce((s, p) => s + val(p, k), 0)}</td>`).join("")}</tr>`;
   const objs = (m.objectives ?? []).filter((o) => o.type === "roshan" || o.type === "tormentor").sort((a, b) => a.time - b.time);
   const clock = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+  const head = `<th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}`;
   return `<h2>Map &amp; objectives${info("map_objectives")}</h2>
     ${objs.length ? `<div class="obj-strip">${objs.map((o) => `<span class="obj-chip s-${o.side}"><b>${o.type === "roshan" ? "Roshan" : "Tormentor"}</b> ${clock(o.time)} · ${esc(o.side === "a" ? m.team_a : m.team_b)}</span>`).join("")}</div>` : ""}
     <div class="table-wrap"><table>
-      <thead><tr><th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}</tr></thead>
+      <thead><tr>${head}</tr></thead>
       <tbody>
         <tr class="sep a"><td colspan="${cols.length + 2}">${teamLink(src, m.team_a, m.team_a_id)}</td></tr>${m.players.filter((p) => p.team === "a").map(row).join("")}${total("a")}
-        <tr class="sep b"><td colspan="${cols.length + 2}">${teamLink(src, m.team_b, m.team_b_id)}</td></tr>${m.players.filter((p) => p.team === "b").map(row).join("")}${total("b")}
+        <tr class="sep b"><td colspan="${cols.length + 2}">${teamLink(src, m.team_b, m.team_b_id)}</td></tr>
+        <tr class="head-repeat">${head}</tr>${m.players.filter((p) => p.team === "b").map(row).join("")}${total("b")}
       </tbody></table></div>
 `;
 }
@@ -1475,10 +1483,11 @@ function gameItemsHtml(m, src) {
   const row = (p) => `<tr class="team-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td>
     <td class="l">${p.items ? `${itemRow(p.items.slice(0, 6))}${p.items[6] ? itemIcon(p.items[6], null, "neutral") : ""}` : "—"}</td>
     <td class="l"><span class="item-row timeline">${timingsOf(p).map(({ key, sec }) => itemIcon(key, sec)).join("") || "—"}</span></td></tr>`;
-  const side = (t) => `<tr class="sep ${t}"><td colspan="4">${t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id)}</td></tr>${m.players.filter((p) => p.team === t).map(row).join("")}`;
+  const head = `<th class="l">Player</th><th class="l">Hero</th><th class="l">Final items</th><th class="l">Core items finished</th>`;
+  const side = (t) => `<tr class="sep ${t}"><td colspan="4">${t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id)}</td></tr>${t === "b" ? `<tr class="head-repeat">${head}</tr>` : ""}${m.players.filter((p) => p.team === t).map(row).join("")}`;
   return `<h2>Items${info("core_items")}</h2>
     <div class="table-wrap items-table"><table>
-      <thead><tr><th class="l">Player</th><th class="l">Hero</th><th class="l">Final items</th><th class="l">Core items finished</th></tr></thead>
+      <thead><tr>${head}</tr></thead>
       <tbody>${side("a")}${side("b")}</tbody></table></div>
 `;
 }

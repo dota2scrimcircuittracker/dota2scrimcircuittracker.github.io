@@ -444,6 +444,8 @@ tr.sep td {
 }
 tr.sep.a td { color: var(--jade); }
 tr.sep.b td { color: var(--ember); }
+/* A header row repeated mid-table: styled like the top one, but it scrolls with its team. */
+tr.head-repeat th { position: static; }
 td.best { color: var(--accent); font-weight: 600; }
 td.best::before { content: "▲ "; font-size: 8px; vertical-align: 2px; }
 .rank { color: var(--dim); width: 1%; }

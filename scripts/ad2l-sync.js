@@ -125,14 +125,19 @@ function parseSeason(html) {
   for (const m of html.matchAll(/href="\/teams\/(\d+)"[^>]*>([^<]+)<\/a>/g)) teams.set(Number(m[1]), decode(m[2]));
   const series = [...new Set([...html.matchAll(/href="\/matches\/(\d+)"/g)].map((m) => Number(m[1])))];
   // Seasons split into divisions have one Participants table per division, headed
-  // "Division A" etc. (Champion has none). "Division Refund" holds bye placeholders, not
-  // teams, so those are dropped.
-  const division = new Map();
+  // "Division A" etc. (Champion has none). Other tables share the "Division" heading but
+  // aren't divisions: "Ready To Be Scheduled" (Challenger's whole field) and the refund
+  // tables ("Division Refund", "Division Refund - Contact Admins"), which hold bye
+  // placeholders and withdrawn teams, so those are dropped. Only a single letter is a division.
+  const division = new Map(), refund = new Set();
   for (const table of html.split("<table").slice(1)) {
-    const div = table.match(/<th colspan=3>\s*Division\s+([^<]+?)\s*<\/th>/)?.[1];
-    if (div) for (const m of table.matchAll(/href="\/teams\/(\d+)"/g)) division.set(Number(m[1]), decode(div));
+    const head = decode(table.match(/<th colspan=3>\s*Division\s+([^<]+?)\s*<\/th>/)?.[1] ?? "");
+    for (const m of table.matchAll(/href="\/teams\/(\d+)"/g)) {
+      if (/^Refund\b/i.test(head)) refund.add(Number(m[1]));
+      else if (/^[A-Z]$/.test(head)) division.set(Number(m[1]), head);
+    }
   }
-  for (const [id] of teams) if (division.get(id) === "Refund") teams.delete(id);
+  for (const id of refund) teams.delete(id);
   return { title, teams, series, division };
 }
 
