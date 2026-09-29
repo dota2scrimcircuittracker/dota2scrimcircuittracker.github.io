@@ -25,6 +25,7 @@ import { info, wireInfo } from "./lib/glossary.js";
 import { RANK_STATS, RANK_GROUPS, formatStat, withPerGame, rankStat, ends, placeOf, ordinal } from "./lib/ranks.js";
 import { routeOf, sharePath } from "./lib/share.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
+import { initTour } from "./lib/tour.js";
 import { itemIcon, itemName, itemStats, averageTimes, fastestCore, timingsOf, hasItems, clock } from "./lib/items.js";
 import { gameLanes, laneCuts, cutFor, verdict, playerLane, laneSummary, laneBoard, laneRoleOf, LANE_LABEL, LANE_GROUPS, MAP_LANE } from "./lib/lanes.js";
 
@@ -4455,3 +4456,14 @@ window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();
 route();
+// Guided tour (lib/tour.js): invites first-time visitors; "New here?" in the top bar and the
+// footer link start it. rerender re-routes the current page (after the tour puts back the
+// choices it changed).
+initTour({
+  here,
+  go: (h, { rerender } = {}) => {
+    if (rerender) return route();
+    history.pushState(null, "", addressOf(h));
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  },
+});

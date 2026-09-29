@@ -2307,3 +2307,83 @@ figure.chart.item-lead .mk.obj .mk-ring { stroke-width: 1.75; }
 figure.chart.item-lead .mk-icon path { fill: var(--bone); }
 figure.chart.item-lead .mk:hover .mk-ring { stroke: var(--bone); stroke-width: 2; }
 figure.chart.item-lead .mk-bb { fill: none; stroke: var(--gold); stroke-width: 1.5; }
+
+/* ---------- guided tour (lib/tour.js) ----------
+   Gold on purpose in every league: the tour's box and buttons are the tour's, not the league's. */
+.foot #tour-replay { color: var(--gold); }
+/* "New here?" in the top bar: always there, in the tour's gold. */
+button.tour-open {
+  font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
+  color: var(--gold); background: none; border: 1px solid rgba(232, 182, 76, .45); padding: 9px 12px; border-radius: 2px;
+}
+button.tour-open:hover:not(:disabled) { color: var(--ink); background: var(--gold); border-color: var(--gold); }
+button.tour-open.paused { color: var(--ink); background: var(--gold); border-color: var(--gold); }
+button.tour-open.paused:hover:not(:disabled) { background: #f5c862; border-color: #f5c862; }
+button.tour-restart { color: var(--dust); border-color: var(--seam); }
+button.tour-restart[hidden] { display: none; }
+.tour-block { position: fixed; inset: 0; z-index: 90; }
+.tour-block.dim { background: rgba(6, 5, 4, .66); transition: background .25s; }
+/* The spotlight: a transparent box whose huge shadow darkens everything else. */
+.tour-box {
+  position: fixed; z-index: 91; pointer-events: none;
+  border: 2px solid var(--gold); border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(6, 5, 4, .66), 0 0 24px rgba(232, 182, 76, .45) inset, 0 0 18px rgba(232, 182, 76, .35);
+  transition: top .35s cubic-bezier(.45,.05,.25,1), left .35s cubic-bezier(.45,.05,.25,1), width .35s cubic-bezier(.45,.05,.25,1), height .35s cubic-bezier(.45,.05,.25,1);
+}
+.tour-card, .tour-invite {
+  z-index: 102; width: min(340px, calc(100vw - 32px));
+  background: var(--stone-2); color: var(--bone);
+  border: 1px solid var(--gold); border-radius: 8px; padding: 16px 18px 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .55);
+  font: 400 14px/1.5 var(--body);
+}
+.tour-card { position: fixed; transition: top .3s, left .3s; }
+.tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
+.tour-card.docked:not(.center) { left: 16px !important; right: 16px; bottom: 16px; top: auto !important; width: auto; }
+.tour-count { font: 600 10px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+/* Breadcrumb: where the boxed thing is, and how to get there. */
+.tour-path { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin: -2px 0 10px; font: 400 11px/1.5 var(--mono); color: var(--dust); }
+.tour-path[hidden] { display: none; }
+.tour-path i { font-style: normal; color: var(--dim); }
+.tour-path .here { color: var(--bone); }
+.tour-title { margin: 0 0 6px; font: 800 22px/1.05 var(--display); letter-spacing: .02em; text-transform: uppercase; }
+.tour-text { margin: 0 0 14px; color: var(--dust); }
+.tour-btns { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.tour-btn {
+  font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  padding: 9px 12px; border-radius: 4px; cursor: pointer;
+  background: none; color: var(--bone); border: 1px solid var(--seam-2);
+}
+/* button.tour-btn beats the site-wide button:hover background. */
+button.tour-btn:hover:not(:disabled) { border-color: var(--gold); background: none; }
+.tour-skip, button.tour-skip:hover:not(:disabled) { margin-right: auto; border-color: transparent; color: var(--dim); }
+button.tour-skip:hover:not(:disabled) { color: var(--bone); }
+button.tour-next, button.tour-primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) { background: #f5c862; border-color: #f5c862; }
+/* The fake cursor: its tip sits on the point it's moved to. */
+.tour-cursor {
+  position: fixed; left: 0; top: 0; z-index: 103; pointer-events: none;
+  margin: -2px 0 0 -4px; transform: translate(50vw, 50vh);
+  fill: var(--bone); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .6));
+}
+.tour-cursor path { transition: transform .12s; transform-origin: 4px 2px; }
+.tour-cursor.press path { transform: scale(.82); }
+.tour-ripple {
+  position: fixed; z-index: 102; pointer-events: none; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  border: 2px solid var(--gold); border-radius: 50%; opacity: 0;
+}
+.tour-ripple.go { animation: tour-ripple .5s ease-out; }
+@keyframes tour-ripple { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.tour-invite {
+  position: fixed; right: 20px; bottom: 20px; display: grid; gap: 6px;
+  animation: tour-in .35s ease-out;
+}
+.tour-invite b { font: 800 20px/1.05 var(--display); text-transform: uppercase; letter-spacing: .02em; }
+.tour-invite span { color: var(--dust); margin-bottom: 8px; }
+@keyframes tour-in { from { transform: translateY(16px); opacity: 0; } }
+@media (max-width: 640px) { .tour-invite { left: 16px; right: 16px; bottom: 16px; width: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  .tour-box, .tour-card, .tour-block.dim { transition: none; }
+  .tour-invite, .tour-ripple.go { animation: none; }
+}
