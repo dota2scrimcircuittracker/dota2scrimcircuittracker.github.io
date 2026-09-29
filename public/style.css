@@ -2346,15 +2346,15 @@ figure.chart.item-lead .mk:hover .mk-ring { stroke: var(--bone); stroke-width: 2
 figure.chart.item-lead .mk-bb { fill: none; stroke: var(--gold); stroke-width: 1.5; }
 
 /* ---------- guided tour (lib/tour.js) ----------
-   Gold on purpose in every league: the tour's box and buttons are the tour's, not the league's. */
-/* "New here?" in the top bar: always there, in the tour's gold. */
+   League accent: gold in Champion, the league's own colour everywhere else. */
+/* "New here?" in the top bar: always there, in the league accent. */
 button.tour-open {
   font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
-  color: var(--gold); background: none; border: 1px solid rgba(232, 182, 76, .45); padding: 9px 12px; border-radius: 2px;
+  color: var(--accent); background: none; border: 1px solid rgba(var(--accent-rgb), .45); padding: 9px 12px; border-radius: 2px;
 }
-button.tour-open:hover:not(:disabled) { color: var(--ink); background: var(--gold); border-color: var(--gold); }
-button.tour-open.paused { color: var(--ink); background: var(--gold); border-color: var(--gold); }
-button.tour-open.paused:hover:not(:disabled) { background: #f5c862; border-color: #f5c862; }
+button.tour-open:hover:not(:disabled) { color: var(--ink); background: var(--accent); border-color: var(--accent); }
+button.tour-open.paused { color: var(--ink); background: var(--accent); border-color: var(--accent); }
+button.tour-open.paused:hover:not(:disabled) { background: color-mix(in srgb, var(--accent), #fff 18%); border-color: color-mix(in srgb, var(--accent), #fff 18%); }
 button.tour-restart { color: var(--dust); border-color: var(--seam); }
 button.tour-restart[hidden] { display: none; }
 .tour-block { position: fixed; inset: 0; z-index: 90; }
@@ -2362,21 +2362,21 @@ button.tour-restart[hidden] { display: none; }
 /* The spotlight: a transparent box whose huge shadow darkens everything else. */
 .tour-box {
   position: fixed; z-index: 91; pointer-events: none;
-  border: 2px solid var(--gold); border-radius: 6px;
-  box-shadow: 0 0 0 9999px rgba(6, 5, 4, .66), 0 0 24px rgba(232, 182, 76, .45) inset, 0 0 18px rgba(232, 182, 76, .35);
+  border: 2px solid var(--accent); border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(6, 5, 4, .66), 0 0 24px rgba(var(--accent-rgb), .45) inset, 0 0 18px rgba(var(--accent-rgb), .35);
   transition: top .35s cubic-bezier(.45,.05,.25,1), left .35s cubic-bezier(.45,.05,.25,1), width .35s cubic-bezier(.45,.05,.25,1), height .35s cubic-bezier(.45,.05,.25,1);
 }
 .tour-card, .tour-invite {
   z-index: 102; width: min(340px, calc(100vw - 32px));
   background: var(--stone-2); color: var(--bone);
-  border: 1px solid var(--gold); border-radius: 8px; padding: 16px 18px 14px;
+  border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px 14px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, .55);
   font: 400 14px/1.5 var(--body);
 }
 .tour-card { position: fixed; transition: top .3s, left .3s; }
 .tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
 .tour-card.docked:not(.center) { left: 16px !important; right: 16px; bottom: 16px; top: auto !important; width: auto; }
-.tour-count { font: 600 10px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+.tour-count { font: 600 10px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
 /* Breadcrumb: where the boxed thing is, and how to get there. */
 .tour-path { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin: -2px 0 10px; font: 400 11px/1.5 var(--mono); color: var(--dust); }
 .tour-path[hidden] { display: none; }
@@ -2396,11 +2396,11 @@ button.tour-restart[hidden] { display: none; }
   background: none; color: var(--bone); border: 1px solid var(--seam-2);
 }
 /* button.tour-btn beats the site-wide button:hover background. */
-button.tour-btn:hover:not(:disabled) { border-color: var(--gold); background: none; }
+button.tour-btn:hover:not(:disabled) { border-color: var(--accent); background: none; }
 .tour-skip, button.tour-skip:hover:not(:disabled) { margin-right: auto; border-color: transparent; color: var(--dim); }
 button.tour-skip:hover:not(:disabled) { color: var(--bone); }
-button.tour-next, button.tour-primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
-button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) { background: #f5c862; border-color: #f5c862; }
+button.tour-next, button.tour-primary { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent), #fff 18%); border-color: color-mix(in srgb, var(--accent), #fff 18%); }
 /* The fake cursor: its tip sits on the point it's moved to. */
 .tour-cursor {
   position: fixed; left: 0; top: 0; z-index: 103; pointer-events: none;
@@ -2412,7 +2412,7 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
 .tour-cursor.press path { transform: scale(.82); }
 .tour-ripple {
   position: fixed; z-index: 102; pointer-events: none; width: 44px; height: 44px; margin: -22px 0 0 -22px;
-  border: 2px solid var(--gold); border-radius: 50%; opacity: 0;
+  border: 2px solid var(--accent); border-radius: 50%; opacity: 0;
 }
 .tour-ripple.go { animation: tour-ripple .5s ease-out; }
 @keyframes tour-ripple { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
