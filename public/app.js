@@ -4663,7 +4663,7 @@ function route() {
   const isAd2l = src.ad2l, r = src.root;
   document.body.dataset.league = src.key;
   const divLabel = DIVISIONS[src.key]?.views ? (src.view ? `Division ${src.view.toUpperCase()}` : "Combined") : "";
-  document.title = isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""} · Scrim League` : "Scrim League";
+  document.title = isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""} · AD2L Stat Tracker` : "Scrim League · AD2L Stat Tracker";
   document.getElementById("league-name").innerHTML = isAd2l ? `AD2L<b>${src.division}</b>${divLabel ? `<em class="div-badge">${src.view ? `Div ${src.view.toUpperCase()}` : DIVISIONS[src.key].views.join(" + ").toUpperCase()}</em>` : ""}` : "Scrim<b>League</b>";
   leagueMenu.querySelectorAll("a").forEach((a) => a.classList.toggle("current", a.dataset.league === src.key));
 
@@ -4733,8 +4733,8 @@ function route() {
 // The picker page: no tabs, no time machine, and the menu opens each league's first page.
 function routeHub() {
   document.body.dataset.league = "hub";
-  document.title = "Scrim League";
-  document.getElementById("league-name").innerHTML = "Scrim<b>League</b>";
+  document.title = "AD2L Stat Tracker";
+  document.getElementById("league-name").innerHTML = "AD2L<b>Stat Tracker</b>";
   leagueMenu.querySelectorAll("a").forEach((a) => {
     a.classList.remove("current");
     a.href = a.dataset.league === "scrim" ? "#/scrims" : `${SOURCES[a.dataset.league].root}/`;

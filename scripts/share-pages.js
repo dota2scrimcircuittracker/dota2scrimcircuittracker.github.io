@@ -94,7 +94,7 @@ function league(root, key, name, d, view) {
 }
 
 const load = async (f) => JSON.parse(await readFile(path.join(OUT, "data", f), "utf8"));
-page("ad2l", "Pick a league · Scrim League", "Our scrims and AD2L Season 48: Explorer, Voyager, Challenger, Warrior, Conqueror, Champion and Heroic/Aegis.", COLOR.ad2l);
+page("ad2l", "Pick a league · AD2L Stat Tracker", "Our scrims and AD2L Season 48: Explorer, Voyager, Challenger, Warrior, Conqueror, Champion and Heroic/Aegis.", COLOR.ad2l);
 const champ = await load("ad2l.json");
 league("champion", "ad2l", "AD2L S48 Champion", champ);
 // Champion used to live at /ad2l/...: keep those links working by forwarding to /champion/....
@@ -118,7 +118,7 @@ for (const { p, title, description, color, route, canonical = p } of pages) {
 <meta charset="utf-8">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<meta property="og:site_name" content="Scrim League">
+<meta property="og:site_name" content="AD2L Stat Tracker">
 <meta property="og:type" content="website">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
