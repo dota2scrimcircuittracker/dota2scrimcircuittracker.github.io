@@ -26,6 +26,7 @@ import { RANK_STATS, RANK_GROUPS, formatStat, withPerGame, rankStat, ends, place
 import { routeOf, sharePath } from "./lib/share.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
 import { initTour } from "./lib/tour.js";
+import { initFeedback } from "./lib/feedback.js";
 import { withNicknames } from "./lib/nicknames.js";
 import { itemIcon, itemName, itemStats, averageTimes, timingsOf, hasItems, clock } from "./lib/items.js";
 import { gameLanes, laneCuts, cutFor, verdict, playerLane, laneSummary, laneBoard, laneRoleOf, LANE_LABEL, LANE_GROUPS, MAP_LANE } from "./lib/lanes.js";
@@ -1665,9 +1666,12 @@ function matchesHtml(src, d, ratings) {
     const gs = gamesOf.get(s.id) ?? [];
     const o = !done && team[s.home] && team[s.away] && !bye(s.home) && !bye(s.away) && seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0);
     const title = o ? ` title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}"` : "";
+    const isBye = bye(s.home) || bye(s.away);
+    // A bye has no games, so it gets a ⦻ where G1, G2 would sit and keeps the row height.
     const extra = [s.time !== night ? `<span class="mx-when">${done ? dayOnly(s.time) : dayTime(s.time)}</span>` : "",
+      isBye && !gs.length ? `<span class="mx-g mx-nog" title="Bye week: no games played">⦻ Bye · no games</span>` : "",
       ...gs.map((g, i) => `<a class="mx-g" href="${src.link(g)}" title="Game ${i + 1}: ${esc(g.winner === "a" ? g.team_a : g.team_b)} won">G${i + 1}</a>`)].join("");
-    return `<div class="mx-row${done ? "" : " up"}${bye(s.home) || bye(s.away) ? " bye" : ""}"${title}>
+    return `<div class="mx-row${done ? "" : " up"}${isBye ? " bye" : ""}"${title}>
       <span class="mx-t h${cls(h, a)}">${name(s.home)}</span>
       ${done ? `<span class="mx-s${cls(h, a)}">${h}</span><span class="mx-s${cls(a, h)}">${a}</span>` : `<span class="mx-vs">vs</span>`}
       <span class="mx-t a${cls(a, h)}">${name(s.away)}</span>
@@ -1848,7 +1852,10 @@ async function renderStandings(src) {
     <div class="st-tabs">${tabs.bar}</div>
     ${tabs.panels}`;
 
-  const squares = (fs) => fs.map((f) => `<a class="sos-sq ${f.result}" href="${src.root}/teams/${f.opp}"
+  // A bye is a forfeit win with no games behind it: its own muted square, not a real W.
+  const squares = (fs) => fs.map((f) => bye.has(f.opp)
+    ? `<span class="sos-sq ${f.result} bye" title="Bye week: ${f.us}–${f.them} forfeit, no games played">BYE</span>`
+    : `<a class="sos-sq ${f.result}" href="${src.root}/teams/${f.opp}"
       title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${f.opp_rate != null ? ` (their other games: ${pct(f.opp_rate)})` : ""}">${esc(teamInitials(name[f.opp] ?? "?"))}</a>`).join("");
   // Form: five slots, empty ones first, so the newest series always sits in the last column.
   const form = (fs) => `<span class="sos-faced st-form">${'<span class="sos-sq e"></span>'.repeat(5 - fs.length)}${squares(fs)}</span>`;
@@ -3387,6 +3394,13 @@ async function renderHeroes(src) {
   ], shown, "picks", { toolbar: true }));
 }
 
+// A series' games, each with its full Captains Mode draft in pick/ban order.
+const seriesDraftsHtml = (src, games) => games.map((m, j) => `<div class="sd-game">
+    <div class="sd-game-head"><span class="gp-label">Game ${j + 1}</span>
+      <span class="sd-win">${esc(m.winner === "a" ? m.team_a : m.team_b)} win</span>
+      <span class="gp-meta">${m.score_a}–${m.score_b} · ${dur(m.duration_sec)} · <a href="${src.link(m)}">Full stats →</a></span></div>
+    ${draftStrip(m, src)}</div>`).join("");
+
 // "Show at least N" filter above a table, so a hero picked once at 100% doesn't top the list.
 const MIN_DEFAULT = (matches) => (matches.length >= 20 ? 3 : matches.length >= 8 ? 2 : 1);
 const minBar = (before, after, def) => `<div class="min-bar"><label>${before} <select id="min-n">${[1, 2, 3, 5, 10].map((n) => `<option value="${n}" ${n === def ? "selected" : ""}>${n}</option>`).join("")}</select> ${after}</label><span class="min-note" id="min-note"></span></div>`;
@@ -4005,7 +4019,7 @@ async function renderTeams(src, slug) {
         <span class="hist-score">${done ? `${us}–${them}` : ""}</span>
         <span class="hist-games">${gs.map(({ m, side }, j) => `<a href="${src.link(m)}" class="${m.winner === side ? "w" : "l"}">G${j + 1} ${m.winner === side ? "W" : "L"}</a>`).join("")}</span>
         <span class="hist-date">${s.time ? new Date(s.time * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
-      </div>`;
+      </div>${gs.some(({ m }) => m.draft?.length) ? `<details class="hist-drafts" data-series="${s.id}"><summary>Drafts</summary><div class="sd-body"></div></details>` : ""}`;
     });
   } else {
     historyRows = h.games.map(({ m, side }, i) => {
@@ -4147,6 +4161,13 @@ async function renderTeams(src, slug) {
   wireMapCards(app);
   wireWardMaps(app);
   wireFightMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
+  // Series drafts are only built when opened.
+  for (const el of app.querySelectorAll("details.hist-drafts")) el.addEventListener("toggle", () => {
+    const b = el.querySelector(".sd-body");
+    if (!el.open || b.childElementCount) return;
+    const gs = h.games.filter(({ m }) => String(m.series_id) === el.dataset.series && m.draft?.length).map(({ m }) => m).sort((a, b) => a.createdAt - b.createdAt);
+    b.innerHTML = seriesDraftsHtml(src, gs);
+  });
   app.querySelectorAll("[data-goto-tab]").forEach((b) => (b.onclick = () => document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click()));
   // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
   app.querySelector(".ph-segs")?.addEventListener("click", (e) => {
@@ -4454,7 +4475,18 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(fa
 // style.css; index.html applies the saved choice before the first paint).
 const settingsBtn = document.getElementById("settings-btn");
 const settingsPop = document.getElementById("settings-pop");
-const setSettings = (open) => { settingsPop.hidden = !open; settingsBtn.setAttribute("aria-expanded", String(open)); };
+const settingsEl = settingsPop.parentElement;
+// Opens leftward from the cog; on narrow screens it slides right just enough to stay on screen.
+const placeSettings = () => {
+  if (settingsPop.hidden) return;
+  settingsPop.style.right = "";
+  const { left } = settingsPop.getBoundingClientRect();
+  if (left < 8) settingsPop.style.right = `${left - 8}px`;
+};
+const setSettings = (open) => {
+  settingsPop.hidden = !open; settingsBtn.setAttribute("aria-expanded", String(open));
+  if (open) placeSettings(); else setTM(false);
+};
 settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(settingsPop.hidden); };
 document.addEventListener("click", (e) => { if (!e.target.closest(".settings")) setSettings(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSettings(false); });
@@ -4561,13 +4593,8 @@ const weekRanges = (ns) => ns.sort((a, b) => a - b).reduce((out, n) => {
 }, []).map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`)).join(", ");
 
 const tmEl = document.getElementById("tm"), tmBtn = document.getElementById("tm-btn"), tmPop = document.getElementById("tm-pop");
-const setTM = (open) => {
-  tmPop.hidden = !open; tmBtn.setAttribute("aria-expanded", String(open));
-  if (!open) return;
-  // Open toward whichever side has room: the header wraps on narrow screens.
-  tmPop.classList.remove("flip");
-  if (tmPop.getBoundingClientRect().left < 8) tmPop.classList.add("flip");
-};
+// Lives in the settings menu (under the cog); the week panel opens in place below its button.
+const setTM = (open) => { tmPop.hidden = !open; tmBtn.setAttribute("aria-expanded", String(open)); placeSettings(); };
 tmBtn.onclick = (e) => { e.stopPropagation(); setTM(tmPop.hidden); };
 document.addEventListener("click", (e) => { if (!e.target.closest(".tm")) setTM(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setTM(false); });
@@ -4576,7 +4603,7 @@ let tmCtx = null, tmToken = 0;
 // doesn't apply to, and in leagues with fewer than two weeks.
 async function timeBar(src, on) {
   const token = ++tmToken;
-  const hide = () => { tmEl.hidden = true; setTM(false); tmCtx = null; };
+  const hide = () => { tmEl.hidden = true; setTM(false); tmCtx = null; settingsEl.classList.remove("tm-on"); };
   if (!on) return hide();
   let lw;
   try { lw = await leagueWeeks(src); } catch { lw = null; }
@@ -4595,7 +4622,10 @@ async function timeBar(src, on) {
   tmBtn.innerHTML = sel ? `Wk ${range}` : "All weeks";
   tmBtn.title = sel ? `Time machine: showing week${picked.length === 1 ? "" : "s"} ${range}` : "Time machine: view chosen weeks only";
   tmEl.classList.toggle("active", !!sel);
-  tmPop.innerHTML = `<div class="tm-head"><span class="tm-label">Time machine${info("time_machine")}</span>
+  // The cog wears the accent while a pick narrows the page, since the button is tucked inside.
+  settingsEl.classList.toggle("tm-on", !!sel);
+  document.getElementById("settings-btn").title = sel ? `Settings · time machine on: week${picked.length === 1 ? "" : "s"} ${range}` : "Settings";
+  tmPop.innerHTML = `<div class="tm-head"><span class="tm-label">Pick weeks${info("time_machine")}</span>
       <button type="button" class="tm-chip tm-all${sel ? "" : " on"}" data-w="all" aria-pressed="${!sel}">All weeks</button></div>
     <div class="tm-chips">${lw.weeks.map(chip).join("")}</div>
     <p class="tm-note">${sel
@@ -4873,6 +4903,8 @@ window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();
 route();
+// Feedback mode (lib/feedback.js): the Feedback button in the top bar.
+initFeedback();
 // Guided tour (lib/tour.js): invites first-time visitors; "New here?" and Restart in the top
 // bar start it. rerender re-routes the current page (after the tour puts back the
 // choices it changed).

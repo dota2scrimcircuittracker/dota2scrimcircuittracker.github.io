@@ -415,11 +415,13 @@ const DEEP = [
   ...group("Tools", [
     {
       title: "Time machine",
-      text: "See standings, teams, players and heroes as they stood over any weeks you pick.",
+      text: "Under the settings cog: see standings, teams, players and heroes as they stood over any weeks you pick.",
       enter: async (t) => {
         await t.visit(navHref(standingsKey(t.ctx)));
+        if (document.getElementById("settings-pop").hidden) await t.click(document.getElementById("settings-btn"));
         return t.find("#tm", 2500); // shows once the league has 2+ weeks
       },
+      leave: () => { if (!document.getElementById("settings-pop").hidden) document.getElementById("settings-btn").click(); },
     },
     part({ page: "upload", sel: ".examples", title: "What to screenshot",
       text: "Examples of the two post-game screens it needs." }),
@@ -980,11 +982,15 @@ export async function startTour({ resume = false } = {}) {
   await t.chapter(at?.chapter in CHAPTERS ? at.chapter : "core", at?.at ?? null);
 }
 
-// Top bar: "New here?" normally; "Resume tour" plus "Restart" while a tour is paused.
+// Top bar: "New here?" normally; while a tour is paused, "Resume" joined to a small restart icon.
 function syncTopBar() {
   const open = document.getElementById("tour-open"), restart = document.getElementById("tour-restart");
   const paused = !run && !!pausedSpot();
-  if (open) { open.textContent = paused ? "Resume tour" : "New here?"; open.classList.toggle("paused", paused); }
+  if (open) {
+    open.textContent = paused ? "Resume" : "New here?";
+    open.title = paused ? "Resume the tour where you left it" : "A guided tour of the site";
+    open.classList.toggle("paused", paused);
+  }
   if (restart) restart.hidden = !paused;
 }
 

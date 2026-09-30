@@ -44,12 +44,8 @@
         <kbd class="search-key" aria-hidden="true">/</kbd>
         <div class="search-pop" id="search-pop" role="listbox" aria-label="Players and teams" hidden></div>
       </div>
-      <div class="tm" id="tm" hidden>
-        <button class="tm-btn" id="tm-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="tm-pop">All weeks</button>
-        <div class="tm-pop" id="tm-pop" hidden></div>
-      </div>
       <button class="tour-open" id="tour-open" type="button" title="A guided tour of the site">New here?</button>
-      <button class="tour-open tour-restart" id="tour-restart" type="button" title="Start the tour from the beginning" hidden>Restart</button>
+      <button class="tour-open tour-restart" id="tour-restart" type="button" title="Restart the tour from the beginning" aria-label="Restart the tour" hidden><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
       <div class="switcher">
         <button class="league-btn" id="league-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="league-menu">League<span class="caret" aria-hidden="true"></span></button>
         <div class="league-menu" id="league-menu" hidden>
@@ -65,6 +61,10 @@
           <a href="#/all/" data-league="all"><b>AD2L · All Divisions</b><span>Every division in one view</span></a>
         </div>
       </div>
+      <button class="fb-open" id="fb-open" type="button" title="Suggest a change: mark up any page and say what you'd change" aria-pressed="false">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M9 10.5h6M12 7.5v6"/></svg>
+        <span class="fb-open-label">Feedback</span><b class="fb-badge" hidden>0</b>
+      </button>
       <div class="settings">
         <button class="settings-btn" id="settings-btn" type="button" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false" aria-controls="settings-pop">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="7.5" stroke-width="3.5" stroke-dasharray="3.1 2.79"/><circle cx="12" cy="12" r="5.2" stroke-width="2.2"/></svg>
@@ -77,6 +77,12 @@
             <label><input type="radio" name="theme" value="light"> Light</label>
           </div>
           <label class="settings-row"><input type="checkbox" id="cb-mode"> Colour-blind mode</label>
+          <!-- Time machine: only on pages it applies to (app.js timeBar); its week panel opens in place. -->
+          <div class="tm" id="tm" hidden>
+            <div class="menu-label">Time machine</div>
+            <button class="tm-btn" id="tm-btn" type="button" aria-expanded="false" aria-controls="tm-pop">All weeks</button>
+            <div class="tm-pop" id="tm-pop" hidden></div>
+          </div>
         </div>
       </div>
     </div>

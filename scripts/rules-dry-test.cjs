@@ -38,6 +38,87 @@ const SCRIM_PRED_PATH = `/databases/(default)/documents/scrimLeague/data/predict
 const CAST_PATH = `/databases/(default)/documents/scrimLeague/data/casts/${FIX_ID}`;
 const cast = (extra = {}) => ({ v: 1, league: "ad2l", game: "8412345678", url: "https://www.youtube.com/watch?v=abc123", caster: "Rules Test", uid: "u1", createdAt: NOW, ...extra });
 const castReq = (data, auth = { uid: "u1" }, path = CAST_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
+// Feedback: batched writes, so the other documents in the batch are mocked (exists = before
+// the batch, existsAfter/getAfter = after it).
+const DOCS = "/databases/(default)/documents/scrimLeague/data";
+const TICKET_ID = "FbTicket0123456789Ab";
+const TICKET_PATH = `${DOCS}/feedback/${TICKET_ID}`;
+const LIMIT_PATH = `${DOCS}/feedback_limits/u1`;
+const mock = (fn, value) => ({ function: fn, args: [{ anyValue: {} }], result: { value } });
+const ticket = (extra = {}) => ({ v: 1, name: "Rules Test", uid: "u1", items: 2, status: "open", createdAt: NOW, ...extra });
+const ticketReq = (data, { last = TICKET_ID, auth = { uid: "u1" }, path = TICKET_PATH } = {}) => ({
+  request: { auth, method: "create", path, time: NOW, resource: { data } },
+  functionMocks: [mock("getAfter", { data: { last } })],
+});
+const fbItem = (extra = {}) => ({
+  v: 1, kind: "snip", page: "https://dota2scrimcircuittracker.github.io/warrior/players/?tab=tiers", league: "warrior", theme: "dark", viewport: { w: 1440, h: 900 },
+  note: "Make the tier letters bigger", area: { x: 10, y: 300, w: 600, h: 240 }, target: null, strokes: null,
+  shot: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD=", uid: "u1", createdAt: NOW, ...extra,
+});
+const itemReq = (data, { n = "1", before = false, parent = ticket(), auth = { uid: "u1" } } = {}) => ({
+  request: { auth, method: "create", path: `${TICKET_PATH}/items/${n}`, time: NOW, resource: { data } },
+  functionMocks: [mock("exists", before), mock("getAfter", { data: parent })],
+});
+const HOUR_AGO = "2026-09-24T02:59:00Z";
+const EPOCH = "1970-01-01T00:00:00Z";
+const limits = (extra = {}) => ({ t0: NOW, t1: EPOCH, t2: EPOCH, t3: EPOCH, t4: EPOCH, i: 1, last: TICKET_ID, ...extra });
+const limitReq = (method, data, existing, { before = false, after = true, auth = { uid: "u1" } } = {}) => ({
+  request: { auth, method, path: LIMIT_PATH, time: NOW, resource: { data } },
+  ...(existing ? { resource: { data: existing } } : {}),
+  functionMocks: [mock("exists", before), mock("existsAfter", after)],
+});
+const fullRing = { t0: HOUR_AGO, t1: "2026-09-24T03:10:00Z", t2: "2026-09-24T03:20:00Z", t3: "2026-09-24T03:30:00Z", t4: "2026-09-24T03:40:00Z", i: 0, last: "OldTicket00000000000" };
+const feedbackCases = [
+  ["feedback: ticket", ticketReq(ticket()), "ALLOW"],
+  ["feedback: ticket without the limiter naming it", ticketReq(ticket(), { last: "OtherTicket000000000" }), "DENY"],
+  ["feedback: ticket signed out", ticketReq(ticket(), { auth: null }), "DENY"],
+  ["feedback: ticket for another uid", ticketReq(ticket({ uid: "u2" })), "DENY"],
+  ["feedback: ticket, empty name", ticketReq(ticket({ name: "" })), "DENY"],
+  ["feedback: ticket, 41-char name", ticketReq(ticket({ name: "N".repeat(41) })), "DENY"],
+  ["feedback: ticket, 11 items", ticketReq(ticket({ items: 11 })), "DENY"],
+  ["feedback: ticket, status done", ticketReq(ticket({ status: "done" })), "DENY"],
+  ["feedback: ticket, client createdAt", ticketReq(ticket({ createdAt: "2020-01-01T00:00:00Z" })), "DENY"],
+  ["feedback: ticket, extra field", ticketReq(ticket({ email: "x@y.z" })), "DENY"],
+  ["feedback: ticket, bad id", ticketReq(ticket(), { path: TICKET_PATH.replace(TICKET_ID, "short") }), "DENY"],
+  ["feedback: anonymous read denied", { request: { auth: { uid: "u1" }, method: "get", path: TICKET_PATH, time: NOW }, resource: { data: ticket() } }, "DENY"],
+  ["feedback: signed-out list denied", { request: { auth: null, method: "list", path: TICKET_PATH, time: NOW } }, "DENY"],
+  ["feedback: admin read", { request: { auth: { uid: "admin", token: { email: "jonahbyu@gmail.com" } }, method: "get", path: TICKET_PATH, time: NOW }, resource: { data: ticket() } }, "ALLOW"],
+  ["feedback: anonymous delete denied", { request: { auth: { uid: "u1" }, method: "delete", path: TICKET_PATH, time: NOW }, resource: { data: ticket() } }, "DENY"],
+  ["feedback: update denied", { request: { auth: { uid: "u1" }, method: "update", path: TICKET_PATH, time: NOW, resource: { data: ticket({ name: "X" }) } }, resource: { data: ticket() } }, "DENY"],
+  ["feedback: snip item", itemReq(fbItem()), "ALLOW"],
+  ["feedback: click item", itemReq(fbItem({ kind: "click", target: { sel: "#tiers > div:nth-of-type(2)", text: "S tier" } })), "ALLOW"],
+  ["feedback: draw item, no shot", itemReq(fbItem({ kind: "draw", strokes: "M10 10L20 20", shot: null })), "ALLOW"],
+  ["feedback: biggest item", itemReq(fbItem({ note: "N".repeat(1000), strokes: "M".repeat(20000), shot: "data:image/jpeg;base64," + "A".repeat(699000) })), "ALLOW"],
+  ["feedback: item added to an existing ticket", itemReq(fbItem(), { before: true }), "DENY"],
+  ["feedback: item past the ticket's count", itemReq(fbItem(), { n: "2" }), "DENY"],
+  ["feedback: item on someone else's ticket", itemReq(fbItem(), { parent: ticket({ uid: "u2" }) }), "DENY"],
+  ["feedback: item for another uid", itemReq(fbItem({ uid: "u2" })), "DENY"],
+  ["feedback: item, empty note", itemReq(fbItem({ note: "" })), "DENY"],
+  ["feedback: item, oversize shot", itemReq(fbItem({ shot: "data:image/jpeg;base64," + "A".repeat(700000) })), "DENY"],
+  ["feedback: item, png shot", itemReq(fbItem({ shot: "data:image/png;base64,AAAA" })), "DENY"],
+  ["feedback: item, shot with markup", itemReq(fbItem({ shot: "data:image/jpeg;base64,AA<script>" })), "DENY"],
+  ["feedback: item, unknown kind", itemReq(fbItem({ kind: "video" })), "DENY"],
+  ["feedback: item, extra field", itemReq(fbItem({ ip: "1.2.3.4" })), "DENY"],
+  ["feedback: item, localhost page", itemReq(fbItem({ page: "http://localhost:3000/scrims/" })), "ALLOW"],
+  ["feedback: item, other site", itemReq(fbItem({ page: "https://evil.example/" })), "DENY"],
+  ["feedback: item, lookalike host", itemReq(fbItem({ page: "https://dota2scrimcircuittracker.github.io.evil.example/" })), "DENY"],
+  ["feedback: limiter, first ticket with null slots", limitReq("create", limits({ t1: null })), "DENY"],
+  ["feedback: item, bad n", itemReq(fbItem(), { n: "x" }), "DENY"],
+  ["feedback: limiter, first ticket", limitReq("create", limits()), "ALLOW"],
+  ["feedback: limiter, first ticket without a new ticket", limitReq("create", limits(), null, { after: false }), "DENY"],
+  ["feedback: limiter, first ticket naming an old one", limitReq("create", limits(), null, { before: true }), "DENY"],
+  ["feedback: limiter, first ticket, client time", limitReq("create", limits({ t0: "2020-01-01T00:00:00Z" })), "DENY"],
+  ["feedback: limiter, another browser's", limitReq("create", limits(), null, { auth: { uid: "u2" } }), "DENY"],
+  ["feedback: limiter, 2nd ticket", limitReq("update", limits({ t0: "2026-09-24T03:50:00Z", t1: NOW, i: 2 }), limits({ t0: "2026-09-24T03:50:00Z", last: "OldTicket00000000000" })), "ALLOW"],
+  ["feedback: limiter, 6th ticket after an hour", limitReq("update", { ...fullRing, t0: NOW, i: 1, last: TICKET_ID }, fullRing), "ALLOW"],
+  ["feedback: limiter, 6th ticket within the hour", limitReq("update", { ...fullRing, t0: NOW, i: 1, last: TICKET_ID }, { ...fullRing, t0: "2026-09-24T03:05:00Z" }), "DENY"],
+  ["feedback: limiter, skipping a slot", limitReq("update", { ...fullRing, t1: NOW, i: 2, last: TICKET_ID }, fullRing), "DENY"],
+  ["feedback: limiter, wiping the slots", limitReq("update", { ...fullRing, t0: NOW, t1: EPOCH, t2: EPOCH, t3: EPOCH, t4: EPOCH, i: 1, last: TICKET_ID }, fullRing), "DENY"],
+  ["feedback: limiter, not advancing i", limitReq("update", { ...fullRing, t0: NOW, last: TICKET_ID }, fullRing), "DENY"],
+  ["feedback: limiter, own read", { request: { auth: { uid: "u1" }, method: "get", path: LIMIT_PATH, time: NOW }, resource: { data: limits() } }, "ALLOW"],
+  ["feedback: limiter, someone else's read", { request: { auth: { uid: "u2" }, method: "get", path: LIMIT_PATH, time: NOW }, resource: { data: limits() } }, "DENY"],
+  ["feedback: limiter, delete denied", { request: { auth: { uid: "u1" }, method: "delete", path: LIMIT_PATH, time: NOW }, resource: { data: limits() } }, "DENY"],
+];
 const withPlayer = (i, change) => ({ ...match(), players: match().players.map((p, j) => (j === i ? change({ ...p }) : p)) });
 const cases = [
   ["valid match", req(match()), "ALLOW"],
@@ -185,6 +266,7 @@ const cases = [
   ["cast: delete (anyone signed in)", { request: { auth: { uid: "u2" }, method: "delete", path: CAST_PATH, time: NOW }, resource: { data: cast() } }, "ALLOW"],
   ["cast: signed-out delete", { request: { auth: null, method: "delete", path: CAST_PATH, time: NOW }, resource: { data: cast() } }, "DENY"],
   ["prediction: heroic with a fixture id", { ...predReq(pred({ league: "heroic", series_id: FIX_ID })), path: SCRIM_PRED_PATH }, "DENY"],
+  ...feedbackCases,
 ];
 
 (async () => {
@@ -208,6 +290,13 @@ const cases = [
       const falses = (r.visitedExpressions ?? []).filter((e) => e.value?.boolValue === false).slice(0, 12);
       for (const e of falses) console.log("   false at line", e.sourcePosition?.line, "col", e.sourcePosition?.column);
       if (r.errorPosition) console.log("   error at", JSON.stringify(r.errorPosition));
+      if (process.env.RULES_DEBUG) {
+        // The innermost expressions that came out false or errored, with their source text.
+        const leaves = [];
+        const walk = (n) => { const bad = (n.values ?? []).some((v) => v.value === false || (typeof v.value === "string" && v.value.startsWith("||"))); const kids = (n.children ?? []).filter((c) => (c.values ?? []).some((v) => v.value === false || (typeof v.value === "string" && v.value.startsWith("||")))); if (bad && !kids.length) leaves.push(n); kids.forEach(walk); };
+        (r.expressionReports ?? []).forEach(walk);
+        for (const l of leaves.slice(0, 8)) console.log("   leaf:", JSON.stringify(l.values), source.slice(l.sourcePosition.currentOffset, l.sourcePosition.endOffset).slice(0, 160));
+      }
     }
   });
 })().catch((e) => { console.error("FAILED:", e.message, JSON.stringify(e.context?.body ?? "").slice(0, 800)); process.exit(1); });

@@ -57,6 +57,22 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   scrim players and teams. Each result shows its league (Heroic/Aegis with its division) and,
   for players, their team and captain/stand-in status; in-game names find the rostered
   player. The first search loads every division's file (`public/lib/search.js`).
+- **Feedback** (top bar) — anyone can mark up the site and say what they'd change
+  (`public/lib/feedback.js`). A sidebar holds Snip (drag a box), Click (pick an element), Draw
+  and Use site (browse to another page). Every mark asks for a note; each mark + note + a JPEG
+  of that area is one item, and Submit sends them all as one ticket with the sender's name.
+  Tickets go to Firestore `scrimLeague/data/feedback/{id}` (items in `…/items/{n}`), 5 per
+  browser per rolling hour (`feedback_limits/{uid}`), and can't be read back from the site:
+  they're reviewed outside the app. Screenshots are rendered from the page, so hero art
+  (Steam's CDN won't share it) shows as grey boxes and the display font falls back. Spec:
+  `docs/superpowers/specs/2026-09-30-feedback-design.md`.
+  Reviewing (your Firebase login): `node scripts/feedback.cjs list`, `show FB-XXXXXX` (saves the
+  screenshots and a replay file in gitignored `public/_dev/feedback/`), `done FB-XXXXXX "summary"`
+  (deletes it, logs it in `docs/feedback-log.md`). With `npm start` running,
+  `http://localhost:3000/?fbreview=FB-XXXXXX` replays a shown ticket on the real pages: its marks,
+  pins and notes drawn where the visitor made them, a clicked element found again by its selector,
+  and a panel to step through the notes (`public/lib/feedback-review.js`, loaded on localhost only).
+  A scheduled task on Jonah's PC (`check` / `emailed`) emails each new ticket and a daily digest.
 - **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
   pasted into Discord previews as that page, not the home page. The deploy writes a preview
   page at each of those paths (`scripts/share-pages.js`) that forwards into the app; pages
@@ -159,6 +175,8 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   team's pick number (1st … last pick) and flag a big last-pick gap; team pages split their
   bans, bans against them and picks by phase. Heroes and Draft tables hide heroes under a
   minimum number of games (default 3, changeable) so one-off 100% heroes don't top the list.
+  On a team's Series tab, each drafted series has a **Drafts** row: open it for each game's full
+  pick/ban order.
 - **Laning** (AD2L, parsed replays) — a Laning tab on games: each lane (top, middle, bottom)
   called won, even or lost at 10:00 on the whole lane's gold + XP lead, with each side's heroes,
   then every player's last hits, denies, lane efficiency, kills and deaths before 10:00. Lanes are
@@ -172,7 +190,8 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   `public/lib/lanes.js`; `node scripts/lanes-backfill.js` refills `lane_role`, `roaming`, `lh10`,
   `dn10` from `.cache/opendota` with no network calls.
 - **Ward maps** (AD2L) — every observer and sentry position from the replay. Game pages show
-  both teams as dots (hover for time placed, how long it lasted, dewarded or not); player,
+  both teams' wards as the observer / sentry item icon in a team-coloured ring, greyed out when
+  dewarded (hover for time placed, how long it lasted, dewarded or not); player,
   hero and team pages show all their wards with a side switch: Both sides (Dire games mirrored
   so it's always "own base bottom left"), or As Radiant / As Dire (only those games, at their
   real spots). The team fight map has the same switch. Filter by ward type and game phase (0–10', 10–20', 20–35',
@@ -351,6 +370,11 @@ cd ../Cookbook && npx firebase deploy --only firestore:rules --project pistachio
 
 Rules are limited to 1000 evaluated expressions per request; per-player checks are packed
 tight to fit (see the comment in the rules file). Re-run the dry test after any change.
+`RULES_DEBUG=1` prints the source of the expressions that failed. Feedback tickets are
+batched writes, so their tests mock the other documents in the batch (`functionMocks`); the
+test API reads strings starting with `/` as paths, and a null field in a mocked stored document
+didn't compare equal to null there. That's
+why items store the full `page` URL and empty rate-limit slots hold the 1970 epoch.
 
 ## Editing and deleting
 

@@ -196,3 +196,95 @@
         && request.resource.data.createdAt == request.time;
       allow delete: if request.auth != null;
     }
+    // Feedback: anyone can mark up the site and send a ticket (lib/feedback.js). A ticket
+    // is one review session; its items (one per mark + note, with a cropped screenshot)
+    // sit in a subcollection because eight screenshots won't fit in one 1 MiB document.
+    // The site can only create. Reading and deleting happen outside the app with Jonah's
+    // Google credentials (not bound by these rules); the email exception is for a future
+    // admin view. Tickets hold names and screenshots, so they aren't public.
+    match /scrimLeague/data/feedback/{ticketId} {
+      function admin() { return request.auth != null && request.auth.token.email == "jonahbyu@gmail.com"; }
+      allow get, list, delete: if admin();
+      // Written in one batch with the rate limiter below, which must name this ticket.
+      allow create: if request.auth != null
+        && ticketId.matches('[A-Za-z0-9]{20}')
+        && request.resource.data.keys().hasOnly(['v', 'name', 'uid', 'items', 'status', 'createdAt'])
+        && request.resource.data.keys().size() == 6
+        && request.resource.data.v == 1
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 40
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.items is int
+        && request.resource.data.items >= 1 && request.resource.data.items <= 10
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/scrimLeague/data/feedback_limits/$(request.auth.uid)).data.last == ticketId;
+
+      // One item per mark: where it was (page, league, theme, viewport), what kind of mark,
+      // the note, the marked area and a JPEG of it. Only in the batch that creates the
+      // ticket: the ticket mustn't exist before and must exist after, from the same uid.
+      match /items/{n} {
+        allow get, list, delete: if admin();
+        allow create: if request.auth != null
+          && n.matches('[0-9]')
+          && !exists(/databases/$(database)/documents/scrimLeague/data/feedback/$(ticketId))
+          && int(n) < getAfter(/databases/$(database)/documents/scrimLeague/data/feedback/$(ticketId)).data.items
+          && getAfter(/databases/$(database)/documents/scrimLeague/data/feedback/$(ticketId)).data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['v', 'kind', 'page', 'league', 'theme', 'viewport', 'note', 'area', 'target', 'strokes', 'shot', 'uid', 'createdAt'])
+          && request.resource.data.keys().size() == 13
+          && request.resource.data.v == 1
+          && request.resource.data.kind in ['snip', 'click', 'draw']
+          // The full address, e.g. https://…/warrior/players/?tab=tiers (the site's hosts only).
+          && request.resource.data.page is string && request.resource.data.page.size() <= 400
+          && request.resource.data.page.matches('(https://dota2scrimcircuittracker[.]github[.]io|http://localhost:[0-9]+)/[!#-;=?-~]*')
+          && request.resource.data.league is string && request.resource.data.league.size() <= 20
+          && request.resource.data.theme in ['dark', 'grey', 'light']
+          && request.resource.data.viewport is map && request.resource.data.viewport.keys().hasOnly(['w', 'h'])
+          && request.resource.data.note is string
+          && request.resource.data.note.size() >= 1 && request.resource.data.note.size() <= 1000
+          && request.resource.data.area is map && request.resource.data.area.keys().hasOnly(['x', 'y', 'w', 'h'])
+          // Click: the element's CSS selector and visible text. Otherwise null.
+          && (request.resource.data.target == null
+            || (request.resource.data.target is map && request.resource.data.target.keys().hasOnly(['sel', 'text'])
+              && request.resource.data.target.sel is string && request.resource.data.target.sel.size() <= 400
+              && request.resource.data.target.text is string && request.resource.data.target.text.size() <= 200))
+          // Draw: the pen strokes as an SVG path in page coordinates. Otherwise null.
+          && (request.resource.data.strokes == null
+            || (request.resource.data.strokes is string && request.resource.data.strokes.size() <= 20000))
+          // null when the capture failed; the selector and area still say where.
+          && (request.resource.data.shot == null
+            || (request.resource.data.shot is string && request.resource.data.shot.size() <= 700000
+              && request.resource.data.shot.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')))
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+      }
+    }
+
+    // Feedback rate limit: 5 tickets per browser (anonymous uid) per rolling hour. Five
+    // timestamp slots used as a ring; `i` is the next slot to fill, which is also the oldest.
+    // Empty slots hold the 1970 epoch. A ticket may take slot i only if it's over an hour old, and the limiter's
+    // `last` must name a ticket created in the same batch, so every ticket spends one slot.
+    // (Timestamps sit in separate fields because serverTimestamp() can't go inside an array.)
+    match /scrimLeague/data/feedback_limits/{uid} {
+      function lastIsNewTicket() {
+        return request.resource.data.last is string
+          && request.resource.data.last.matches('[A-Za-z0-9]{20}')
+          && !exists(/databases/$(database)/documents/scrimLeague/data/feedback/$(request.resource.data.last))
+          && existsAfter(/databases/$(database)/documents/scrimLeague/data/feedback/$(request.resource.data.last));
+      }
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['t0', 't1', 't2', 't3', 't4', 'i', 'last'])
+        && request.resource.data.keys().size() == 7
+        && request.resource.data.t0 == request.time
+        && request.resource.data.t1 == timestamp.value(0) && request.resource.data.t2 == timestamp.value(0)
+        && request.resource.data.t3 == timestamp.value(0) && request.resource.data.t4 == timestamp.value(0)
+        && request.resource.data.i == 1
+        && lastIsNewTicket();
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['t' + string(resource.data.i), 'i', 'last'])
+        && request.resource.data['t' + string(resource.data.i)] == request.time
+        && resource.data['t' + string(resource.data.i)] < request.time - duration.value(1, 'h')
+        && request.resource.data.i == (resource.data.i + 1) % 5
+        && lastIsNewTicket();
+    }

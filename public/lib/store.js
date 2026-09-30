@@ -5,7 +5,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp, Timestamp,
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp, Timestamp, writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { FIREBASE_CONFIG } from "../firebase-config.js";
 import { matchId } from "./stats.js";
@@ -219,4 +219,41 @@ export async function addCast(game, league, { url, caster }) {
 export async function deleteCast(id) {
   await signedIn();
   await deleteDoc(doc(casts, id));
+}
+
+// ---------- feedback ----------
+// A ticket (one review session from lib/feedback.js) with one item per mark. Anyone can
+// send one; nobody can read them back from the site. The rules allow 5 per browser per
+// rolling hour, kept in feedback_limits/{uid}: five timestamp slots used as a ring, `i` the
+// next (and oldest) slot, empty slots at the 1970 epoch. Ticket, items and limiter go in one
+// batch, so a refused ticket spends nothing.
+const feedback = collection(db, "scrimLeague", "data", "feedback");
+export const FEEDBACK_PER_HOUR = 5;
+export const MAX_FEEDBACK_ITEMS = 10;
+
+// Returns { id: "FB-XXXXXX" } or { retryAt: Date } when this browser has sent its 5 this hour.
+export async function submitFeedback(name, items) {
+  await signedIn();
+  const uid = auth.currentUser.uid;
+  const limitRef = doc(db, "scrimLeague", "data", "feedback_limits", uid);
+  const lim = await getDoc(limitRef);
+  const ticket = doc(feedback); // random 20-character ID
+  const batch = writeBatch(db);
+  if (!lim.exists()) {
+    const empty = Timestamp.fromMillis(0);
+    batch.set(limitRef, { t0: serverTimestamp(), t1: empty, t2: empty, t3: empty, t4: empty, i: 1, last: ticket.id });
+  } else {
+    const { i } = lim.data();
+    const oldest = lim.data()[`t${i}`]?.toMillis?.() ?? 0;
+    if (oldest > Date.now() - 3600e3) return { retryAt: new Date(oldest + 3600e3) };
+    batch.update(limitRef, { [`t${i}`]: serverTimestamp(), i: (i + 1) % FEEDBACK_PER_HOUR, last: ticket.id });
+  }
+  batch.set(ticket, { v: 1, name: name.trim().slice(0, 40), uid, items: items.length, status: "open", createdAt: serverTimestamp() });
+  items.forEach((it, n) => batch.set(doc(ticket, "items", String(n)), {
+    v: 1, kind: it.kind, page: it.page, league: it.league, theme: it.theme, viewport: it.viewport,
+    note: it.note, area: it.area, target: it.target ?? null, strokes: it.strokes ?? null, shot: it.shot ?? null,
+    uid, createdAt: serverTimestamp(),
+  }));
+  await batch.commit();
+  return { id: `FB-${ticket.id.slice(0, 6).toUpperCase()}` };
 }

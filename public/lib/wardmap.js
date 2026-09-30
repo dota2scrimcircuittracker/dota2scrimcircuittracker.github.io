@@ -11,6 +11,8 @@
 // 74.6,78.0 and 182.9,177.9). Both axes come out at 4.25 px per grid unit, so no stretching.
 import { applyZoom, wireZoom } from "./mapzoom.js";
 
+// Observer and sentry item icons (Valve's CDN, as for item pictures elsewhere).
+const WARD_IMG = { obs: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/ward_observer.png", sen: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/ward_sentry.png" };
 const IMG = { src: "img/minimap.webp", x0: 56.94, x1: 206.2, y0: 62.3, y1: 202.8 };
 // The map is point-symmetric about the midpoint of the fountains; mirroring uses that centre.
 const CX = (74.6 + 182.9) / 2, CY = (78.0 + 177.9) / 2;
@@ -163,12 +165,14 @@ function draw(fig) {
     }
     body = `<defs><filter id="${fid}"><feGaussianBlur stdDeviation="0.9"/></filter></defs><g class="wm-heat" filter="url(#${fid})">${cells}</g>`;
   } else {
-    body = shown.map((l) => `<g class="wm-dots ${l.cls ?? ""}">${l.w.map((w) => {
+    // Each ward is its item icon in a ring of the team's colour; dewarded ones are greyed out
+    // and drawn first, so live wards sit on top where they overlap.
+    body = `<defs><clipPath id="${fig.id}-clip" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs>` +
+      shown.map((l) => `<g class="wm-dots ${l.cls ?? ""}">${[...l.w].sort((a, b) => b[5] - a[5]).map((w) => {
       const tip = `${attr(l.label)}${people[w[6]] && people[w[6]] !== l.label ? ` (${attr(people[w[6]])})` : ""}${mirrored ? ` · as ${w[7] ? "Dire" : "Radiant"}` : ""} · ${w[0] === 1 ? "Observer" : "Sentry"} at ${clock(w[3])}${w[4] >= 0 ? `, lasted ${clock(w[4])}${w[5] ? " (dewarded)" : ""}` : ", up at game end"}`;
-      return w[0] === 1
-        // Drawn at 0,0 and moved into place, so wards keep their size when the map is zoomed.
-        ? `<circle class="obs${w[5] ? " killed" : ""}" r="1.5" style="transform:translate(${w[1]}px,${Y(w[2])}px) scale(var(--ms,1))"><title>${tip}</title></circle>`
-        : `<rect class="sen${w[5] ? " killed" : ""}" x="-1.1" y="-1.1" width="2.2" height="2.2" style="transform:translate(${w[1]}px,${Y(w[2])}px) scale(var(--ms,1)) rotate(45deg)"><title>${tip}</title></rect>`;
+      // Drawn at 0,0 and moved into place, so wards keep their size when the map is zoomed.
+      return `<g class="ward ${w[0] === 1 ? "obs" : "sen"}${w[5] ? " killed" : ""}" style="transform:translate(${w[1]}px,${Y(w[2])}px) scale(var(--ms,1))"><title>${tip}</title>
+        <circle r="2.1"/><image href="${w[0] === 1 ? WARD_IMG.obs : WARD_IMG.sen}" x="-1.7" y="-1.7" width="3.4" height="3.4" preserveAspectRatio="xMidYMid slice" clip-path="url(#${fig.id}-clip)"/></g>`;
     }).join("")}</g>`).join("");
   }
   fig.querySelector(".wm-map").innerHTML = `<svg viewBox="${VB.x} ${VB.y} ${VB.w} ${VB.h}" role="img" aria-label="Ward map, ${n} wards">${terrain(side === "all" && mirrored)}${body}</svg>`;
@@ -184,7 +188,7 @@ function draw(fig) {
       <div><b>${obs.length}</b> observers · <b>${sen.length}</b> sentries</div>
       ${obs.length ? `<div><b>${Math.round((killed / obs.length) * 100)}%</b> of observers dewarded</div>` : ""}
       ${life != null ? `<div>Observers lasted <b>${clock(Math.round(life))}</b> on average (max 6:00)</div>` : ""}</div>`;
-  }).join("") + `<p class="wm-note">${mode === "heat" ? "Brighter = more wards placed there (scaled to the busiest spot)." : "● observer, ◆ sentry; hollow = dewarded."}
+  }).join("") + `<p class="wm-note">${mode === "heat" ? "Brighter = more wards placed there (scaled to the busiest spot)." : "Ring colour = team; greyed out = dewarded."}
     ${!mirrored ? "" : side === "all" ? " Both sides together: Dire games are mirrored so every ward is from the placer's own side (own base bottom left). Pick a side above for real spots." : ` Only games as ${side === "b" ? "Dire" : "Radiant"}, at their real spots on the map.`}</p>`;
 }
 
