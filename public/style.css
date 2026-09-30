@@ -2464,6 +2464,8 @@ figure.chart.item-lead .obj-frame { fill: none; stroke: var(--gold); stroke-widt
 figure.chart.item-lead .it.obj image { filter: drop-shadow(0 0 3px rgba(232, 182, 76, .6)); }
 .gm-hc-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0; padding: 8px 12px; border: 1px solid var(--seam-2); background: var(--stone); }
 .gm-hc-layers[hidden] { display: none; }
+.gm-worth-segs { margin: 0 0 8px; }
+.gm-worth-segs .seg { padding: 6px 12px; font-size: 10px; }
 .gm-hc-layers legend { float: left; padding: 0; margin-right: 4px; font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
 .gm-hc-layers label { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1 var(--body); color: var(--dust); cursor: pointer; white-space: nowrap; }
 .gm-hc-layers label:has(input:checked) { color: var(--bone); }

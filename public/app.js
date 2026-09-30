@@ -1299,17 +1299,30 @@ async function renderMatch(id, src) {
   }
 
   // Hero chart, under the draft: the gold lead with items and teamfights, or toggle to every
-  // player's net worth. The choice is remembered.
-  let heroHtml = "";
+  // player's net worth or gold earned (net worth by default; games synced before networth_t
+  // was kept only have gold earned). Both choices are remembered.
+  let heroHtml = "", worthChart = null;
   if (hasTimeline(m)) {
     const winner = nameOf(m.winner), loser = nameOf(s.loser);
     const story = s.thrown >= BIG_LEAD
       ? `<b>${esc(loser)}</b> led by ${kg(s.thrown)} at ${s.thrown_minute}' and lost — a comeback for ${esc(winner)}.`
       : s.thrown >= 1000 ? `${esc(loser)}'s best was a ${kg(s.thrown)} lead at ${s.thrown_minute}'.` : `${esc(winner)} led wire to wire.`;
-    const rank = (t) => teamOf(t).filter((p) => Array.isArray(p.gold_t)).sort((a, b) => b.gold_t[b.gold_t.length - 1] - a.gold_t[a.gold_t.length - 1]);
-    const lines = ["a", "b"].flatMap((t) => rank(t).map((p, i) => ({
-      label: `${p.name} (${p.hero})`, end: p.name, img: heroImg(p.hero), values: p.gold_t, cls: `s-c${i + 1}`, dash: t === "b",
-    })));
+    const hasNw = m.players.some((p) => Array.isArray(p.networth_t));
+    let series = "nw";
+    try { if (localStorage.getItem("gameWorth") === "gold") series = "gold"; } catch {}
+    if (!hasNw) series = "gold";
+    worthChart = (kind) => {
+      const f = kind === "nw" ? "networth_t" : "gold_t";
+      const rank = (t) => teamOf(t).filter((p) => Array.isArray(p[f])).sort((a, b) => b[f][b[f].length - 1] - a[f][a[f].length - 1]);
+      const lines = ["a", "b"].flatMap((t) => rank(t).map((p, i) => ({
+        label: `${p.name} (${p.hero})`, end: p.name, img: heroImg(p.hero), values: p[f], cls: `s-c${i + 1}`, dash: t === "b",
+      })));
+      return lines.length ? lineChart(lines, { endLabels: true, height: 300,
+        caption: `${kind === "nw" ? "Net worth (gold held plus items) at each minute" : "Gold earned by each minute: everything picked up, before spending, so it only rises"}. Solid: ${esc(m.team_a)} · dashed: ${esc(m.team_b)}; richest first within each team. Hover for everyone at that minute.` }) : "";
+    };
+    const worthHtml = worthChart(series) && `${hasNw ? `<div class="segs gm-worth-segs" role="group" aria-label="Series">${[["nw", "Net worth"], ["gold", "Gold earned"]]
+      .map(([k, label]) => `<button type="button" class="seg${k === series ? " on" : ""}" data-worth="${k}" aria-pressed="${k === series}">${label}</button>`).join("")}</div>` : ""}
+      <div class="gm-worth">${worthChart(series)}</div>`;
     // Layers on the items & fights chart (items, hero deaths, Roshan/Tormentor, towers),
     // each a checkbox; what's hidden is remembered.
     let show = {};
@@ -1320,8 +1333,7 @@ async function renderMatch(id, src) {
     const hasFights = !!fightsChart({});
     const views = [
       ["fights", "Items & fights", "items_fights", fightsChart(show) || leadChart(m.gold_adv, { xp: m.xp_adv, nameA: m.team_a, nameB: m.team_b, id: `lead-${m.id}`, objectives: m.objectives })],
-      ["worth", "Net worth by player", "gold_players", lines.length ? lineChart(lines, { endLabels: true, height: 300,
-        caption: `Solid: ${esc(m.team_a)} · dashed: ${esc(m.team_b)}; richest first within each team. Hover for everyone's gold at that minute.` }) : ""],
+      ["worth", "Gold by player", "gold_players", worthHtml],
     ].filter(([, , , html]) => html);
     let want = null;
     try { want = localStorage.getItem("gameChart"); } catch {}
@@ -1391,6 +1403,14 @@ async function renderMatch(id, src) {
     const box = app.querySelector(".gm-hc-layers");
     if (box) box.hidden = b.dataset.chartView !== "fights";
     try { localStorage.setItem("gameChart", b.dataset.chartView); } catch {}
+  }));
+  // Net worth / gold earned on the by-player chart.
+  app.querySelectorAll("[data-worth]").forEach((b) => (b.onclick = () => {
+    for (const x of app.querySelectorAll("[data-worth]")) { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); }
+    const box = app.querySelector(".gm-worth");
+    box.innerHTML = worthChart(b.dataset.worth);
+    wireCharts(box);
+    try { localStorage.setItem("gameWorth", b.dataset.worth); } catch {}
   }));
   // Layer checkboxes: redraw the items & fights chart with just what's ticked.
   const layerBox = app.querySelector(".gm-hc-layers");

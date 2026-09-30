@@ -469,6 +469,14 @@ export function tierModel(matches) {
   }
   const scores = scorePlayers(rows, model).filter((p) => p.games >= MIN_GAMES).map((p) => p.score).sort((a, b) => a - b);
   model.curve = scores.length >= 5 ? [scores[Math.floor(scores.length / 2)], RATING_STRETCH * sdOf(scores)] : DEFAULT_CURVE;
+  // One game's score sits closer to the middle than a season's (no averaging luck out, and the
+  // shrinking pulls one game hard), so on the season curve almost no game reached S or D.
+  // Game ratings get their own curve, fitted the same way to every player-game in the league,
+  // so a game rating spreads like the tier list.
+  const teams = teamGames(rows), byGame = new Map();
+  for (const r of rows) { const k = r.match.id ?? r.match.match_id; (byGame.get(k) ?? byGame.set(k, []).get(k)).push(r); }
+  const games = [...byGame.values()].flatMap((rs) => scorePlayers(rs, model, { teams }).map((p) => p.score)).sort((a, b) => a - b);
+  model.game_curve = games.length >= 10 ? [games[Math.floor(games.length / 2)], RATING_STRETCH * sdOf(games)] : model.curve;
   return model;
 }
 
@@ -505,15 +513,15 @@ export function heroRatings(matches, { model = null } = {}) {
 }
 
 // One game's ratings: its ten players, each scored on that game alone against the league's
-// model (opponent strength from all of `matches`), on the tier rating's curve. Like any one-game
-// sample it's pulled toward the average. Best first.
+// model (opponent strength from all of `matches`), on the league's game curve (the tier curve's
+// method fitted to single games), so game ratings spread across S–D like the tier list. Best first.
 const leagueTeams = new WeakMap();
 export function gameRatings(m, matches, { model = null } = {}) {
   model ??= tierModel(matches);
   const teams = leagueTeams.get(matches) ?? leagueTeams.set(matches, teamGames(matches.flatMap(gameRows))).get(matches);
   const rows = gameRows(m).map((r) => scoreRow(r, model));
   return scorePlayers(rows, model, { teams })
-    .map((p) => { const rating_exact = ratingOf(p.score, model.curve); return { ...p, rating_exact, rating: Math.round(rating_exact), tier: TIERS.find((t) => rating_exact >= t.min).tier }; })
+    .map((p) => { const rating_exact = ratingOf(p.score, model.game_curve ?? model.curve); return { ...p, rating_exact, rating: Math.round(rating_exact), tier: TIERS.find((t) => rating_exact >= t.min).tier }; })
     .sort((a, b) => b.score - a.score);
 }
 

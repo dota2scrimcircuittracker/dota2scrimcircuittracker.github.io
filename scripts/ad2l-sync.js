@@ -286,8 +286,10 @@ for (const id of [...candidates].sort()) {
       level: p.level, kills: p.kills, deaths: p.deaths, assists: p.assists,
       net_worth: p.net_worth ?? p.total_gold ?? 0, last_hits: p.last_hits, denies: p.denies,
       gpm: p.gold_per_min, xpm: p.xp_per_min, hero_damage: p.hero_damage ?? 0, hero_healing: p.hero_healing ?? 0,
-      // Gold at each minute (OpenDota gold_t), for per-player and per-hero curves.
+      // Gold earned by each minute (OpenDota gold_t, only ever rises), for per-player and
+      // per-hero curves; net worth at each minute (networth_t) for the game's by-player chart.
       gold_t: Array.isArray(p.gold_t) ? p.gold_t : null,
+      networth_t: Array.isArray(p.networth_t) ? p.networth_t : null,
       // Map play from the parsed replay (null if unparsed). Creep kills split lane / neutral
       // / ancient as OpenDota reports them; dewards = enemy observers + sentries killed.
       lane_kills: p.lane_kills ?? null, neutral_kills: p.neutral_kills ?? null, ancient_kills: p.ancient_kills ?? null,
