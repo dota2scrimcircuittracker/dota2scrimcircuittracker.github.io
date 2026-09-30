@@ -3,4 +3,7 @@
 // the game for that player; add one when the same person shows up under two names.
 export const ALIASES = {
   "Red Alert": 80518956, // Big Red, Damage Over Time
+  // Shown as a nickname (nicknames.js), so the real names only match through here.
+  "Dr. Spike The Dota Dr.": 19192564,
+  "DrSpikedota.com": 19192564,
 };

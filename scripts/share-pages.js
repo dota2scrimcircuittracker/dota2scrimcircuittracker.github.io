@@ -7,10 +7,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { routeOf, sharePath } from "../public/lib/share.js";
+import { withNicknames } from "../public/lib/nicknames.js";
 
 const OUT = path.resolve(process.argv[2] ?? "_site");
 const SITE = "https://dota2scrimcircuittracker.github.io";
-const COLOR = { scrim: "#5fd39b", ad2l: "#e8b64c", heroic: "#a58bff", conqueror: "#5aa9e6", warrior: "#ff9a3c", challenger: "#9bd34a", voyager: "#ef6b73", explorer: "#3cc6c6" };
+const COLOR = { all: "#efe7da", scrim: "#5fd39b", ad2l: "#e8b64c", heroic: "#a58bff", conqueror: "#5aa9e6", warrior: "#ff9a3c", challenger: "#9bd34a", voyager: "#ef6b73", explorer: "#3cc6c6" };
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const TZ = "America/Los_Angeles";
 const day = (sec) => new Date(sec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: TZ });
@@ -51,7 +52,8 @@ function inDivision(d, div) {
   return { ...d, teams: d.teams.filter((t) => ids.has(t.id)), series: d.series.filter((s) => ids.has(s.home) && ids.has(s.away)), games: d.games.filter((g) => ids.has(g.team_a_id) && ids.has(g.team_b_id)) };
 }
 
-function league(root, key, name, d, view) {
+// brief: only the list tabs (All divisions has no Predict, Upload, team or game pages).
+function league(root, key, name, d, view, { brief = false } = {}) {
   const label = view ? `${name} · ${view}` : name;
   const color = COLOR[key];
   const top = standings(d).slice(0, 3).map((r, i) => `${i + 1}. ${r.t.name} (${r.gw}–${r.gl})`).join(" · ");
@@ -73,6 +75,7 @@ function league(root, key, name, d, view) {
   const most = [...picks].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h, n]) => `${h} (${n})`).join(", ");
   page(`${root}/heroes`, `Heroes · ${label}`, `${plural(picks.size, "hero")} played${most ? `. Most picked: ${most}` : ""}. Pick, ban and win rates.`, color);
 
+  if (brief) return;
   const upcoming = d.series.filter((s) => !((s.home_score ?? 0) + (s.away_score ?? 0)) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).length;
   page(`${root}/predict`, `Predictions · ${label}`, `${upcoming ? `${plural(upcoming, "series")} to call. ` : ""}Pick the winners and see how the model's picks have done.`, color);
   page(`${root}/upload`, `Upload a game · ${label}`, "Played without a league ticket? Upload the post-game screenshots so the game counts in the stats.", color);
@@ -93,7 +96,7 @@ function league(root, key, name, d, view) {
   }
 }
 
-const load = async (f) => JSON.parse(await readFile(path.join(OUT, "data", f), "utf8"));
+const load = async (f) => withNicknames(JSON.parse(await readFile(path.join(OUT, "data", f), "utf8")));
 page("ad2l", "Pick a league · AD2L Stat Tracker", "Our scrims and AD2L Season 48: Explorer, Voyager, Challenger, Warrior, Conqueror, Champion and Heroic/Aegis.", COLOR.ad2l);
 const champ = await load("ad2l.json");
 league("champion", "ad2l", "AD2L S48 Champion", champ);
@@ -108,6 +111,9 @@ league("warrior", "warrior", "AD2L S48 Warrior", await load("warrior.json"));
 league("challenger", "challenger", "AD2L S48 Challenger", await load("challenger.json"));
 league("voyager", "voyager", "AD2L S48 Voyager", await load("voyager.json"));
 league("explorer", "explorer", "AD2L S48 Explorer", await load("explorer.json"));
+// Every division together (/all/): the files merged, as the app does.
+const every = await Promise.all(["ad2l", "heroic", "conqueror", "warrior", "challenger", "voyager", "explorer"].map((k) => load(`${k}.json`)));
+league("all", "all", "AD2L S48 All Divisions", { teams: every.flatMap((d) => d.teams), series: every.flatMap((d) => d.series), games: every.flatMap((d) => d.games) }, null, { brief: true });
 
 // ---------- write ----------
 for (const { p, title, description, color, route, canonical = p } of pages) {

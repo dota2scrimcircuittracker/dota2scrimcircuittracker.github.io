@@ -19,6 +19,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@600;800;900&family=Epilogue:wght@400;500;600;700&family=Martian+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <!-- Colour-blind mode and the theme (settings cog), set before the first paint so the colours don't flash. -->
+  <script>try {
+    const h = document.documentElement, theme = localStorage.getItem("theme");
+    if (localStorage.getItem("colorblind") === "1") h.classList.add("cb");
+    if (theme === "light" || theme === "grey") { h.classList.add(theme); document.querySelector('meta[name="theme-color"]').content = theme === "light" ? "#efe9df" : "#2b2d31"; }
+  } catch { /* storage blocked */ }</script>
 </head>
 <body>
   <!-- Atmosphere: the river band and grain sit behind everything. -->
@@ -56,6 +62,21 @@
           <a href="#/conqueror/" data-league="conqueror"><b>AD2L · S48 Conqueror</b></a>
           <a href="#/champion/" data-league="ad2l"><b>AD2L · S48 Champion</b></a>
           <a href="#/heroic/" data-league="heroic"><b>AD2L · S48 Heroic/Aegis</b></a>
+          <a href="#/all/" data-league="all"><b>AD2L · All Divisions</b><span>Every division in one view</span></a>
+        </div>
+      </div>
+      <div class="settings">
+        <button class="settings-btn" id="settings-btn" type="button" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false" aria-controls="settings-pop">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="7.5" stroke-width="3.5" stroke-dasharray="3.1 2.79"/><circle cx="12" cy="12" r="5.2" stroke-width="2.2"/></svg>
+        </button>
+        <div class="settings-pop" id="settings-pop" hidden>
+          <div class="menu-label">Settings</div>
+          <div class="settings-theme" role="radiogroup" aria-label="Theme">
+            <label><input type="radio" name="theme" value="dark"> Dark</label>
+            <label><input type="radio" name="theme" value="grey"> Grey</label>
+            <label><input type="radio" name="theme" value="light"> Light</label>
+          </div>
+          <label class="settings-row"><input type="checkbox" id="cb-mode"> Colour-blind mode</label>
         </div>
       </div>
     </div>

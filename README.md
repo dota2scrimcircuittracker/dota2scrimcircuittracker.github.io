@@ -17,6 +17,11 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   divisions: its first stop waits for you to pick one (no Next; Scrim League is hidden). Old
   `/ad2l/<page>` links forward to `/champion/<page>` (in the app, and via preview pages the deploy
   writes at the old paths).
+- **All divisions** (`/all/`, "All divisions" under the picker and last in the league menu) —
+  every AD2L division's files merged into one view: Teams (one table with a Division column;
+  Matches and Crosstable boxed per division, Heroic/Aegis per sub-division; no Race), Weekly,
+  Players (one tier list, everyone rated against the whole field) and Heroes. Read-only: no
+  Predict or Upload, and a game opens in its own division. Preview pages only for the four tabs.
 - **AD2L S48 Heroic/Aegis** — a second division in the same switcher (PlayOn runs Heroic
   and Aegis as one season, 676), from its own `public/data/heroic.json` (`npm run heroic:sync`).
   Everything Champion has, under `#/heroic/`: standings, weekly, players, heroes, teams,
