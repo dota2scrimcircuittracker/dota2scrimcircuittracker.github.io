@@ -128,8 +128,9 @@ function wireMapCards(root) {
 }
 
 // ---------- Laning (lib/lanes.js) ----------
-// Won / even / lost cut-offs come from the whole division, like the tier list's reference.
-const laneCutsOf = async (src) => (src.ad2l ? laneCuts((await SOURCES[src.key].load()).filter(hasDetails)) : null);
+// Won / even / lost cut-offs come from the whole division, like the tier list's reference
+// (only the picked weeks' games while the time machine is on).
+const laneCutsOf = async (src) => (src.ad2l ? laneCuts((await leagueSrc(src).load()).filter(hasDetails)) : null);
 const VERDICT = { won: "Won", even: "Even", lost: "Lost" };
 const verdictTag = (v) => (v ? `<span class="lane-v ${v}">${VERDICT[v]}</span>` : '<span class="muted">—</span>');
 const laneName = (r) => `${LANE_LABEL[r.role]}${r.roaming ? ' <span class="tag">roaming</span>' : ""}`;
@@ -206,22 +207,22 @@ function lanesSection(src, matches, cuts, weekGames) {
   if (!board.length) return null;
   const groupLabel = Object.fromEntries(LANE_GROUPS.map(([k, l]) => [k, l]));
   const week = bestLaner(laneBoard(weekGames, cuts, playerKey, 0));
-  const season = bestLaner(board, MIN_GAMES);
+  const season = bestLaner(board, floorOf(src));
   const hl = (title, r, tip, i) => r ? `<div class="card hl" style="--i:${i}">${portrait(r.p.hero, "card-hero")}<div class="k">${title}${info(tip)}</div>
     <div class="v small">${playerLink(src, r.p)}</div>
     <div class="s">${groupLabel[r.group]} · won ${r.won} of ${r.lanes} lane${r.lanes === 1 ? "" : "s"} · <b>${signedK(r.margin)}</b> avg gold + XP at 10'</div></div>` : "";
   const html = `<h2 id="laning">Laning${info("lane_rank")}</h2>
     <div class="cards ln-best reveal">${hl("Best laner this week", week, "lane_best_week", 0)}${hl("Best laner this season", season, "lane_best_season", 1)}</div>
     <div id="lane-board"></div>
-    <p class="table-note">${cutNote(cuts)} Ranked within the position played (${MIN_GAMES}+ lanes); lane score = average lead ÷ the won cut-off, padded with 2 even lanes, so 1.0 is a player who wins every lane by just enough.</p>`;
+    <p class="table-note">${cutNote(cuts)} Ranked within the position played (${floorOf(src)}+ lanes); lane score = average lead ÷ the won cut-off, padded with 2 even lanes, so 1.0 is a player who wins every lane by just enough.</p>`;
   const draw = () => {
     const el = document.getElementById("lane-board");
-    const rows = board.filter((r) => r.group === laneGroup && r.lanes >= MIN_GAMES)
+    const rows = board.filter((r) => r.group === laneGroup && r.lanes >= floorOf(src))
       .map((r) => ({ ...r, name: r.p.name, team: r.p.team_name, wel: `${r.won}–${r.even}–${r.lost}` }));
     const tab = ([k, label]) => `<button type="button" class="seg${laneGroup === k ? " on" : ""}" data-group="${k}">${label}</button>`;
     el.innerHTML = `<div class="row segs">${LANE_GROUPS.map(tab).join("")}</div><div id="lane-table"></div>`;
     el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { laneGroup = b.dataset.group; draw(); }));
-    if (!rows.length) { el.querySelector("#lane-table").innerHTML = `<p class="muted">Nobody has ${MIN_GAMES}+ lanes here yet.</p>`; return; }
+    if (!rows.length) { el.querySelector("#lane-table").innerHTML = `<p class="muted">Nobody has ${floorOf(src)}+ lanes here yet.</p>`; return; }
     sortableTable(el.querySelector("#lane-table"), [
       ["name", "Player", (v, r) => playerLink(src, r.p), "l name"], ["team", "Team", (v) => (v ? teamLink(src, v) : ""), "l name"],
       ["lanes", "Lanes"], ["wel", "W–E–L", null, "l"], ["lane_rate", "Lane win %", pct, "", "jade"],
@@ -1140,9 +1141,9 @@ async function renderMatch(id, src) {
   // a model just go without.
   let rated = [], season = new Map();
   try {
-    const model = await tierRef(src);
+    const model = src.view ? await tierRef(src) : null; // else built from `detailed`, this game included
     rated = gameRatings(m, detailed, { model });
-    season = new Map(tierList(detailed, { model }).tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { ...p, tier }])));
+    season = new Map(tierList(detailed, { model, minGames: floorOf(src) }).tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { ...p, tier }])));
   } catch { /* not enough games to rate */ }
   const rateOf = new Map(rated.map((r) => [r.key, r]));
   const mvp = gameMvp(m);
@@ -2017,7 +2018,7 @@ window.addEventListener("resize", () => {
 
 const statRowsCache = new WeakMap(), heroRankCache = new WeakMap();
 const statRows = (matches) => statRowsCache.get(matches) ?? statRowsCache.set(matches, playerLeaderboard(matches).map(withPerGame)).get(matches);
-const heroRanks = (matches, model = null) => heroRankCache.get(matches) ?? heroRankCache.set(matches, heroRatings(matches, { model })).get(matches);
+const heroRanks = (matches, model = null, minGames = MIN_GAMES) => heroRankCache.get(matches) ?? heroRankCache.set(matches, heroRatings(matches, { model, minGames })).get(matches);
 // Hero lines for the hero page's ranks: every hero's games added up the way a player's are
 // (key "hero:<name>", games = picks), plus pick, contest and ban rates.
 const heroRowsCache = new WeakMap();
@@ -2034,30 +2035,33 @@ function heroRows(matches) {
   return rows;
 }
 
-let everyLeague = null;
-function allLeagues() {
-  everyLeague ??= Promise.all(Object.keys(DIVISIONS).map(async (key) => ({ key, matches: (await SOURCES[key].load()).filter(hasDetails) })))
-    .catch((e) => { everyLeague = null; throw e; });
-  return everyLeague;
+// Every AD2L league's games, over the same weeks as `src` when the time machine is on (weeks
+// are calendar weeks, so they line up across leagues). One load per pick.
+const everyLeague = new Map();
+function allLeagues(src) {
+  const sel = src.weeks, sig = sel ? [...sel].sort().join() : "";
+  if (!everyLeague.has(sig)) everyLeague.set(sig, Promise.all(Object.keys(DIVISIONS).map(async (key) => ({ key, matches: (await (sel ? timeSrc(SOURCES[key], sel) : SOURCES[key]).load()).filter(hasDetails) })))
+    .catch((e) => { everyLeague.delete(sig); throw e; }));
+  return everyLeague.get(sig);
 }
 // Every league's player lines (tagged with the league), and every league's players on a hero,
 // best rating first. Null for scrims or if a division can't load.
 async function overallStats(src) {
   if (!src.ad2l || src.all) return null;
-  try { return (await allLeagues()).flatMap(({ key, matches }) => statRows(matches).map((r) => ({ ...r, league: key }))); }
+  try { return (await allLeagues(src)).flatMap(({ key, matches }) => statRows(matches).map((r) => ({ ...r, league: key }))); }
   catch (e) { console.warn("overall ranks unavailable", e); return null; }
 }
 async function overallHeroes(src) {
   if (!src.ad2l || src.all) return null;
   try {
-    const leagues = await allLeagues();
-    return (hero) => leagues.flatMap(({ key, matches }) => (heroRanks(matches).get(hero) ?? []).map((p) => ({ ...p, league: key })))
+    const leagues = await allLeagues(src);
+    return (hero) => leagues.flatMap(({ key, matches }) => (heroRanks(matches, null, floorOf(src)).get(hero) ?? []).map((p) => ({ ...p, league: key })))
       .sort((a, b) => b.rating_exact - a.rating_exact);
   } catch (e) { console.warn("overall ranks unavailable", e); return null; }
 }
 async function overallHeroRows(src) {
   if (!src.ad2l || src.all) return null;
-  try { return (await allLeagues()).flatMap(({ key, matches }) => heroRows(matches).map((r) => ({ ...r, league: key }))); }
+  try { return (await allLeagues(src)).flatMap(({ key, matches }) => heroRows(matches).map((r) => ({ ...r, league: key }))); }
   catch (e) { console.warn("overall ranks unavailable", e); return null; }
 }
 const inLeague = (src, key) => (r) => r.league === src.key && r.key === key;
@@ -2084,8 +2088,8 @@ function leadersSection(src, rows) {
     if (!el) return;
     const stat = stats.find((s) => s.key === leaderStat) ?? stats.find((s) => s.key === "kda");
     const val = (r) => r[stat.key];
-    const ranked = rankStat(rows, stat), { top, bottom, top_spill, bottom_spill } = ends(ranked, val);
-    const pool = overall && rankStat(overall, stat);
+    const ranked = rankStat(rows, stat, floorOf(src)), { top, bottom, top_spill, bottom_spill } = ends(ranked, val);
+    const pool = overall && rankStat(overall, stat, floorOf(src));
     // Meter: where the value sits between the league's worst (0) and best (full).
     const best = ranked.length ? val(ranked[0]) : 0, worst = ranked.length ? val(ranked.at(-1)) : 0;
     const meter = (v) => (best === worst ? 1 : (v - worst) / (best - worst));
@@ -2112,10 +2116,10 @@ function leadersSection(src, rows) {
       </div>` : "");
     const band = (end, label, xs, sp) => `<div class="ld-band ld-band-${end}">
         <div class="ld-tag"><span class="ld-arrow">${end === "top" ? "▲" : "▼"}</span><span>${label}</span></div>
-        <div class="ld-plates reveal">${xs.length || sp ? `${xs.map((r, i) => plate(r, i, end)).join("")}${spill(sp, end, xs.length)}` : `<div class="tier-empty">Nobody with ${MIN_GAMES}+ games yet</div>`}</div>
+        <div class="ld-plates reveal">${xs.length || sp ? `${xs.map((r, i) => plate(r, i, end)).join("")}${spill(sp, end, xs.length)}` : `<div class="tier-empty">Nobody with ${floorOf(src)}+ games yet</div>`}</div>
       </div>`;
     el.querySelector(".ld-lists").innerHTML = `${band("top", stat.low ? "Top 3 · fewest" : "Top 3", top, top_spill)}${band("bottom", stat.low ? "Bottom 3 · most" : "Bottom 3", bottom, bottom_spill)}`;
-    el.querySelector(".ld-note").textContent = `${ranked.length} players with ${MIN_GAMES}+ games${stat.map ? " and parsed replays" : ""}.${src.ad2l ? overall ? ` Badges: top or bottom 3 across all ${LEAGUE_COUNT} AD2L leagues (${pool.length} players).` : " Loading the other leagues…" : ""}`;
+    el.querySelector(".ld-note").textContent = `${ranked.length} players with ${floorOf(src)}+ games${stat.map ? " and parsed replays" : ""}.${src.ad2l ? overall ? ` Badges: top or bottom 3 across all ${LEAGUE_COUNT} AD2L leagues (${pool.length} players).` : " Loading the other leagues…" : ""}`;
   };
   const html = `<h2 id="stat-leaders">Stat leaders${info("stat_leaders")}</h2>
     <div id="leaders">
@@ -2148,14 +2152,14 @@ const HERO_RANKS = {
 function statRanksHtml(src, key, rows, overall, opt = PLAYER_RANKS) {
   const me = rows.find((r) => r.key === key);
   if (!me) return "";
-  const ranked = me.games >= MIN_GAMES;
+  const ranked = me.games >= floorOf(src);
   const league = esc(leagueShort(src));
   const places = opt.stats.filter((s) => me[s.key] != null).map((stat) => {
     const val = (r) => r[stat.key];
     return {
       stat,
-      pl: ranked ? placeOf(rankStat(rows, stat), (x) => x.key === key, val) : null,
-      opl: ranked && overall ? placeOf(rankStat(overall, stat), inLeague(src, key), val) : null,
+      pl: ranked ? placeOf(rankStat(rows, stat, floorOf(src)), (x) => x.key === key, val) : null,
+      opl: ranked && overall ? placeOf(rankStat(overall, stat, floorOf(src)), inLeague(src, key), val) : null,
     };
   });
   // Tile: value, league place, overall place, and a meter for how far up the league they sit
@@ -2188,7 +2192,7 @@ function statRanksHtml(src, key, rows, overall, opt = PLAYER_RANKS) {
       <div><b class="sr-sum-top">${tops}</b><small>top 3 in ${league}</small></div>
       <div><b class="sr-sum-bottom">${bottoms}</b><small>bottom 3 in ${league}</small></div>
       ${src.ad2l ? `<div><b class="sr-sum-ov">${overall ? ovTops : "…"}</b><small>top 3 across all ${LEAGUE_COUNT} leagues</small></div>` : ""}
-    </div>` : `<p class="table-note wm-intro">Ranks need ${MIN_GAMES}+ ${opt.unit}; ${esc(me.name)} has ${me.games}. The numbers so far:</p>`}
+    </div>` : `<p class="table-note wm-intro">Ranks need ${floorOf(src)}+ ${opt.unit}; ${esc(me.name)} has ${me.games}. The numbers so far:</p>`}
     <div class="ld-lists">${bands}</div>`;
 }
 
@@ -3219,7 +3223,7 @@ async function renderPlayer(src, key) {
   // Tier-list line, if they have enough games.
   const detailed = matches.filter(hasDetails), model = await tierRef(src);
   const laneCuts_ = await laneCutsOf(src);
-  const tl = tierList(detailed, { model });
+  const tl = tierList(detailed, { model, minGames: floorOf(src) });
   const rows = statRows(detailed), ratings = heroRanks(detailed, model);
   const gameRated = h.games.map((g) => gameRatings(g.m, detailed, { model }));
   const tierOf = tl.tiers.flatMap(({ tier, players }) => players.map((p) => ({ ...p, tier }))).find((p) => p.key === key);
@@ -3977,7 +3981,7 @@ async function renderTeams(src, slug) {
 
   // Tier letters from the league's tier list (players with enough games).
   const detailed = matches.filter(hasDetails), model = await tierRef(src);
-  const tierOf = new Map(tierList(detailed, { model }).tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { ...p, tier }])));
+  const tierOf = new Map(tierList(detailed, { model, minGames: floorOf(src) }).tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { ...p, tier }])));
   const tierTag = (key) => { const t = tierOf.get(key); return t ? `<span class="rc-tier t-${t.tier}" title="${t.tier} tier · ${t.rating} rating">${t.tier}</span>` : ""; };
 
   // AD2L record comes from PlayOn's series scores (official, and complete even when a
@@ -4198,13 +4202,15 @@ async function renderTeams(src, slug) {
 
 let tierRole = "all";
 const tierOpen = new Set(); // player keys whose card is expanded
-// Each league (AD2L division, or the scrim ledger) is scored against its own games: tierList
-// builds that reference from the matches it's given. The Heroic A/B views pass the whole
-// division's reference instead, so a player's stats are judged against the same field as in
-// Combined.
+// Each league (AD2L division, or the scrim ledger) is scored against its own games. The
+// Heroic A/B views use the whole division's reference, so a player's stats are judged against
+// the same field as in Combined. With the time machine on, only the picked weeks' games, and
+// the lower game floor. One model per game list and floor.
+const refMemo = new WeakMap();
 async function tierRef(src) {
-  if (!src.view) return null;
-  return tierModel((await SOURCES[src.key].load()).filter(hasDetails));
+  const all = await (src.view ? leagueSrc(src) : src).load(), min = floorOf(src);
+  const m = refMemo.get(all) ?? refMemo.set(all, new Map()).get(all);
+  return m.get(min) ?? m.set(min, tierModel(all.filter(hasDetails), { minGames: min })).get(min);
 }
 
 // How each tier-list stat reads in a breakdown, and the raw number shown under a share.
@@ -4327,7 +4333,7 @@ function tierBreakdown(src, p) {
 // The tier list, shown at the top of the Players page: returns its HTML and a function
 // that fills it in once it's on the page.
 function tierSection(src, matches, model) {
-  const list = tierList(matches, { model });
+  const list = tierList(matches, { model, minGames: floorOf(src) });
   const draw = () => {
     const el = document.getElementById("tiers");
     if (!el) return;
@@ -4354,7 +4360,7 @@ function tierSection(src, matches, model) {
     el.innerHTML = `
       <div class="row segs">${tab("all", "Everyone")}${tab("core", "Cores")}${tab("support", "Supports")}</div>
       <div class="tier-board">${bands}</div>
-      ${list.unranked.length ? `<p class="table-note">Not ranked yet (needs ${MIN_GAMES}+ games): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
+      ${list.unranked.length ? `<p class="table-note">Not ranked yet (needs ${floorOf(src)}+ games): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
     el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { tierRole = b.dataset.role; draw(); }));
     const toggle = (c) => {
       const k = c.dataset.key;
@@ -4371,7 +4377,7 @@ function tierSection(src, matches, model) {
     <p class="table-note wm-intro">${list.eligible} players ranked from ${matches.length} ${matches.length === 1 ? "game" : "games"}.</p>
     <div id="tiers"></div>
     ${tierHow(list.model, src)}`
-    : `<p class="table-note">Tier list: players need ${MIN_GAMES}+ games to be ranked.</p>`;
+    : `<p class="table-note">Tier list: players need ${floorOf(src)}+ games to be ranked.</p>`;
   return { html, draw };
 }
 
@@ -4414,7 +4420,7 @@ function tierHow(model, src) {
     <p>Each stat is scored against the other players in ${pool}, in the same role:</p>
     <ul class="how-list">
       <li>First, the player's average for the stat across their games in that role, padded with ${K_SHRINK} games at the position average. Three lucky games shouldn't read as a season: a 3-game player keeps about half of how far they are from average, a 20-game player nearly all of it.</li>
-      <li><b>100</b> = the <b>best</b> such average of any player with ${MIN_GAMES}+ games in that role in this league. If you have the league's best average farm share among cores, you get all of farm share's points.</li>
+      <li><b>100</b> = the <b>best</b> such average of any player with ${floorOf(src)}+ games in that role in this league. If you have the league's best average farm share among cores, you get all of farm share's points.</li>
       <li><b>0</b> = the <b>worst</b> such average. Everyone else sits in between, in proportion.</li>
       <li><b>Stacks (supports)</b> are easier: 100 sits ${Math.round(EASE.support.stacks * 100)}% of the way from the worst stacker to the best. A few supports stack far more than anyone else, and without this everyone else would score close to nothing.</li>
     </ul>
@@ -4449,7 +4455,7 @@ function tierHow(model, src) {
     <table class="how-table how-curve"><thead><tr><th>Score</th><th>Rating</th></tr></thead><tbody>${curveRows}</tbody></table>
 
     <h3>8. Tiers</h3>
-    <p>Fixed rating cutoffs, the same for cores and supports: ${cuts}. The cutoffs don't move with the field, so a tier can be empty and a strong division can have more S players. A player needs ${MIN_GAMES}+ games to be ranked.</p>
+    <p>Fixed rating cutoffs, the same for cores and supports: ${cuts}. The cutoffs don't move with the field, so a tier can be empty and a strong division can have more S players. A player needs ${floorOf(src)}+ games to be ranked.</p>
 
     <h3>What isn't counted</h3>
     <ul class="how-list">
@@ -4558,12 +4564,13 @@ function narrowDiv(d, sel, sig) {
   });
 }
 // The source as seen through the time machine (the source itself when every week is on).
-function timeSrc(src) {
-  const sel = timeSel[src.key];
+// `sel` defaults to the league's own pick. A week or two holds only a game or four per player,
+// so the ranking floor (MIN_GAMES) drops to the number of weeks picked.
+function timeSrc(src, sel = timeSel[src.key]) {
   if (!sel?.size) return src;
   const sig = [...sel].sort().join();
   return {
-    ...src, weeks: sel,
+    ...src, weeks: sel, minGames: Math.min(MIN_GAMES, sel.size),
     data: async () => narrowDiv(await src.data(), sel, sig),
     cache: () => { const d = src.cache(); return d && narrowDiv(d, sel, sig); },
     load: async () => {
@@ -4572,6 +4579,10 @@ function timeSrc(src) {
     },
   };
 }
+// Games a player needs to be ranked on this source (lower under a short time-machine pick).
+const floorOf = (src) => src.minGames ?? MIN_GAMES;
+// The whole league behind a source (Combined for a Heroic A/B view), over the same weeks.
+const leagueSrc = (src) => (src.weeks ? timeSrc(SOURCES[src.key], src.weeks) : SOURCES[src.key]);
 // Every week with a game or a played series, oldest first, numbered from the first.
 async function leagueWeeks(src) {
   const [games, d] = await Promise.all([src.load(), src.ad2l ? src.data() : null]);

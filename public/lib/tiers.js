@@ -427,8 +427,9 @@ export const EASE = { support: { stacks: 0.7 } };
 const ends = (xs) => (xs.length >= 2 ? [Math.min(...xs), Math.max(...xs)] : null);
 
 // The reference a tier list is scored against. `matches` is the league's games: one AD2L
-// division, or the scrim ledger.
-export function tierModel(matches) {
+// division, or the scrim ledger. `minGames`: the games a player needs to count toward the
+// anchors and the curve (lower when the time machine picks only a week or two).
+export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
   const rows = matches.flatMap(gameRows);
   const positions = {};
   for (const pos of [1, 2, 3, 4, 5]) {
@@ -443,13 +444,13 @@ export function tierModel(matches) {
   }
   const model = { games: matches.length, positions, anchors: {}, win_minutes: rows.filter((r) => r.won && r.pos === 1).map((r) => r.minutes).sort((a, b) => a - b) };
   for (const r of rows) scoreRow(r, model);
-  // Anchors: every player with MIN_GAMES+ games in a role, their shrunk average per stat; the
+  // Anchors: every player with minGames+ games in a role, their shrunk average per stat; the
   // best and worst of those set 100 and 0.
   const byPlayerRole = new Map();
   for (const r of rows) { const k = `${keyOf(r.p)}|${r.role}`; (byPlayerRole.get(k) ?? byPlayerRole.set(k, []).get(k)).push(r); }
   for (const role of ["core", "support"]) {
     model.anchors[role] = {};
-    const players = [...byPlayerRole.values()].filter((rs) => rs[0].role === role && rs.length >= MIN_GAMES).map(shrunkZ);
+    const players = [...byPlayerRole.values()].filter((rs) => rs[0].role === role && rs.length >= minGames).map(shrunkZ);
     for (const metric of Object.keys(scoredMetrics(role))) {
       // Too few players to find a best and a worst: fall back to ±1 sd.
       const [lo, hi] = ends(players.filter((z) => z[metric]).map((z) => z[metric][0])) ?? [-1, 1];
@@ -458,7 +459,7 @@ export function tierModel(matches) {
     }
   }
   // Consistency reference: eligible players' series spreads (2+ series).
-  const first = scorePlayers(rows, model, { consistency: false }).filter((p) => p.games >= MIN_GAMES && p.series_points.length >= 2);
+  const first = scorePlayers(rows, model, { consistency: false }).filter((p) => p.games >= minGames && p.series_points.length >= 2);
   const sds = first.map((p) => sdOf(p.series_points)).sort((a, b) => a - b);
   if (sds.length) {
     const typical = sds[Math.floor(sds.length / 2)];
@@ -467,7 +468,7 @@ export function tierModel(matches) {
     const e = ends(shrunk);
     model.consistency = { typical, best: e ? e[0] : typical * 0.5, worst: e ? e[1] : typical * 1.5 };
   }
-  const scores = scorePlayers(rows, model).filter((p) => p.games >= MIN_GAMES).map((p) => p.score).sort((a, b) => a - b);
+  const scores = scorePlayers(rows, model).filter((p) => p.games >= minGames).map((p) => p.score).sort((a, b) => a - b);
   model.curve = scores.length >= 5 ? [scores[Math.floor(scores.length / 2)], RATING_STRETCH * sdOf(scores)] : DEFAULT_CURVE;
   // One game's score sits closer to the middle than a season's (no averaging luck out, and the
   // shrinking pulls one game hard), so on the season curve almost no game reached S or D.
@@ -481,7 +482,7 @@ export function tierModel(matches) {
 }
 
 export function tierList(matches, { minGames = MIN_GAMES, model = null } = {}) {
-  model ??= tierModel(matches);
+  model ??= tierModel(matches, { minGames });
   const rows = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
   const players = scorePlayers(rows, model);
   for (const p of players) { p.rating_exact = ratingOf(p.score, model.curve); p.rating = Math.round(p.rating_exact); p.curve = model.curve; }
@@ -502,8 +503,8 @@ export function tierList(matches, { minGames = MIN_GAMES, model = null } = {}) {
 // league's model (so a hero rating reads on the same curve as the tier rating). Opponent
 // strength still comes from all the league's games. Returns hero -> players, best first. No
 // minimum games: the rating already pulls small samples toward the average.
-export function heroRatings(matches, { model = null } = {}) {
-  model ??= tierModel(matches);
+export function heroRatings(matches, { model = null, minGames = MIN_GAMES } = {}) {
+  model ??= tierModel(matches, { minGames });
   const rows = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
   const teams = teamGames(rows), byHero = new Map();
   for (const r of rows) (byHero.get(r.p.hero) ?? byHero.set(r.p.hero, []).get(r.p.hero)).push(r);
