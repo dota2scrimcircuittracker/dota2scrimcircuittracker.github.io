@@ -2,7 +2,7 @@
  "season": "S48 Explorer League - Amateur Dota 2 League",
  "playon_season_id": 670,
  "league_id": 20077,
- "updated": "2026-09-30T23:09:31.528Z",
+ "updated": "2026-10-01T14:36:51.109Z",
  "teams": [
   {
    "id": 13288,
@@ -663,7 +663,7 @@
      "courier_kills": 0,
      "max_hit": [229,"shadow_shaman_ether_shock","juggernaut"],
      "pings": 88,
-     "bench": [56,45,27,28,31,45,97]
+     "bench": [62,50,30,32,36,50,97]
     },
     {
      "team": "a",
@@ -728,7 +728,7 @@
      "courier_kills": 0,
      "max_hit": [650,"slardar_slithereen_crush","lion"],
      "pings": 3,
-     "bench": [71,47,44,65,78,36,55]
+     "bench": [72,51,46,65,77,38,56]
     },
     {
      "team": "a",
@@ -793,7 +793,7 @@
      "courier_kills": 0,
      "max_hit": [812,null,"witch_doctor"],
      "pings": 12,
-     "bench": [80,58,73,25,73,49,68]
+     "bench": [84,63,74,25,77,51,72]
     },
     {
      "team": "a",
@@ -858,7 +858,7 @@
      "courier_kills": 1,
      "max_hit": [409,"mirana_arrow","death_prophet"],
      "pings": 4,
-     "bench": [41,60,15,72,39,12,74]
+     "bench": [42,62,16,69,39,11,76]
     },
     {
      "team": "a",
@@ -923,7 +923,7 @@
      "courier_kills": 4,
      "max_hit": [338,"windrunner_powershot","juggernaut"],
      "pings": 23,
-     "bench": [47,33,18,66,56,60,66]
+     "bench": [47,34,18,66,54,57,65]
     },
     {
      "team": "b",
@@ -988,7 +988,7 @@
      "courier_kills": 1,
      "max_hit": [314,"witch_doctor_maledict","slardar"],
      "pings": 3,
-     "bench": [12,15,37,23,48,15,36]
+     "bench": [12,15,37,26,49,16,38]
     },
     {
      "team": "b",
@@ -1053,7 +1053,7 @@
      "courier_kills": 0,
      "max_hit": [331,"tidehunter_ravage","slardar"],
      "pings": 7,
-     "bench": [34,23,40,24,84,40,41]
+     "bench": [36,28,45,29,83,42,45]
     },
     {
      "team": "b",
@@ -1118,7 +1118,7 @@
      "courier_kills": 0,
      "max_hit": [672,"lion_finger_of_death","windrunner"],
      "pings": 1,
-     "bench": [3,5,24,14,3,11,44]
+     "bench": [3,6,25,17,3,11,47]
     },
     {
      "team": "b",
@@ -1183,7 +1183,7 @@
      "courier_kills": 2,
      "max_hit": [261,"death_prophet_carrion_swarm","slardar"],
      "pings": 14,
-     "bench": [28,17,1,42,80,20,36]
+     "bench": [25,16,2,41,79,19,33]
     },
     {
      "team": "b",
@@ -1248,7 +1248,7 @@
      "courier_kills": 0,
      "max_hit": [676,"juggernaut_omni_slash","shadow_shaman"],
      "pings": 21,
-     "bench": [64,46,18,13,98,35,14]
+     "bench": [61,46,20,13,98,38,15]
     }
    ]
   },
@@ -1679,7 +1679,7 @@
      "courier_kills": 1,
      "max_hit": [1210,"blade_mail","sniper"],
      "pings": 1,
-     "bench": [57,92,16,79,51,80,97]
+     "bench": [62,95,17,81,55,84,97]
     },
     {
      "team": "a",
@@ -1744,7 +1744,7 @@
      "courier_kills": 0,
      "max_hit": [1865,null,"techies"],
      "pings": 4,
-     "bench": [46,62,26,48,49,39,64]
+     "bench": [50,65,30,50,45,44,67]
     },
     {
      "team": "a",
@@ -1809,7 +1809,7 @@
      "courier_kills": 0,
      "max_hit": [735,"lina_laguna_blade","disruptor"],
      "pings": 14,
-     "bench": [75,61,73,71,61,68,94]
+     "bench": [74,62,73,72,58,68,94]
     },
     {
      "team": "a",
@@ -1874,7 +1874,7 @@
      "courier_kills": 3,
      "max_hit": [583,"necronomicon_warrior_last_will","weaver"],
      "pings": 10,
-     "bench": [81,98,89,70,18,71,96]
+     "bench": [83,99,88,70,19,72,96]
     },
     {
      "team": "a",
@@ -1939,7 +1939,7 @@
      "courier_kills": 0,
      "max_hit": [208,"dark_seer_vacuum","disruptor"],
      "pings": 6,
-     "bench": [81,81,15,83,88,74,63]
+     "bench": [83,86,17,82,87,76,65]
     },
     {
      "team": "b",
@@ -2004,7 +2004,7 @@
      "courier_kills": 0,
      "max_hit": [598,"techies_land_mines","dark_seer"],
      "pings": 27,
-     "bench": [47,38,4,64,77,34,14]
+     "bench": [50,42,5,66,80,36,16]
     },
     {
      "team": "b",
@@ -2069,7 +2069,7 @@
      "courier_kills": 0,
      "max_hit": [930,null,"undying"],
      "pings": 4,
-     "bench": [89,92,74,8,90,97,33]
+     "bench": [90,93,74,9,91,97,35]
     },
     {
      "team": "b",
@@ -2134,7 +2134,7 @@
      "courier_kills": 0,
      "max_hit": [180,"disruptor_glimpse","phantom_assassin"],
      "pings": 25,
-     "bench": [72,78,28,26,78,46,23]
+     "bench": [72,76,28,27,82,46,25]
     },
     {
      "team": "b",
@@ -2199,7 +2199,7 @@
      "courier_kills": 0,
      "max_hit": [292,"undying_soul_rip","undying"],
      "pings": 8,
-     "bench": [27,15,7,33,50,18,33]
+     "bench": [26,16,8,33,44,21,34]
     },
     {
      "team": "b",
@@ -2264,7 +2264,7 @@
      "courier_kills": 0,
      "max_hit": [571,"weaver_shukuchi","undying"],
      "pings": 10,
-     "bench": [65,66,15,55,87,75,60]
+     "bench": [65,66,15,55,85,74,61]
     }
    ]
   },
@@ -2711,7 +2711,7 @@
      "courier_kills": 1,
      "max_hit": [448,"undying_soul_rip","slardar"],
      "pings": 12,
-     "bench": [17,20,43,9,45,30,36]
+     "bench": [19,22,45,9,47,34,38]
     },
     {
      "team": "a",
@@ -2776,7 +2776,7 @@
      "courier_kills": 0,
      "max_hit": [448,"centaur_double_edge","slardar"],
      "pings": 9,
-     "bench": [10,9,3,27,21,18,22]
+     "bench": [10,9,5,32,18,21,27]
     },
     {
      "team": "a",
@@ -2841,7 +2841,7 @@
      "courier_kills": 0,
      "max_hit": [201,"centaur_stampede","bloodseeker"],
      "pings": 4,
-     "bench": [2,16,5,18,1,11,42]
+     "bench": [2,20,4,22,2,13,47]
     },
     {
      "team": "a",
@@ -2906,7 +2906,7 @@
      "courier_kills": 0,
      "max_hit": [327,"death_prophet_carrion_swarm","slardar"],
      "pings": 19,
-     "bench": [49,32,40,24,81,44,51]
+     "bench": [48,29,38,25,80,40,47]
     },
     {
      "team": "a",
@@ -2971,7 +2971,7 @@
      "courier_kills": 0,
      "max_hit": [284,"life_stealer_infest","slardar"],
      "pings": 25,
-     "bench": [35,38,28,10,88,39,30]
+     "bench": [37,42,34,11,87,43,33]
     },
     {
      "team": "b",
@@ -3036,7 +3036,7 @@
      "courier_kills": 1,
      "max_hit": [298,"witch_doctor_maledict","centaur"],
      "pings": 87,
-     "bench": [73,55,75,40,86,77,89]
+     "bench": [73,57,76,41,87,78,91]
     },
     {
      "team": "b",
@@ -3101,7 +3101,7 @@
      "courier_kills": 1,
      "max_hit": [540,"slardar_slithereen_crush","centaur"],
      "pings": 4,
-     "bench": [87,80,30,64,96,61,81]
+     "bench": [88,82,32,64,95,62,83]
     },
     {
      "team": "b",
@@ -3166,7 +3166,7 @@
      "courier_kills": 1,
      "max_hit": [384,"mirana_arrow","centaur"],
      "pings": 2,
-     "bench": [48,62,18,56,51,32,78]
+     "bench": [49,65,19,53,53,30,81]
     },
     {
      "team": "b",
@@ -3231,7 +3231,7 @@
      "courier_kills": 1,
      "max_hit": [388,null,"death_prophet"],
      "pings": 10,
-     "bench": [82,67,45,89,75,48,90]
+     "bench": [83,69,46,91,76,54,92]
     },
     {
      "team": "b",
@@ -3296,7 +3296,7 @@
      "courier_kills": 0,
      "max_hit": [729,"obsidian_destroyer_sanity_eclipse","centaur"],
      "pings": 23,
-     "bench": [49,45,18,80,63,47,49]
+     "bench": [48,46,20,82,58,49,47]
     }
    ]
   },
@@ -3694,7 +3694,7 @@
      "courier_kills": 0,
      "max_hit": [403,"dragon_knight_breathe_fire","witch_doctor"],
      "pings": 1,
-     "bench": [35,63,46,68,18,77,42]
+     "bench": [33,66,48,69,14,77,43]
     },
     {
      "team": "a",
@@ -3759,7 +3759,7 @@
      "courier_kills": 0,
      "max_hit": [547,"juggernaut_omni_slash","ogre_magi"],
      "pings": 6,
-     "bench": [59,64,73,64,35,72,65]
+     "bench": [55,64,73,66,30,72,62]
     },
     {
      "team": "a",
@@ -3824,7 +3824,7 @@
      "courier_kills": 0,
      "max_hit": [318,"tidehunter_ravage","witch_doctor"],
      "pings": 3,
-     "bench": [28,25,18,34,32,11,46]
+     "bench": [29,29,21,38,28,12,51]
     },
     {
      "team": "a",
@@ -3889,7 +3889,7 @@
      "courier_kills": 0,
      "max_hit": [215,"disruptor_glimpse","death_prophet"],
      "pings": 4,
-     "bench": [57,72,68,44,25,78,91]
+     "bench": [58,71,72,45,25,82,91]
     },
     {
      "team": "a",
@@ -3954,7 +3954,7 @@
      "courier_kills": 0,
      "max_hit": [664,"techies_land_mines","witch_doctor"],
      "pings": 7,
-     "bench": [35,68,7,81,49,57,79]
+     "bench": [39,71,7,84,50,58,79]
     },
     {
      "team": "b",
@@ -4019,7 +4019,7 @@
      "courier_kills": 0,
      "max_hit": [218,null,"disruptor"],
      "pings": 7,
-     "bench": [55,23,57,49,57,32,63]
+     "bench": [56,26,58,53,57,35,64]
     },
     {
      "team": "b",
@@ -4084,7 +4084,7 @@
      "courier_kills": 0,
      "max_hit": [380,"witch_doctor_maledict","tidehunter"],
      "pings": 2,
-     "bench": [13,46,16,56,20,29,48]
+     "bench": [13,47,16,56,22,31,50]
     },
     {
      "team": "b",
@@ -4149,7 +4149,7 @@
      "courier_kills": 1,
      "max_hit": [441,null,"disruptor"],
      "pings": 3,
-     "bench": [52,20,34,32,71,51,54]
+     "bench": [51,22,34,32,68,49,53]
     },
     {
      "team": "b",
@@ -4214,7 +4214,7 @@
      "courier_kills": 1,
      "max_hit": [262,"death_prophet_carrion_swarm","juggernaut"],
      "pings": 15,
-     "bench": [51,41,30,50,67,44,60]
+     "bench": [51,39,30,50,64,41,57]
     },
     {
      "team": "b",
@@ -4279,7 +4279,7 @@
      "courier_kills": 1,
      "max_hit": [176,null,"juggernaut"],
      "pings": 8,
-     "bench": [27,34,54,69,24,52,40]
+     "bench": [26,33,55,68,21,54,40]
     }
    ]
   },
@@ -4633,7 +4633,7 @@
      "courier_kills": 0,
      "max_hit": [79,null,"witch_doctor"],
      "pings": null,
-     "bench": [0,2,4,3,4,42,36]
+     "bench": [0,1,4,3,3,45,39]
     },
     {
      "team": "a",
@@ -4698,7 +4698,7 @@
      "courier_kills": 0,
      "max_hit": [356,"bloodseeker_rupture","death_prophet"],
      "pings": 2,
-     "bench": [5,4,4,2,20,15,15]
+     "bench": [6,5,5,2,23,16,17]
     },
     {
      "team": "a",
@@ -4763,7 +4763,7 @@
      "courier_kills": 0,
      "max_hit": [226,"silencer_last_word","life_stealer"],
      "pings": 6,
-     "bench": [16,12,8,1,71,43,19]
+     "bench": [18,13,10,1,76,48,24]
     },
     {
      "team": "a",
@@ -4828,7 +4828,7 @@
      "courier_kills": 0,
      "max_hit": [84,null,"death_prophet"],
      "pings": 4,
-     "bench": [3,3,8,2,12,20,29]
+     "bench": [2,2,10,2,9,22,30]
     },
     {
      "team": "a",
@@ -4893,7 +4893,7 @@
      "courier_kills": 0,
      "max_hit": [89,"warlock_imp_explode","slardar"],
      "pings": null,
-     "bench": [1,1,13,1,7,43,6]
+     "bench": [2,2,14,2,8,45,6]
     },
     {
      "team": "b",
@@ -4958,7 +4958,7 @@
      "courier_kills": 0,
      "max_hit": [202,"witch_doctor_maledict","bloodseeker"],
      "pings": 22,
-     "bench": [32,19,84,84,40,37,92]
+     "bench": [33,20,84,83,42,38,94]
     },
     {
      "team": "b",
@@ -5023,7 +5023,7 @@
      "courier_kills": 0,
      "max_hit": [423,null,"ogre_magi"],
      "pings": 2,
-     "bench": [48,24,55,99,50,60,61]
+     "bench": [48,25,56,99,49,62,64]
     },
     {
      "team": "b",
@@ -5088,7 +5088,7 @@
      "courier_kills": 0,
      "max_hit": [240,"winter_wyvern_splinter_blast","ogre_magi"],
      "pings": 6,
-     "bench": [56,30,52,76,68,37,72]
+     "bench": [55,31,56,75,68,40,71]
     },
     {
      "team": "b",
@@ -5153,7 +5153,7 @@
      "courier_kills": 0,
      "max_hit": [296,null,"abyssal_underlord"],
      "pings": 1,
-     "bench": [46,11,88,98,36,57,51]
+     "bench": [50,12,89,99,33,61,56]
     },
     {
      "team": "b",
@@ -5218,7 +5218,7 @@
      "courier_kills": 1,
      "max_hit": [252,"death_prophet_carrion_swarm","silencer"],
      "pings": 12,
-     "bench": [49,42,98,86,27,62,76]
+     "bench": [48,40,97,86,25,60,72]
     }
    ]
   },
@@ -5613,7 +5613,7 @@
      "courier_kills": 0,
      "max_hit": [874,null,"viper"],
      "pings": 16,
-     "bench": [83,48,92,73,59,87,92]
+     "bench": [84,50,93,74,58,90,94]
     },
     {
      "team": "a",
@@ -5678,7 +5678,7 @@
      "courier_kills": 0,
      "max_hit": [514,"tidehunter_anchor_smash","ogre_magi"],
      "pings": 9,
-     "bench": [58,50,68,85,55,41,51]
+     "bench": [59,55,67,86,52,43,54]
     },
     {
      "team": "a",
@@ -5743,7 +5743,7 @@
      "courier_kills": 1,
      "max_hit": [384,"witch_doctor_maledict","ogre_magi"],
      "pings": 1,
-     "bench": [44,44,11,86,21,6,42]
+     "bench": [45,45,11,86,23,6,43]
     },
     {
      "team": "a",
@@ -5808,7 +5808,7 @@
      "courier_kills": 1,
      "max_hit": [488,"pangolier_gyroshell","disruptor"],
      "pings": 11,
-     "bench": [65,73,81,95,27,97,65]
+     "bench": [71,78,82,95,29,98,67]
     },
     {
      "team": "a",
@@ -5873,7 +5873,7 @@
      "courier_kills": 0,
      "max_hit": [342,"ringmaster_tame_the_beasts","ogre_magi"],
      "pings": 13,
-     "bench": [81,74,76,86,24,26,70]
+     "bench": [81,76,76,86,27,27,71]
     },
     {
      "team": "b",
@@ -5938,7 +5938,7 @@
      "courier_kills": 0,
      "max_hit": [473,"juggernaut_omni_slash","witch_doctor"],
      "pings": null,
-     "bench": [25,39,26,46,52,35,17]
+     "bench": [25,39,28,47,47,37,18]
     },
     {
      "team": "b",
@@ -6003,7 +6003,7 @@
      "courier_kills": 0,
      "max_hit": [96,"viper_viper_strike","tidehunter"],
      "pings": 3,
-     "bench": [16,10,7,45,49,15,20]
+     "bench": [17,11,8,46,45,15,23]
     },
     {
      "team": "b",
@@ -6068,7 +6068,7 @@
      "courier_kills": 0,
      "max_hit": [350,"queenofpain_scream_of_pain","tidehunter"],
      "pings": 1,
-     "bench": [31,52,54,29,40,86,10]
+     "bench": [31,52,54,30,36,84,11]
     },
     {
      "team": "b",
@@ -6133,7 +6133,7 @@
      "courier_kills": 2,
      "max_hit": [199,"disruptor_glimpse","tidehunter"],
      "pings": 16,
-     "bench": [27,12,77,14,39,78,53]
+     "bench": [29,12,80,14,41,81,54]
     },
     {
      "team": "b",
@@ -6198,7 +6198,7 @@
      "courier_kills": 0,
      "max_hit": [106,"ogre_magi_smash","luna"],
      "pings": 9,
-     "bench": [2,6,4,27,8,23,21]
+     "bench": [2,8,4,31,7,27,24]
     }
    ]
   },
@@ -6577,7 +6577,7 @@
      "courier_kills": 0,
      "max_hit": [564,"lion_finger_of_death","razor"],
      "pings": 46,
-     "bench": [15,15,18,24,11,27,33]
+     "bench": [17,17,19,27,13,29,36]
     },
     {
      "team": "a",
@@ -6642,7 +6642,7 @@
      "courier_kills": 0,
      "max_hit": [378,"mars_gods_rebuke","phoenix"],
      "pings": 5,
-     "bench": [27,23,10,13,66,17,42]
+     "bench": [28,24,10,18,62,17,44]
     },
     {
      "team": "a",
@@ -6707,7 +6707,7 @@
      "courier_kills": 1,
      "max_hit": [266,"spirit_breaker_greater_bash","ogre_magi"],
      "pings": 5,
-     "bench": [1,9,12,6,3,2,24]
+     "bench": [2,10,13,7,4,2,26]
     },
     {
      "team": "a",
@@ -6772,7 +6772,7 @@
      "courier_kills": 0,
      "max_hit": [1720,"terrorblade_sunder","ogre_magi"],
      "pings": 5,
-     "bench": [30,25,57,59,25,62,28]
+     "bench": [33,26,63,60,27,68,32]
     },
     {
      "team": "a",
@@ -6837,7 +6837,7 @@
      "courier_kills": 0,
      "max_hit": [414,"zuus_thundergods_wrath","bloodseeker"],
      "pings": 8,
-     "bench": [31,21,33,20,63,21,46]
+     "bench": [35,24,36,22,66,24,49]
     },
     {
      "team": "b",
@@ -6902,7 +6902,7 @@
      "courier_kills": 1,
      "max_hit": [575,"bloodseeker_rupture","spirit_breaker"],
      "pings": 1,
-     "bench": [51,39,60,35,53,15,77]
+     "bench": [56,43,57,44,57,16,80]
     },
     {
      "team": "b",
@@ -6967,7 +6967,7 @@
      "courier_kills": 1,
      "max_hit": [89,null,"lion"],
      "pings": null,
-     "bench": [16,28,8,83,16,19,61]
+     "bench": [17,30,8,82,19,21,66]
     },
     {
      "team": "b",
@@ -7032,7 +7032,7 @@
      "courier_kills": 0,
      "max_hit": [181,"ogre_magi_fireblast","spirit_breaker"],
      "pings": 3,
-     "bench": [41,35,60,77,45,20,79]
+     "bench": [41,39,61,78,46,22,79]
     },
     {
      "team": "b",
@@ -7097,7 +7097,7 @@
      "courier_kills": 0,
      "max_hit": [811,"obsidian_destroyer_sanity_eclipse","spirit_breaker"],
      "pings": 28,
-     "bench": [56,45,60,78,44,40,70]
+     "bench": [55,46,61,80,39,42,70]
     },
     {
      "team": "b",
@@ -7162,7 +7162,7 @@
      "courier_kills": 0,
      "max_hit": [196,null,"zuus"],
      "pings": 8,
-     "bench": [33,21,56,82,25,36,56]
+     "bench": [33,21,58,82,23,38,52]
     }
    ]
   },
@@ -7530,7 +7530,7 @@
      "courier_kills": 0,
      "max_hit": [295,"rubick_fade_bolt","ogre_magi"],
      "pings": null,
-     "bench": [40,38,44,2,83,56,18]
+     "bench": [45,43,46,3,84,59,21]
     },
     {
      "team": "a",
@@ -7595,7 +7595,7 @@
      "courier_kills": 0,
      "max_hit": [426,"juggernaut_omni_slash","ogre_magi"],
      "pings": 1,
-     "bench": [18,18,16,24,46,15,11]
+     "bench": [17,18,18,25,41,17,12]
     },
     {
      "team": "a",
@@ -7660,7 +7660,7 @@
      "courier_kills": 1,
      "max_hit": [342,"lich_chain_frost","tidehunter"],
      "pings": 1,
-     "bench": [7,18,27,4,15,57,24]
+     "bench": [6,18,30,4,15,59,25]
     },
     {
      "team": "a",
@@ -7725,7 +7725,7 @@
      "courier_kills": 0,
      "max_hit": [400,"nyx_assassin_vendetta","razor"],
      "pings": 10,
-     "bench": [2,7,7,7,3,12,27]
+     "bench": [2,8,8,7,3,15,28]
     },
     {
      "team": "a",
@@ -7790,7 +7790,7 @@
      "courier_kills": 0,
      "max_hit": [226,"legion_commander_overwhelming_odds","tidehunter"],
      "pings": 5,
-     "bench": [7,5,2,8,47,5,18]
+     "bench": [7,6,2,8,47,5,20]
     },
     {
      "team": "b",
@@ -7855,7 +7855,7 @@
      "courier_kills": 0,
      "max_hit": [352,null,"lich"],
      "pings": 8,
-     "bench": [73,41,67,68,81,56,79]
+     "bench": [74,43,70,70,81,59,81]
     },
     {
      "team": "b",
@@ -7920,7 +7920,7 @@
      "courier_kills": 0,
      "max_hit": [175,"ogre_magi_fireblast","legion_commander"],
      "pings": 3,
-     "bench": [10,32,8,67,2,3,45]
+     "bench": [10,36,10,68,2,3,48]
     },
     {
      "team": "b",
@@ -7985,7 +7985,7 @@
      "courier_kills": 0,
      "max_hit": [329,"tidehunter_anchor_smash","lich"],
      "pings": 6,
-     "bench": [32,24,63,67,22,25,49]
+     "bench": [34,29,63,69,21,26,53]
     },
     {
      "team": "b",
@@ -8050,7 +8050,7 @@
      "courier_kills": 0,
      "max_hit": [208,null,"nyx_assassin"],
      "pings": 6,
-     "bench": [86,52,86,50,72,57,78]
+     "bench": [86,56,86,50,71,59,77]
     },
     {
      "team": "b",
@@ -8115,7 +8115,7 @@
      "courier_kills": 0,
      "max_hit": [263,"witch_doctor_maledict","legion_commander"],
      "pings": 8,
-     "bench": [34,27,72,69,11,14,51]
+     "bench": [35,28,72,68,12,14,53]
     }
    ]
   },
@@ -8461,7 +8461,7 @@
      "courier_kills": 0,
      "max_hit": [240,"lone_druid_spirit_bear","lone_druid"],
      "pings": 38,
-     "bench": [46,48,75,37,52,66,86]
+     "bench": [51,52,78,37,56,70,88]
     },
     {
      "team": "a",
@@ -8526,7 +8526,7 @@
      "courier_kills": 1,
      "max_hit": [361,"vengefulspirit_nether_swap","disruptor"],
      "pings": 4,
-     "bench": [64,40,9,63,68,75,71]
+     "bench": [62,43,10,66,63,73,70]
     },
     {
      "team": "a",
@@ -8591,7 +8591,7 @@
      "courier_kills": 0,
      "max_hit": [467,"bloodseeker_rupture","centaur"],
      "pings": 7,
-     "bench": [77,32,91,47,61,88,75]
+     "bench": [78,36,90,53,64,89,77]
     },
     {
      "team": "a",
@@ -8656,7 +8656,7 @@
      "courier_kills": 1,
      "max_hit": [313,"spirit_breaker_greater_bash","phantom_lancer"],
      "pings": 3,
-     "bench": [25,35,66,47,13,38,68]
+     "bench": [28,37,68,50,13,44,70]
     },
     {
      "team": "a",
@@ -8721,7 +8721,7 @@
      "courier_kills": 0,
      "max_hit": [560,"earthshaker_enchant_totem","disruptor"],
      "pings": 5,
-     "bench": [44,41,21,70,50,93,69]
+     "bench": [49,44,24,70,53,93,72]
     },
     {
      "team": "b",
@@ -8786,7 +8786,7 @@
      "courier_kills": 1,
      "max_hit": [409,"centaur_double_edge","spirit_breaker"],
      "pings": 3,
-     "bench": [24,21,7,3,74,26,18]
+     "bench": [25,22,9,3,72,29,23]
     },
     {
      "team": "b",
@@ -8851,7 +8851,7 @@
      "courier_kills": 0,
      "max_hit": [319,"centaur_stampede","spirit_breaker"],
      "pings": 2,
-     "bench": [16,17,5,2,53,9,30]
+     "bench": [15,18,5,2,52,9,31]
     },
     {
      "team": "b",
@@ -8916,7 +8916,7 @@
      "courier_kills": 1,
      "max_hit": [262,"lich_chain_frost","vengefulspirit"],
      "pings": 5,
-     "bench": [9,7,5,4,59,24,45]
+     "bench": [9,7,6,4,60,25,46]
     },
     {
      "team": "b",
@@ -8981,7 +8981,7 @@
      "courier_kills": 0,
      "max_hit": [203,"disruptor_glimpse","spirit_breaker"],
      "pings": 6,
-     "bench": [5,5,10,9,29,32,23]
+     "bench": [4,5,11,8,29,32,25]
     },
     {
      "team": "b",
@@ -9046,7 +9046,7 @@
      "courier_kills": 0,
      "max_hit": [202,"centaur_stampede","spirit_breaker"],
      "pings": null,
-     "bench": [18,17,61,3,18,50,20]
+     "bench": [20,18,63,4,19,52,21]
     }
    ]
   },
@@ -9488,7 +9488,7 @@
      "courier_kills": 0,
      "max_hit": [150,"warlock_fatal_bonds","queenofpain"],
      "pings": null,
-     "bench": [31,57,13,46,25,31,31]
+     "bench": [32,60,14,48,26,33,32]
     },
     {
      "team": "a",
@@ -9553,7 +9553,7 @@
      "courier_kills": 1,
      "max_hit": [545,"witch_doctor_maledict","spirit_breaker"],
      "pings": 23,
-     "bench": [74,89,55,23,78,62,65]
+     "bench": [75,90,57,26,80,63,66]
     },
     {
      "team": "a",
@@ -9618,7 +9618,7 @@
      "courier_kills": 0,
      "max_hit": [323,"tidehunter_ravage","spirit_breaker"],
      "pings": 9,
-     "bench": [27,48,5,38,39,12,46]
+     "bench": [28,53,6,41,37,12,51]
     },
     {
      "team": "a",
@@ -9683,7 +9683,7 @@
      "courier_kills": 0,
      "max_hit": [264,null,"queenofpain"],
      "pings": 30,
-     "bench": [78,85,70,46,78,70,72]
+     "bench": [80,87,73,50,75,71,72]
     },
     {
      "team": "a",
@@ -9748,7 +9748,7 @@
      "courier_kills": 1,
      "max_hit": [668,"lina_laguna_blade","spirit_breaker"],
      "pings": 10,
-     "bench": [78,88,46,24,79,54,92]
+     "bench": [78,89,46,27,78,53,91]
     },
     {
      "team": "b",
@@ -9813,7 +9813,7 @@
      "courier_kills": 0,
      "max_hit": [416,"vengefulspirit_nether_swap","faceless_void"],
      "pings": 1,
-     "bench": [42,65,25,73,42,42,49]
+     "bench": [41,64,27,75,39,42,49]
     },
     {
      "team": "b",
@@ -9878,7 +9878,7 @@
      "courier_kills": 0,
      "max_hit": [525,"juggernaut_omni_slash","warlock"],
      "pings": 1,
-     "bench": [43,43,57,51,38,79,63]
+     "bench": [42,43,58,52,33,80,61]
     },
     {
      "team": "b",
@@ -9943,7 +9943,7 @@
      "courier_kills": 0,
      "max_hit": [592,"bloodthorn","faceless_void"],
      "pings": 24,
-     "bench": [45,45,34,38,49,23,70]
+     "bench": [45,46,35,40,45,22,72]
     },
     {
      "team": "b",
@@ -10008,7 +10008,7 @@
      "courier_kills": 0,
      "max_hit": [474,"spirit_breaker_greater_bash","tidehunter"],
      "pings": 1,
-     "bench": [53,68,38,13,82,9,88]
+     "bench": [55,69,42,15,83,11,89]
     },
     {
      "team": "b",
@@ -10073,7 +10073,7 @@
      "courier_kills": 0,
      "max_hit": [328,null,"lina"],
      "pings": 5,
-     "bench": [45,80,25,37,71,32,59]
+     "bench": [45,83,27,38,69,32,56]
     }
    ]
   },
@@ -10459,7 +10459,7 @@
      "courier_kills": 0,
      "max_hit": [229,"witch_doctor_maledict","lina"],
      "pings": 55,
-     "bench": [53,55,53,90,37,46,91]
+     "bench": [53,58,54,90,39,48,92]
     },
     {
      "team": "a",
@@ -10524,7 +10524,7 @@
      "courier_kills": 1,
      "max_hit": [384,"blade_mail","skeleton_king"],
      "pings": 5,
-     "bench": [70,38,62,67,94,43,41]
+     "bench": [72,41,63,68,94,48,44]
     },
     {
      "team": "a",
@@ -10589,7 +10589,7 @@
      "courier_kills": 1,
      "max_hit": [196,"rattletrap_power_cogs","abyssal_underlord"],
      "pings": 5,
-     "bench": [17,41,6,74,23,5,72]
+     "bench": [20,42,10,69,29,4,77]
     },
     {
      "team": "a",
@@ -10654,7 +10654,7 @@
      "courier_kills": 1,
      "max_hit": [256,"troll_warlord_whirling_axes_melee","skeleton_king"],
      "pings": 3,
-     "bench": [85,69,81,81,96,71,85]
+     "bench": [88,72,83,83,96,72,83]
     },
     {
      "team": "a",
@@ -10719,7 +10719,7 @@
      "courier_kills": 0,
      "max_hit": [484,"zuus_thundergods_wrath","skeleton_king"],
      "pings": 20,
-     "bench": [75,65,58,75,88,54,86]
+     "bench": [78,70,60,74,88,58,88]
     },
     {
      "team": "b",
@@ -10784,7 +10784,7 @@
      "courier_kills": 0,
      "max_hit": [661,"techies_land_mines","axe"],
      "pings": 17,
-     "bench": [3,6,2,47,16,22,32]
+     "bench": [3,7,2,52,18,25,35]
     },
     {
      "team": "b",
@@ -10849,7 +10849,7 @@
      "courier_kills": 3,
      "max_hit": [464,"lich_chain_frost","axe"],
      "pings": 2,
-     "bench": [18,12,53,8,57,65,59]
+     "bench": [19,13,55,8,56,66,60]
     },
     {
      "team": "b",
@@ -10914,7 +10914,7 @@
      "courier_kills": 0,
      "max_hit": [602,null,"witch_doctor"],
      "pings": 3,
-     "bench": [47,42,36,9,98,30,35]
+     "bench": [52,46,40,10,98,33,37]
     },
     {
      "team": "b",
@@ -10979,7 +10979,7 @@
      "courier_kills": 0,
      "max_hit": [159,null,"troll_warlord"],
      "pings": 7,
-     "bench": [23,15,29,19,41,5,53]
+     "bench": [21,15,35,19,35,4,52]
     },
     {
      "team": "b",
@@ -11044,7 +11044,7 @@
      "courier_kills": 0,
      "max_hit": [714,"lina_laguna_blade","troll_warlord"],
      "pings": 2,
-     "bench": [24,34,15,35,48,35,28]
+     "bench": [24,35,15,37,45,35,30]
     }
    ]
   },
@@ -11424,7 +11424,7 @@
      "courier_kills": 1,
      "max_hit": [154,"spectre_dispersion","lina"],
      "pings": null,
-     "bench": [14,27,1,32,37,9,17]
+     "bench": [16,30,1,34,34,12,21]
     },
     {
      "team": "a",
@@ -11489,7 +11489,7 @@
      "courier_kills": 0,
      "max_hit": [615,"witch_doctor_maledict","centaur"],
      "pings": 4,
-     "bench": [23,24,52,10,68,63,42]
+     "bench": [24,25,54,12,70,64,43]
     },
     {
      "team": "a",
@@ -11554,7 +11554,7 @@
      "courier_kills": 0,
      "max_hit": [121,null,"sven"],
      "pings": 1,
-     "bench": [17,7,20,28,36,65,30]
+     "bench": [19,10,22,30,38,67,30]
     },
     {
      "team": "a",
@@ -11619,7 +11619,7 @@
      "courier_kills": 0,
      "max_hit": [104,null,"centaur"],
      "pings": 5,
-     "bench": [32,24,32,8,46,39,39]
+     "bench": [33,25,36,9,41,39,40]
     },
     {
      "team": "a",
@@ -11684,7 +11684,7 @@
      "courier_kills": 0,
      "max_hit": [293,"legion_commander_overwhelming_odds","centaur"],
      "pings": 7,
-     "bench": [5,3,2,16,37,6,28]
+     "bench": [5,3,3,17,37,7,31]
     },
     {
      "team": "b",
@@ -11749,7 +11749,7 @@
      "courier_kills": 3,
      "max_hit": [316,"undying_soul_rip","viper"],
      "pings": 20,
-     "bench": [29,53,49,94,14,22,82]
+     "bench": [32,60,52,95,15,26,84]
     },
     {
      "team": "b",
@@ -11814,7 +11814,7 @@
      "courier_kills": 0,
      "max_hit": [675,"lion_finger_of_death","legion_commander"],
      "pings": 1,
-     "bench": [42,66,21,92,27,36,88]
+     "bench": [46,70,23,93,29,38,90]
     },
     {
      "team": "b",
@@ -11879,7 +11879,7 @@
      "courier_kills": 0,
      "max_hit": [333,"centaur_double_edge","legion_commander"],
      "pings": 8,
-     "bench": [37,42,39,92,32,34,54]
+     "bench": [38,44,42,93,28,36,55]
     },
     {
      "team": "b",
@@ -11944,7 +11944,7 @@
      "courier_kills": 0,
      "max_hit": [598,"lina_laguna_blade","legion_commander"],
      "pings": 10,
-     "bench": [69,47,95,53,36,59,91]
+     "bench": [68,49,95,54,32,58,91]
     },
     {
      "team": "b",
@@ -12009,7 +12009,7 @@
      "courier_kills": 0,
      "max_hit": [1386,"sven_great_cleave","warlock"],
      "pings": 40,
-     "bench": [76,60,86,22,71,78,75]
+     "bench": [77,63,87,26,69,79,76]
     }
    ]
   },
@@ -12454,7 +12454,7 @@
      "courier_kills": 1,
      "max_hit": [826,"bloodthorn","life_stealer"],
      "pings": 24,
-     "bench": [88,81,49,52,96,87,75]
+     "bench": [90,84,54,54,96,88,75]
     },
     {
      "team": "a",
@@ -12519,7 +12519,7 @@
      "courier_kills": 0,
      "max_hit": [381,null,"life_stealer"],
      "pings": 12,
-     "bench": [79,89,55,64,73,81,94]
+     "bench": [79,90,56,63,71,83,92]
     },
     {
      "team": "a",
@@ -12584,7 +12584,7 @@
      "courier_kills": 0,
      "max_hit": [351,"tidehunter_anchor_smash","life_stealer"],
      "pings": 4,
-     "bench": [48,68,29,56,50,18,66]
+     "bench": [49,70,32,58,47,19,69]
     },
     {
      "team": "a",
@@ -12649,7 +12649,7 @@
      "courier_kills": 0,
      "max_hit": [156,"warlock_imp_explode","life_stealer"],
      "pings": 4,
-     "bench": [41,59,12,55,35,14,35]
+     "bench": [42,61,12,56,37,18,38]
     },
     {
      "team": "a",
@@ -12714,7 +12714,7 @@
      "courier_kills": 0,
      "max_hit": [363,"gyrocopter_call_down","abyssal_underlord"],
      "pings": 20,
-     "bench": [33,62,18,62,33,31,53]
+     "bench": [39,70,22,62,38,33,57]
     },
     {
      "team": "b",
@@ -12779,7 +12779,7 @@
      "courier_kills": 0,
      "max_hit": [387,"life_stealer_infest","tidehunter"],
      "pings": 18,
-     "bench": [63,52,43,71,61,76,48]
+     "bench": [66,56,48,73,60,80,52]
     },
     {
      "team": "b",
@@ -12844,7 +12844,7 @@
      "courier_kills": 1,
      "max_hit": [525,"nyx_assassin_vendetta","razor"],
      "pings": 9,
-     "bench": [9,24,3,35,19,3,32]
+     "bench": [10,26,4,40,16,3,35]
     },
     {
      "team": "b",
@@ -12909,7 +12909,7 @@
      "courier_kills": 1,
      "max_hit": [1166,"obsidian_destroyer_sanity_eclipse","spectre"],
      "pings": 28,
-     "bench": [60,53,51,20,61,60,49]
+     "bench": [59,55,51,21,57,61,47]
     },
     {
      "team": "b",
@@ -12974,7 +12974,7 @@
      "courier_kills": 1,
      "max_hit": [219,"gyrocopter_homing_missile","gyrocopter"],
      "pings": 13,
-     "bench": [47,64,16,47,57,81,36]
+     "bench": [45,66,20,46,52,83,37]
     },
     {
      "team": "b",
@@ -13039,7 +13039,7 @@
      "courier_kills": 0,
      "max_hit": [227,"shadow_shaman_ether_shock","tidehunter"],
      "pings": 114,
-     "bench": [71,29,65,25,49,44,96]
+     "bench": [76,35,69,29,56,48,97]
     }
    ]
   },
@@ -13453,7 +13453,7 @@
      "courier_kills": 1,
      "max_hit": [668,"lion_finger_of_death","clinkz"],
      "pings": 1,
-     "bench": [29,45,11,96,35,56,86]
+     "bench": [33,49,12,96,37,58,87]
     },
     {
      "team": "a",
@@ -13518,7 +13518,7 @@
      "courier_kills": 0,
      "max_hit": [690,null,"centaur"],
      "pings": 1,
-     "bench": [56,50,85,81,23,68,95]
+     "bench": [60,55,86,80,29,70,95]
     },
     {
      "team": "a",
@@ -13583,7 +13583,7 @@
      "courier_kills": 0,
      "max_hit": [274,"queenofpain_scream_of_pain","centaur"],
      "pings": 23,
-     "bench": [70,44,63,63,61,50,90]
+     "bench": [70,44,62,63,57,47,91]
     },
     {
      "team": "a",
@@ -13648,7 +13648,7 @@
      "courier_kills": 0,
      "max_hit": [75,"jakiro_macropyre","ancient_apparition"],
      "pings": 2,
-     "bench": [29,33,20,76,12,16,77]
+     "bench": [32,36,20,74,15,16,81]
     },
     {
      "team": "a",
@@ -13713,7 +13713,7 @@
      "courier_kills": 0,
      "max_hit": [633,"necrolyte_reapers_scythe","centaur"],
      "pings": 4,
-     "bench": [33,22,76,56,15,19,88]
+     "bench": [32,24,74,57,14,20,86]
     },
     {
      "team": "b",
@@ -13778,7 +13778,7 @@
      "courier_kills": 0,
      "max_hit": [276,"ancient_apparition_ice_blast","nevermore"],
      "pings": 4,
-     "bench": [14,17,52,11,40,65,23]
+     "bench": [16,21,59,12,40,72,26]
     },
     {
      "team": "b",
@@ -13843,7 +13843,7 @@
      "courier_kills": 0,
      "max_hit": [357,"orchid","queenofpain"],
      "pings": 1,
-     "bench": [38,37,19,42,63,39,32]
+     "bench": [40,39,23,41,60,44,34]
     },
     {
      "team": "b",
@@ -13908,7 +13908,7 @@
      "courier_kills": 0,
      "max_hit": [370,"centaur_double_edge","queenofpain"],
      "pings": 5,
-     "bench": [12,10,64,34,18,35,35]
+     "bench": [12,11,66,38,14,37,39]
     },
     {
      "team": "b",
@@ -13973,7 +13973,7 @@
      "courier_kills": 0,
      "max_hit": [209,"ancient_apparition_ice_blast","nevermore"],
      "pings": 5,
-     "bench": [14,27,4,22,44,8,17]
+     "bench": [15,30,4,23,40,10,21]
     },
     {
      "team": "b",
@@ -14038,7 +14038,7 @@
      "courier_kills": 1,
      "max_hit": [313,"undying_soul_rip","necrolyte"],
      "pings": 1,
-     "bench": [9,15,9,26,36,31,36]
+     "bench": [11,17,9,28,37,36,39]
     }
    ]
   },
@@ -14425,7 +14425,7 @@
      "courier_kills": 0,
      "max_hit": [192,null,"warlock"],
      "pings": 5,
-     "bench": [52,42,73,61,64,51,29]
+     "bench": [54,45,77,62,62,57,33]
     },
     {
      "team": "a",
@@ -14490,7 +14490,7 @@
      "courier_kills": 0,
      "max_hit": [371,"centaur_stampede","phantom_lancer"],
      "pings": 73,
-     "bench": [16,28,50,62,4,25,34]
+     "bench": [16,29,50,65,4,25,36]
     },
     {
      "team": "a",
@@ -14555,7 +14555,7 @@
      "courier_kills": 0,
      "max_hit": [618,"blade_mail","phantom_lancer"],
      "pings": 8,
-     "bench": [46,50,38,65,58,71,40]
+     "bench": [46,53,42,67,55,72,43]
     },
     {
      "team": "a",
@@ -14620,7 +14620,7 @@
      "courier_kills": 0,
      "max_hit": [281,"centaur_stampede","void_spirit"],
      "pings": 3,
-     "bench": [14,22,50,16,41,12,32]
+     "bench": [16,24,54,17,43,11,31]
     },
     {
      "team": "a",
@@ -14685,7 +14685,7 @@
      "courier_kills": 0,
      "max_hit": [449,"lina_laguna_blade","phantom_lancer"],
      "pings": 19,
-     "bench": [61,50,33,81,81,77,57]
+     "bench": [61,52,34,81,80,76,55]
     },
     {
      "team": "b",
@@ -14750,7 +14750,7 @@
      "courier_kills": 0,
      "max_hit": [337,"centaur_double_edge","centaur"],
      "pings": 12,
-     "bench": [29,27,30,61,34,32,75]
+     "bench": [30,31,33,64,30,35,77]
     },
     {
      "team": "b",
@@ -14815,7 +14815,7 @@
      "courier_kills": 0,
      "max_hit": [133,"warlock_imp_explode","centaur"],
      "pings": null,
-     "bench": [12,19,5,42,4,19,54]
+     "bench": [13,19,5,44,5,22,57]
     },
     {
      "team": "b",
@@ -14880,7 +14880,7 @@
      "courier_kills": 0,
      "max_hit": [255,"void_spirit_astral_step","centaur"],
      "pings": 8,
-     "bench": [48,41,42,43,64,16,73]
+     "bench": [50,43,44,46,60,15,71]
     },
     {
      "team": "b",
@@ -14945,7 +14945,7 @@
      "courier_kills": 0,
      "max_hit": [344,"gyrocopter_call_down","centaur"],
      "pings": 30,
-     "bench": [16,27,35,76,8,60,62]
+     "bench": [19,32,40,76,11,63,70]
     },
     {
      "team": "b",
@@ -15010,7 +15010,7 @@
      "courier_kills": 0,
      "max_hit": [1156,"bloodthorn","centaur"],
      "pings": 12,
-     "bench": [76,76,65,56,78,86,66]
+     "bench": [78,78,66,57,80,89,67]
     }
    ]
   },
@@ -15399,7 +15399,7 @@
      "courier_kills": 0,
      "max_hit": [177,"warlock_fatal_bonds","rattletrap"],
      "pings": 3,
-     "bench": [17,19,23,13,34,96,37]
+     "bench": [19,20,26,17,36,96,39]
     },
     {
      "team": "a",
@@ -15464,7 +15464,7 @@
      "courier_kills": 3,
      "max_hit": [353,"ringmaster_tame_the_beasts","wisp"],
      "pings": null,
-     "bench": [7,10,19,11,29,81,24]
+     "bench": [9,12,21,13,31,81,25]
     },
     {
      "team": "a",
@@ -15529,7 +15529,7 @@
      "courier_kills": 0,
      "max_hit": [404,"lina_laguna_blade","necrolyte"],
      "pings": null,
-     "bench": [8,3,1,11,33,13,11]
+     "bench": [7,3,1,12,29,12,12]
     },
     {
      "team": "a",
@@ -15594,7 +15594,7 @@
      "courier_kills": 0,
      "max_hit": [658,"obsidian_destroyer_sanity_eclipse","necrolyte"],
      "pings": 16,
-     "bench": [15,11,29,38,17,48,16]
+     "bench": [14,10,29,41,15,50,17]
     },
     {
      "team": "a",
@@ -15659,7 +15659,7 @@
      "courier_kills": 0,
      "max_hit": [276,null,"leshrac"],
      "pings": 3,
-     "bench": [5,9,8,2,13,11,16]
+     "bench": [5,10,9,2,13,12,17]
     },
     {
      "team": "b",
@@ -15724,7 +15724,7 @@
      "courier_kills": 0,
      "max_hit": [107,null,"warlock"],
      "pings": 49,
-     "bench": [57,49,78,91,30,35,87]
+     "bench": [55,49,78,92,28,31,86]
     },
     {
      "team": "b",
@@ -15789,7 +15789,7 @@
      "courier_kills": 0,
      "max_hit": [343,"necrolyte_reapers_scythe","lina"],
      "pings": 3,
-     "bench": [59,56,51,94,85,66,67]
+     "bench": [57,56,51,95,85,66,64]
     },
     {
      "team": "b",
@@ -15854,7 +15854,7 @@
      "courier_kills": 0,
      "max_hit": [229,"rattletrap_power_cogs","ringmaster"],
      "pings": 3,
-     "bench": [42,35,40,72,47,12,65]
+     "bench": [49,37,46,68,57,13,71]
     },
     {
      "team": "b",
@@ -15919,7 +15919,7 @@
      "courier_kills": 0,
      "max_hit": [733,null,"warlock"],
      "pings": 5,
-     "bench": [81,25,94,84,82,88,98]
+     "bench": [82,29,94,85,81,88,98]
     },
     {
      "team": "b",
@@ -15984,7 +15984,7 @@
      "courier_kills": 0,
      "max_hit": [297,"leshrac_lightning_storm","skeleton_king"],
      "pings": 4,
-     "bench": [62,55,66,94,68,44,81]
+     "bench": [56,49,63,94,61,41,79]
     }
    ]
   },
@@ -16410,7 +16410,7 @@
      "courier_kills": 0,
      "max_hit": [1391,"sven_great_cleave","undying"],
      "pings": 26,
-     "bench": [89,82,51,40,96,86,50]
+     "bench": [89,84,51,42,95,86,53]
     },
     {
      "team": "a",
@@ -16475,7 +16475,7 @@
      "courier_kills": 0,
      "max_hit": [576,"zuus_thundergods_wrath","undying"],
      "pings": 11,
-     "bench": [90,86,50,34,91,77,90]
+     "bench": [91,89,53,36,91,81,91]
     },
     {
      "team": "a",
@@ -16540,7 +16540,7 @@
      "courier_kills": 0,
      "max_hit": [358,"undying_soul_rip","undying"],
      "pings": 9,
-     "bench": [33,38,22,40,45,59,58]
+     "bench": [34,39,21,41,44,60,60]
     },
     {
      "team": "a",
@@ -16605,7 +16605,7 @@
      "courier_kills": 1,
      "max_hit": [165,"shadow_shaman_ether_shock","spectre"],
      "pings": null,
-     "bench": [6,30,5,7,22,4,22]
+     "bench": [7,35,5,9,28,6,26]
     },
     {
      "team": "a",
@@ -16670,7 +16670,7 @@
      "courier_kills": 0,
      "max_hit": [492,"ancient_apparition_ice_blast","bristleback"],
      "pings": 9,
-     "bench": [54,80,70,24,38,48,69]
+     "bench": [58,83,73,28,38,54,70]
     },
     {
      "team": "b",
@@ -16735,7 +16735,7 @@
      "courier_kills": 0,
      "max_hit": [577,"undying_soul_rip","primal_beast"],
      "pings": 4,
-     "bench": [39,62,54,61,31,25,62]
+     "bench": [43,70,57,63,31,28,64]
     },
     {
      "team": "b",
@@ -16800,7 +16800,7 @@
      "courier_kills": 1,
      "max_hit": [338,"silencer_last_word","primal_beast"],
      "pings": 3,
-     "bench": [25,63,3,69,45,22,76]
+     "bench": [28,68,4,68,49,25,79]
     },
     {
      "team": "b",
@@ -16865,7 +16865,7 @@
      "courier_kills": 0,
      "max_hit": [322,null,"shadow_shaman"],
      "pings": 12,
-     "bench": [65,67,45,59,72,32,84]
+     "bench": [67,70,49,61,71,37,84]
     },
     {
      "team": "b",
@@ -16930,7 +16930,7 @@
      "courier_kills": 0,
      "max_hit": [505,null,"sven"],
      "pings": 2,
-     "bench": [72,73,56,69,64,91,91]
+     "bench": [70,74,55,68,61,89,89]
     },
     {
      "team": "b",
@@ -16995,7 +16995,7 @@
      "courier_kills": 0,
      "max_hit": [338,"bristleback_quill_spray","ancient_apparition"],
      "pings": 8,
-     "bench": [66,78,74,87,52,49,58]
+     "bench": [64,78,71,86,50,49,54]
     }
    ]
   },
@@ -17382,7 +17382,7 @@
      "courier_kills": 0,
      "max_hit": [315,"lich_chain_frost","drow_ranger"],
      "pings": 65,
-     "bench": [13,30,23,90,9,21,67]
+     "bench": [14,29,26,91,8,23,70]
     },
     {
      "team": "a",
@@ -17447,7 +17447,7 @@
      "courier_kills": 0,
      "max_hit": [477,"centaur_double_edge","lion"],
      "pings": 1,
-     "bench": [69,56,65,83,90,51,64]
+     "bench": [70,57,67,84,89,53,65]
     },
     {
      "team": "a",
@@ -17512,7 +17512,7 @@
      "courier_kills": 0,
      "max_hit": [251,"winter_wyvern_splinter_blast","drow_ranger"],
      "pings": 3,
-     "bench": [50,39,85,53,31,22,70]
+     "bench": [50,40,88,52,35,23,69]
     },
     {
      "team": "a",
@@ -17577,7 +17577,7 @@
      "courier_kills": 0,
      "max_hit": [387,"centaur_stampede","witch_doctor"],
      "pings": 2,
-     "bench": [66,43,71,96,68,57,78]
+     "bench": [67,48,72,98,70,63,81]
     },
     {
      "team": "a",
@@ -17642,7 +17642,7 @@
      "courier_kills": 0,
      "max_hit": [725,"lina_laguna_blade","dragon_knight"],
      "pings": 2,
-     "bench": [61,55,87,82,51,83,95]
+     "bench": [61,57,85,83,49,82,95]
     },
     {
      "team": "b",
@@ -17707,7 +17707,7 @@
      "courier_kills": 0,
      "max_hit": [354,null,"lina"],
      "pings": 2,
-     "bench": [9,9,2,3,53,12,15]
+     "bench": [10,11,3,4,50,13,17]
     },
     {
      "team": "b",
@@ -17772,7 +17772,7 @@
      "courier_kills": 0,
      "max_hit": [566,"lion_finger_of_death","centaur"],
      "pings": 12,
-     "bench": [7,9,12,5,64,20,45]
+     "bench": [9,11,13,6,67,21,48]
     },
     {
      "team": "b",
@@ -17837,7 +17837,7 @@
      "courier_kills": 0,
      "max_hit": [222,"dragon_knight_breathe_fire","centaur"],
      "pings": 2,
-     "bench": [3,3,42,2,9,12,23]
+     "bench": [4,3,45,2,7,12,24]
     },
     {
      "team": "b",
@@ -17902,7 +17902,7 @@
      "courier_kills": 0,
      "max_hit": [339,"witch_doctor_maledict","centaur"],
      "pings": null,
-     "bench": [5,8,21,6,19,41,34]
+     "bench": [4,7,20,7,20,42,35]
     },
     {
      "team": "b",
@@ -17967,7 +17967,7 @@
      "courier_kills": 0,
      "max_hit": [113,"abyssal_underlord_firestorm","centaur"],
      "pings": 7,
-     "bench": [6,4,13,11,15,49,38]
+     "bench": [5,3,16,11,11,55,39]
     }
    ]
   },
@@ -18367,7 +18367,7 @@
      "courier_kills": 0,
      "max_hit": [551,null,"shadow_shaman"],
      "pings": 3,
-     "bench": [42,32,14,32,89,84,35]
+     "bench": [44,32,16,32,89,87,39]
     },
     {
      "team": "a",
@@ -18432,7 +18432,7 @@
      "courier_kills": 0,
      "max_hit": [356,"centaur_double_edge","juggernaut"],
      "pings": 9,
-     "bench": [19,30,19,36,33,43,24]
+     "bench": [19,32,22,40,29,45,28]
     },
     {
      "team": "a",
@@ -18497,7 +18497,7 @@
      "courier_kills": 0,
      "max_hit": [175,"ogre_magi_fireblast","tidehunter"],
      "pings": 9,
-     "bench": [12,15,5,12,36,21,21]
+     "bench": [12,18,5,16,37,24,24]
     },
     {
      "team": "a",
@@ -18562,7 +18562,7 @@
      "courier_kills": 0,
      "max_hit": [303,"centaur_stampede","juggernaut"],
      "pings": 9,
-     "bench": [18,37,19,14,48,33,20]
+     "bench": [20,40,23,15,44,37,23]
     },
     {
      "team": "a",
@@ -18627,7 +18627,7 @@
      "courier_kills": 0,
      "max_hit": [335,"silencer_last_word","juggernaut"],
      "pings": 2,
-     "bench": [9,23,64,12,22,58,37]
+     "bench": [10,27,67,12,24,63,41]
     },
     {
      "team": "b",
@@ -18692,7 +18692,7 @@
      "courier_kills": 1,
      "max_hit": [392,"tidehunter_ravage","silencer"],
      "pings": 8,
-     "bench": [73,51,82,81,60,70,69]
+     "bench": [72,56,82,84,57,71,73]
     },
     {
      "team": "b",
@@ -18757,7 +18757,7 @@
      "courier_kills": 0,
      "max_hit": [349,"centaur_double_edge","centaur"],
      "pings": 17,
-     "bench": [49,72,36,91,34,50,70]
+     "bench": [54,76,36,93,36,56,72]
     },
     {
      "team": "b",
@@ -18822,7 +18822,7 @@
      "courier_kills": 0,
      "max_hit": [143,"shadow_shaman_ether_shock","ogre_magi"],
      "pings": 1,
-     "bench": [23,47,5,70,11,12,88]
+     "bench": [28,53,4,72,14,15,90]
     },
     {
      "team": "b",
@@ -18887,7 +18887,7 @@
      "courier_kills": 1,
      "max_hit": [641,null,"ogre_magi"],
      "pings": 23,
-     "bench": [93,85,88,53,90,99,69]
+     "bench": [93,86,88,54,90,99,67]
     },
     {
      "team": "b",
@@ -18952,7 +18952,7 @@
      "courier_kills": 0,
      "max_hit": [422,"ringmaster_wheel","life_stealer"],
      "pings": 19,
-     "bench": [60,66,71,59,34,27,95]
+     "bench": [63,67,71,60,35,27,95]
     }
    ]
   }
@@ -18960,6 +18960,20 @@
  "pubs_days": 30,
  "pubs": {
   "4655218": [
+   1790831374,
+   "Witch Doctor",
+   1,
+   8,
+   8,
+   29,
+   1,
+   1790826173,
+   "Nyx Assassin",
+   1,
+   18,
+   11,
+   18,
+   0,
    1790744122,
    "Nyx Assassin",
    1,
@@ -19726,27 +19740,6 @@
    7,
    4,
    9,
-   1,
-   1788237567,
-   "Lone Druid",
-   1,
-   17,
-   2,
-   19,
-   1,
-   1788234581,
-   "Leshrac",
-   0,
-   1,
-   11,
-   5,
-   1,
-   1788230541,
-   "Lina",
-   0,
-   6,
-   8,
-   6,
    1
   ],
   "61789935": [
@@ -20626,6 +20619,13 @@
    1
   ],
   "88361789": [
+   1790812788,
+   "Dragon Knight",
+   0,
+   0,
+   9,
+   10,
+   0,
    1788400369,
    "Centaur Warrunner",
    1,
@@ -20635,6 +20635,13 @@
    1
   ],
   "91757165": [
+   1790834119,
+   "Troll Warlord",
+   1,
+   12,
+   4,
+   11,
+   1,
    1790661090,
    "Troll Warlord",
    0,
@@ -20819,6 +20826,13 @@
    1
   ],
   "98433537": [
+   1790818933,
+   "Disruptor",
+   1,
+   4,
+   7,
+   31,
+   1,
    1790801279,
    "Elder Titan",
    0,
@@ -21252,21 +21266,7 @@
    6,
    10,
    18,
-   0,
-   1788230541,
-   "Centaur Warrunner",
-   0,
-   4,
-   9,
-   16,
-   1,
-   1788226467,
-   "Silencer",
-   0,
-   2,
-   16,
-   19,
-   1
+   0
   ],
   "102279457": [
    1790123858,
@@ -21306,6 +21306,20 @@
    0
   ],
   "111720159": [
+   1790818663,
+   "Dawnbreaker",
+   1,
+   3,
+   12,
+   17,
+   0,
+   1790813888,
+   "Windranger",
+   1,
+   5,
+   13,
+   14,
+   0,
    1790551625,
    "Tidehunter",
    0,
@@ -21546,6 +21560,13 @@
    0
   ],
   "113362359": [
+   1790813653,
+   "Dawnbreaker",
+   0,
+   5,
+   7,
+   8,
+   1,
    1790682716,
    "Lion",
    0,
@@ -22035,34 +22056,6 @@
    1,
    12,
    10,
-   1,
-   1788261203,
-   "Lion",
-   1,
-   9,
-   10,
-   26,
-   1,
-   1788247997,
-   "Lion",
-   0,
-   3,
-   9,
-   14,
-   1,
-   1788244657,
-   "Disruptor",
-   0,
-   1,
-   7,
-   15,
-   1,
-   1788240271,
-   "Skywrath Mage",
-   0,
-   1,
-   10,
-   28,
    1
   ],
   "145773657": [
@@ -22411,6 +22404,62 @@
    1
   ],
   "154390881": [
+   1790830298,
+   "Sven",
+   1,
+   20,
+   4,
+   23,
+   1,
+   1790827609,
+   "Sniper",
+   1,
+   13,
+   5,
+   13,
+   1,
+   1790824963,
+   "Lion",
+   0,
+   0,
+   15,
+   13,
+   1,
+   1790820899,
+   "Centaur Warrunner",
+   0,
+   3,
+   14,
+   9,
+   1,
+   1790817903,
+   "Juggernaut",
+   0,
+   6,
+   3,
+   1,
+   1,
+   1790814943,
+   "Sven",
+   1,
+   7,
+   5,
+   5,
+   1,
+   1790810778,
+   "Sven",
+   1,
+   16,
+   3,
+   10,
+   1,
+   1790808099,
+   "Sven",
+   0,
+   7,
+   4,
+   2,
+   1,
    1790725277,
    "Sven",
    1,
@@ -22889,6 +22938,13 @@
    1
   ],
   "158408530": [
+   1790813888,
+   "Jakiro",
+   1,
+   4,
+   13,
+   26,
+   0,
    1790389348,
    "Warlock",
    1,
@@ -23052,6 +23108,20 @@
    0
   ],
   "174273718": [
+   1790826174,
+   "Juggernaut",
+   0,
+   12,
+   8,
+   13,
+   1,
+   1790821109,
+   "Phantom Lancer",
+   0,
+   16,
+   10,
+   6,
+   1,
    1790741002,
    "Juggernaut",
    0,
@@ -23506,13 +23576,6 @@
    13,
    2,
    10,
-   1,
-   1788234581,
-   "Phantom Lancer",
-   0,
-   1,
-   5,
-   5,
    1
   ],
   "191299676": [
@@ -23595,6 +23658,27 @@
    0
   ],
   "242021648": [
+   1790818648,
+   "Mirana",
+   1,
+   7,
+   18,
+   25,
+   1,
+   1790815953,
+   "Undying",
+   1,
+   13,
+   4,
+   36,
+   1,
+   1790812758,
+   "Phoenix",
+   1,
+   2,
+   15,
+   27,
+   1,
    1790727126,
    "Warlock",
    1,
@@ -23772,6 +23856,20 @@
    0
   ],
   "287766104": [
+   1790818648,
+   "Bristleback",
+   1,
+   12,
+   10,
+   29,
+   1,
+   1790815953,
+   "Bristleback",
+   1,
+   12,
+   3,
+   27,
+   1,
    1790730442,
    "Tidehunter",
    1,
