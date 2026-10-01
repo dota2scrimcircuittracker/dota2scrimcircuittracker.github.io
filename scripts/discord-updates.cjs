@@ -1,7 +1,8 @@
 // Post a short "site updated" note to Discord after a push to main deploys (pages.yml, announce job).
 // One bullet per commit in the push: its subject line, or the text of a "Discord: ..." line in the
-// commit body when there is one. Data syncs (github-actions[bot]) and commits with
-// [skip announce] in the message are left out. Nothing to say → nothing posted.
+// commit body when there is one. Data syncs (github-actions[bot]), commits with [skip announce]
+// in the message, and commits that don't touch the site (SITE_FILES) are left out.
+// Nothing to say → nothing posted.
 //
 //   node scripts/discord-updates.cjs [--dry-run] [BEFORE AFTER]
 //
@@ -24,16 +25,22 @@ function commits(before, after) {
   // A new branch or force push has no usable "before": announce the head commit alone.
   let range = [`${before}..${after}`];
   try { if (/^0+$/.test(before)) throw 0; git("cat-file", "-e", `${before}^{commit}`); } catch { range = ["-1", after]; }
-  return git("log", "--reverse", "--format=%an%x1f%s%x1f%b%x1e", ...range)
+  return git("log", "--reverse", "--format=%H%x1f%an%x1f%s%x1f%b%x1e", ...range)
     .split("\x1e").map((r) => r.trim()).filter(Boolean)
-    .map((r) => { const [author, subject, body = ""] = r.split("\x1f"); return { author, subject, body }; });
+    .map((r) => { const [hash, author, subject, body = ""] = r.split("\x1f"); return { hash, author, subject, body }; });
 }
+
+// What ends up on the site: public/ and the build steps in pages.yml that write into it.
+const SITE_FILES = /^(public\/|scripts\/(share-pages|lite-data|write-firebase-config)\.js$)/;
+const touchesSite = (hash) =>
+  git("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", hash).split("\n").some((f) => SITE_FILES.test(f));
 
 function bullets(list) {
   const out = [];
   for (const c of list) {
     if (c.author === "github-actions[bot]" || /^Sync AD2L data/.test(c.subject)) continue;
     if (/\[(skip|no) announce\]/i.test(c.subject + c.body)) continue;
+    if (!touchesSite(c.hash)) continue;
     const custom = c.body.split("\n").map((l) => l.match(/^Discord:\s*(.+)/i)?.[1]).filter(Boolean);
     out.push(...(custom.length ? custom : [c.subject]));
   }
@@ -45,7 +52,7 @@ async function main() {
   const after = argAfter ?? process.env.AFTER ?? "HEAD";
   if (!before) throw new Error("usage: discord-updates.cjs [--dry-run] BEFORE AFTER (or BEFORE/AFTER env)");
   const lines = bullets(commits(before, after));
-  if (!lines.length) return console.log("Nothing to announce (data syncs or [skip announce] only).");
+  if (!lines.length) return console.log("Nothing to announce (data syncs, [skip announce] or non-site commits only).");
 
   let desc = "";
   for (const [i, l] of lines.entries()) {
