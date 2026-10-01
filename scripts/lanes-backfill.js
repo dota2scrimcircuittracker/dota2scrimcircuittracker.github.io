@@ -10,7 +10,7 @@ import { leagueJson } from "./league-json.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DATA = path.join(ROOT, "public", "data");
-for (const f of (await readdir(DATA)).filter((f) => f.endsWith(".json"))) {
+for (const f of (await readdir(DATA)).filter((f) => f.endsWith(".json") && !f.endsWith("-detail.json"))) {
   const d = JSON.parse(await readFile(path.join(DATA, f), "utf8"));
   let done = 0, missing = 0;
   for (const g of d.games) {

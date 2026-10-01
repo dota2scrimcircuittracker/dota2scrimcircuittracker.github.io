@@ -82,6 +82,37 @@ export function mapSummary(playerGames) {
 }
 const NO_MAP = { map_games: 0, lane_pg: null, neutral_pg: null, ancient_pg: null, neutral_share: null, stacks_pg: null, obs_pg: null, sen_pg: null, dewards_pg: null, roshans: null, tormentors: null };
 
+// Combat numbers from parsed replays (see lib/combat.js), over the games that record them:
+// averages a game, multi-kill and courier totals, first-blood rate and the longest streak.
+const total = (g, f) => g.reduce((s, p) => s + (p[f] ?? 0), 0);
+// Most kills between deaths in one game, from kill_t and death_log (a kill and a death in the
+// same second count the kill first).
+function runPeak(p) {
+  const ev = (p.kill_t ?? []).map((t) => [t, 1]), a = p.death_log ?? [];
+  for (let j = 0; j + 5 < a.length; j += 6) ev.push([a[j], 0]);
+  ev.sort((x, y) => x[0] - y[0] || y[1] - x[1]);
+  let cur = 0, best = 0;
+  for (const [, kill] of ev) { cur = kill ? cur + 1 : 0; best = Math.max(best, cur); }
+  return best;
+}
+export function combatSummary(played) {
+  const g = played.filter((p) => p.apm != null);
+  if (!g.length) return { combat_games: 0, apm: null, tf_part: null, fb_rate: null, first_bloods: null, fb_deaths: null, fb_death_rate: null, runes_pg: null, pings_pg: null, courier_kills: null, doubles: null, triples: null, ultras: null, rampages: null, best_streak: null };
+  const multi = (k) => g.reduce((s, p) => s + (p.multi?.[k] ?? 0), 0);
+  // Longest streak: the top level OpenDota counted (3-9; 10 = 10+), else 0-2 from the kill log.
+  const best = Math.max(...g.map((p) => { const i = p.streaks ? p.streaks.findLastIndex((n) => n > 0) : -1; return i >= 0 ? i + 3 : Math.min(runPeak(p), 2); }));
+  return {
+    combat_games: g.length,
+    apm: perGameOf(g, "apm"), tf_part: perGameOf(g, "tf_part"), fb_rate: perGameOf(g, "first_blood"),
+    // First blood drawn, and died first (first blood's victim; games synced with first_death).
+    first_bloods: total(g, "first_blood"), fb_deaths: g.some((p) => p.first_death != null) ? total(g, "first_death") : null,
+    fb_death_rate: perGameOf(g, "first_death"),
+    runes_pg: g.reduce((s, p) => s + (p.runes ? p.runes.reduce((a, b) => a + b, 0) : 0), 0) / g.length,
+    pings_pg: perGameOf(g, "pings"), courier_kills: total(g, "courier_kills"),
+    doubles: multi(0), triples: multi(1), ultras: multi(2), rampages: multi(3), best_streak: best,
+  };
+}
+
 // Average of one field over the player-games that have it; null if none do.
 function perGameOf(played, field) {
   const g = played.filter((p) => p[field] != null);
@@ -148,6 +179,7 @@ export function playerLeaderboard(matches) {
     dmg_taken_pg: perGameOf(r.played, "dmg_taken"),
     buybacks_pg: perGameOf(r.played.map((p) => ({ n: p.buybacks?.length ?? null })), "n"),
     ...(mapSummary(r.played) ?? NO_MAP),
+    ...combatSummary(r.played),
   }));
 }
 

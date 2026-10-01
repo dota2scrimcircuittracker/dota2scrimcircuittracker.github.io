@@ -79,6 +79,18 @@ between them.
 Their bans by phase, bans against them, draft patterns, comfort heroes per player, recent pubs.
 All from existing data (`draft`, `pubs`, positions, `lib/predict.js` ban model).
 
+## 6. More stats from data we already had — BUILT 2026-09-30 (uncommitted)
+
+Asked 2026-09-30: "any new stats we can surface". All approved; APM, rampages and kill streaks
+specifically wanted, with a kill-streak chart and toggles for double / triple / ultra / rampage.
+Built: Combat tabs (games, players, heroes) with the streak chart, deaths by source, public
+benchmarks; build order and skill builds from new per-division detail files; team splits (sides,
+stand-ins, length, lead at 10/20/30', first blood, fights, aegis steals, pairs, lineups); hero
+matchups and neutral items; medal vs rating scatter; pub practice; Radiant win rate; weekly combat
+highlights; Players table columns. See README "Combat", "Detail files", "More splits".
+Skipped: chat text (real things players typed). Overlaps #5 (scouting report): sides, stand-ins,
+length and pairs are now on the team page already.
+
 ## A–C (written recaps, scrim-vs-league practice tracker, Discord cards)
 
 Written recaps and practice tracker: not chosen. Discord cards: liked, PARKED. Full plan in CLAUDE.md. Recommended path: stage 1 = webhook posts

@@ -1,6 +1,6 @@
 import { HEROES } from "./lib/heroes.js";
 import { validateMatch } from "./lib/validate.js";
-import { withDerived, isRemake, playerLeaderboard, heroStats, hasDetails, playerKey, playerHistory, heroHistory, heroSlug, hasMapStats, mapSummary, draftSlotRecord } from "./lib/stats.js";
+import { withDerived, isRemake, playerLeaderboard, heroStats, hasDetails, playerKey, playerHistory, heroHistory, heroSlug, hasMapStats, mapSummary, draftSlotRecord, combatSummary } from "./lib/stats.js";
 import { tierList, tierModel, heroRatings, gameRatings, rankLabel, ratingOf, MIN_GAMES, K_PRIOR, K_SPEED, K_CONSISTENCY, K_SHRINK, TIERS, WEIGHTS, METRICS, SURVIVAL, MULT, RATING_STRETCH, EASE } from "./lib/tiers.js";
 import { heroImg } from "./lib/hero-meta.js";
 import { listTeams, teamHistory, teamSlug, sideOf, standingsRows } from "./lib/teams.js";
@@ -30,6 +30,8 @@ import { initFeedback } from "./lib/feedback.js";
 import { withNicknames } from "./lib/nicknames.js";
 import { itemIcon, itemName, itemStats, averageTimes, timingsOf, hasItems, clock } from "./lib/items.js";
 import { gameLanes, laneCuts, cutFor, verdict, playerLane, laneSummary, laneBoard, laneRoleOf, LANE_LABEL, LANE_GROUPS, MAP_LANE } from "./lib/lanes.js";
+import { hasCombat, bestStreakOf, streakName, firstBloodOf, firstBloodRecord, deathSources, benchSummary, combatTotals, teamSplits, playerPairs, sideRecord, heroPairs, heroNeutrals, skillGrid, pubPrep, medalValue, pausesOf, hitSource, heroOfSlug, MULTI, RUNES, BENCH } from "./lib/combat.js";
+import { streakChartHtml, wireStreakCharts, streakBarsHtml, deathSourcesHtml, benchHtml, lengthHtml, medalScatterHtml, skillGridHtml, buildOrderHtml } from "./lib/combat-charts.js";
 
 const app = document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1150,7 +1152,6 @@ async function renderMatch(id, src) {
   const teamOf = (t) => m.players.filter((p) => p.team === t);
   const nameOf = (t) => (t === "a" ? m.team_a : m.team_b);
   const linkOf = (t) => (t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id));
-  const clock = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 
   const plate = (t) => {
     const won = m.winner === t;
@@ -1188,6 +1189,7 @@ async function renderMatch(id, src) {
   const s = hasTimeline(m) ? swings(m) : null;
   const mvpRate = rateOf.get(playerKey(mvp));
   const firstRosh = (m.objectives ?? []).filter((o) => o.type === "roshan").sort((a, b) => a.time - b.time)[0];
+  const fb = firstBloodOf(m), fbP = fb && m.players[fb.i];
   const facts = [
     ["MVP", `${portrait(mvp.hero, "fact-img")}${playerLink(src, mvp)}`, `${esc(mvp.hero)} · ${mvp.kills}/${mvp.deaths}/${mvp.assists}${mvpRate ? ` · rating ${mvpRate.rating}` : ""}`, "mvp"],
     s && ["Biggest lead", `<span class="s-${s.lead.a.max >= s.lead.b.max ? "a" : "b"}">+${kg(Math.max(s.lead.a.max, s.lead.b.max))}</span>`,
@@ -1195,6 +1197,7 @@ async function renderMatch(id, src) {
     s && [s.thrown >= BIG_LEAD ? "Comeback" : "Loser's best lead", s.thrown >= 1000 ? `<span class="s-${s.loser}">+${kg(s.thrown)}</span>` : "None",
       s.thrown >= 1000 ? `${esc(nameOf(s.loser))} at ${s.thrown_minute}', then lost` : `${esc(nameOf(m.winner))} led wire to wire`],
     s && ["Lead changes", String(s.lead_changes), s.at10 != null ? `${esc(nameOf(s.at10 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at10))} at 10'` : ""],
+    fb && ["First blood", `<span class="s-${fb.team}">${clock(fb.t)}</span>`, `${playerLink(src, fbP)} · ${esc(fbP.hero)}${fb.victim != null ? ` on ${esc(m.players[fb.victim].hero)}` : ""}`, "first_blood"],
     firstRosh && ["First Roshan", `<span class="s-${firstRosh.side}">${clock(firstRosh.time)}</span>`, esc(nameOf(firstRosh.side))],
     !s && ["Kills", `<span class="s-a">${m.score_a}</span>–<span class="s-b">${m.score_b}</span>`, `${fmt(m.score_a + m.score_b)} in ${dur(m.duration_sec)}`],
   ].filter(Boolean);
@@ -1240,7 +1243,7 @@ async function renderMatch(id, src) {
   const who = (p) => {
     const rank = rankLabel(p.rank_tier), r = rateOf.get(playerKey(p));
     return `<td class="l who">${portrait(p.hero)}<span class="who-body"><span class="who-name">${playerLink(src, p)}${p === mvp ? ' <span class="mvp-tag">MVP</span>' : ""}</span>
-      <span class="who-sub">${heroLink(src, p.hero)}${p.position ? ` · pos ${p.position}` : ""}${rank ? ` · ${esc(rank)}` : ""}${p.standin ? " · stand-in" : ""}</span></span>
+      <span class="who-sub">${heroLink(src, p.hero)}${p.position ? ` · pos ${p.position}` : ""}${rank ? ` · ${esc(rank)}` : ""}${p.standin ? " · stand-in" : ""}${fbTag(m, p) ? ` ${fbTag(m, p)}` : ""}</span></span>
       ${r ? `<span class="who-r t-${r.tier}" title="Game rating ${r.rating} (${r.tier})">${r.rating}</span>` : ""}</td>`;
   };
   const rows = (t) => teamOf(t).map((p) => `
@@ -1375,9 +1378,10 @@ async function renderMatch(id, src) {
   const tabs = playerTabs([
     ["board", "Scoreboard", scoreHtml],
     ["ratings", "Ratings", ratingsHtml],
-    ["lanes", "Laning", gameLanesHtml(m, src, laneCuts_)],
+    ["lanes", "Laning", gameLanesHtml(m, src, laneCuts_) && `${fb ? `<p class="table-note wm-intro fb-note"><span class="fb-tag">FB</span> First blood at <b>${clock(fb.t)}</b>: ${playerLink(src, fbP)} (${esc(fbP.hero)})${fb.victim != null ? ` killed ${playerLink(src, m.players[fb.victim])} (${esc(m.players[fb.victim].hero)})` : ""}${fb.t < 0 ? ", before the horn" : ""}.</p>` : ""}${gameLanesHtml(m, src, laneCuts_)}`],
     ["farm", "Farm &amp; vision", mapTableHtml(m, src) + replayTableHtml(m, src)],
-    ["items", "Items", gameItemsHtml(m, src)],
+    ["combat", "Combat", gameCombatHtml(m, src)],
+    ["items", "Items", gameItemsHtml(m, src) && `${gameItemsHtml(m, src)}<div id="bo-box" data-game="${esc(m.id)}"></div>`],
     ["map", "Map", mapHtml],
   ], { store: "gameTab", label: "Game sections" });
 
@@ -1427,6 +1431,13 @@ async function renderMatch(id, src) {
   wireWardMaps(app);
   wireTowerMaps(app);
   wireDeathMaps(app);
+  wireStreakCharts(app);
+  // Build order from the division's detail file, once it loads (still this game's page?).
+  if (ad2l && !m.unticketed && app.querySelector("#bo-box")) detailsFor(src).then((det) => {
+    const box = document.getElementById("bo-box");
+    const html = det[m.match_id] ? buildOrderHtml(m, det[m.match_id], { playerCell: (p) => `${portrait(p.hero)} ${playerLink(src, p)}` }) : "";
+    if (box?.dataset.game === m.id && html) box.innerHTML = `<h3 class="gm-h3">Build order</h3>${html}`;
+  });
 }
 
 // Casts: links to a cast of the game (YouTube, Twitch, …) with the caster's name. Anyone can
@@ -1525,7 +1536,6 @@ function mapTableHtml(m, src) {
     ${cols.map(([k]) => `<td class="${val(p, k) === best[k] && best[k] > 0 ? "best" : ""}">${val(p, k)}</td>`).join("")}</tr>`;
   const total = (t) => `<tr class="total team-${t}"><td class="l" colspan="2">Team total</td>${cols.map(([k]) => `<td>${m.players.filter((p) => p.team === t).reduce((s, p) => s + val(p, k), 0)}</td>`).join("")}</tr>`;
   const objs = (m.objectives ?? []).filter((o) => o.type === "roshan" || o.type === "tormentor").sort((a, b) => a.time - b.time);
-  const clock = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
   const head = `<th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}`;
   return `<h2>Map &amp; objectives${info("map_objectives")}</h2>
     ${objs.length ? `<div class="obj-strip">${objs.map((o) => `<span class="obj-chip s-${o.side}"><b>${o.type === "roshan" ? "Roshan" : "Tormentor"}</b> ${clock(o.time)} · ${esc(o.side === "a" ? m.team_a : m.team_b)}</span>`).join("")}</div>` : ""}
@@ -2294,11 +2304,22 @@ async function renderPlayers(src) {
     const weekOf = weekOfFn(await src.data()), latest = Math.max(...matches.map(weekOf));
     lanes = lanesSection(src, matches, await laneCutsOf(src), matches.filter((m) => weekOf(m) === latest));
   }
+  // Medal against tier rating (AD2L: PlayOn medals), for everyone on the tier list.
+  let scatter = "";
+  if (data.length && src.ad2l) {
+    const tl = tierList(matches, { model: await tierRef(src), minGames: floorOf(src) });
+    const pts = tl.tiers.flatMap(({ tier, players }) => players.map((p) => ({ key: p.key, name: p.name, medal: medalValue(p.rank_tier), rank: rankLabel(p.rank_tier), rating: p.rating, tier, href: playerHref(src, p.key) })));
+    const fig = medalScatterHtml(pts, { id: `medal-${src.key}` });
+    if (fig) scatter = `<h2 id="medal-rating">Medal vs rating${info("medal_rating")}</h2>${fig}`;
+  }
+  const hasStandins = src.ad2l && data.some((r) => r.standin || r.standin_games);
   app.innerHTML = `${pageHead(src.kicker, "Players", data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}.` : "")}
     ${data.length ? `${tiers.html}
     ${leaders.html}
     ${lanes?.html ?? ""}
+    ${scatter}
     <h2 id="player-stats">All stats</h2>
+    ${hasStandins ? `<div class="row segs pl-filter" role="group" aria-label="Players shown">${[["all", "Everyone"], ["standin", "Played as a stand-in"]].map(([id, label]) => `<button type="button" class="seg${id === "all" ? " on" : ""}" data-pl-filter="${id}" aria-pressed="${id === "all"}">${label}</button>`).join("")}</div>` : ""}
     <div id="t" class="reveal"></div>
     ${src.ad2l ? `<p class="table-note">Players are matched by their PlayOn name (smurfs included).</p>` : ""}`
     : `<div class="panel empty"><strong>No players yet</strong>${src.empty}</div>`}`;
@@ -2308,7 +2329,11 @@ async function renderPlayers(src) {
   lanes?.draw();
   const teamCol = src.ad2l
     ? [["team", "Team", (v, r) => `${v ? teamLink(src, v) : ""}${r.standin ? ' <span class="tag">stand-in</span>' : r.standin_games ? ` <span class="tag">+${r.standin_games} as stand-in</span>` : ""}`, "l name"]] : [];
-  sortableTable(document.getElementById("t"), [
+  const tableRows = src.ad2l && src.cache()?.pubs ? data.map((r) => {
+    const ps = r.account_id ? pubSummary(pubsSince(src.cache(), r.account_id, pubStart(src.cache()))) : null;
+    return { ...r, pub_games: ps?.games ?? 0, pub_win_rate: ps?.win_rate ?? null, pub_kda: ps?.kda ?? null, pub_heroes: ps ? ps.heroes.map((h) => h.hero).join(", ") : "", pub_list: ps ? ps.heroes.slice(0, 10).map((h) => ({ hero: h.hero, n: h.games })) : [] };
+  }) : data;
+  const drawTable = (rows) => sortableTable(document.getElementById("t"), [
     ["name", "Player", (v, r) => playerLink(src, r), "l name"], ...teamCol, ["games", "Games"], ["win_rate", "Win %", pct, "", "jade"],
     ["kills", "K"], ["deaths", "D"], ["assists", "A"], ["kda", "KDA", (v) => v.toFixed(2), "", "jade"],
     ["avg_gpm", "GPM", null, "", "gold"], ["avg_xpm", "XPM"], ["dmg_per_min", "Dmg/min", fmt, "", "ember"], ["dmg_per_1k_nw", "Dmg per 1k NW", fmt, "", "ember"],
@@ -2319,15 +2344,23 @@ async function renderPlayers(src) {
       ["lane_pg", "Lane creeps/g", dec], ["neutral_pg", "Neutrals/g", dec], ["neutral_share", "Neutral %", pct], ["roshans", "Roshans"], ["tormentors", "Tormentors"],
       ["buybacks_pg", "Buybacks/g", dec],
     ] : []),
+    ...(data.some((r) => r.combat_games) ? [
+      ["apm", "APM", (v) => (v == null ? "—" : Math.round(v)), "", "gold"], ["tf_part", "Fights", pct], ["fb_rate", "First blood %", pct], ["fb_death_rate", "Died first %", pct, "", "ember"],
+      ["best_streak", "Best streak", (v) => (v == null ? "—" : v >= 10 ? "10+" : v), "", "ember"], ["rampages", "Rampages"], ["ultras", "Ultras"],
+      ["runes_pg", "Runes/g", dec], ["courier_kills", "Couriers"], ["pings_pg", "Pings/g", dec],
+    ] : []),
     ...(src.ad2l && src.cache()?.pubs ? [
       ["pub_games", `Pubs (${PUB_DAYS} days)`, null, "", "gold"], ["pub_win_rate", "Pub win %", pct, "", "jade"], ["pub_kda", "Pub KDA", dec],
       ["pub_heroes", "Pub heroes", (v, r) => heroStrip(src, r.pub_list), "l strip"],
     ] : []),
     ["heroes", "Heroes", (v, r) => heroStrip(src, r.hero_list), "l strip"],
-  ], src.ad2l && src.cache()?.pubs ? data.map((r) => {
-    const ps = r.account_id ? pubSummary(pubsSince(src.cache(), r.account_id, pubStart(src.cache()))) : null;
-    return { ...r, pub_games: ps?.games ?? 0, pub_win_rate: ps?.win_rate ?? null, pub_kda: ps?.kda ?? null, pub_heroes: ps ? ps.heroes.map((h) => h.hero).join(", ") : "", pub_list: ps ? ps.heroes.slice(0, 10).map((h) => ({ hero: h.hero, n: h.games })) : [] };
-  }) : data, "games", { toolbar: true });
+  ], rows, "games", { toolbar: true });
+  drawTable(tableRows);
+  // Everyone, or only players who filled in for a team they're not rostered on.
+  app.querySelectorAll("[data-pl-filter]").forEach((b) => (b.onclick = () => {
+    for (const x of app.querySelectorAll("[data-pl-filter]")) { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); }
+    drawTable(b.dataset.plFilter === "standin" ? tableRows.filter((r) => r.standin || r.standin_games) : tableRows);
+  }));
 }
 
 // The last league night (Thursday), per the league's rhythm: predictions count pubs since
@@ -2378,6 +2411,24 @@ function pubSection(src, accountId) {
       <div class="pub-form-row reveal">${form}</div>
     </div>
     <div class="ph-grid reveal">${ps.heroes.slice(0, 12).map(heroCard).join("")}</div>`;
+}
+
+// Pub practice: their league games on a hero they'd played in pubs that week, against the rest.
+// Only games far enough inside the pub window that the week before is all on record.
+const PREP_DAYS = 7;
+function pubPrepHtml(src, accountId, games) {
+  const d = src.cache();
+  if (!d?.pubs?.[accountId]) return "";
+  const r = pubPrep(d.pubs[accountId], games, pubStart(d), PREP_DAYS);
+  if (!r.games) return "";
+  const line = (x) => (x.games ? `<b class="res-${x.wins * 2 >= x.games ? "w" : "l"}">${x.wins}–${x.games - x.wins}</b>` : "<b>—</b>");
+  return `<h2>Pub practice${info("pub_prep")}</h2>
+    <p class="table-note wm-intro">Their ${r.games} league game${r.games === 1 ? "" : "s"} since ${new Date((pubStart(d) + PREP_DAYS * 86400) * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" })} (the pub log only reaches back ${PUB_DAYS} days), split by whether they'd played that hero in pubs in the ${PREP_DAYS} days before.</p>
+    <div class="sr-summary pub-summary">
+      <div>${line(r.practiced)}<small>practised in pubs first</small></div>
+      <div>${line(r.fresh)}<small>not played in pubs that week</small></div>
+      ${r.heroes.length ? `<div><b>${r.heroes.slice(0, 4).map((h) => portrait(h.hero)).join("")}</b><small>${r.heroes.slice(0, 4).map((h) => `${esc(h.hero)} (${h.pubs} pub${h.pubs === 1 ? "" : "s"}, ${h.wins}–${h.games - h.wins})`).join(" · ")}</small></div>` : ""}
+    </div>`;
 }
 
 // Hero page: the division's rostered players on this hero in their recent pubs (same window as
@@ -2846,13 +2897,14 @@ function leagueTeamMap(matches, teams) {
   const out = new Map(teams.map((t) => {
     const side = (m) => sideOf(m, t);
     const gs = matches.filter(side);
-    const o = teamObjectives(gs, side), tl = teamTimeline(gs, side);
+    const o = teamObjectives(gs, side), tl = teamTimeline(gs, side), fb = teamSplits(gs, side).first_blood;
     return [t.key, o || tl ? { team: t, o, tl, v: {
       rosh: o && share(o.roshans, o.roshans_against), first: o?.first_rosh.games ? o.first_rosh.taken / o.first_rosh.games : null,
       torm: o && share(o.tormentors, o.tormentors_against),
       obs: o?.obs_pg ?? null, sen: o?.sen_pg ?? null, dewards: o?.dewards_pg ?? null, stacks: o?.stacks_pg ?? null,
       lead10: tl?.lead10 ?? null, lead20: tl?.lead20 ?? null,
-    } } : null];
+      fb: fb.games ? fb.taken / fb.games : null,
+    }, fb } : null];
   }).filter(([, x]) => x));
   leagueMapCache.set(matches, out);
   return out;
@@ -2870,6 +2922,7 @@ const MAP_METRICS = {
   stacks: ["Stacks / game", dec, "team_stacks", "stacking"],
   lead10: ["Gold at 10'", signedK, "lead10", "gold at 10 minutes"],
   lead20: ["Gold at 20'", signedK, "lead20", "gold at 20 minutes"],
+  fb: ["First blood", pct, "team_first_blood", "first blood"],
 };
 
 function teamMapHtml(src, matches, teams, team, h) {
@@ -2918,6 +2971,7 @@ function teamMapHtml(src, matches, teams, team, h) {
       ${card("rosh", `${o.roshans} taken, ${o.roshans_against} given up in ${plural(o.games, "game")}`, split(o.roshans, o.roshans_against), 0)}
       ${card("first", o.first_rosh.games ? `took it in ${o.first_rosh.taken} of ${o.first_rosh.games} · won ${o.first_rosh.wins} of those` : "no Roshan kills yet", "", 1)}
       ${card("torm", `${o.tormentors} taken, ${o.tormentors_against} given up`, split(o.tormentors, o.tormentors_against), 2)}
+      ${me.fb.games ? card("fb", `drew it in ${me.fb.taken} of ${plural(me.fb.games, "game")} · won ${me.fb.wins_taken} of those, ${me.fb.wins_given} of ${me.fb.games - me.fb.taken} without`, split(me.fb.taken, me.fb.games - me.fb.taken), 3) : ""}
     </div>
     <h2>Vision &amp; jungle</h2><div class="cards lc-cards reveal">
       ${card("obs", "observers placed, whole team", "", 0)}
@@ -2939,8 +2993,11 @@ function teamMapHtml(src, matches, teams, team, h) {
         <div class="tg-side">
           <div class="cards lc-cards two">${card("lead10", "average lead at 10 minutes", "", 0)}${card("lead20", "average lead at 20 minutes", "", 1)}</div>
           <div class="cards mini-cards">
-            ${mini("Ahead at 20'", rec(tl.ahead20), "record when leading", "ahead20")}
-            ${mini("Behind at 20'", rec(tl.behind20), "record when trailing", "behind20")}
+            ${(() => { const lead = teamSplits(matches, (m) => sideOf(m, team)).lead;
+              const pair = (t) => (t === 20
+                ? `${mini("Ahead at 20'", rec(tl.ahead20), "record when leading", "ahead20")}${mini("Behind at 20'", rec(tl.behind20), "record when trailing", "behind20")}`
+                : `${mini(`Ahead at ${t}'`, rec(lead[t].ahead), "record when leading", "lead_conversion")}${mini(`Behind at ${t}'`, rec(lead[t].behind), "record when trailing", "lead_conversion")}`);
+              return [10, 20, 30].map(pair).join(""); })()}
             ${mini("Comebacks", String(tl.comebacks), `won from ${kg(BIG_LEAD)}+ down · biggest: ${gameRef(tl.best_comeback, tl.best_comeback?.trail)}`, "comebacks")}
             ${mini("Throws", String(tl.throws), `lost from ${kg(BIG_LEAD)}+ up · biggest: ${gameRef(tl.worst_throw, tl.worst_throw?.led)}`, "throws")}
           </div>
@@ -3164,6 +3221,95 @@ function wireGameAnalysis(src, mode, games, rated) {
   wireGameGold(box);
 }
 
+// ---------- Combat (lib/combat.js, parsed replays) ----------
+// Purchases and skill builds live in each division's detail file, loaded only by the game and
+// hero pages that show them. The All divisions view loads every division's.
+const detailCache = {};
+const divDetail = (key) => (detailCache[key] ??= fetch(DIVISIONS[key].file.replace(/\.json$/, "-detail.json"), { cache: "no-cache" })
+  .then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+const detailsFor = async (src) => Object.assign({}, ...(await Promise.all((src.all ? ALL_DIVS : [src.key]).filter((k) => DIVISIONS[k]).map(divDetail))));
+let abilityNames = null;
+const loadAbilities = () => (abilityNames ??= import("./lib/abilities-data.js").then((x) => (id) => x.ABILITIES[id] ?? null));
+
+const hitText = (h) => `${hitSource(h[1], itemName)}${h[2] && heroOfSlug(h[2]) ? ` on ${heroOfSlug(h[2])}` : ""}`;
+// First blood on a player: drew it ("FB") or was its victim ("died first"), as a small tag.
+const fbCache = new WeakMap();
+const fbOf = (m) => (fbCache.has(m) ? fbCache.get(m) : fbCache.set(m, hasDetails(m) ? firstBloodOf(m) : null).get(m));
+const fbRole = (m, p) => { const fb = fbOf(m), i = m.players.indexOf(p); return !fb || i < 0 ? null : fb.i === i ? 1 : fb.victim === i ? -1 : 0; };
+function fbTag(m, p) {
+  const r = fbRole(m, p), fb = fbOf(m);
+  if (r === 1) return `<span class="fb-tag" title="First blood at ${clock(fb.t)}${fb.victim != null ? ` on ${esc(m.players[fb.victim].hero)}` : ""}">FB</span>`;
+  if (r === -1) return `<span class="fb-tag died" title="Gave up first blood at ${clock(fb.t)} to ${esc(m.players[fb.i].hero)}">died first</span>`;
+  return "";
+}
+const fbCell = (v) => (v === 1 ? '<span class="fb-tag">FB</span>' : v === -1 ? '<span class="fb-tag died">died first</span>' : v === 0 ? "" : "—");
+const runeTop = (runes) => { const i = runes.indexOf(Math.max(...runes)); return runes[i] ? RUNES[i] : null; };
+const isCoreP = (p) => p.position != null && p.position <= 3;
+
+// Player and hero pages: a Combat tab. match(p, m) picks the player-games; empty without replays.
+function combatTabHtml(src, matches, match, name, { hero = false } = {}) {
+  const detailed = matches.filter(hasDetails);
+  const mine = detailed.flatMap((m) => m.players.map((p, i) => ({ m, p, i })).filter(({ p, m: g }) => match(p, g) && hasCombat(p)));
+  if (!mine.length) return "";
+  const ps = mine.map((x) => x.p), s = combatSummary(ps), t = combatTotals(ps);
+  const best = mine.map((x) => ({ ...x, streak: bestStreakOf(x.m, x.i) })).sort((a, b) => b.streak - a.streak)[0];
+  const hit = mine.filter((x) => x.p.max_hit).sort((a, b) => b.p.max_hit[0] - a.p.max_hit[0])[0];
+  const fbs = ps.filter((p) => p.first_blood === 1).length;
+  const vs = ({ m, p }) => esc(p.team === "a" ? m.team_b : m.team_a);
+  const gameRef = (x, label) => `<a href="${src.link(x.m)}">${label}</a>`;
+  const top = runeTop(t.runes);
+  const cards = [
+    ["APM", fmt(Math.round(s.apm)), "actions per minute, average", "apm"],
+    ["Longest streak", String(best.streak), `${best.streak >= 3 ? `${streakName(best.streak)} · ` : "kills without dying · "}${gameRef(best, `${hero ? esc(best.p.name) : esc(best.p.hero)} vs ${vs(best)}`)}`, "best_streak"],
+    ["Rampages", String(s.rampages), `${s.ultras} ultra · ${s.triples} triple · ${s.doubles} double kill${s.doubles === 1 ? "" : "s"}`, "rampages"],
+    ["First bloods", String(fbs), `${pct(s.fb_rate)} of ${mine.length} game${mine.length === 1 ? "" : "s"}${s.fb_deaths != null ? ` · died first ${s.fb_deaths} time${s.fb_deaths === 1 ? "" : "s"}` : ""}`, "fb_rate"],
+    ["Teamfights", pct(s.tf_part), "of their team's teamfights they took part in", "tf_part"],
+    ["Runes", dec(s.runes_pg), `a game${top ? ` · mostly ${top}` : ""}`, "runes_pg"],
+    ...(hit ? [["Biggest hit", fmt(hit.p.max_hit[0]), `${esc(hitText(hit.p.max_hit))} · ${gameRef(hit, `${hero ? esc(hit.p.name) : "vs"} ${vs(hit)}`)}`, "max_hit"]] : []),
+    ["Couriers", String(s.courier_kills), "enemy couriers killed", "courier_kills"],
+    ["Pings", dec(s.pings_pg), "map pings a game", "pings"],
+  ];
+  // Benchmarks against the league's average for the same role (players) or nothing (heroes:
+  // the percentiles are already against that hero).
+  const role = hero ? null : (mine.filter((x) => isCoreP(x.p)).length * 2 >= mine.length ? "core" : "support");
+  const ref = role ? benchSummary(detailed.flatMap((m) => m.players).filter((p) => p.position != null && isCoreP(p) === (role === "core"))) : null;
+  return `<div class="cards player-cards reveal" style="--cols:${Math.ceil(cards.length / 2)}">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>
+    ${streakBarsHtml(t)}
+    <h2>Deaths by source${info("death_sources")}</h2>${deathSourcesHtml(deathSources(matches, match), deathSources(matches, () => true), name)}
+    <h2>Percentile against public games${info("benchmarks")}</h2>${benchHtml(benchSummary(ps), ref, { refLabel: `league's average for ${role === "core" ? "cores" : "supports"}` })}`;
+}
+
+// Game page: the Combat tab (streak chart, each player's combat line, benchmarks, pauses).
+function gameCombatHtml(m, src) {
+  if (!m.players.some(hasCombat)) return "";
+  const chart = streakChartHtml(m, { id: `streaks-${m.id}` });
+  const who = (p) => `<td class="l who">${portrait(p.hero)}<span class="who-body"><span class="who-name">${playerLink(src, p)}</span><span class="who-sub">${heroLink(src, p.hero)}</span></span></td>`;
+  const multi = (p) => (p.multi ? p.multi.map((n, k) => (n ? `${n}× ${MULTI[k].replace(" kill", "")}` : "")).filter(Boolean).join(", ") || "—" : "—");
+  const rows = (t) => m.players.map((p, i) => ({ p, i })).filter(({ p }) => p.team === t).map(({ p, i }) => {
+    const st = bestStreakOf(m, i), runes = p.runes ? p.runes.reduce((a, b) => a + b, 0) : null;
+    return `<tr class="team-${t}">${who(p)}<td>${p.apm ?? "—"}</td><td>${pct(p.tf_part)}</td><td>${st == null ? "—" : st >= 3 ? `<b title="${esc(streakName(st))}">${st}</b>` : st}</td>
+      <td class="l">${multi(p)}</td><td>${fbTag(m, p)}</td><td title="${p.runes ? esc(p.runes.map((n, k) => (n ? `${RUNES[k]} ${n}` : "")).filter(Boolean).join(", ")) : ""}">${runes ?? "—"}</td>
+      <td>${p.courier_kills ?? "—"}</td><td class="l">${p.max_hit ? `${fmt(p.max_hit[0])} <small class="muted">${esc(hitText(p.max_hit))}</small>` : "—"}</td><td>${p.pings ?? "—"}</td></tr>`;
+  }).join("");
+  const head = `<th class="l">Player</th><th>APM${info("apm")}</th><th>Fights${info("tf_part")}</th><th>Streak${info("best_streak")}</th><th class="l">Multi-kills</th><th>FB</th><th>Runes</th><th>Couriers</th><th class="l">Biggest hit${info("max_hit")}</th><th>Pings</th>`;
+  // Each cell: the percentile as an ordinal over a bar filled that far (50th = halfway).
+  const benchCell = (v, label, p) => (v == null ? `<td class="bn-cell">—</td>`
+    : `<td class="bn-cell${v >= 75 ? " hot" : v < 25 ? " cold" : ""}" style="--v:${v / 100}" title="${esc(`${p.name}'s ${label}: better than ${v}% of public games on ${p.hero}`)}"><span>${ordinal(v)}</span></td>`);
+  const benchRows = (t) => m.players.filter((p) => p.team === t && p.bench).map((p) => `<tr class="team-${t}">${who(p)}${p.bench.map((v, k) => benchCell(v, BENCH[k], p)).join("")}</tr>`).join("");
+  const benchTable = m.players.some((p) => p.bench) ? `<h3 class="gm-h3">Percentile against public games${info("benchmarks")}</h3>
+    <p class="table-note wm-intro">Each number is a percentile: how this game compares with public games on the same hero (OpenDota's benchmarks). 50th = a typical public game; 90th = better than 90% of them. Gold: 75th and up · red: under 25th.</p>
+    <div class="table-wrap gm-board bn-board"><table><thead><tr><th class="l">Player</th>${BENCH.map((b) => `<th>${b}<small>percentile</small></th>`).join("")}</tr></thead>
+    <tbody>${benchRows("a")}${benchRows("b")}</tbody></table></div>` : "";
+  const pz = pausesOf(m);
+  const pauseNote = pz?.n ? `<p class="table-note">Paused ${pz.n} time${pz.n === 1 ? "" : "s"}, ${dur(pz.total)} in all.</p>` : "";
+  return `${chart ? `<h3 class="gm-h3">Kill streaks${info("streak_chart")}</h3>${chart}` : ""}
+    <h3 class="gm-h3">Combat</h3>
+    <div class="table-wrap gm-board"><table><thead><tr>${head}</tr></thead><tbody>
+      <tr class="sep a"><td colspan="10">${esc(m.team_a)}</td></tr>${rows("a")}
+      <tr class="sep b"><td colspan="10">${esc(m.team_b)}</td></tr>${rows("b")}</tbody></table></div>
+    ${pauseNote}${benchTable}`;
+}
+
 // ---------- Player page ----------
 
 // Player page tier breakdown: a modal over the page. The page can't scroll while it's open
@@ -3300,7 +3446,8 @@ async function renderPlayer(src, key) {
         <div id="stat-ranks-box" data-key="${esc(key)}">${statRanksHtml(src, key, rows, null)}</div>`],
       ["heroes", "Heroes", `<div id="hero-ranks-box" data-key="${esc(key)}">${heroRanksHtml(src, key, h, ratings, null)}</div>
         ${draftSlotHtml(draftSlotRecord(matches, byPlayer(key)), src, s.name, rateOf(h.games, gameRated))}
-        ${src.ad2l ? pubSection(src, key) : ""}`],
+        ${src.ad2l ? pubSection(src, key) + pubPrepHtml(src, key, h.games) : ""}`],
+      ["combat", "Combat", combatTabHtml(src, matches, byPlayer(key), s.name)],
       ["lanes", "Laning", lanesPageHtml(src, matches, byPlayer(key), laneCuts_, { name: s.name })],
       ["items", "Items", playerItemsHtml(src, matches, h.games)],
       ["map", "Map", mapCard([
@@ -3362,10 +3509,11 @@ async function renderPlayer(src, key) {
     ["kills", "K"], ["deaths", "D"], ["assists", "A"],
     ["net_worth", "Net worth", fmt, "", "gold"], ["gpm", "GPM"], ["xpm", "XPM"],
     ["hero_damage", "Hero dmg", fmt, "", "ember"], ["kill_participation", "KP", pct],
+    ...(s.combat_games ? [["fb", "First blood", fbCell, "", null, "first_blood"]] : []),
     ...(s.map_games ? [["obs", "Obs"], ["sen", "Sentries"], ["dewards", "Dewards"], ["stacks", "Stacks"]] : []),
     ["link", "", (v) => `<a href="${v}" title="Open game">→</a>`],
   ], h.games.map((g, gi) => ({
-    gi, obs: g.p.obs_placed ?? null, sen: g.p.sen_placed ?? null, stacks: g.p.camps_stacked ?? null,
+    gi, obs: g.p.obs_placed ?? null, sen: g.p.sen_placed ?? null, stacks: g.p.camps_stacked ?? null, fb: fbRole(g.m, g.p),
     dewards: g.p.obs_killed == null ? null : g.p.obs_killed + g.p.sen_killed,
     date: g.m.createdAt ? +g.m.createdAt : 0, hero: g.p.hero, won: g.won ? 1 : 0, vs: vsOf(g).name, vs_id: vsOf(g).id ?? null,
     kills: g.p.kills, deaths: g.p.deaths, assists: g.p.assists, net_worth: g.p.net_worth, gpm: g.p.gpm, xpm: g.p.xpm,
@@ -3392,6 +3540,8 @@ async function renderHeroes(src) {
     const bestLast = H.filter((h) => h.last_picks >= 3).sort((x, y) => y.last_pick_wins / y.last_picks - x.last_pick_wins / x.last_picks || y.last_picks - x.last_picks)[0];
     cards = `<div class="cards reveal">
       ${card("First pick", `${a.first_pick.wins}–${a.first_pick.games - a.first_pick.wins}`, `team with first pick won ${pct(a.first_pick.win_rate)} of games`, 0, false, "first_pick")}
+      ${(() => { const r = firstBloodRecord(all); return r.games ? card("First blood", pct(r.win_rate), `the team that drew it won ${r.wins} of ${r.games} games`, 0, false, "fb_win_rate") : ""; })()}
+      ${(() => { const r = sideRecord(all); return r.games ? card("Radiant", pct(r.win_rate), `Radiant won ${r.wins} of ${r.games} games · Dire ${r.games - r.wins}`, 0, false, "radiant_rate") : ""; })()}
       ${card("Top phase 1 ban", heroLink(src, b1.hero), `${b1.bans[0]} first-phase bans · ${pct(b1.p1_ban_share)} of its bans`, 1, true, "top_p1_ban")}
       ${card("Top phase 1 pick", heroLink(src, p1.hero), `${p1.picks[0]} first-phase picks · ${p1.pick_wins[0]}–${p1.picks[0] - p1.pick_wins[0]}`, 2, true, "top_p1_pick")}
       ${card("Most last-picked", heroLink(src, lp.hero), `${lp.last_picks} last picks · ${lp.last_pick_wins}–${lp.last_picks - lp.last_pick_wins}`, 3, true, "last_pick")}
@@ -3630,8 +3780,10 @@ async function renderHero(src, slug) {
       <p class="table-note">Win % is that team's record when they picked ${esc(hero)}.${S.drafted ? " Bans come from Captains Mode drafts; “Banned vs them” = opponents banned it against that team." : ""}</p>`],
     ["draft", "Draft", `${(() => { const da = draftAnalysis(matches); return heroPhaseHtml(da.heroes.find((x) => x.hero === hero), da.games); })()}
       ${draftSlotHtml(draftSlotRecord(matches, byHero(hero)), src, hero, rateOf(h.games, gameRated))}`],
+    ["matchups", "Matchups", heroMatchupsHtml(src, matches, hero)],
+    ["combat", "Combat", combatTabHtml(src, matches, byHero(hero), hero, { hero: true })],
     ["lanes", "Laning", lanesPageHtml(src, matches, byHero(hero), laneCuts_, { name: hero, hero: true })],
-    ["items", "Items", heroItemsHtml(src, h.games, hero)],
+    ["items", "Items", heroItemsHtml(src, h.games, hero) + heroNeutralsHtml(src, matches, hero) + (src.ad2l && h.games.length ? `<div id="sg-box" data-hero="${esc(hero)}"></div>` : "")],
     ["map", "Map", mapCard([
       ["wards", "Wards", "ward_map", wardView(collectWards(matches, byHero(hero)), hero)],
       ["deaths", "Deaths", "hero_deaths", playerDeathsHtml(matches, byHero(hero), { id: "hero-deaths", name: hero })],
@@ -3644,6 +3796,15 @@ async function renderHero(src, slug) {
 
   app.innerHTML = `${header(tabs.bar)}${tabs.panels}`;
   wirePlayerTabs();
+  wireMatchupTables(src, matches, hero);
+  // Skill builds from the detail files, once they and the ability names load.
+  if (app.querySelector("#sg-box")) Promise.all([detailsFor(src), loadAbilities()]).then(([det, named]) => {
+    const box = document.getElementById("sg-box");
+    if (box?.dataset.hero !== hero) return;
+    const builds = h.games.filter((g) => g.m.match_id && det[g.m.match_id]).map((g) => det[g.m.match_id][g.m.players.indexOf(g.p)]?.skills);
+    const html = skillGridHtml(skillGrid(builds, named), named);
+    if (html) box.innerHTML = `<h2>Skill build${info("skill_build")}</h2>${html}`;
+  });
   wireTowerMaps(app);
   wireCharts(app);
   wireMapCards(app);
@@ -3679,14 +3840,54 @@ async function renderHero(src, slug) {
     ["rating", "Game rating", (v) => (v == null ? "—" : v), "", "gold", "game_rating"],
     ["kills", "K"], ["deaths", "D"], ["assists", "A"],
     ["net_worth", "Net worth", fmt, "", "gold"], ["gpm", "GPM"], ["hero_damage", "Hero dmg", fmt, "", "ember"],
+    ...(h.games.some((g) => fbOf(g.m)) ? [["fb", "First blood", fbCell, "", null, "first_blood"]] : []),
     ["link", "", (v) => `<a href="${v}" title="Open game">→</a>`],
   ], h.games.map((g, gi) => ({
-    gi, rating: gameRated[gi].find((r) => r.key === playerKey(g.p))?.rating ?? null,
+    gi, rating: gameRated[gi].find((r) => r.key === playerKey(g.p))?.rating ?? null, fb: fbRole(g.m, g.p),
     date: g.m.createdAt ? +g.m.createdAt : 0, p: g.p, player: g.p.name, us: usOf(g).name, us_id: usOf(g).id ?? null,
     won: g.won ? 1 : 0, vs: vsOf(g).name, vs_id: vsOf(g).id ?? null,
     kills: g.p.kills, deaths: g.p.deaths, assists: g.p.assists, net_worth: g.p.net_worth, gpm: g.p.gpm, hero_damage: g.p.hero_damage, link: src.link(g.m),
   })), "date", { toolbar: true });
   if (h.games.length) wireGameAnalysis(src, "hero", h.games, gameRated);
+}
+
+// Hero page Matchups tab: every hero seen with it and against it, with its record in those
+// games. Small samples hide under a games floor (default 2, the select changes it).
+function heroMatchupsHtml(src, matches, hero) {
+  const { allies, enemies } = heroPairs(matches, hero);
+  if (!allies.length) return "";
+  const def = Math.max(...allies.map((a) => a.games)) >= 4 ? 2 : 1;
+  return `<p class="table-note wm-intro">${esc(hero)}'s record in games with each hero on its side (With) and on the other side (Against). Few games say little: the floor hides heroes met fewer times.</p>
+    <div class="min-bar"><label>Show heroes met at least <select id="mu-min">${[1, 2, 3, 5].map((n) => `<option value="${n}" ${n === def ? "selected" : ""}>${n}</option>`).join("")}</select> times</label></div>
+    <div class="team-cols"><section><h2>With${info("hero_with")}</h2><div id="mu-with"></div></section>
+      <section><h2>Against${info("hero_against")}</h2><div id="mu-against"></div></section></div>`;
+}
+function wireMatchupTables(src, matches, hero) {
+  const sel = document.getElementById("mu-min");
+  if (!sel) return;
+  const { allies, enemies } = heroPairs(matches, hero);
+  const draw = () => {
+    const min = +sel.value;
+    for (const [id, list, label] of [["mu-with", allies, "Win % with"], ["mu-against", enemies, "Win % against"]]) {
+      const rows = list.filter((r) => r.games >= min);
+      sortableTable(document.getElementById(id), [
+        ["hero", "Hero", (v) => `<span class="hero-cell">${portrait(v)}${heroLink(src, v)}</span>`, "l"],
+        ["games", "Games", null, "", "gold"], ["wins", "Wins"], ["win_rate", label, pct, "", "jade", false],
+      ], rows, "games");
+    }
+  };
+  sel.onchange = draw;
+  draw();
+}
+
+// Hero page: neutral items held at the end of its games, with the record when held.
+function heroNeutralsHtml(src, matches, hero) {
+  const rows = heroNeutrals(matches, hero);
+  if (!rows.length) return "";
+  return `<h2>Neutral items${info("hero_neutrals")}</h2>
+    <div class="table-wrap"><table><thead><tr><th class="l">Neutral item</th><th>Games</th><th>Record</th><th>Win %</th></tr></thead><tbody>
+    ${rows.map((r) => `<tr><td class="l">${itemIcon(r.key)} ${esc(itemName(r.key))}</td><td>${r.games}</td><td>${r.wins}–${r.games - r.wins}</td><td>${pct(r.win_rate)}</td></tr>`).join("")}
+    </tbody></table></div><p class="table-note">The neutral item in its slot when the game ended.</p>`;
 }
 
 // ---------- Weekly recap ----------
@@ -3769,7 +3970,7 @@ function gamePanel(m, src, label) {
   const mvp = gameMvp(m);
   const lineup = (t) => m.players.filter((p) => p.team === t).map((p) => `
     <li class="${p === mvp ? "mvp" : ""}">${portrait(p.hero)}
-      <span class="lu-name">${playerLink(src, p)}${p === mvp ? ' <span class="mvp-tag">MVP</span>' : ""}</span>
+      <span class="lu-name">${playerLink(src, p)}${p === mvp ? ' <span class="mvp-tag">MVP</span>' : ""}${fbTag(m, p) ? ` ${fbTag(m, p)}` : ""}</span>
       <span class="lu-kda">${p.kills}/${p.deaths}/${p.assists}</span>
       <span class="lu-nw">${fmt(p.net_worth)}</span>
     </li>`).join("");
@@ -3777,7 +3978,7 @@ function gamePanel(m, src, label) {
     <header class="gp-head">
       <span class="gp-label">${label}</span>
       <span class="gp-result"><b class="${m.winner === "a" ? "w" : ""}">${teamLink(src, m.team_a, m.team_a_id)}</b> <span class="gp-score">${m.score_a}–${m.score_b}</span> <b class="${m.winner === "b" ? "w" : ""}">${teamLink(src, m.team_b, m.team_b_id)}</b></span>
-      <span class="gp-meta">${dur(m.duration_sec)} · ${esc(m.winner === "a" ? m.team_a : m.team_b)} win · <a href="${src.link(m)}">Full stats →</a></span>
+      <span class="gp-meta">${dur(m.duration_sec)} · ${esc(m.winner === "a" ? m.team_a : m.team_b)} win${fbOf(m) ? ` · first blood ${clock(fbOf(m).t)} ${esc(m.players[fbOf(m).i].name)}` : ""} · <a href="${src.link(m)}">Full stats →</a></span>
     </header>
     ${draftStrip(m, src)}
     <div class="lineups">
@@ -3876,6 +4077,30 @@ async function renderWeek(src, back = 0) {
     hl.push(["Most stacks", `${st.p.camps_stacked}`, `<b>${playerLink(src, st.p)}</b> · ${heroLink(src, st.p.hero)} · ${vsTxt(st.m)}`, st.p.hero]);
     hl.push(["Most dewards", `${dw.p.obs_killed + dw.p.sen_killed}`, `<b>${playerLink(src, dw.p)}</b> · ${dw.p.obs_killed} obs, ${dw.p.sen_killed} sentries · ${vsTxt(dw.m)}`, dw.p.hero]);
   }
+  // Combat of the week (parsed replays): longest streak, rampages, biggest hit, top APM, aegis
+  // steals and the most paused game.
+  const fought = detailed.flatMap((m) => m.players.map((p, i) => ({ m, p, i })).filter(({ p }) => hasCombat(p)));
+  if (fought.length) {
+    const vsTxt = (m) => `${esc(m.team_a)} vs ${esc(m.team_b)}`;
+    const streak = fought.map((x) => ({ ...x, n: bestStreakOf(x.m, x.i) })).sort((a, b) => b.n - a.n)[0];
+    if (streak.n >= 3) hl.push(["Longest streak", `<a href="${src.link(streak.m)}">${streak.n}</a>`, `${esc(streakName(streak.n))} · <b>${playerLink(src, streak.p)}</b> · ${heroLink(src, streak.p.hero)} · ${vsTxt(streak.m)}`, streak.p.hero, "best_streak"]);
+    const ramp = fought.filter((x) => x.p.multi?.[3]);
+    if (ramp.length) hl.push(["Rampages", String(ramp.reduce((a, x) => a + x.p.multi[3], 0)),
+      ramp.map((x) => `<b>${playerLink(src, x.p)}</b> · ${heroLink(src, x.p.hero)} · ${vsTxt(x.m)}`).join("<br>"), ramp[0].p.hero, "rampages"]);
+    const hit = fought.filter((x) => x.p.max_hit).sort((a, b) => b.p.max_hit[0] - a.p.max_hit[0])[0];
+    if (hit) hl.push(["Biggest hit", fmt(hit.p.max_hit[0]), `<b>${playerLink(src, hit.p)}</b> · ${esc(hitText(hit.p.max_hit))} · ${vsTxt(hit.m)}`, hit.p.hero, "max_hit"]);
+    const apm = fought.filter((x) => x.p.apm != null).sort((a, b) => b.p.apm - a.p.apm)[0];
+    if (apm) hl.push(["Highest APM", String(apm.p.apm), `<b>${playerLink(src, apm.p)}</b> · ${heroLink(src, apm.p.hero)} · ${vsTxt(apm.m)}`, apm.p.hero, "apm"]);
+  }
+  const fbs = detailed.map((m) => ({ m, fb: fbOf(m) })).filter((x) => x.fb).sort((a, b) => a.fb.t - b.fb.t);
+  if (fbs.length) {
+    const { m, fb } = fbs[0], p = m.players[fb.i], v = fb.victim != null ? m.players[fb.victim] : null;
+    hl.push(["Fastest first blood", `<a href="${src.link(m)}">${clock(fb.t)}</a>`, `<b>${playerLink(src, p)}</b> · ${heroLink(src, p.hero)}${v ? ` on ${heroLink(src, v.hero)}` : ""} · ${esc(m.team_a)} vs ${esc(m.team_b)}${fb.t < 0 ? " · before the horn" : ""}`, p.hero, "first_blood"]);
+  }
+  const steals = detailed.flatMap((m) => (m.objectives ?? []).filter((o) => o.type === "aegis_stolen").map((o) => ({ m, o })));
+  if (steals.length) hl.push(["Aegis stolen", String(steals.length), steals.map(({ m, o }) => `${esc(o.side === "a" ? m.team_a : m.team_b)} at ${clock(o.time)} · <a href="${src.link(m)}">${esc(m.team_a)} vs ${esc(m.team_b)}</a>`).join("<br>"), null, "aegis_steals"]);
+  const paused = detailed.map((m) => ({ m, z: pausesOf(m) })).filter((x) => x.z?.n).sort((a, b) => b.z.total - a.z.total)[0];
+  if (paused) hl.push(["Most paused", dur(paused.z.total), `${paused.z.n} pause${paused.z.n === 1 ? "" : "s"} · <a href="${src.link(paused.m)}">${esc(paused.m.team_a)} vs ${esc(paused.m.team_b)}</a>`, null, "pauses"]);
   // Biggest comeback of the week (games with a gold timeline).
   const swung = detailed.filter(hasTimeline).map((m) => ({ m, s: swings(m) })).sort((a, b) => b.s.thrown - a.s.thrown)[0];
   if (swung && swung.s.thrown >= 1000) {
@@ -4032,6 +4257,20 @@ async function renderTeams(src, slug) {
     ["Avg game", h.avg_minutes ? `${Math.round(h.avg_minutes)} min` : "—", `${plural(h.played, "game")}${ad2l ? " with stats" : ""}${h.private_games ? ` · ${h.private_games} private` : ""}`],
     ["Avg kills", h.avg_kills_for != null ? h.avg_kills_for.toFixed(1) : "—", diff != null ? `${h.avg_kills_against.toFixed(1)} against · ${diff >= 0 ? "+" : ""}${diff.toFixed(1)} a game` : "", "avg_kills"],
   ];
+  // Splits from the team's own games: side, stand-ins, first blood, fights, aegis steals.
+  const sideMap = new Map(h.games.map(({ m, side }) => [m, side]));
+  const sp = teamSplits(h.games.map(({ m }) => m), (m) => sideMap.get(m));
+  const wl = (r) => (r.games ? `${r.wins}–${r.games - r.wins}` : "—");
+  const sideName = (t) => (ad2l ? (t === "a" ? "Radiant" : "Dire") : t === "a" ? "Team A (left)" : "Team B (right)");
+  stats.push(
+    ["Sides", `${wl(sp.sides.a)} <small class="v-sep">/</small> ${wl(sp.sides.b)}`, `as ${sideName("a")} / as ${sideName("b")}`, "team_sides"],
+    ...(sp.standin.with.games ? [["With stand-ins", wl(sp.standin.with), `${pct0(sp.standin.with.wins / sp.standin.with.games)} · ${wl(sp.standin.without)} with the roster only`, "team_standins"]] : []),
+    ...(sp.first_blood.games ? [["First blood", pct0(sp.first_blood.taken / sp.first_blood.games), `drew it in ${sp.first_blood.taken} of ${plural(sp.first_blood.games, "game")} · ${sp.first_blood.wins_taken}–${sp.first_blood.taken - sp.first_blood.wins_taken} when they did, ${sp.first_blood.wins_given}–${sp.first_blood.games - sp.first_blood.taken - sp.first_blood.wins_given} when they didn't${sp.first_blood.times.length ? ` · usually at ${clock(Math.round([...sp.first_blood.times].sort((a, b) => a - b)[Math.floor(sp.first_blood.times.length / 2)]))}` : ""}`, "team_first_blood"]] : []),
+    ...(sp.fights.won + sp.fights.lost ? [["Teamfights", pct0(sp.fights.win_rate), `${sp.fights.won} won, ${sp.fights.lost} lost${sp.fights.even ? `, ${sp.fights.even} even` : ""} in ${plural(sp.fights.games, "game")}`, "team_fight_rate"]] : []),
+    ...(sp.aegis.stole + sp.aegis.lost ? [["Aegis steals", String(sp.aegis.stole), `stolen from them: ${sp.aegis.lost}`, "aegis_steals"]] : []),
+  );
+  const lengthSection = h.games.length ? `<h2>Game length${info("team_length")}</h2>${lengthHtml(sp.length)}` : "";
+  const pairs = playerPairs(h.games.map(({ m }) => m), (m) => sideMap.get(m));
 
   // Series (AD2L) or game (scrim) history rows, newest first.
   let historyRows;
@@ -4149,12 +4388,15 @@ async function renderTeams(src, slug) {
         <section><h2>Roster</h2>${rosterStrip}${goto("roster", "Full roster")}</section>
       </div>
       ${h.heroes.length ? `<h2>Most played</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, 8)}` : ""}
+      ${lengthSection}
       ${opponents}`],
     ["roster", "Roster", `<h2>${roster ? "Roster" : "Players"}</h2>
       <p class="table-note wm-intro">${rosterNote}</p>
       ${rosterCards ? `<div class="rc-grid reveal">${rosterCards}</div>` : noPlayers}
       ${standinCards ? `<h2>Stand-ins</h2><p class="table-note wm-intro">Played for ${esc(team.name)} without being on the roster.</p><div class="rc-grid reveal">${standinCards}</div>` : ""}
-      ${h.detailed.length ? `<h2>Player stats for this team</h2><div id="t"></div>` : ""}`],
+      ${h.detailed.length ? `<h2>Player stats for this team</h2><div id="t"></div>` : ""}
+      ${pairs.pairs.length ? `<h2>Pairs${info("team_pairs")}</h2><div id="pairs"></div>
+        <h2>Lineups</h2><div id="lineups"></div>` : ""}`],
     ["games", ad2l ? "Series" : "Games", `<div class="history reveal">${historyRows.join("") || noGames}</div>`],
     ["heroes", "Heroes", h.heroes.length ? `${cardsHtml([
         ["Hero pool", String(h.heroes.length), `different heroes in ${plural(h.detailed.length, "game")}`],
@@ -4215,6 +4457,15 @@ async function renderTeams(src, slug) {
       ["kda", "KDA", (v) => v.toFixed(2), "", "jade"], ["avg_gpm", "GPM", null, "", "gold"], ["dmg_per_min", "Dmg/min", fmt, "", "ember"],
       ["avg_kp", "Avg KP", pct], ["heroes", "Heroes", (v) => esc(v), "l wrap"],
     ], playerLeaderboard(ownSide), "games");
+  }
+  if (pairs.pairs.length) {
+    const names = (r) => r.players.map((p) => playerLink(src, p)).join(" + ");
+    sortableTable(document.getElementById("pairs"), [
+      ["label", "Players", (v, r) => names(r), "l name"], ["games", "Games", null, "", "gold"], ["wins", "Wins"], ["win_rate", "Win %", pct, "", "jade", false],
+    ], pairs.pairs.map((r) => ({ ...r, label: r.players.map((p) => p.name).join(" + ") })), "games");
+    sortableTable(document.getElementById("lineups"), [
+      ["label", "Five", (v, r) => names(r), "l wrap"], ["games", "Games", null, "", "gold"], ["wins", "Wins"], ["win_rate", "Win %", pct, "", "jade", false],
+    ], pairs.lineups.map((r) => ({ ...r, label: r.players.map((p) => p.name).join(" + ") })), "games");
   }
 }
 

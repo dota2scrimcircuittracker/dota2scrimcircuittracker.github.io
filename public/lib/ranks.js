@@ -5,7 +5,7 @@
 import { MIN_GAMES } from "./tiers.js";
 
 // Stat groups, in the order the player page shows them.
-export const RANK_GROUPS = [["results", "Results"], ["economy", "Economy"], ["damage", "Damage"], ["support", "Support"], ["objectives", "Objectives"]];
+export const RANK_GROUPS = [["results", "Results"], ["economy", "Economy"], ["damage", "Damage"], ["combat", "Combat"], ["support", "Support"], ["objectives", "Objectives"]];
 
 // Stats you can rank by. `low`: fewer is better, so the top 3 are the lowest. `map`: from
 // parsed replays only (AD2L), missing for screenshot uploads.
@@ -22,6 +22,15 @@ export const RANK_STATS = [
   { key: "dmg_taken_pg", label: "Damage taken a game", group: "damage", fmt: "0", map: true },
   { key: "avg_kp", label: "Kill participation", group: "results", fmt: "pct" },
   { key: "buybacks_pg", label: "Buybacks a game", group: "results", fmt: "2", map: true },
+  { key: "apm", label: "APM", group: "combat", fmt: "0", map: true },
+  { key: "tf_part", label: "Teamfight participation", group: "combat", fmt: "pct", map: true },
+  { key: "fb_rate", label: "First blood rate", group: "combat", fmt: "pct", map: true },
+  { key: "fb_death_rate", label: "Died first", group: "combat", fmt: "pct", map: true, low: true },
+  { key: "best_streak", label: "Longest kill streak", group: "combat", fmt: "0", map: true },
+  { key: "rampages", label: "Rampages", group: "combat", fmt: "0", map: true },
+  { key: "ultras", label: "Ultra kills", group: "combat", fmt: "0", map: true },
+  { key: "runes_pg", label: "Runes a game", group: "combat", fmt: "1", map: true },
+  { key: "courier_kills", label: "Courier kills", group: "combat", fmt: "0", map: true },
   { key: "obs_pg", label: "Observers a game", group: "support", fmt: "1", map: true },
   { key: "sen_pg", label: "Sentries a game", group: "support", fmt: "1", map: true },
   { key: "dewards_pg", label: "Dewards a game", group: "support", fmt: "1", map: true },

@@ -27,6 +27,7 @@ import { buildingsFrom } from "../public/lib/towermap.js";
 import { deathsFrom } from "../public/lib/deathmap.js";
 import { itemsFrom } from "../public/lib/items.js";
 import { laneFields } from "./lane-fields.js";
+import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "./combat-fields.js";
 import { leagueJson } from "./league-json.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -218,7 +219,7 @@ const heroList = await opendota("/heroes");
 const heroes = Object.fromEntries(heroList.map((h) => [h.id, h.localized_name === "Ring Master" ? "Ringmaster" : h.localized_name]));
 const heroKeys = Object.fromEntries(heroList.map((h) => [h.id, h.name])); // "npc_dota_hero_…", as the death logs name killers
 
-const games = [];
+const games = [], detail = {};
 for (const id of [...candidates].sort()) {
   const d = await matchDetail(id);
   if (d.leagueid !== LEAGUE_ID || !Array.isArray(d.players) || d.players.length !== 10) continue;
@@ -242,6 +243,9 @@ for (const id of [...candidates].sort()) {
   const seriesOf = series
     .filter((s) => (s.home === rad && s.away === dire) || (s.home === dire && s.away === rad))
     .sort((x, y) => Math.abs((x.time ?? 0) - d.start_time) - Math.abs((y.time ?? 0) - d.start_time))[0];
+  const det = detailOf(d);
+  if (det) detail[d.match_id] = det;
+  const extras = gameExtras(d);
   games.push({
     series_id: seriesOf?.id ?? null,
     // Captains Mode draft in order; OpenDota team 0 = Radiant = side "a".
@@ -272,6 +276,8 @@ for (const id of [...candidates].sort()) {
     buildings: buildingsFrom(d.objectives, (slot) => heroes[d.players.find((p) => p.player_slot === slot)?.hero_id] ?? null),
     // Teamfights (flat groups of 3: start second, end second, deaths), from the parsed replay.
     fights: deaths?.fights ?? null,
+    // First blood [second, killer, victim] and pauses (see scripts/combat-fields.js).
+    ...extras,
     players: [...d.players].sort((x, y) => x.player_slot - y.player_slot).map((p, i) => ({
       team: p.isRadiant ? "a" : "b",
       name: owner.get(p.account_id)?.name ?? p.personaname ?? (p.account_id ? `account ${p.account_id}` : "anonymous"),
@@ -324,6 +330,9 @@ for (const id of [...candidates].sort()) {
       // Final 6 slots + neutral (item keys), and the first purchase second of each core item,
       // flat [key, sec, ...] (see public/lib/items.js).
       ...itemsFrom(p),
+      // APM, multi-kills, kill streaks, kill times, first blood, teamfight share, runes, courier
+      // kills, biggest hit, pings and public benchmarks (see scripts/combat-fields.js).
+      ...combatFields(p, firstDeathOf(extras.first_blood_at, i)),
     })),
   });
 }
@@ -346,5 +355,7 @@ const out = {
 };
 await mkdir(path.dirname(OUT), { recursive: true });
 await writeFile(OUT, leagueJson(out));
+// Purchases and skill builds, loaded only by the pages that show them.
+await writeFile(detailName(OUT), detailJson(detail));
 console.log(`  ${games.length} division games from league ${LEAGUE_ID}; ${odCalls} OpenDota calls this run`);
 console.log(`wrote ${path.relative(ROOT, OUT)}`);
