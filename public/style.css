@@ -2673,6 +2673,18 @@ button.fb-open[aria-pressed="true"] { color: var(--on-accent); background: var(-
 }
 .fb-badge[hidden] { display: none; }
 @media (max-width: 720px) { .fb-open-label { display: none; } }
+/* Discord invite: same frame as the Feedback button, blurple on hover. */
+a.discord-join {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dust); border: 1px solid var(--seam); padding: 8px 11px; border-radius: 2px;
+}
+a.discord-join:hover { color: #fff; background: #5865f2; border-color: #5865f2; text-decoration: none; }
+@media (max-width: 720px) { .discord-join-label { display: none; } }
+/* Phones: the header row is full, so the footer link carries the invite. */
+@media (max-width: 420px) { a.discord-join { display: none; } }
+.foot a { color: var(--dust); }
+.foot a:hover { color: var(--bone); }
 
 .fb[hidden] { display: none; }
 .fb-banner {
