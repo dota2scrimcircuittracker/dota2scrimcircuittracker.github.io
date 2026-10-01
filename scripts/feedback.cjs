@@ -8,7 +8,8 @@
 //                                                 http://localhost:3000/?fbreview=FB-XXXXXX (npm start) to see the
 //                                                 marks drawn on the real pages
 //   node scripts/feedback.cjs done FB-XXXXXX "summary"
-//                                                 delete the ticket and its items, log it in docs/feedback-log.md
+//                                                 delete the ticket and its items, log it in docs/feedback-log.md,
+//                                                 and delete its Discord post (when its message ID was recorded)
 //   node scripts/feedback.cjs check               JSON for the email task: tickets not emailed yet,
 //                                                 and every open one if today's digest is due
 //   node scripts/feedback.cjs emailed [--new FB-A,FB-B] [--digest]
@@ -16,8 +17,9 @@
 //   node scripts/feedback.cjs discord [--dry-run]  post tickets not sent yet, and the digest when due, to the
 //                                                 Discord webhook in DISCORD_FEEDBACK_WEBHOOK (.env.local)
 //
-// Which tickets were sent (email or Discord), and when the last digest went, is kept in
-// .cache/feedback-state.json (gitignored; this machine only).
+// Which tickets were sent (email or Discord), the Discord message IDs (so `done` and the next
+// digest can delete them), and when the last digest went, is kept in .cache/feedback-state.json
+// (gitignored; this machine only).
 const fs = require("fs");
 const path = require("path");
 const { requireAuth } = require("firebase-tools/lib/requireAuth");
@@ -96,7 +98,11 @@ async function findTicket(id, opts) {
   return hit[0];
 }
 
-const readState = () => { try { return JSON.parse(fs.readFileSync(STATE, "utf8")); } catch { return { emailed: {}, lastDigest: null }; } };
+const readState = () => {
+  let s;
+  try { s = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch { s = {}; }
+  return { emailed: {}, lastDigest: null, posts: {}, digestPosts: [], ...s };
+};
 const writeState = (s) => { fs.mkdirSync(path.dirname(STATE), { recursive: true }); fs.writeFileSync(STATE, JSON.stringify(s, null, 2)); };
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
 
@@ -150,8 +156,19 @@ const commands = {
     fs.appendFileSync(LOG, `- ${t.id} · ${today()} · ${note.replace(/\s+/g, " ")}\n`);
     fs.rmSync(path.join(SHOTS, t.id), { recursive: true, force: true });
     fs.rmSync(path.join(REVIEW, `${t.id}.json`), { force: true });
-    const s = readState(); delete s.emailed[t.id]; writeState(s);
-    console.log(`Deleted ${t.id} (${t.items.length} item${t.items.length === 1 ? "" : "s"}) and logged it in docs/feedback-log.md.`);
+    const s = readState();
+    const msg = s.posts[t.id];
+    let discord = "no Discord post recorded for it; delete that one by hand";
+    if (msg) {
+      const hook = webhookUrl();
+      if (hook) {
+        try { await deleteWebhookMessage(hook, msg); discord = "deleted its Discord post"; }
+        catch (e) { discord = `couldn't delete its Discord post (${e.message}); delete it by hand`; }
+      }
+      else discord = "no DISCORD_FEEDBACK_WEBHOOK, so its Discord post is still up";
+    }
+    delete s.emailed[t.id]; delete s.posts[t.id]; writeState(s);
+    console.log(`Deleted ${t.id} (${t.items.length} item${t.items.length === 1 ? "" : "s"}), logged it in docs/feedback-log.md, ${discord}.`);
   },
 
   async check() {
@@ -184,23 +201,29 @@ const commands = {
     const s = readState();
     const digestDue = new Date().getHours() >= DIGEST_HOUR && s.lastDigest !== today();
     const fresh = all.filter((t) => !s.emailed[t.id]).map(summary);
-    const post = async (body) => (dry ? console.log(JSON.stringify(body, null, 2)) : postWebhook(hook, body));
+    const post = async (body) => (dry ? (console.log(JSON.stringify(body, null, 2)), null) : postWebhook(hook, body));
 
     // One message per ticket, recorded as soon as it posts, so a failure part way never double-posts the rest.
     for (const t of fresh) {
-      await post({ content: `New site feedback: **${t.id}**`, embeds: [ticketEmbed(t, true)], allowed_mentions: { parse: [] } });
-      if (!dry) { s.emailed[t.id] = new Date().toISOString(); writeState(s); }
+      const msg = await post({ content: `New site feedback: **${t.id}**`, embeds: [ticketEmbed(t, true)], allowed_mentions: { parse: [] } });
+      if (!dry) { s.emailed[t.id] = new Date().toISOString(); if (msg?.id) s.posts[t.id] = msg.id; writeState(s); }
     }
     let digest = "not due";
     if (digestDue) {
+      // Each digest replaces the last one, so closed tickets don't linger in old digests.
+      if (!dry) {
+        for (const id of s.digestPosts) await deleteWebhookMessage(hook, id);
+        s.digestPosts = []; writeState(s);
+      }
       if (all.length) {
         const embeds = all.map(summary).map((t) => ticketEmbed(t, false));
         // Discord caps a message at 10 embeds and 6000 characters; ticket embeds are capped well under 2000.
         for (let i = 0; i < embeds.length; i += 3) {
-          await post({
+          const msg = await post({
             content: i ? "" : `Site feedback: **${all.length}** open ticket${all.length === 1 ? "" : "s"}\n${FOOTER("FB-XXXXXX")}`,
             embeds: embeds.slice(i, i + 3), allowed_mentions: { parse: [] },
           });
+          if (msg?.id) { s.digestPosts.push(msg.id); writeState(s); }
         }
         digest = "sent";
       } else digest = "due, nothing open";
@@ -259,6 +282,17 @@ async function postWebhook(url, body, tries = 3) {
     return postWebhook(url, body, tries - 1);
   }
   if (!r.ok) throw new Error(`Discord webhook ${r.status}: ${clip(await r.text(), 300)}`);
+  return r.json(); // ?wait=true: the message, whose id `done` uses to delete it
+}
+// A webhook can delete its own messages. Already gone (404) counts as done.
+async function deleteWebhookMessage(url, id, tries = 3) {
+  const r = await fetch(`${url}/messages/${id}`, { method: "DELETE" });
+  if (r.status === 429 && tries > 1) {
+    const wait = Number((await r.json().catch(() => ({}))).retry_after ?? 2);
+    await new Promise((res) => setTimeout(res, Math.ceil(wait * 1000) + 250));
+    return deleteWebhookMessage(url, id, tries - 1);
+  }
+  if (!r.ok && r.status !== 404) throw new Error(`Discord delete ${r.status}: ${clip(await r.text(), 300)}`);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);

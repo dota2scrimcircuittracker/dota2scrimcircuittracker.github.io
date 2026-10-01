@@ -2011,6 +2011,32 @@ window.addEventListener("resize", () => {
   fitTimer = setTimeout(() => document.querySelectorAll("[data-fit]").forEach((el) => !el._fitObserver && el._refit?.()), 150);
 });
 
+// Hero card grids (.hp-grid): fewest rows that fit, then split the cards evenly across them,
+// so 8 cards go 4 + 4 instead of 7 + 1. Phones keep the CSS two-column layout.
+const HP_MIN = 220, HP_GAP = 10;
+const narrow = matchMedia("(max-width: 860px)");
+function balanceGrid(el) {
+  const n = el.children.length, w = el.clientWidth;
+  if (narrow.matches || !n || !w) return void el.style.removeProperty("grid-template-columns");
+  const rows = Math.ceil(n / Math.max(1, Math.floor((w + HP_GAP) / (HP_MIN + HP_GAP))));
+  el.style.gridTemplateColumns = `repeat(${Math.ceil(n / rows)}, minmax(0, 1fr))`;
+}
+// Grids arrive with page and tab renders (often in a hidden tab, width 0): watch for them,
+// and rebalance each when its width changes.
+if ("ResizeObserver" in window) {
+  const ro = new ResizeObserver((es) => es.forEach((e) => balanceGrid(e.target)));
+  const seen = new WeakSet();
+  const watch = () => document.querySelectorAll(".hp-grid").forEach((el) => {
+    if (seen.has(el)) return;
+    seen.add(el);
+    balanceGrid(el); // now, so the first paint is already balanced
+    ro.observe(el);
+  });
+  new MutationObserver(watch).observe(document.body, { childList: true, subtree: true });
+  watch();
+  narrow.addEventListener("change", () => document.querySelectorAll(".hp-grid").forEach(balanceGrid));
+}
+
 // ---------- Ranks ----------
 // Stat leaders and hero ranks: in the page's league, and "overall" across every AD2L league
 // (each division once; Heroic/Aegis as Combined). Overall needs every division's file, so it
