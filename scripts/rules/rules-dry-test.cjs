@@ -1,5 +1,5 @@
 // Evaluate the merged rules against simulated requests with the Firebase Rules test API
-// (projects.test) — nothing is deployed. Usage: node scripts/rules-dry-test.cjs <firestore.rules>
+// (projects.test) — nothing is deployed. Usage: node scripts/rules/rules-dry-test.cjs <firestore.rules>
 const fs = require("fs");
 const { requireAuth } = require("firebase-tools/lib/requireAuth");
 const { Client } = require("firebase-tools/lib/apiv2");

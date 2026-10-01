@@ -118,7 +118,7 @@ A block at the end of `firebase/scrimleague.rules`:
 Tools outside the app read and delete with Jonah's Google credentials, which these rules
 don't bind.
 
-Tests: 49 feedback cases in `scripts/rules-dry-test.cjs` (batched writes are simulated with
+Tests: 49 feedback cases in `scripts/rules/rules-dry-test.cjs` (batched writes are simulated with
 `functionMocks`), all passing with the rest of the suite (191/191) against the live ruleset
 with this block merged in.
 
@@ -137,7 +137,7 @@ submitter name: the repo is public.
 - `public/lib/feedback.js`: review mode (tools, sidebar, note, list, submit, capture).
 - `public/lib/store.js`: `submitFeedback(name, items)`, the batched write.
 - `public/index.html`: the top-bar button. `public/style.css`: the "feedback mode" section.
-- `firebase/scrimleague.rules`, `scripts/rules-dry-test.cjs`: rules and tests.
+- `firebase/scrimleague.rules`, `scripts/rules/rules-dry-test.cjs`: rules and tests.
 
 ## Out of scope
 

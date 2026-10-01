@@ -5,11 +5,11 @@
 # Google Fonts (the same files the site loads):
 #   curl -A "Mozilla/4.0" "https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@900&family=Martian+Mono:wght@400;600&family=Epilogue:wght@500"
 # and save the .ttf URLs it lists as display-900.ttf, mono-400.ttf, mono-600.ttf, epilogue-500.ttf.
-# Usage: python scripts/gen-og-images.py
+# Usage: python scripts/gen/gen-og-images.py
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / ".cache" / "fonts"
 OUT = ROOT / "public" / "img" / "og"
 W, H = 1200, 630

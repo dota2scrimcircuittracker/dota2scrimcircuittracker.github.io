@@ -1,5 +1,5 @@
 // Observer-ward vision on the real map: what each ward could see past trees, cliffs and
-// Valve's vision blockers. Worked out at sync time from the parsed replay (scripts/vision.js
+// Valve's vision blockers. Worked out at sync time from the parsed replay (scripts/sync/vision.js
 // reads the map there) and, for the game page's vision map, in the browser (lib/visionmap.js).
 // Runs in both: no Node or DOM APIs in this file.
 //

@@ -1,14 +1,14 @@
 // Add `lane_role`, `roaming`, `lh10` and `dn10` to every game already in public/data/*.json from
 // the cached OpenDota matches (.cache/opendota), with no network calls. The sync writes them
-// from now on. Usage: node scripts/lanes-backfill.js
+// from now on. Usage: node scripts/backfill/lanes-backfill.js
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { laneFields } from "./lane-fields.js";
-import { leagueJson } from "./league-json.js";
+import { laneFields } from "../sync/lane-fields.js";
+import { leagueJson } from "../sync/league-json.js";
 
-const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DATA = path.join(ROOT, "public", "data");
 for (const f of (await readdir(DATA)).filter((f) => f.endsWith(".json") && !f.endsWith("-detail.json"))) {
   const d = JSON.parse(await readFile(path.join(DATA, f), "utf8"));

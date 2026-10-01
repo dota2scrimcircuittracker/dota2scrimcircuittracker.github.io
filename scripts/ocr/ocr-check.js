@@ -1,9 +1,9 @@
 // Dev tool: parse the test screenshots and compare against the hand-checked samples.
 // game1: scoreboard with items (unscrolled); game2: scrolled right to damage and PICK.
-// Usage: node scripts/ocr-check.js [debugDir]
+// Usage: node scripts/ocr/ocr-check.js [debugDir]
 import { readFile } from "node:fs/promises";
-import { createNodeEngine } from "../lib/ocr-node.js";
-import { parseScreenshots } from "../public/lib/ocr/parse.js";
+import { createNodeEngine } from "../../lib/ocr-node.js";
+import { parseScreenshots } from "../../public/lib/ocr/parse.js";
 
 const GAMES = [
   ["data/sample-game1.json", ["test-screenshots/game1-overview.webp", "test-screenshots/game1-scoreboard.webp"]],

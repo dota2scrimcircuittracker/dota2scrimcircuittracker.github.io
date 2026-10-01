@@ -1,5 +1,5 @@
 // Dev tool: dump what Tesseract sees in a screenshot, with word boxes.
-// Usage: node scripts/ocr-probe.js <image> [scale]
+// Usage: node scripts/ocr/ocr-probe.js <image> [scale]
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
 

@@ -1,6 +1,6 @@
 // Link previews (Discord, iMessage, Slack) read a page's HTML and never see the part of a
 // link after "#", so every #/... route looked like the home page. At deploy time
-// scripts/share-pages.js writes a tiny page at a real path for each shareable route
+// scripts/deploy/share-pages.js writes a tiny page at a real path for each shareable route
 // (/heroic/week/, /champion/teams/123/, ...) with that page's own title and description,
 // which then forwards to the #/ route. These two functions are the mapping both ways.
 

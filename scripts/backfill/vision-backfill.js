@@ -1,15 +1,15 @@
-// Add observer vision (game `vision`, player `new_vision`; see scripts/vision.js) to every game
+// Add observer vision (game `vision`, player `new_vision`; see scripts/sync/vision.js) to every game
 // already in public/data/*.json, from the cached OpenDota matches (.cache/opendota). The only
 // network call is the map download on first use. The sync writes both from now on.
-// Usage: node scripts/vision-backfill.js
+// Usage: node scripts/backfill/vision-backfill.js
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { visionMap, visionFields } from "./vision.js";
-import { leagueJson } from "./league-json.js";
+import { visionMap, visionFields } from "../sync/vision.js";
+import { leagueJson } from "../sync/league-json.js";
 
-const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DATA = path.join(ROOT, "public", "data"), CACHE = path.join(ROOT, ".cache");
 
 // Keys go in after `fights` (games) and `sen_pos` (players), where the sync writes them, so the

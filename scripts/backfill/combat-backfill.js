@@ -2,15 +2,15 @@
 // teamfight share, runes, courier kills, biggest hit, pings, benchmarks) and game-level first
 // blood and pauses to every game already in public/data/*.json, and write each division's detail
 // file (purchases and skill builds), from the cached OpenDota matches (.cache/opendota), with no
-// network calls. The sync writes all of it from now on. Usage: node scripts/combat-backfill.js
+// network calls. The sync writes all of it from now on. Usage: node scripts/backfill/combat-backfill.js
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "./combat-fields.js";
-import { leagueJson } from "./league-json.js";
+import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "../sync/combat-fields.js";
+import { leagueJson } from "../sync/league-json.js";
 
-const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DATA = path.join(ROOT, "public", "data");
 
 // Keys go in after `item_times` (players) and `fights` (games), where the sync writes them, so

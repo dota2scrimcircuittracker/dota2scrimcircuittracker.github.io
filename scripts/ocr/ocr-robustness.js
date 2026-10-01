@@ -1,10 +1,10 @@
 // Dev tool: re-run the OCR check on distorted copies of the test screenshots to see whether
 // the layout detection survives other resolutions, Snipping Tool crops and JPEG compression.
-// Usage: node scripts/ocr-robustness.js
+// Usage: node scripts/ocr/ocr-robustness.js
 import { readFile } from "node:fs/promises";
 import sharp from "sharp";
-import { createNodeEngine } from "../lib/ocr-node.js";
-import { parseScreenshots } from "../public/lib/ocr/parse.js";
+import { createNodeEngine } from "../../lib/ocr-node.js";
+import { parseScreenshots } from "../../public/lib/ocr/parse.js";
 
 const expected = JSON.parse(await readFile("data/sample-game1.json", "utf8"));
 const originals = await Promise.all(["test-screenshots/game1-overview.webp", "test-screenshots/game1-scoreboard.webp"].map((f) => readFile(f)));

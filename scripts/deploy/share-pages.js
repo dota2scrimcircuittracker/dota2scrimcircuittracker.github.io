@@ -3,11 +3,11 @@
 // description and colour for Discord and other link previews, then forwards to the #/
 // route. AD2L descriptions are built from the synced data, so they're as fresh as the
 // last sync. Scrim games live in Firestore, so scrim pages get fixed descriptions.
-// Usage: node scripts/share-pages.js <site dir>   (the deploy runs it on a copy of public/)
+// Usage: node scripts/deploy/share-pages.js <site dir>   (the deploy runs it on a copy of public/)
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { routeOf, sharePath } from "../public/lib/share.js";
-import { withNicknames } from "../public/lib/nicknames.js";
+import { routeOf, sharePath } from "../../public/lib/share.js";
+import { withNicknames } from "../../public/lib/nicknames.js";
 
 const OUT = path.resolve(process.argv[2] ?? "_site");
 const SITE = "https://dota2scrimcircuittracker.github.io";
@@ -18,7 +18,7 @@ const day = (sec) => new Date(sec * 1000).toLocaleDateString("en-US", { month: "
 const plural = (n, w) => `${n} ${n === 1 ? w : w === "hero" ? "heroes" : w === "series" ? w : `${w}s`}`;
 
 const pages = [];
-// image: the league's preview card, public/img/og/<image>.png (scripts/gen-og-images.py).
+// image: the league's preview card, public/img/og/<image>.png (scripts/gen/gen-og-images.py).
 const page = (p, title, description, color, image = "site") => {
   if (sharePath(`#/${p}`) !== (p ? `/${p}/` : "/")) throw new Error(`${p} isn't a shareable route in lib/share.js`);
   pages.push({ p, title, description, color, image, route: routeOf(p) });

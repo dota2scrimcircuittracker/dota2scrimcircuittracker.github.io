@@ -1,4 +1,8 @@
-﻿const { requireAuth } = require("firebase-tools/lib/requireAuth");
+// Read-only: fetch the Firestore rules that are live now, save them to %TEMP%/live.rules, and
+// say whether they match the Cookbook working copy (where the shared ruleset is deployed from).
+// Run before deploying rules. Uses the Firebase CLI login.
+// Usage: node scripts/rules/fetch-live-rules.cjs
+const { requireAuth } = require("firebase-tools/lib/requireAuth");
 const { Client } = require("firebase-tools/lib/apiv2");
 const fs = require("fs");
 (async () => {

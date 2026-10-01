@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { firstBloodRecord, streakRuns, bestStreakOf, multiKillsOf, firstBloodOf, deathSources, fullDeathLog, teamSplits, playerPairs, sideRecord, heroPairs, heroNeutrals, skillGrid, pubPrep, medalValue, medalFit, pausesOf, hitSource, heroOfSlug, benchSummary, combatTotals } from "../public/lib/combat.js";
 import { combatSummary } from "../public/lib/stats.js";
-import { combatFields, gameExtras, detailOf, firstBloodFrom, firstDeathOf } from "../scripts/combat-fields.js";
+import { combatFields, gameExtras, detailOf, firstBloodFrom, firstDeathOf } from "../scripts/sync/combat-fields.js";
 import { streakChartHtml, skillGridHtml, buildOrderHtml, medalScatterHtml } from "../public/lib/combat-charts.js";
 
 // death_log entry: [second, killer, gold lost, seconds dead, x, y]

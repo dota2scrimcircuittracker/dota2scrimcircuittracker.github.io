@@ -1,7 +1,7 @@
-import { heroById } from "../public/lib/hero-meta.js";
+import { heroById } from "../../public/lib/hero-meta.js";
 
 // Combat and fun stats from an OpenDota parsed match, shared by the sync and
-// scripts/combat-backfill.js. All null when the replay wasn't parsed. See public/lib/combat.js
+// scripts/backfill/combat-backfill.js. All null when the replay wasn't parsed. See public/lib/combat.js
 // for how the site reads them.
 
 // OpenDota benchmarks kept, in this order (each the percentile, 0-100, of this game's number

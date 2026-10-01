@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { deflateSync } from "node:zlib";
-import { decodePng, buildMap, fov, wardTile, visionFields, wardLog } from "../scripts/vision.js";
+import { decodePng, buildMap, fov, wardTile, visionFields, wardLog } from "../scripts/sync/vision.js";
 import { VISION_MAPS, isNight, towersUp, litAt, litOver } from "../public/lib/vision.js";
 
 // A blank map the size of the real one: flat, walkable, no trees, every tile counted.

@@ -11,7 +11,7 @@ breakdowns are the priority.
 Checked 2026-09-28: `.cache/opendota` holds 839 parsed matches and they already carry
 `damage_inflictor` (damage dealt by ability/item, `null` = right-click), `damage_inflictor_received`,
 `damage_targets` (per ability per target hero), `killed_by`, `kills_log` (time + victim),
-`ability_uses`, `item_uses`. So a backfill like `scripts/items-backfill.js` costs **zero API calls**.
+`ability_uses`, `item_uses`. So a backfill like `scripts/backfill/items-backfill.js` costs **zero API calls**.
 
 Not in OpenDota: which ability landed each killing blow, and damage mitigated/blocked (Dota Plus only).
 `killed_by` gives who killed whom, not with what. Unchecked whether Stratz has killshot ability.

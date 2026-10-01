@@ -1,19 +1,19 @@
 // Upload a game from local screenshots, using the same OCR, validation and stored
 // shape as the website. Signs in anonymously like a site visitor.
-// Usage: node scripts/upload-local.js <overview.png> <scoreboard.png> [--private] [--dry-run]
+// Usage: node scripts/ocr/upload-local.js <overview.png> <scoreboard.png> [--private] [--dry-run]
 //   --private  post the result only (teams, winner, kill score, duration)
 import { readFile } from "node:fs/promises";
-import { createNodeEngine } from "../lib/ocr-node.js";
-import { parseScreenshots } from "../public/lib/ocr/parse.js";
-import { validateMatch } from "../public/lib/validate.js";
-import { matchId } from "../public/lib/stats.js";
-import { FIREBASE_CONFIG } from "../public/firebase-config.js";
+import { createNodeEngine } from "../../lib/ocr-node.js";
+import { parseScreenshots } from "../../public/lib/ocr/parse.js";
+import { validateMatch } from "../../public/lib/validate.js";
+import { matchId } from "../../public/lib/stats.js";
+import { FIREBASE_CONFIG } from "../../public/firebase-config.js";
 
 const args = process.argv.slice(2);
 const dry = args.includes("--dry-run");
 const isPrivate = args.includes("--private");
 const files = args.filter((a) => !a.startsWith("--"));
-if (files.length < 1 || files.length > 2) throw new Error("usage: node scripts/upload-local.js <img1> [img2] [--dry-run]");
+if (files.length < 1 || files.length > 2) throw new Error("usage: node scripts/ocr/upload-local.js <img1> [img2] [--dry-run]");
 
 const engine = createNodeEngine();
 const { match, notes } = await parseScreenshots(engine, await Promise.all(files.map((f) => readFile(f))));

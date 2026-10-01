@@ -1,13 +1,13 @@
 // Dev tool: paste the test screenshots into wider frames (the rest of the screen, a
 // second window, a taskbar) and see how much of each game the OCR still reads.
-// Usage: node scripts/ocr-wide.js            (every variant)
-//        ONLY="ultrawide" node scripts/ocr-wide.js
-//        SAVE=dir node scripts/ocr-wide.js   (also write the composed images to dir)
+// Usage: node scripts/ocr/ocr-wide.js            (every variant)
+//        ONLY="ultrawide" node scripts/ocr/ocr-wide.js
+//        SAVE=dir node scripts/ocr/ocr-wide.js   (also write the composed images to dir)
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { createNodeEngine } from "../lib/ocr-node.js";
-import { parseScreenshots } from "../public/lib/ocr/parse.js";
+import { createNodeEngine } from "../../lib/ocr-node.js";
+import { parseScreenshots } from "../../public/lib/ocr/parse.js";
 
 const GAMES = [
   ["game1", "data/sample-game1.json", ["test-screenshots/game1-overview.webp", "test-screenshots/game1-scoreboard.webp"]],

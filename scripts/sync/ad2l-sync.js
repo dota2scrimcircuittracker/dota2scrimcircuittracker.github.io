@@ -23,15 +23,15 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildingsFrom } from "../public/lib/towermap.js";
-import { deathsFrom } from "../public/lib/deathmap.js";
-import { itemsFrom } from "../public/lib/items.js";
+import { buildingsFrom } from "../../public/lib/towermap.js";
+import { deathsFrom } from "../../public/lib/deathmap.js";
+import { itemsFrom } from "../../public/lib/items.js";
 import { laneFields } from "./lane-fields.js";
 import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "./combat-fields.js";
 import { leagueJson } from "./league-json.js";
 import { wardLog, visionMap, visionFields } from "./vision.js";
 
-const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CACHE = path.join(ROOT, ".cache");
 const arg = (name, dflt) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : dflt; };
 const OUT = path.join(ROOT, "public", "data", path.basename(arg("out", "ad2l.json")));
@@ -271,9 +271,9 @@ for (const id of [...candidates].sort()) {
     // Teamfights (flat groups of 3: start second, end second, deaths), from the parsed replay.
     fights: deaths?.fights ?? null,
     // Each team's observer vision at each minute, % of the map outside its own base (see
-    // scripts/vision.js; null if unparsed or the patch has no map).
+    // scripts/sync/vision.js; null if unparsed or the patch has no map).
     vision: vis?.vision ?? null,
-    // First blood [second, killer, victim] and pauses (see scripts/combat-fields.js).
+    // First blood [second, killer, victim] and pauses (see scripts/sync/combat-fields.js).
     ...extras,
     players: [...d.players].sort((x, y) => x.player_slot - y.player_slot).map((p, i) => ({
       team: p.isRadiant ? "a" : "b",
@@ -321,7 +321,7 @@ for (const id of [...candidates].sort()) {
       // left), second placed, seconds it lived (-1 unknown), 1 if an enemy killed it.
       obs_pos: wardLog(p.obs_log, p.obs_left_log),
       sen_pos: wardLog(p.sen_log, p.sen_left_log),
-      // Map their observers were first to light, % of the map, averaged (scripts/vision.js).
+      // Map their observers were first to light, % of the map, averaged (scripts/sync/vision.js).
       new_vision: vis?.new_vision[i] ?? null,
       // Every death, flat groups of 6 (see public/lib/deathmap.js): second, killer, gold
       // lost, seconds dead, x, y (a spot only for teamfight deaths).
@@ -330,7 +330,7 @@ for (const id of [...candidates].sort()) {
       // flat [key, sec, ...] (see public/lib/items.js).
       ...itemsFrom(p),
       // APM, multi-kills, kill streaks, kill times, first blood, teamfight share, runes, courier
-      // kills, biggest hit, pings and public benchmarks (see scripts/combat-fields.js).
+      // kills, biggest hit, pings and public benchmarks (see scripts/sync/combat-fields.js).
       ...combatFields(p, firstDeathOf(extras.first_blood_at, i)),
     })),
   });

@@ -1,6 +1,6 @@
 // Restrict the Firebase browser key to our own websites (HTTP referrers). Only the
 // website list is changed (updateMask); the allowed-APIs list is left as it is.
-// Usage: node scripts/restrict-api-key.cjs
+// Usage: node scripts/firebase/restrict-api-key.cjs
 const { requireAuth } = require("firebase-tools/lib/requireAuth");
 const { Client } = require("firebase-tools/lib/apiv2");
 

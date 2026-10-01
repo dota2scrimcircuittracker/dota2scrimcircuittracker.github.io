@@ -1,7 +1,7 @@
 // Live test of the scrimLeague Firestore rules, as an anonymous user via the REST API.
 // Writes one fake match (id 000…001) — delete it afterwards with:
 //   npx firebase firestore:delete scrimLeague/data/matches/00000000000000000000000000000001 --project pistachio-kitchen -f
-import { FIREBASE_CONFIG } from "../public/firebase-config.js";
+import { FIREBASE_CONFIG } from "../../public/firebase-config.js";
 
 const KEY = FIREBASE_CONFIG.apiKey;
 const BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;

@@ -1,4 +1,7 @@
-﻿const { requireAuth } = require("firebase-tools/lib/requireAuth");
+// Read-only: show Firebase Auth's sign-in methods (anonymous, email) and authorized domains
+// for the shared project. Uses the Firebase CLI login.
+// Usage: node scripts/firebase/check-auth-config.cjs
+const { requireAuth } = require("firebase-tools/lib/requireAuth");
 const { Client } = require("firebase-tools/lib/apiv2");
 (async () => {
   const acct = require("firebase-tools/lib/auth").getGlobalDefaultAccount();

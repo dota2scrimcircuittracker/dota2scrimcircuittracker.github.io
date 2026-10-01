@@ -4,14 +4,14 @@
 // in the message, and commits that don't touch the site (SITE_FILES) are left out.
 // Nothing to say → nothing posted.
 //
-//   node scripts/discord-updates.cjs [--dry-run] [BEFORE AFTER]
+//   node scripts/deploy/discord-updates.cjs [--dry-run] [BEFORE AFTER]
 //
 // In Actions: BEFORE/AFTER from the push event, DISCORD_UPDATES_WEBHOOK from the repo secret.
 // Locally: the webhook from .env.local; --dry-run prints the message instead of posting.
 const { execFileSync } = require("child_process");
 const path = require("path");
 
-const ROOT = path.join(__dirname, "..");
+const ROOT = path.join(__dirname, "..", "..");
 const SITE = "https://dota2scrimcircuittracker.github.io/";
 const args = process.argv.slice(2);
 const dry = args.includes("--dry-run");
@@ -31,7 +31,7 @@ function commits(before, after) {
 }
 
 // What ends up on the site: public/ and the build steps in pages.yml that write into it.
-const SITE_FILES = /^(public\/|scripts\/(share-pages|lite-data|write-firebase-config)\.js$)/;
+const SITE_FILES = /^(public\/|scripts\/deploy\/(share-pages|lite-data|write-firebase-config)\.js$)/;
 const touchesSite = (hash) =>
   git("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", hash).split("\n").some((f) => SITE_FILES.test(f));
 

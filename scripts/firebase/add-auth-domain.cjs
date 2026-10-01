@@ -1,9 +1,9 @@
 // Add a domain to Firebase Auth's authorized domains (keeps the existing ones).
-// Usage: node scripts/add-auth-domain.cjs dota2scrimcircuittracker.github.io
+// Usage: node scripts/firebase/add-auth-domain.cjs dota2scrimcircuittracker.github.io
 const { requireAuth } = require("firebase-tools/lib/requireAuth");
 const { Client } = require("firebase-tools/lib/apiv2");
 const domain = process.argv[2];
-if (!domain) throw new Error("usage: node scripts/add-auth-domain.cjs <domain>");
+if (!domain) throw new Error("usage: node scripts/firebase/add-auth-domain.cjs <domain>");
 (async () => {
   const acct = require("firebase-tools/lib/auth").getGlobalDefaultAccount();
   await requireAuth({ project: "pistachio-kitchen", user: acct.user, tokens: acct.tokens });

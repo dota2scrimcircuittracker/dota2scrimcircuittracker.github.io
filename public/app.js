@@ -929,7 +929,7 @@ function divData(key) {
     .catch((e) => { delete divReady[key]; throw e; });
 }
 // Another division's games for the overall ranks and search: the deploy's trimmed copy
-// (scripts/lite-data.js: no timelines, ward spots or items; the ranks come out the same, at
+// (scripts/deploy/lite-data.js: no timelines, ward spots or items; the ranks come out the same, at
 // about a third of the download). The full file when it's already loaded, or when there's
 // no copy (npm start serves public/ as committed).
 const liteReady = {};
@@ -1575,7 +1575,7 @@ function replayTableHtml(m, src) {
 
 // Map play per player (parsed replays only): creeps, stacks, wards, dewards, objectives.
 // Game page: each team's observer vision at each minute, % of the map outside its own base
-// (worked out on the real map at sync time, scripts/vision.js). "" for games without it.
+// (worked out on the real map at sync time, scripts/sync/vision.js). "" for games without it.
 function visionChart(m) {
   if (!m.vision) return "";
   const top = Math.max(...m.vision.a, ...m.vision.b);

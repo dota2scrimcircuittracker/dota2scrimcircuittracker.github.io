@@ -3,7 +3,7 @@
     // A separate app in the same project, namespaced under scrimLeague/ so it cannot
     // collide with recipes, collections or Maze Racer. Source of truth for this block:
     // the Dota Scrim League repo, firebase/scrimleague.rules (merged in with
-    // scripts/merge-rules.cjs).
+    // scripts/rules/merge-rules.cjs).
     //
     // Matches are uploaded by anonymous-auth clients after the uploader reviews what OCR
     // read from their post-game screenshots, so these rules are the only thing standing
@@ -25,7 +25,7 @@
 
       // BUDGET: Firestore stops evaluating after 1000 expressions per request, and every
       // field read, operator and literal counts. Ten players with a range check per field
-      // blow straight through it (measured with the rules test API, scripts/rules-dry-test.cjs).
+      // blow straight through it (measured with the rules test API, scripts/rules/rules-dry-test.cjs).
       // So each check is made to do several jobs at once:
       //  - keys().size() == 15 plus reading all 15 named fields below proves the exact
       //    field set without a 15-element hasOnly list;

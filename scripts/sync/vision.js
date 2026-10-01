@@ -5,9 +5,9 @@ import { inflateSync } from "node:zlib";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { VISION_MAPS, buildMap } from "../public/lib/vision.js";
+import { VISION_MAPS, buildMap } from "../../public/lib/vision.js";
 
-export { VISION_MAPS, wardLog, buildMap, wardTile, fov, visionFields } from "../public/lib/vision.js";
+export { VISION_MAPS, wardLog, buildMap, wardTile, fov, visionFields } from "../../public/lib/vision.js";
 
 // 8-bit RGBA, non-interlaced PNG -> { width, height, px } (4 bytes a pixel). All the map
 // dumps are saved that way; anything else throws rather than misreading.
