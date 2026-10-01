@@ -7,6 +7,8 @@ import { listTeams, teamHistory, teamSlug, sideOf, standingsRows } from "./lib/t
 import { hasTimeline, swings, teamTimeline, teamObjectives, goldCurves, byPlayer, byHero, BIG_LEAD } from "./lib/timeline.js";
 import { leadChart, lineChart, wireCharts } from "./lib/charts.js";
 import { collectWards, wardsOf, wardMapHtml, wireWardMaps } from "./lib/wardmap.js";
+import { visionMapHtml, wireVisionMaps } from "./lib/visionmap.js";
+import { mapLayerData, wireMapLayers } from "./lib/maplayers.js";
 import { deathMapHtml, playerDeathsHtml, wireDeathMaps } from "./lib/deathmap.js";
 import { teamFightMapHtml, wireFightMaps } from "./lib/fightmap.js";
 import { towerMapHtml, towerSummaryHtml, wireTowerMaps } from "./lib/towermap.js";
@@ -20,6 +22,7 @@ import { strengthOfSchedule } from "./lib/schedule.js";
 import { submitMatch, editMatch, listMatches, getMatch, deleteMatch, moveMatch, currentUid, listPredictions, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture, listCasts, addCast, deleteCast, MAX_CASTS } from "./lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureOdds, fixtureCall, fixtureBacktest, outcomes, outcomeLabel } from "./lib/fixtures.js";
 import { info, wireInfo } from "./lib/glossary.js";
+import { countVisit } from "./lib/visits.js";
 import { RANK_STATS, RANK_GROUPS, formatStat, withPerGame, rankStat, ends, placeOf, ordinal } from "./lib/ranks.js";
 import { routeOf, sharePath } from "./lib/share.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
@@ -115,14 +118,15 @@ const wardView = (wards, what) => wardMapHtml([{ label: what, cls: "s-mine", war
 // [id, label, glossary key, html]; empty ones are dropped. The pick is remembered across pages,
 // so going from a game's deaths to a player's opens their deaths.
 const MAP_KEY = "mapView";
-function mapCard(views) {
+// layers: a game's overlay data (lib/maplayers.js), for the checkboxes shared by its maps.
+function mapCard(views, { layers = null } = {}) {
   const shown = views.filter(([, , , html]) => html?.trim());
   if (!shown.length) return "";
   let want = null;
   try { want = localStorage.getItem(MAP_KEY); } catch {}
   const open = shown.some(([id]) => id === want) ? want : shown[0][0];
   const btn = ([id, label]) => `<button type="button" class="seg${id === open ? " on" : ""}" data-view="${id}" aria-pressed="${id === open}">${label}</button>`;
-  return `<section class="map-card">
+  return `<section class="map-card"${layers ? ` data-layers="${esc(JSON.stringify(layers))}"` : ""}>
     ${shown.length > 1 ? `<div class="row segs map-segs" role="group" aria-label="Map">${shown.map(btn).join("")}</div>` : ""}
     ${shown.map(([id, label, tip, html]) => `<div class="map-view" data-view="${id}"${id === open ? "" : " hidden"}><h2>${label}${info(tip)}</h2>${html}</div>`).join("")}
   </section>`;
@@ -1379,6 +1383,7 @@ async function renderMatch(id, src) {
     const views = [
       ["fights", "Items & fights", "items_fights", fightsChart(show) || leadChart(m.gold_adv, { xp: m.xp_adv, nameA: m.team_a, nameB: m.team_b, id: `lead-${m.id}`, objectives: m.objectives })],
       ["worth", "Gold by player", "gold_players", worthHtml],
+      ["vision", "Vision", "vision_chart", visionChart(m)],
     ].filter(([, , , html]) => html);
     let want = null;
     try { want = localStorage.getItem("gameChart"); } catch {}
@@ -1402,9 +1407,10 @@ async function renderMatch(id, src) {
       { label: m.team_a, cls: "s-a", wards: teamOf("a").flatMap((p) => wardsOf(p)) },
       { label: m.team_b, cls: "s-b", wards: teamOf("b").flatMap((p) => wardsOf(p)) },
     ], { id: "match-wards" }) : ""],
+    ["vision", "Vision", "vision_map", visionMapHtml(m, { id: "match-vision" })],
     ["towers", "Towers", "tower_map", m.buildings?.length ? towerMapHtml(m, { id: "match-towers" }) : ""],
     ["deaths", "Deaths", "fight_deaths", deaths],
-  ]);
+  ], { layers: mapLayerData(m) });
 
   const footer = m.unticketed
     ? `Unticketed AD2L game, uploaded ${when(m.createdAt)} from post-game screenshots, so no draft, gold graph or ward data.
@@ -1469,6 +1475,8 @@ async function renderMatch(id, src) {
   };
   wireMapCards(app);
   wireWardMaps(app);
+  wireVisionMaps(app);
+  wireMapLayers(app);
   wireTowerMaps(app);
   wireDeathMaps(app);
   wireStreakCharts(app);
@@ -1566,15 +1574,31 @@ function replayTableHtml(m, src) {
 }
 
 // Map play per player (parsed replays only): creeps, stacks, wards, dewards, objectives.
+// Game page: each team's observer vision at each minute, % of the map outside its own base
+// (worked out on the real map at sync time, scripts/vision.js). "" for games without it.
+function visionChart(m) {
+  if (!m.vision) return "";
+  const top = Math.max(...m.vision.a, ...m.vision.b);
+  const avg = (t) => m.players.filter((p) => p.team === t).reduce((s, p) => s + (p.new_vision ?? 0), 0);
+  return lineChart([
+    { label: m.team_a, values: m.vision.a, cls: "s-a" },
+    { label: m.team_b, values: m.vision.b, cls: "s-b" },
+  ], { id: `vision-${m.id}`, step: top > 12 ? 5 : top > 6 ? 2 : 1, dp: 1, unit: "%",
+    caption: `Share of the map each team's observer wards showed at each minute, outside its own base: trees, cliffs and high ground block a ward's sight. Game average: ${esc(m.team_a)} ${avg("a").toFixed(1)}%, ${esc(m.team_b)} ${avg("b").toFixed(1)}%. Hover for values.` });
+}
+
 function mapTableHtml(m, src) {
   if (!m.players.every(hasMapStats)) return "";
+  const vision = m.players.every((p) => p.new_vision != null);
   const cols = [["lane_kills", "Lane creeps"], ["neutral_kills", "Neutrals"], ["ancient_kills", "Ancients"], ["camps_stacked", "Stacks"],
-    ["obs_placed", "Obs"], ["sen_placed", "Sentries"], ["dewards", "Dewards"], ["roshan_kills", "Roshan"], ["tormentor_kills", "Tormentor"]];
+    ["obs_placed", "Obs"], ...(vision ? [["new_vision", "New vision"]] : []), ["sen_placed", "Sentries"], ["dewards", "Dewards"], ["roshan_kills", "Roshan"], ["tormentor_kills", "Tormentor"]];
   const val = (p, k) => (k === "dewards" ? p.obs_killed + p.sen_killed : p[k]);
+  // New vision is a share of the map with decimals; the rest are counts.
+  const show = (k, v) => (k === "new_vision" ? `${v.toFixed(1)}%` : v);
   const best = Object.fromEntries(cols.map(([k]) => [k, Math.max(...m.players.map((p) => val(p, k)))]));
   const row = (p) => `<tr class="team-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td>
-    ${cols.map(([k]) => `<td class="${val(p, k) === best[k] && best[k] > 0 ? "best" : ""}">${val(p, k)}</td>`).join("")}</tr>`;
-  const total = (t) => `<tr class="total team-${t}"><td class="l" colspan="2">Team total</td>${cols.map(([k]) => `<td>${m.players.filter((p) => p.team === t).reduce((s, p) => s + val(p, k), 0)}</td>`).join("")}</tr>`;
+    ${cols.map(([k]) => `<td class="${val(p, k) === best[k] && best[k] > 0 ? "best" : ""}">${show(k, val(p, k))}</td>`).join("")}</tr>`;
+  const total = (t) => `<tr class="total team-${t}"><td class="l" colspan="2">Team total</td>${cols.map(([k]) => `<td>${show(k, m.players.filter((p) => p.team === t).reduce((s, p) => s + val(p, k), 0))}</td>`).join("")}</tr>`;
   const objs = (m.objectives ?? []).filter((o) => o.type === "roshan" || o.type === "tormentor").sort((a, b) => a.time - b.time);
   const head = `<th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th>${cols.map(([k, l]) => `<th scope="col">${l}${info(k)}</th>`).join("")}`;
   return `<h2>Map &amp; objectives${info("map_objectives")}</h2>
@@ -3065,7 +3089,7 @@ const GA_METRIC_FMT = {
   farm: pct, dmg: pct, xp: pct, tower: pct, kills: pct, assists: pct, dead: pct,
   gpm: (v) => fmt(Math.round(v)), nw: kg, tanked: kg, stacks: (v) => v.toFixed(1),
   lanewin: (v) => `${v >= 0 ? "+" : "−"}${kg(Math.abs(v))}`, lane: (v) => `${Math.round(v)}%`,
-  stuns: (v) => `${v.toFixed(1)}s/min`, vision: (v) => `${v.toFixed(2)} up`, heal: (v) => `${Math.round(v)}/min`,
+  stuns: (v) => `${v.toFixed(1)}s/min`, vision: (v) => `${v.toFixed(1)}% of map`, heal: (v) => `${Math.round(v)}/min`,
   dewards: per10, sentries: per10, dust: per10, smokes: per10, deaths: per10,
 };
 const deathGold = (p) => {
@@ -4538,7 +4562,7 @@ const METRIC_FMT = {
   gpm: (v) => `${Math.round(v)}`, nw: kNum,
   lane: (v) => `${Math.round(v)}%`,
   stuns: (v) => `${v.toFixed(1)}s/m`, // seconds per minute
-  vision: (v) => `${v.toFixed(2)} up`,
+  vision: (v) => `${v.toFixed(1)}% of map`,
   dewards: (v) => `${v.toFixed(1)}/10m`, stacks: (v) => `${v.toFixed(1)} a game`, deaths: (v) => `${v.toFixed(1)}/10m`,
   heal: (v) => `${Math.round(v)}/min`,
   lanewin: (v) => `${v >= 0 ? "+" : "−"}${kNum(Math.abs(v))}`,
@@ -5070,7 +5094,12 @@ document.addEventListener("click", (e) => {
   const a = e.target.closest?.('a[href^="#/"]');
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target) return;
   e.preventDefault();
-  history.pushState(null, "", addressOf(a.getAttribute("href")));
+  // "#/x/teams/5?tab=roster" (the nav dropdowns): open that page on that tab.
+  const [h, q = ""] = a.getAttribute("href").split("?");
+  const tab = new URLSearchParams(q).get("tab");
+  const u = new URL(addressOf(h), location.href);
+  if (tab) u.searchParams.set("tab", tab);
+  history.pushState(tab ? { tab } : null, "", u.pathname + u.search + u.hash);
   window.dispatchEvent(new HashChangeEvent("hashchange"));
 });
 // hashchange and popstate both fire on some back/forward steps: route once per address.
@@ -5083,6 +5112,7 @@ const onNav = () => {
     routedAt = location.href;
     return showTab(tabInUrl());
   }
+  countVisit();
   Promise.resolve(route()).then(focusPage, () => {});
 };
 // After a page change, focus moves to the new page's heading, so a screen reader announces the
@@ -5096,6 +5126,159 @@ function focusPage() {
   if (!h) return;
   h.tabIndex = -1;
   h.focus({ preventScroll: true });
+}
+
+// Nav dropdowns: hovering Teams, Weekly, Players or Heroes lists that tab's teams, weeks,
+// players or heroes; hovering one of those shows its page's tabs on the right (a week shows
+// its games). Built from the league's data the first time a tab opens. Mouse hover where
+// the device has one; from the keyboard, Arrow Down on a tab opens it.
+const tabsOf = (list) => (href) => list.map(([id, label]) => [label, `${href}?tab=${id}`]);
+const TEAM_TABS = (src) => tabsOf([["overview", "Overview"], ["roster", "Roster"], ["games", src.ad2l ? "Series" : "Games"], ["heroes", "Heroes"], ["map", "Map"]]);
+const PLAYER_TABS = tabsOf([["stats", "Stats"], ["heroes", "Heroes"], ["combat", "Combat"], ["lanes", "Laning"], ["items", "Items"], ["map", "Map"], ["games", "Games"]]);
+const HERO_TABS = tabsOf([["stats", "Stats"], ["players", "Players"], ["draft", "Draft"], ["matchups", "Matchups"], ["combat", "Combat"], ["lanes", "Laning"], ["items", "Items"], ["map", "Map"], ["games", "Games"]]);
+const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+// Each returns { head: [[label, href]], items: [{ name, sub, href, group, side: [[label, href]] }] }.
+async function teamMenu(src) {
+  const tabs = TEAM_TABS(src);
+  if (!src.ad2l) {
+    const items = listTeams(await allMatches()).map((t) => ({ name: t.name, href: `#/teams/${t.slug}` })).sort(byName);
+    return { items: items.map((t) => ({ ...t, side: tabs(t.href) })) };
+  }
+  const d = await src.data();
+  const items = d.teams.map((t) => ({ name: t.name, href: `${src.root}/teams/${t.id}`, group: src.all ? t.division : null,
+    sub: t.players.slice(0, 5).map((p) => p.name).join(", ") }))
+    .sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || byName(a, b));
+  const head = [["table", "Table"], ["matches", "Matches"], ["cross", "Crosstable"], ["next", "Up next"]].map(([id, label]) => [label, `${src.root}/?tab=${id}`]);
+  return { head, items: items.map((t) => ({ ...t, side: tabs(t.href) })) };
+}
+async function playerMenu(src) {
+  // The header search's index, built for this league only: rostered players, then stand-ins.
+  const idx = src.ad2l
+    ? buildSearchIndex([{ key: src.key, label: "", root: src.root, data: await src.data() }])
+    : buildSearchIndex([], { label: "", matches: await allMatches() });
+  const items = idx.filter((e) => e.kind === "player")
+    .map((p) => ({ name: p.name, href: p.href, group: p.team ?? "No team", sub: p.standin ? "Stand-in" : p.captain ? "Captain" : "", side: PLAYER_TABS(p.href) }))
+    .sort((a, b) => a.group.localeCompare(b.group, undefined, { sensitivity: "base" }) || byName(a, b));
+  return { items };
+}
+async function heroMenu(src) {
+  const games = new Map();
+  for (const m of await src.load()) for (const h of new Set((m.players ?? []).map((p) => p.hero).filter(Boolean))) games.set(h, (games.get(h) ?? 0) + 1);
+  const items = [...games].map(([hero, n]) => ({ name: hero, hero, href: heroHref(src, hero), sub: `${n} game${n === 1 ? "" : "s"}` })).sort(byName);
+  return { items: items.map((h) => ({ ...h, side: HERO_TABS(h.href) })) };
+}
+async function weekMenu(src) {
+  const games = await src.load(), weekOf = weekOfFn(src.ad2l ? await src.data() : null);
+  const weeks = [...new Set(games.map(weekOf))].sort((a, b) => b - a);
+  const first = weeks.at(-1), base = src.ad2l ? `${src.root}/week` : "#/week";
+  const items = weeks.map((w, i) => {
+    const gs = games.filter((m) => weekOf(m) === w).sort((a, b) => a.createdAt - b.createdAt);
+    // A series' games share a matchup: number them ("· Game 2").
+    const seen = new Map();
+    const label = (m) => {
+      const pair = [m.team_a, m.team_b].sort().join("\n"), n = (seen.get(pair) ?? 0) + 1;
+      seen.set(pair, n);
+      return `${m.team_a ?? "?"} vs ${m.team_b ?? "?"}${n > 1 ? ` · Game ${n}` : ""}`;
+    };
+    return { name: `Week ${Math.round((w - first) / (7 * 864e5)) + 1}`, href: `${base}/${i}`, sub: `${shortDate(new Date(w))} · ${gs.length} game${gs.length === 1 ? "" : "s"}`,
+      side: [["Whole week", `${base}/${i}`], ...gs.map((m) => [label(m), src.link(m)])] };
+  });
+  return { items };
+}
+const NAV_MENUS = { standings: teamMenu, teams: teamMenu, players: playerMenu, heroes: heroMenu, week: weekMenu };
+let navSrc = null;
+const canHover = matchMedia("(hover: hover) and (pointer: fine)");
+const navItemOf = (el) => el?.closest?.(".nav-item");
+function closeNavMenus(except = null) {
+  for (const it of document.querySelectorAll("#nav .nav-item.open")) {
+    if (it === except) continue;
+    it.classList.remove("open");
+    it.querySelector(".nav-drop").hidden = true;
+    it.querySelector(":scope > a").setAttribute("aria-expanded", "false");
+  }
+}
+async function openNavMenu(it) {
+  closeNavMenus(it);
+  if (it.classList.contains("open")) return;
+  const drop = it.querySelector(".nav-drop"), src = navSrc;
+  it.classList.add("open");
+  it.querySelector(":scope > a").setAttribute("aria-expanded", "true");
+  drop.hidden = false;
+  fitNavDrop(drop);
+  if (drop.dataset.built) return;
+  drop.dataset.built = "1";
+  drop.innerHTML = `<div class="nd-note">Loading…</div>`;
+  let menu;
+  try { menu = await NAV_MENUS[it.dataset.menu](src); }
+  catch (e) { console.warn("nav menu unavailable", e); drop.innerHTML = `<div class="nd-note">Couldn't load this list.</div>`; delete drop.dataset.built; return; }
+  if (!drop.isConnected || src !== navSrc) return;
+  if (!menu.items.length) { drop.innerHTML = `<div class="nd-note">Nothing here yet.</div>`; return; }
+  let group = null;
+  const list = menu.items.map((x, i) => {
+    const g = x.group != null && x.group !== group ? `<div class="nd-group">${esc(x.group)}</div>` : "";
+    group = x.group ?? group;
+    return `${g}<a class="nd-item" href="${x.href}" data-i="${i}">${x.hero ? portrait(x.hero, "nd-face") : ""}<span class="nd-name">${esc(x.name)}</span>${x.sub ? `<span class="nd-sub">${esc(x.sub)}</span>` : ""}</a>`;
+  }).join("");
+  drop.innerHTML = `${menu.head ? `<div class="nd-head">${menu.head.map(([label, href]) => `<a href="${href}">${esc(label)}</a>`).join("")}</div>` : ""}
+    <div class="nd-body"><div class="nd-list">${list}</div><div class="nd-side" aria-live="polite"></div></div>`;
+  drop._items = menu.items;
+  // Start on the page you're on (a team's page opens its team), else the first entry.
+  const at = here().split("?")[0], cur = menu.items.findIndex((x) => x.href === at);
+  pickNavItem(drop, Math.max(0, cur), cur >= 0);
+  fitNavDrop(drop);
+}
+function pickNavItem(drop, i, scroll = false) {
+  const x = drop._items?.[i];
+  if (!x) return;
+  drop.querySelectorAll(".nd-item").forEach((a) => a.classList.toggle("on", a.dataset.i === String(i)));
+  if (scroll) drop.querySelector(`.nd-item[data-i="${i}"]`)?.scrollIntoView({ block: "nearest" });
+  drop.querySelector(".nd-side").innerHTML = `<a class="nd-title" href="${x.href}">${esc(x.name)}</a>
+    ${x.side.map(([label, href]) => `<a class="nd-tab" href="${href}">${esc(label)}</a>`).join("")}`;
+}
+// Keep the dropdown on screen: shift it left when it would run off the right edge.
+function fitNavDrop(drop) {
+  drop.style.left = "";
+  const r = drop.getBoundingClientRect(), over = r.right - (innerWidth - 8);
+  if (over > 0) drop.style.left = `${-Math.min(over, r.left - 8)}px`;
+}
+{
+  const nav = document.getElementById("nav");
+  let timer = null;
+  const later = (fn, ms) => { clearTimeout(timer); timer = setTimeout(fn, ms); };
+  nav.addEventListener("mouseover", (e) => {
+    if (!canHover.matches) return;
+    const it = navItemOf(e.target);
+    if (it) later(() => openNavMenu(it), it.classList.contains("open") || nav.querySelector(".nav-item.open") ? 0 : 120);
+    else later(() => closeNavMenus(), 200);
+    const item = e.target.closest(".nd-item");
+    if (item) pickNavItem(item.closest(".nav-drop"), Number(item.dataset.i));
+  });
+  nav.addEventListener("mouseleave", () => { if (canHover.matches) later(() => closeNavMenus(), 200); });
+  nav.addEventListener("focusin", (e) => {
+    const item = e.target.closest(".nd-item");
+    if (item) pickNavItem(item.closest(".nav-drop"), Number(item.dataset.i));
+  });
+  nav.addEventListener("focusout", (e) => { if (!navItemOf(e.relatedTarget)) closeNavMenus(); });
+  nav.addEventListener("click", (e) => { if (e.target.closest(".nav-drop a")) { clearTimeout(timer); closeNavMenus(); } });
+  nav.addEventListener("keydown", async (e) => {
+    const it = navItemOf(e.target);
+    if (!it) return;
+    const tabLink = it.querySelector(":scope > a"), drop = it.querySelector(".nav-drop");
+    const items = () => [...drop.querySelectorAll(".nd-item")];
+    if (e.key === "Escape") { closeNavMenus(); tabLink.focus(); return; }
+    if (e.target === tabLink) {
+      if (e.key !== "ArrowDown") return;
+      e.preventDefault();
+      await openNavMenu(it);
+      (drop.querySelector(".nd-item.on") ?? items()[0])?.focus();
+      return;
+    }
+    const list = e.target.classList.contains("nd-item") ? items() : [...drop.querySelectorAll(".nd-side a")];
+    const i = list.indexOf(e.target), step = { ArrowDown: 1, ArrowUp: -1 }[e.key];
+    if (step) { e.preventDefault(); list[Math.min(list.length - 1, Math.max(0, i + step))]?.focus(); }
+    else if (e.key === "ArrowRight" && e.target.classList.contains("nd-item")) { e.preventDefault(); drop.querySelector(".nd-side a")?.focus(); }
+    else if (e.key === "ArrowLeft" && !e.target.classList.contains("nd-item")) { e.preventDefault(); drop.querySelector(".nd-item.on")?.focus(); }
+  });
 }
 
 // The home page (#/, and #/ad2l): pick a league. Scrim standings live at #/scrims; Champion's
@@ -5194,8 +5377,11 @@ function route() {
     else if (h.startsWith("#/heroes")) { section = "heroes"; tm = true; page = () => renderHeroes(t); }
     else { section = "matches"; tm = true; page = () => renderMatches(t); }
   }
-  document.getElementById("nav").innerHTML = src.nav
-    .map(([href, key, label, cls]) => `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}"${key === section ? ' aria-current="page"' : ""}>${label}</a>`).join("");
+  document.getElementById("nav").innerHTML = src.nav.map(([href, key, label, cls]) => {
+    const a = `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}"${key === section ? ' aria-current="page"' : ""}${NAV_MENUS[key] ? ' aria-haspopup="true" aria-expanded="false"' : ""}>${label}</a>`;
+    return NAV_MENUS[key] ? `<div class="nav-item" data-menu="${key}">${a}<div class="nav-drop" hidden></div></div>` : a;
+  }).join("");
+  navSrc = src;
   // League menu: each league opens on the tab you're on (Players stays Players). A team,
   // game or player page opens that tab's list, since it needn't exist in the other league.
   // Standings, the scrim match list and scrim Teams all land on the other league's standings.
@@ -5251,6 +5437,7 @@ window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();
 route();
+countVisit();
 // Feedback mode (lib/feedback.js) and the guided tour (lib/tour.js) load after the first page
 // starts drawing, so they don't hold it up.
 // Feedback: the Feedback button in the top bar.

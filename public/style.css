@@ -338,6 +338,48 @@ nav a.nav-cta {
 }
 nav a.nav-cta.active::after { display: none; }
 nav a.nav-cta:hover { background: #f5c862; color: var(--on-accent); }
+/* Tab dropdowns: the tab's list on the left (teams, weeks, players, heroes), the hovered
+   entry's page tabs on the right. */
+.nav-item { position: relative; display: flex; }
+.nav-item.open > a { color: var(--bone); }
+.nav-drop {
+  position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px;
+  width: min(560px, calc(100vw - 16px)); padding: 6px;
+  background: var(--stone-2); border: 1px solid var(--seam-2); box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+  animation: rise .14s cubic-bezier(.2, .8, .2, 1);
+}
+.nav-drop[hidden] { display: none; }
+/* A bridge over the gap, so moving the mouse from the tab down into the menu keeps it open. */
+.nav-drop::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 8px; }
+.nav-drop a {
+  font: 400 13px/1.25 var(--body); letter-spacing: 0; text-transform: none;
+  color: var(--bone); padding: 0; position: static;
+}
+.nav-drop a:hover { text-decoration: none; }
+.nd-note { padding: 12px; font-size: 13px; color: var(--dust); }
+.nd-head { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 2px 8px; margin-bottom: 6px; border-bottom: 1px solid var(--seam); }
+.nd-head a { font: 600 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dust); padding: 7px 9px; border: 1px solid var(--seam-2); }
+.nd-head a:hover, .nd-head a:focus-visible { color: var(--bone); border-color: var(--accent); }
+.nd-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 6px; }
+.nd-list { max-height: min(60vh, 440px); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.nd-group {
+  position: sticky; top: 0; z-index: 1; background: var(--stone-2);
+  font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); padding: 10px 10px 6px;
+}
+.nav-drop .nd-item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px;
+  padding: 7px 10px; border-left: 2px solid transparent;
+}
+.nd-item .nd-name, .nd-item .nd-sub { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nd-item .nd-sub { font-size: 11px; color: var(--dust); margin-top: 2px; }
+.nd-item .nd-face { grid-row: span 2; width: 34px; height: auto; }
+.nav-drop .nd-item.on { background: rgba(var(--accent-rgb), .1); border-left-color: var(--accent); }
+.nav-drop .nd-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.nd-side { display: flex; flex-direction: column; gap: 1px; padding: 4px 4px 4px 10px; border-left: 1px solid var(--seam); align-self: start; }
+.nav-drop .nd-title { font: 800 18px/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--accent); padding: 6px 8px 10px; }
+.nav-drop .nd-tab { padding: 7px 8px; color: var(--dust); }
+.nav-drop .nd-tab:hover, .nav-drop .nd-tab:focus-visible { color: var(--bone); background: rgba(var(--accent-rgb), .1); }
+@media (max-width: 520px) { .nd-body { grid-template-columns: 1fr; } .nd-side { border-left: 0; border-top: 1px solid var(--seam); padding: 8px 0 0; } }
 /* Header search: players and teams in every league. Each result wears its league's colour. */
 .search { position: relative; }
 .search input {
@@ -1300,6 +1342,57 @@ figure.wardmap[data-mode="dots"] .wm-dim { fill: rgba(8, 8, 6, .5); }
 .wm-stat b { color: var(--bone); }
 .wm-who { font: 800 15px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--bone); margin-bottom: 4px; }
 .wm-note { margin: 0; font-size: 11px; color: var(--dim); }
+/* Vision map (lib/visionmap.js): play button, time slider and clock above the map. */
+.vm-time { display: flex; align-items: center; gap: 12px; margin: -4px 0 14px; max-width: 560px; }
+.vm-play {
+  flex: none; width: 34px; height: 30px; background: var(--ink); color: var(--bone);
+  border: 1px solid var(--seam-2); font: 600 12px/1 var(--mono); cursor: pointer;
+}
+.vm-play:hover, .vm-play:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.vm-track { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.vm-slider { width: 100%; margin: 0; accent-color: var(--accent); }
+/* Day / night bands under the slider. */
+.vm-cycle { --vm-day: var(--seam-2); --vm-night: #2a3a66; height: 4px; }
+.vm-clock { flex: none; min-width: 5ch; text-align: right; font: 600 13px/1 var(--mono); color: var(--bone); }
+.vm-phase { flex: none; min-width: 7ch; font: 600 11px/1 var(--mono); color: var(--dust); }
+/* Range view: From and To sliders, with the day / night bands under both. */
+.vm-range { display: grid; grid-template-columns: 1fr; gap: 6px; margin: -4px 0 14px; max-width: 560px; }
+.vm-range[hidden], .vm-time[hidden] { display: none; }
+.vm-end { display: grid; grid-template-columns: 4ch 1fr 5ch; align-items: center; gap: 10px; font: 600 11px/1 var(--mono); color: var(--dust); text-transform: uppercase; letter-spacing: .1em; }
+.vm-end input { width: 100%; margin: 0; accent-color: var(--accent); }
+.vm-end output { text-align: right; font-size: 13px; color: var(--bone); letter-spacing: 0; }
+.vm-range .vm-track { margin-left: calc(4ch + 10px); margin-right: calc(5ch + 10px); }
+.vm-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0; padding: 6px 12px; border: 1px solid var(--seam-2); }
+.vm-layers legend { float: left; padding: 0; margin-right: 2px; font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.vm-layers label { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1 var(--body); color: var(--dust); cursor: pointer; white-space: nowrap; }
+.vm-layers label:has(input:checked) { color: var(--bone); }
+.vm-layers input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
+.vm-tower rect { fill: rgba(8, 8, 6, .8); stroke: var(--ring); stroke-width: .7; }
+.vm-towers.s-a { --ring: var(--jade); }
+.vm-towers.s-b { --ring: var(--ember); }
+.vm-tower:hover rect { stroke: var(--bone); }
+.vm-sentries .vm-sight { fill: var(--ring); fill-opacity: .07; stroke: var(--ring); stroke-width: .35; stroke-dasharray: 1.2 .8; }
+.vm-sentries .ward circle { stroke-dasharray: none; }
+/* Map tab overlays (lib/maplayers.js): the checkboxes reuse .vm-layers; marks on every map. */
+.ml-note { margin-top: 6px; }
+/* In the zoom box: hung below it, so the zoom buttons stay on the map. */
+.mz-wrap:has(> .ml-note) { margin-bottom: 30px; }
+.mz-wrap > .ml-note { position: absolute; top: 100%; left: 0; right: 0; }
+.ml-overlay { --ml: var(--bone); }
+.ml-overlay .ml-a { --ml: var(--jade); }
+.ml-overlay .ml-b { --ml: var(--ember); }
+.ml-overlay .ml-n { --ml: var(--dust); }
+.ml-kill circle { fill: var(--ink); stroke: var(--ml); stroke-width: .7; }
+.ml-kill path { stroke: var(--ml); stroke-width: .7; stroke-linecap: round; }
+.ml-fight circle { fill: var(--ml); fill-opacity: .18; stroke: var(--ml); stroke-width: .5; }
+.ml-fight text, .ml-boss text { font: 700 3px var(--mono); text-anchor: middle; fill: var(--bone); paint-order: stroke; stroke: rgba(0, 0, 0, .8); stroke-width: .6px; }
+.ml-obj rect { fill: rgba(8, 8, 6, .8); stroke: var(--ml); stroke-width: .5; }
+.ml-obj path { stroke: var(--ml); stroke-width: .5; }
+.ml-boss circle { fill: rgba(8, 8, 6, .85); stroke: var(--ml); stroke-width: .6; }
+.ml-ward circle, .ml-ward rect { fill: rgba(8, 8, 6, .6); stroke: var(--ml); stroke-width: .45; }
+.ml-ward path { stroke: var(--bone); stroke-width: .45; }
+.ml-ward.ml-dead circle, .ml-ward.ml-dead rect { stroke-opacity: .5; }
+.ml-overlay g:hover { filter: brightness(1.4); }
 @media (max-width: 760px) { .wm-body { grid-template-columns: 1fr; } }
 /* tower maps reuse the ward map frame */
 .tm-b circle, .tm-b rect { stroke-width: .45; stroke: rgba(8, 8, 6, .9); }
@@ -2515,12 +2608,6 @@ button.tour-open {
 button.tour-open:hover:not(:disabled) { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 button.tour-open.paused { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 button.tour-open.paused:hover:not(:disabled) { background: color-mix(in srgb, var(--accent), #fff 18%); border-color: color-mix(in srgb, var(--accent), #fff 18%); }
-/* Restart: an icon joined to the right of "Resume", so a paused tour takes one control's width. */
-button.tour-restart { display: inline-flex; align-items: center; padding: 0 9px; height: 31px; box-sizing: border-box; color: var(--on-accent); background: var(--accent); border-color: var(--accent); border-left-color: rgba(var(--ink-rgb), .35); }
-button.tour-restart:hover:not(:disabled) { background: color-mix(in srgb, var(--accent), #fff 18%); }
-button.tour-open.paused:has(+ .tour-restart:not([hidden])) { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: -8px; }
-button.tour-open.paused + .tour-restart { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-button.tour-restart[hidden] { display: none; }
 .tour-block { position: fixed; inset: 0; z-index: 90; }
 /* The tour only visits AD2L divisions: while it waits for a pick, the scrims are hidden. */
 body.tour-pick #league-menu a[data-league="scrim"], body.tour-pick .hub-list a[data-league="scrim"],
@@ -2540,7 +2627,7 @@ body.tour-pick #league-menu a[data-league="all"], body.tour-pick .hub-all { disp
   box-shadow: 0 12px 40px rgba(0, 0, 0, .55);
   font: 400 14px/1.5 var(--body);
 }
-.tour-card { position: fixed; transition: top .3s, left .3s; }
+.tour-card { position: fixed; transition: top .3s, left .3s; width: min(380px, calc(100vw - 32px)); }
 .tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
 .tour-card.docked:not(.center) { left: 16px !important; right: 16px; bottom: 16px; top: auto !important; width: auto; }
 .tour-count { font: 600 10px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
@@ -2556,7 +2643,7 @@ body.tour-pick #league-menu a[data-league="all"], body.tour-pick .hub-all { disp
 }
 .tour-title { margin: 0 0 6px; font: 800 22px/1.05 var(--display); letter-spacing: .02em; text-transform: uppercase; }
 .tour-text { margin: 0 0 14px; color: var(--dust); }
-.tour-btns { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.tour-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
 .tour-btn {
   font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
   padding: 9px 12px; border-radius: 4px; cursor: pointer; white-space: nowrap;
@@ -2566,6 +2653,11 @@ body.tour-pick #league-menu a[data-league="all"], body.tour-pick .hub-all { disp
 button.tour-btn:hover:not(:disabled) { border-color: var(--accent); background: none; }
 .tour-skip, button.tour-skip:hover:not(:disabled) { margin-right: auto; border-color: transparent; color: var(--dim); }
 button.tour-skip:hover:not(:disabled) { color: var(--bone); }
+/* Exit tour sits beside Pause tour, on the quiet side of the card. */
+.tour-skip:has(+ .tour-exit) { margin-right: 0; }
+.tour-exit, button.tour-exit:hover:not(:disabled) { margin-right: auto; border-color: transparent; color: var(--dim); }
+.tour-skip, .tour-exit { padding-left: 6px; padding-right: 6px; }
+button.tour-exit:hover:not(:disabled) { color: var(--bone); }
 button.tour-next, button.tour-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent), #fff 18%); border-color: color-mix(in srgb, var(--accent), #fff 18%); }
 /* The fake cursor: its tip sits on the point it's moved to. */
@@ -2873,6 +2965,7 @@ a.discord-join:hover { color: #fff; background: #5865f2; border-color: #5865f2; 
 .fbr-panel li p { margin: 3px 0; font-size: 13px; color: var(--bone); overflow-wrap: anywhere; }
 .fbr-panel li img { grid-column: 2; width: 100%; max-height: 140px; object-fit: cover; object-position: top left; border: 1px solid var(--seam-2); cursor: zoom-in; }
 .fbr-shot { position: fixed; inset: 0; z-index: 1006; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .8); cursor: zoom-out; }
+.fbr-shot img { max-width: 100%; max-height: 100%; border: 2px solid var(--accent); }
 
 /* ---------- Combat stats (lib/combat-charts.js) ---------- */
 /* Kill-streak timeline */
@@ -2977,4 +3070,3 @@ figure.chart .ms-fit { stroke: var(--bone); stroke-width: 1.4; stroke-dasharray:
 .bn-cell.hot::after { background: var(--gold); }
 .bn-cell.cold span { color: var(--ember); }
 .bn-cell.cold::after { background: var(--ember); }
-.fbr-shot img { max-width: 100%; max-height: 100%; border: 2px solid var(--accent); }

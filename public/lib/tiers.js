@@ -82,7 +82,7 @@ export const METRICS = {
   lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over who they laned against, from the replay's lanes. Cores: against the enemy core(s) in their lane. Supports: their whole lane against the enemy's. Jungling: no lane result." },
   lane: { label: "Laning", def: "Laning efficiency: gold earned in the first 10 minutes as a % of the most a lane can give (OpenDota's lane efficiency)." },
   stuns: { label: "Stun time", def: "Seconds of disable dealt to enemy heroes per minute (OpenDota's stun figure)." },
-  vision: { label: "Ward uptime", def: "Observer wards the player had up at once, on average: every ward's lifetime (up to its 6 minutes) added up, over the game's length." },
+  vision: { label: "New vision", def: "Share of the map outside their own base that their observer wards were the first on the team to light, averaged over the game. Each ward sees what it really could past trees and cliffs; ground a teammate's ward already showed, or the player's own base, earns nothing. Games from before the patch's map was added have no number." },
   dewards: { label: "Dewards", def: "Enemy wards killed per 10 minutes; a sentry counts half an observer." },
   sentries: { label: "Sentries", def: "Sentry wards placed per 10 minutes." },
   dust: { label: "Dust", def: "Dust of Appearance used per 10 minutes." },
@@ -124,18 +124,6 @@ function phi(z) {
 const DEFAULT_CURVE = [50, 17];
 export const ratingOf = (score, [center, spread] = DEFAULT_CURVE) => 100 * phi((score - center) / spread);
 
-// Average observers up at once: each ward's lifetime (capped at its 6 min duration; still up
-// at the end = until the end) summed, over the game's length.
-function observerUptime(obs, durSec) {
-  if (!Array.isArray(obs)) return null;
-  let sec = 0;
-  for (let i = 0; i < obs.length; i += 5) {
-    const placed = obs[i + 2], life = obs[i + 3];
-    sec += clamp(life >= 0 ? life : durSec - placed, 0, 360);
-  }
-  return sec / durSec;
-}
-
 // One row per player per game: role, position, metrics (null = not in this game's data) and
 // the raw numbers the breakdown shows next to the shares.
 function gameRows(m) {
@@ -165,7 +153,7 @@ function gameRows(m) {
           lanewin: tierLaneResult(m, p),
           lane: p.lane_eff ?? null,
           stuns: p.stuns != null ? p.stuns / minutes : null,
-          vision: parsed ? observerUptime(p.obs_pos, m.duration_sec) : null,
+          vision: p.new_vision ?? null,
           dewards: parsed ? per10((p.obs_killed ?? 0) + 0.5 * (p.sen_killed ?? 0)) : null,
           sentries: parsed ? per10(p.sen_placed) : null,
           dust: per10(p.dust_used), smokes: per10(p.smoke_used),

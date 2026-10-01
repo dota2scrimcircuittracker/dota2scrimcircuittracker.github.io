@@ -10,14 +10,15 @@
 // icons (pixels 75,532 and 535,106) and where players stand pre-horn in 38 S48 replays (grid
 // 74.6,78.0 and 182.9,177.9). Both axes come out at 4.25 px per grid unit, so no stretching.
 import { applyZoom, wireZoom } from "./mapzoom.js";
+import { drawLayers } from "./maplayers.js";
 
 // Observer and sentry item icons (Valve's CDN, as for item pictures elsewhere).
-const WARD_IMG = { obs: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/ward_observer.png", sen: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/ward_sentry.png" };
-const IMG = { src: "img/minimap.webp", x0: 56.94, x1: 206.2, y0: 62.3, y1: 202.8 };
+export const WARD_IMG = { obs: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/ward_observer.png", sen: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/ward_sentry.png" };
+export const IMG = { src: "img/minimap.webp", x0: 56.94, x1: 206.2, y0: 62.3, y1: 202.8 };
 // The map is point-symmetric about the midpoint of the fountains; mirroring uses that centre.
 const CX = (74.6 + 182.9) / 2, CY = (78.0 + 177.9) / 2;
-const Y = (y) => 256 - y; // grid y goes up, SVG y goes down
-const VB = { x: IMG.x0, y: Y(IMG.y1), w: IMG.x1 - IMG.x0, h: IMG.y1 - IMG.y0 };
+export const Y = (y) => 256 - y; // grid y goes up, SVG y goes down
+export const VB = { x: IMG.x0, y: Y(IMG.y1), w: IMG.x1 - IMG.x0, h: IMG.y1 - IMG.y0 };
 const attr = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 const clock = (s) => `${s < 0 ? "-" : ""}${Math.floor(Math.abs(s) / 60)}:${String(Math.abs(s) % 60).padStart(2, "0")}`;
 
@@ -176,6 +177,8 @@ function draw(fig) {
     }).join("")}</g>`).join("");
   }
   fig.querySelector(".wm-map").innerHTML = `<svg viewBox="${VB.x} ${VB.y} ${VB.w} ${VB.h}" role="img" aria-label="Ward map, ${n} wards">${terrain(side === "all" && mirrored)}${body}</svg>`;
+  // A game's Map tab overlays, over the phase shown (never on mirrored maps: those aren't one game).
+  if (!mirrored) drawLayers(fig, phase === "all" ? -Infinity : PHASES[+phase][0], phase === "all" ? Infinity : PHASES[+phase][1], "wards");
   applyZoom(fig);
 
   // Side panel: counts and survival per layer for what's shown.

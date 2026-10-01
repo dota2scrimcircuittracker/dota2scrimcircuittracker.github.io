@@ -134,7 +134,8 @@ const tag = (s, i, x0, cy, text, cls = "end-label") => `<g class="${cls} ${s.cls
 // of step (small counts, where quarter ticks would land between whole numbers). width: draw at
 // this many units wide (the box's real pixel width, so text isn't scaled up); a wide chart gets
 // longer end labels. gap: rows between end labels, when many lines share the right edge.
-export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H, xLabels = null, step = null, width = W, gap = GAP } = {}) {
+// dp / unit: the hover readout's decimals and suffix (small percentages: 3.4%, not 3).
+export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H, xLabels = null, step = null, width = W, gap = GAP, dp = 0, unit = "" } = {}) {
   const n = Math.max(...series.map((s) => s.values.length));
   const top = Math.max(...series.flatMap((s) => s.values));
   const max = fixed ?? (step ? Math.max(step, Math.ceil(top / step) * step) : niceMax(top));
@@ -152,7 +153,7 @@ export function lineChart(series, { caption = "Hover for values at any minute.",
   const svg = `${grid}${xTicks(n, x, h, xLabels)}<line class="zero" x1="${L}" x2="${W - r}" y1="${y(0)}" y2="${y(0)}"/>${lines}${ends}`;
   // With end labels the portraits name every line, so no legend underneath.
   const legend = endLabels ? "" : `<div class="chart-legend">${series.map((s, i) => `<span class="lg-item ${s.cls ?? ""}${s.dash ? " dash" : ""}" data-i="${i}"><i></i>${attr(s.label)}</span>`).join("")}</div>`;
-  const data = { kind: "lines", n, w: W, gap, x: [L, W - r], y: [T, h - B], max, tags: endLabels, xl: xLabels,
+  const data = { kind: "lines", n, w: W, gap, x: [L, W - r], y: [T, h - B], max, tags: endLabels, xl: xLabels, ...(dp || unit ? { dp, unit } : {}),
     series: series.map((s) => ({ label: s.label, values: s.values, ...(endLabels ? { img: s.img, cls: s.cls, dash: s.dash } : {}) })) };
   return figure(svg, data, caption, h, W).replace("</figure>", `${legend}</figure>`);
 }
@@ -183,7 +184,7 @@ export function wireCharts(root) {
         }).join(" · ")}${d.counts?.[i] != null ? ` · <span>${d.counts[i]} game${d.counts[i] === 1 ? "" : "s"} this long</span>` : ""}`;
       } else {
         const rows = d.series.map((s) => [s.label, s.values[i]]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
-        read.innerHTML = `<b>${d.xl ? attr(d.xl[i]) : `${i}'`}</b> ${rows.map(([l, v]) => `<span>${attr(l)} <b>${k(v)}</b></span>`).join(" · ")}`;
+        read.innerHTML = `<b>${d.xl ? attr(d.xl[i]) : `${i}'`}</b> ${rows.map(([l, v]) => `<span>${attr(l)} <b>${d.dp ? v.toFixed(d.dp) : k(v)}${d.unit ?? ""}</b></span>`).join(" · ")}`;
         if (d.tags) {
           // Up the crosshair: a dot on each line, and its portrait + value beside it (left of the
           // line once it's past the middle, so the column stays inside the plot).

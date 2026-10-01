@@ -17,6 +17,7 @@
 
 import { applyZoom, wireZoom } from "./mapzoom.js";
 import { heroImg } from "./hero-meta.js";
+import { drawLayers } from "./maplayers.js";
 
 const IMG = { src: "img/minimap.webp", x0: 56.94, x1: 206.2, y0: 62.3, y1: 202.8 };
 const Y = (y) => 256 - y;
@@ -262,6 +263,8 @@ function draw(fig) {
     <rect class="wm-dim" x="${VB.x}" y="${VB.y}" width="${VB.w}" height="${VB.h}"/>
     <text class="wm-lbl a" x="${VB.x + 3}" y="${VB.y + VB.h - 3}">${attr(player ? "Radiant" : D.groups[0][1])}</text>
     <text class="wm-lbl b" x="${VB.x + VB.w - 3}" y="${VB.y + 7}" text-anchor="end">${attr(player ? "Dire" : D.groups[1][1])}</text>${marks}</svg>`;
+  // A game's Map tab overlays, over the phase shown.
+  if (!player) drawLayers(fig, ph ? ph[2] : -Infinity, ph ? ph[3] : Infinity, "deaths");
   applyZoom(fig);
 
   // Under the map: a game's bloodiest fights (hover or tap one to light it up); a player's

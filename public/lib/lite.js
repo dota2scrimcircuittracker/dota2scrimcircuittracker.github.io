@@ -5,7 +5,7 @@
 // Written at deploy by scripts/lite-data.js as data/<division>-lite.json.
 import { LANE_END_MIN } from "./lanes.js";
 
-const GAME_DROP = ["buildings", "objectives", "xp_adv", "gold_adv", "fights", "pauses"];
+const GAME_DROP = ["buildings", "objectives", "xp_adv", "gold_adv", "fights", "pauses", "vision"];
 const PLAYER_DROP = ["sen_pos", "items", "item_times", "networth_t", "max_hit", "bench", "roaming"];
 
 export function liteDivision(d) {

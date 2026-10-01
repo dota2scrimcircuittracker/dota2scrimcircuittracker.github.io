@@ -29,6 +29,7 @@ import { itemsFrom } from "../public/lib/items.js";
 import { laneFields } from "./lane-fields.js";
 import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "./combat-fields.js";
 import { leagueJson } from "./league-json.js";
+import { wardLog, visionMap, visionFields } from "./vision.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = path.join(ROOT, ".cache");
@@ -38,21 +39,6 @@ const SEASON_ID = Number(arg("season", 675)); // PlayOn "S48 Champion League"
 const LEAGUE_ID = Number(arg("league", 20077)); // Dota league "AD2L Season 48"
 const UA = "dota-scrim-league/0.1 (AD2L fan stats page; contact: jonahbyu@gmail.com)";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// OpenDota ward logs → flat [x, y, placed_sec, life_sec, killed, ...]. A ward that left before
-// its full duration (observer 360s, sentry 420s) was killed; the left log names an attacker
-// even on expiry, so lifetime is the test. Wards still up at game end have no left entry.
-function wardLog(placed, left) {
-  if (!Array.isArray(placed)) return null;
-  const gone = new Map((left ?? []).map((w) => [w.ehandle, w]));
-  const out = [];
-  for (const w of placed) {
-    const l = gone.get(w.ehandle);
-    const life = l ? l.time - w.time : -1;
-    const full = w.type === "obs_log" ? 360 : 420;
-    out.push(Math.round(w.x), Math.round(w.y), w.time, life, l && life < full - 5 ? 1 : 0);
-  }
-  return out;
-}
 
 const decode = (s) => s.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").trim();
 
@@ -89,6 +75,13 @@ async function opendota(p, method = "GET") {
       const after = Number(res.headers.get("retry-after"));
       const wait = Math.min(120e3, after > 0 ? after * 1000 : 30e3 * (attempt + 1));
       console.log(`  OpenDota rate limit on ${p}; waiting ${Math.round(wait / 1000)}s`);
+      await sleep(wait);
+      continue;
+    }
+    // 5xx: OpenDota's own hiccups, gone on a retry. One used to fail the whole division.
+    if (res.status >= 500 && attempt < 5) {
+      const wait = 10e3 * (attempt + 1);
+      console.log(`  OpenDota HTTP ${res.status} on ${p}; retrying in ${wait / 1000}s`);
       await sleep(wait);
       continue;
     }
@@ -246,6 +239,7 @@ for (const id of [...candidates].sort()) {
   const det = detailOf(d);
   if (det) detail[d.match_id] = det;
   const extras = gameExtras(d);
+  const vis = visionFields(await visionMap(d.patch, CACHE), d);
   games.push({
     series_id: seriesOf?.id ?? null,
     // Captains Mode draft in order; OpenDota team 0 = Radiant = side "a".
@@ -276,6 +270,9 @@ for (const id of [...candidates].sort()) {
     buildings: buildingsFrom(d.objectives, (slot) => heroes[d.players.find((p) => p.player_slot === slot)?.hero_id] ?? null),
     // Teamfights (flat groups of 3: start second, end second, deaths), from the parsed replay.
     fights: deaths?.fights ?? null,
+    // Each team's observer vision at each minute, % of the map outside its own base (see
+    // scripts/vision.js; null if unparsed or the patch has no map).
+    vision: vis?.vision ?? null,
     // First blood [second, killer, victim] and pauses (see scripts/combat-fields.js).
     ...extras,
     players: [...d.players].sort((x, y) => x.player_slot - y.player_slot).map((p, i) => ({
@@ -324,6 +321,8 @@ for (const id of [...candidates].sort()) {
       // left), second placed, seconds it lived (-1 unknown), 1 if an enemy killed it.
       obs_pos: wardLog(p.obs_log, p.obs_left_log),
       sen_pos: wardLog(p.sen_log, p.sen_left_log),
+      // Map their observers were first to light, % of the map, averaged (scripts/vision.js).
+      new_vision: vis?.new_vision[i] ?? null,
       // Every death, flat groups of 6 (see public/lib/deathmap.js): second, killer, gold
       // lost, seconds dead, x, y (a spot only for teamfight deaths).
       death_log: deaths?.players[i] ?? null,

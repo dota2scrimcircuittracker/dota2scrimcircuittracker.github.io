@@ -241,6 +241,39 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   buttons to switch between wards, towers, deaths and team fights; the last pick is remembered
   from page to page. Drawn on the minimap picture in `public/img/minimap.webp`, lined up by its two
   fountains against where players stand before the horn (both axes 4.25 px per map unit).
+  A game's Map tab has overlay checkboxes in each map's controls (`public/lib/maplayers.js`, off at
+  first, remembered; ticking one on any map ticks it on all four): Kills (the dead hero's portrait in their team's colour; teamfight kills only: OpenDota records no
+  spot for others), Teamfights (at the middle of their deaths), Objectives (buildings at the
+  tower map's spots; Roshan and Tormentor at the pit / spot for that time of day) and Wards
+  (placed, crossed when dewarded). Each map draws them over its own window (a phase; the vision
+  map: the two minutes before the slider, older marks fainter; its Range mode: the whole range) and skips what it already shows. A line
+  under the map counts what's in the window, including kills with no recorded spot (about 46% of
+  deaths across S48: lane kills and pickoffs).
+- **Vision** (AD2L, `scripts/vision.js`) — what each observer ward could really see, worked out at
+  sync time on the patch's map: 64-unit tiles of elevation, trees, walkable ground and vision
+  blockers from [leamare/dota-map-coordinates](https://github.com/leamare/dota-map-coordinates),
+  downloaded into `.cache/vision/` on first use (not committed: the repo has no licence). Line of
+  sight follows devilesk's vision simulator: higher ground blocks sight from below, a tree blocks
+  a viewer below its top, blocker tiles are never seen. Per game, `vision` = each team's observer
+  coverage at each minute, % of the walkable map outside its own base (2,600 units round its
+  Ancient); the game page's hero chart has a Vision view. Per player, `new_vision` = the share
+  their wards were first on the team to light, averaged over the game (a team's five add up to
+  its chart average); a column in Farm & vision, and the tier list's support "New vision" metric
+  (it replaced ward uptime, which a ward in your own base maxed out). A new patch needs its dump
+  added to `VISION_MAPS` (keyed by OpenDota patch id); until then its games get null. Trees cut
+  during the game aren't in OpenDota's data, so all trees count as standing. `node
+  scripts/vision-backfill.js` refills both from `.cache/opendota`. The game's Map tab has a Vision
+  map (`public/lib/visionmap.js`) with two modes. Moment: a time slider and play button (two game minutes a second)
+  showing each team's lit ground, the rest fogged, with the observers up at that moment, and
+  optional overlays (checkboxes, remembered): Towers (those standing then, from the game's
+  building kills, with their sight; treated as ground vision), Sentries (1050 true-sight rings)
+  and Night (night is 5:00–10:00, 15:00–20:00…, night before the horn; towers drop from 1900 to
+  800 at tier 1 or 1100 above, from Valve's npc_units; observers see 1600 day and night). It runs
+  the same line of sight (`public/lib/vision.js`, shared with the sync) in the browser, on the map
+  dump fetched straight from GitHub, so the site never serves it. Range: From and To sliders (20:00–25:00 to start, 30 s apart at least):
+  everywhere lit at some point in the range, stronger the longer it stayed lit, every ward up
+  during it, towers as they stood at the end, and average coverage (`litOver` in `lib/vision.js`,
+  worked out once per stretch between ward, tower and day/night changes: a whole game ≈ 0.2 s).
 - **Tower maps** (AD2L game pages) — every tower, barracks and Ancient on the same minimap,
   by the same game phases: what's standing at the end of the phase, what fell in it (with
   the time on the map) and what fell earlier (faded). Hover for who took it, creeps, or a

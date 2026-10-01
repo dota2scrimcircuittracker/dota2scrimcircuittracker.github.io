@@ -5,6 +5,8 @@
 // towerMapHtml() returns a <figure> showing which buildings stand at the end of a game phase,
 // what fell in it and when; wireTowerMaps() draws it and wires the phase control.
 
+import { drawLayers } from "./maplayers.js";
+
 // Same minimap placement and grid as the ward map (see wardmap.js).
 const IMG = { src: "img/minimap.webp", x0: 56.94, x1: 206.2, y0: 62.3, y1: 202.8 };
 const CX = (74.6 + 182.9) / 2, CY = (78.0 + 177.9) / 2;
@@ -55,7 +57,7 @@ for (const lane of ["top", "mid", "bot"]) {
   RAD[`range_${lane}`] = [bx + uy * 1.7, by - ux * 1.7];
 }
 const MIRROR_LANE = { top: "bot", mid: "mid", bot: "top" };
-function spot(side, b, n = 0) {
+export function spot(side, b, n = 0) {
   const lane = b.split("_")[1];
   const key = side === "b" && lane ? b.replace(lane, MIRROR_LANE[lane]) : b;
   const p = b === "t4" ? RAD.t4[n] : RAD[key];
@@ -63,7 +65,7 @@ function spot(side, b, n = 0) {
 }
 const ALL = ["t1_top", "t2_top", "t3_top", "t1_mid", "t2_mid", "t3_mid", "t1_bot", "t2_bot", "t3_bot",
   "melee_top", "range_top", "melee_mid", "range_mid", "melee_bot", "range_bot", "t4", "t4", "fort"];
-const NAME = (b) => b === "fort" ? "Ancient" : b === "t4" ? "Tier 4"
+export const NAME = (b) => b === "fort" ? "Ancient" : b === "t4" ? "Tier 4"
   : b.startsWith("t") ? `T${b[1]} ${b.slice(3)}` : `${b[0].toUpperCase()}${b.slice(1).replace("_", " rax ")}`;
 const isTower = (b) => b.startsWith("t");
 
@@ -138,6 +140,8 @@ function draw(fig) {
       ${lost.length ? `<ul class="tm-list">${lost.map((x) => `<li><b>${clock(x.f[2])}</b> ${NAME(x.b)}${x.f[3] === s ? " <span class=\"muted\">(denied)</span>" : ""}</li>`).join("")}</ul>`
         : `<div class="muted">Lost nothing${ph ? " in this phase" : ""}</div>`}</div>`;
   };
+  // A game's Map tab overlays, over the phase shown.
+  drawLayers(fig, ph ? from : -Infinity, ph ? to : Infinity, "towers");
   fig.querySelector(".wm-side").innerHTML = side("a") + side("b") +
     `<p class="wm-note">Map at ${clock(to)}${ph ? `, end of ${ph[1]}` : ", end of game"}. ● tower, ■ barracks; ✕ = fallen (bright: ${ph ? "in this phase" : "during the game"}, faded: earlier).</p>`;
 }
