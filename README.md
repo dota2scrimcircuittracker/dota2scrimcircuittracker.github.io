@@ -479,7 +479,7 @@ straight away; anyone else opens **Edit or delete this scrim** and types the lea
   the same game with the corrected values won't be caught as a duplicate.
 - **Delete** removes it for everyone.
 
-The password is a speed bump, not security: it's in `app.js`, and the rules let any
+The password is a speed bump, not security: it's in `public/core.js`, and the rules let any
 signed-in visitor edit or delete an upload. The admin can also delete from the command line:
 
 ```
