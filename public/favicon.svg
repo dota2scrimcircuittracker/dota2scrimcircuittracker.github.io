@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The header's brand mark (style.css .brand-mark): a diamond of two triangles, the second
+       nudged down-right. Jade and ember, the default (scrim) colours. -->
+  <g transform="rotate(45 32 32)">
+    <polygon points="12,12 50,12 12,50" fill="#5fd39b"/>
+    <polygon points="54,16 54,54 16,54" fill="#ff5a36"/>
+  </g>
+</svg>

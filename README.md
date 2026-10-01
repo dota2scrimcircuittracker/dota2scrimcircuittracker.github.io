@@ -257,8 +257,15 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   sortable player and hero leaderboards.
 
 Static site: every push to `main` deploys `public/` to GitHub Pages via GitHub Actions
-(`.github/workflows/pages.yml`), plus the link-preview pages and trimmed division files it
-builds into `_site/`.
+(`.github/workflows/pages.yml`), plus what it builds into `_site/`: the link-preview pages,
+`sitemap.xml`, the trimmed division files, and `404.html` (a copy of the app, so any address
+without a preview page, like a player page, still opens).
+
+**Link previews:** every page has a 1200×630 card, `public/img/og/<league>.png` (`site.png` for
+the home page): the brand mark in the league's colours and the league name in the site font.
+Committed; `python scripts/gen-og-images.py` redraws them (Pillow, and the site's fonts in
+`.cache/fonts`, see the script) after a league or colour changes. The tab icon is
+`public/favicon.svg`, the header's brand mark.
 
 **Loading:** the first page waits only for what it draws. The screenshot reader (and Tesseract)
 loads on the first upload, the guided tour and Feedback after the first page, and the known

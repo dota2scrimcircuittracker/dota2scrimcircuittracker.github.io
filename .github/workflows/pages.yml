@@ -32,10 +32,12 @@ jobs:
         env:
           FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
         run: node scripts/write-firebase-config.js
-      # Link-preview pages (/heroic/week/ etc.) and the trimmed division files
+      # Link-preview pages (/heroic/week/ etc.), sitemap.xml and the trimmed division files
       # (data/<division>-lite.json) go into a copy, so public/ stays as committed.
+      # 404.html is the app itself: GitHub Pages serves it for any other address (a player page,
+      # an older week, a typo), and the app opens that route (lib/share.js routeOf).
       - name: Build site with link-preview pages
-        run: cp -r public _site && node scripts/share-pages.js _site && node scripts/lite-data.js _site
+        run: cp -r public _site && node scripts/share-pages.js _site && node scripts/lite-data.js _site && cp _site/index.html _site/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

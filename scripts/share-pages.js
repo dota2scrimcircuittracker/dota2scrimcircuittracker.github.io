@@ -18,13 +18,14 @@ const day = (sec) => new Date(sec * 1000).toLocaleDateString("en-US", { month: "
 const plural = (n, w) => `${n} ${n === 1 ? w : w === "hero" ? "heroes" : w === "series" ? w : `${w}s`}`;
 
 const pages = [];
-const page = (p, title, description, color) => {
+// image: the league's preview card, public/img/og/<image>.png (scripts/gen-og-images.py).
+const page = (p, title, description, color, image = "site") => {
   if (sharePath(`#/${p}`) !== (p ? `/${p}/` : "/")) throw new Error(`${p} isn't a shareable route in lib/share.js`);
-  pages.push({ p, title, description, color, route: routeOf(p) });
+  pages.push({ p, title, description, color, image, route: routeOf(p) });
 };
 
 // ---------- Scrim League ----------
-const scrim = (tab, title, d) => page(tab, `${title} · Scrim League`, d, COLOR.scrim);
+const scrim = (tab, title, d) => page(tab, `${title} · Scrim League`, d, COLOR.scrim, "scrim");
 scrim("scrims", "Standings", "Every scrim team ranked by game wins, with win %, kill difference, form and streak.");
 scrim("week", "Weekly recap", "This week's scrims: every game, drafts in pick/ban order, player of the week and the standout games.");
 scrim("teams", "Teams", "Every scrim team: record, roster, series history and the heroes they play.");
@@ -58,27 +59,27 @@ function league(root, key, name, d, view, { brief = false } = {}) {
   const color = COLOR[key];
   const top = standings(d).slice(0, 3).map((r, i) => `${i + 1}. ${r.t.name} (${r.gw}–${r.gl})`).join(" · ");
   const games = d.games.length;
-  page(root, `Teams · ${label}`, `${top}. Series results from PlayOn, stats from ${plural(games, "ticketed game")}.`, color);
+  page(root, `Teams · ${label}`, `${top}. Series results from PlayOn, stats from ${plural(games, "ticketed game")}.`, color, key);
 
   // Latest week: games in the 7 days up to the newest one.
   const newest = Math.max(0, ...d.games.map((g) => g.start_time));
   const recent = d.games.filter((g) => g.start_time > newest - 7 * 86400);
   page(`${root}/week`, `Weekly recap · ${label}`, recent.length
     ? `${plural(recent.length, "game")} through ${day(newest)}: drafts in pick/ban order, player of the week and the standout games.`
-    : "Every week's games, drafts and highlights.", color);
+    : "Every week's games, drafts and highlights.", color, key);
 
   const players = new Set(d.games.flatMap((g) => g.players.map((p) => p.player_key)));
-  page(`${root}/players`, `Players · ${label}`, `Leaderboards and tier list for ${plural(players.size, "player")}: KDA, GPM, damage, win rate, pubs.`, color);
+  page(`${root}/players`, `Players · ${label}`, `Leaderboards and tier list for ${plural(players.size, "player")}: KDA, GPM, damage, win rate, pubs.`, color, key);
 
   const picks = new Map();
   for (const g of d.games) for (const p of g.players) picks.set(p.hero, (picks.get(p.hero) ?? 0) + 1);
   const most = [...picks].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h, n]) => `${h} (${n})`).join(", ");
-  page(`${root}/heroes`, `Heroes · ${label}`, `${plural(picks.size, "hero")} played${most ? `. Most picked: ${most}` : ""}. Pick, ban and win rates.`, color);
+  page(`${root}/heroes`, `Heroes · ${label}`, `${plural(picks.size, "hero")} played${most ? `. Most picked: ${most}` : ""}. Pick, ban and win rates.`, color, key);
 
   if (brief) return;
   const upcoming = d.series.filter((s) => !((s.home_score ?? 0) + (s.away_score ?? 0)) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).length;
-  page(`${root}/predict`, `Predictions · ${label}`, `${upcoming ? `${plural(upcoming, "series")} to call. ` : ""}Pick the winners and see how the model's picks have done.`, color);
-  page(`${root}/upload`, `Upload a game · ${label}`, "Played without a league ticket? Upload the post-game screenshots so the game counts in the stats.", color);
+  page(`${root}/predict`, `Predictions · ${label}`, `${upcoming ? `${plural(upcoming, "series")} to call. ` : ""}Pick the winners and see how the model's picks have done.`, color, key);
+  page(`${root}/upload`, `Upload a game · ${label}`, "Played without a league ticket? Upload the post-game screenshots so the game counts in the stats.", color, key);
 
   if (view) return;
   const table = standings(d);
@@ -87,12 +88,12 @@ function league(root, key, name, d, view, { brief = false } = {}) {
     const place = table.indexOf(r) + 1;
     const div = t.division ? ` · Division ${t.division}` : "";
     page(`${root}/teams/${t.id}`, `${t.name} · ${name}${div}`,
-      `#${place} · series ${r.w}–${r.tie}–${r.l} · games ${r.gw}–${r.gl}. Roster: ${t.players.map((p) => p.name).join(", ")}.`, color);
+      `#${place} · series ${r.w}–${r.tie}–${r.l} · games ${r.gw}–${r.gl}. Roster: ${t.players.map((p) => p.name).join(", ")}.`, color, key);
   }
   for (const g of d.games) {
     const won = g.winner === "a" ? g.team_a : g.team_b;
     page(`${root}/game/${g.match_id}`, `${g.team_a} ${g.score_a}–${g.score_b} ${g.team_b}`,
-      `${won} won · ${Math.round(g.duration_sec / 60)} min · ${day(g.start_time)} · ${name}. Draft, scoreboard, gold graph and ward map.`, color);
+      `${won} won · ${Math.round(g.duration_sec / 60)} min · ${day(g.start_time)} · ${name}. Draft, scoreboard, gold graph and ward map.`, color, key);
   }
 }
 
@@ -116,7 +117,7 @@ const every = await Promise.all(["ad2l", "heroic", "conqueror", "warrior", "chal
 league("all", "all", "AD2L S48 All Divisions", { teams: every.flatMap((d) => d.teams), series: every.flatMap((d) => d.series), games: every.flatMap((d) => d.games) }, null, { brief: true });
 
 // ---------- write ----------
-for (const { p, title, description, color, route, canonical = p } of pages) {
+for (const { p, title, description, color, image, route, canonical = p } of pages) {
   const url = `${SITE}/${canonical}/`;
   const html = `<!doctype html>
 <html lang="en">
@@ -129,7 +130,11 @@ for (const { p, title, description, color, route, canonical = p } of pages) {
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="${SITE}/img/og/${image}.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="${color}">
 <link rel="canonical" href="${url}">
 <meta http-equiv="refresh" content="0; url=/${esc(route)}">
@@ -142,3 +147,13 @@ for (const { p, title, description, color, route, canonical = p } of pages) {
   await writeFile(path.join(OUT, p, "index.html"), html);
 }
 console.log(`wrote ${pages.length} preview pages into ${path.relative(process.cwd(), OUT) || "."}`);
+
+// sitemap.xml (named in public/robots.txt): the home page and every preview page's own
+// address; the old /ad2l/... forwards are left out (their canonical is the /champion/ page).
+const urls = [`${SITE}/`, ...pages.filter((x) => !x.canonical).map(({ p }) => `${SITE}/${p}/`)];
+await writeFile(path.join(OUT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url><loc>${esc(u)}</loc></url>`).join("\n")}
+</urlset>
+`);
+console.log(`wrote sitemap.xml (${urls.length} addresses)`);
