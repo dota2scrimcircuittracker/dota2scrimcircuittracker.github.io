@@ -8,10 +8,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { routeOf, sharePath } from "../../public/lib/share.js";
 import { withNicknames } from "../../public/lib/nicknames.js";
+import { SEASON, DIVISIONS, slugOf, fullName } from "../../public/lib/divisions.js";
 
 const OUT = path.resolve(process.argv[2] ?? "_site");
 const SITE = "https://dota2scrimcircuittracker.github.io";
-const COLOR = { all: "#efe7da", scrim: "#5fd39b", ad2l: "#e8b64c", heroic: "#a58bff", conqueror: "#5aa9e6", warrior: "#ff9a3c", challenger: "#9bd34a", voyager: "#ef6b73", explorer: "#3cc6c6" };
+const COLOR = { all: "#efe7da", scrim: "#5fd39b", ...Object.fromEntries(DIVISIONS.map((d) => [d.key, d.color])) };
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const TZ = "America/Los_Angeles";
 const day = (sec) => new Date(sec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: TZ });
@@ -98,23 +99,21 @@ function league(root, key, name, d, view, { brief = false } = {}) {
 }
 
 const load = async (f) => withNicknames(JSON.parse(await readFile(path.join(OUT, "data", f), "utf8")));
-page("ad2l", "Pick a league · AD2L Stat Tracker", "Our scrims and AD2L Season 48: Explorer, Voyager, Challenger, Warrior, Conqueror, Champion and Heroic/Aegis.", COLOR.ad2l);
-const champ = await load("ad2l.json");
-league("champion", "ad2l", "AD2L S48 Champion", champ);
+const names = DIVISIONS.map((d) => d.name);
+page("ad2l", "Pick a league · AD2L Stat Tracker", `Our scrims and AD2L ${SEASON.long}: ${names.slice(0, -1).join(", ")} and ${names.at(-1)}.`, COLOR.ad2l);
+// Every division (lib/divisions.js), and each sub-division view (Heroic/Aegis A and B).
+const every = [];
+for (const dv of DIVISIONS) {
+  const d = await load(`${dv.key}.json`);
+  every.push(d);
+  league(slugOf(dv), dv.key, `AD2L ${fullName(dv)}`, d, null);
+  for (const v of dv.views ?? []) league(`${slugOf(dv)}/${v}`, dv.key, `AD2L ${fullName(dv)}`, inDivision(d, v.toUpperCase()), `Division ${v.toUpperCase()}`);
+}
 // Champion used to live at /ad2l/...: keep those links working by forwarding to /champion/....
 for (const pg of pages.filter((x) => x.p.startsWith("champion/")))
   pages.push({ ...pg, p: pg.p.replace(/^champion/, "ad2l"), canonical: pg.p });
-const heroic = await load("heroic.json");
-league("heroic", "heroic", "AD2L S48 Heroic/Aegis", heroic, null);
-for (const div of ["A", "B"]) league(`heroic/${div.toLowerCase()}`, "heroic", "AD2L S48 Heroic/Aegis", inDivision(heroic, div), `Division ${div}`);
-league("conqueror", "conqueror", "AD2L S48 Conqueror", await load("conqueror.json"));
-league("warrior", "warrior", "AD2L S48 Warrior", await load("warrior.json"));
-league("challenger", "challenger", "AD2L S48 Challenger", await load("challenger.json"));
-league("voyager", "voyager", "AD2L S48 Voyager", await load("voyager.json"));
-league("explorer", "explorer", "AD2L S48 Explorer", await load("explorer.json"));
 // Every division together (/all/): the files merged, as the app does.
-const every = await Promise.all(["ad2l", "heroic", "conqueror", "warrior", "challenger", "voyager", "explorer"].map((k) => load(`${k}.json`)));
-league("all", "all", "AD2L S48 All Divisions", { teams: every.flatMap((d) => d.teams), series: every.flatMap((d) => d.series), games: every.flatMap((d) => d.games) }, null, { brief: true });
+league("all", "all", `AD2L ${SEASON.name} All Divisions`, { teams: every.flatMap((d) => d.teams), series: every.flatMap((d) => d.series), games: every.flatMap((d) => d.games) }, null, { brief: true });
 
 // ---------- write ----------
 for (const { p, title, description, color, image, route, canonical = p } of pages) {

@@ -1,4 +1,4 @@
-// Build public/data/ad2l.json: one AD2L season + division (default S48 Champion) with
+// Build public/data/<division>.json: one AD2L division (default Champion) with
 // teams, series results from PlayOn, and every ticketed game's stats from OpenDota.
 //
 // Sources (all public, no keys):
@@ -7,18 +7,15 @@
 //   dota.playon.gg/teams/{id}     -> roster: player name + 32-bit account id + smurfs
 //   OpenDota /players/{id}/matches?lobby_type=1  -> candidate practice-lobby games
 //   OpenDota /matches/{id}        -> full stats; `leagueid` says if it's this AD2L season
-// OpenDota has no per-league match list for amateur leagues (league 20077 returns 0), and
+// OpenDota has no per-league match list for amateur leagues (S48's league returns 0), and
 // its league filter on player matches doesn't work, so games are found through the
 // rosters. A game counts if it's tagged with the league AND both sides are rosters from
 // this division (3+ of 5 players), which also drops cross-division games.
 //
-// Usage: npm run ad2l:sync   [--season 675 --league 20077 --out ad2l.json]
-//        npm run heroic:sync  (S48 Heroic/Aegis: --season 676 --out heroic.json)
-//        npm run conqueror:sync  (S48 Conqueror: --season 674 --out conqueror.json)
-//        npm run warrior:sync  (S48 Warrior: --season 673 --out warrior.json)
-//        npm run challenger:sync  (S48 Challenger: --season 672 --out challenger.json)
-//        npm run voyager:sync  (S48 Voyager: --season 671 --out voyager.json)
-//        npm run explorer:sync  (S48 Explorer: --season 670 --out explorer.json)
+// Usage: npm run sync -- <division>     (a key from public/lib/divisions.js: warrior, heroic, ad2l, ...)
+//        npm run sync:all                (every division; scripts/sync/sync-all.js)
+// The PlayOn season id, Dota league id and output file come from public/lib/divisions.js;
+// --season, --league and --out override them.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -30,13 +27,16 @@ import { laneFields } from "./lane-fields.js";
 import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "./combat-fields.js";
 import { leagueJson } from "./league-json.js";
 import { wardLog, visionMap, visionFields } from "./vision.js";
+import { SEASON, DIVISIONS, division } from "../../public/lib/divisions.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CACHE = path.join(ROOT, ".cache");
 const arg = (name, dflt) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : dflt; };
-const OUT = path.join(ROOT, "public", "data", path.basename(arg("out", "ad2l.json")));
-const SEASON_ID = Number(arg("season", 675)); // PlayOn "S48 Champion League"
-const LEAGUE_ID = Number(arg("league", 20077)); // Dota league "AD2L Season 48"
+const DIV = division(arg("division") ?? "ad2l");
+if (!DIV) throw new Error(`Unknown division "${arg("division")}". One of: ${DIVISIONS.map((d) => d.key).join(", ")}.`);
+const OUT = path.join(ROOT, "public", "data", path.basename(arg("out", `${DIV.key}.json`)));
+const SEASON_ID = Number(arg("season", DIV.season)); // PlayOn season, e.g. "S48 Champion League"
+const LEAGUE_ID = Number(arg("league", SEASON.dotaLeague)); // Dota league, e.g. "AD2L Season 48"
 const UA = "dota-scrim-league/0.1 (AD2L fan stats page; contact: jonahbyu@gmail.com)";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

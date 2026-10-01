@@ -4,6 +4,7 @@
 // whose element never shows up (an empty league, a private game) are skipped. It only tours
 // AD2L divisions (the scrims have far fewer stats): the first stop makes you pick one.
 // Design: docs/superpowers/specs/2026-09-29-guided-tour-design.md
+import { SEASON } from "./divisions.js";
 
 const SEEN_KEY = "tour-seen";
 // The saved choices, also kept for the session: a reload mid-tour restores them on load.
@@ -44,7 +45,7 @@ const standingsKey = (ctx) => (ctx.ad2l ? "standings" : "matches");
 const CORE = [
   {
     title: "Pick a league",
-    text: "Every AD2L S48 division has its own standings, games, players and heroes. Switching keeps you on the same tab: Players stays Players. Pick one to tour it.",
+    text: `Every AD2L ${SEASON.name} division has its own standings, games, players and heroes. Switching keeps you on the same tab: Players stays Players. Pick one to tour it.`,
     // No Next: the tour waits for a pick. The home page's buttons, else the league menu;
     // the scrims are hidden while it waits (body.tour-pick).
     pick: true,

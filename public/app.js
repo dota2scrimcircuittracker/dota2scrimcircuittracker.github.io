@@ -27,6 +27,7 @@ import { RANK_STATS, RANK_GROUPS, formatStat, withPerGame, rankStat, ends, place
 import { routeOf, sharePath } from "./lib/share.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
 import { withNicknames } from "./lib/nicknames.js";
+import { SEASON, DIVISIONS as DIVISION_LIST, fullName, slugOf, divisionCss } from "./lib/divisions.js";
 import { itemIcon, itemName, itemStats, averageTimes, timingsOf, hasItems, clock } from "./lib/items.js";
 import { gameLanes, laneCuts, cutFor, verdict, playerLane, laneSummary, laneBoard, laneRoleOf, LANE_LABEL, LANE_GROUPS, MAP_LANE } from "./lib/lanes.js";
 import { hasCombat, bestStreakOf, streakName, firstBloodOf, firstBloodRecord, deathSources, benchSummary, combatTotals, teamSplits, playerPairs, sideRecord, heroPairs, heroNeutrals, skillGrid, pubPrep, medalValue, pausesOf, hitSource, heroOfSlug, MULTI, RUNES, BENCH } from "./lib/combat.js";
@@ -295,8 +296,8 @@ let ocrReady = null;
 const ocr = () => (ocrReady ??= Promise.all([import("./lib/ocr/parse.js"), import("./lib/ocr/engine-browser.js")])
   .then(([{ parseScreenshots }, { createBrowserEngine }]) => ({ parseScreenshots, engine: createBrowserEngine() }))
   .catch((e) => { ocrReady = null; throw e; }));
-// league: "scrim" (the ledger), or an AD2L division key ("ad2l" = Champion, "heroic",
-// "conqueror", "warrior", "challenger", "voyager", "explorer"; see DIVISIONS) for an unticketed game in that division, same form.
+// league: "scrim" (the ledger), or an AD2L division key ("ad2l" = Champion; see lib/divisions.js)
+// for an unticketed game in that division, same form.
 const upload = { images: [], draft: null, check: null, notes: [], names: [], standins: new Set(), busy: false, progress: "", message: null, isPrivate: false, league: "scrim", seriesId: null,
   // Private result form (scrims): no screenshots or players, just the result.
   quick: false, teams: [], newTeam: { a: false, b: false },
@@ -898,21 +899,15 @@ function wireDraft() {
 
 // ---------- Leagues ----------
 // The same pages show community scrims (screenshots uploaded to Firestore) and each AD2L
-// division's ticketed games (DIVISIONS: one data file each, built offline from PlayOn
-// rosters + OpenDota match details by `npm run <division>:sync`). Each division has its own
-// unticketed uploads and predictions under its key; the scrim team lists use Champion's
-// ("ad2l"). `views`: the division is played in sub-divisions (Heroic/Aegis: A and B).
-// `slug`: the address when it isn't the key (Champion is keyed "ad2l" in the data files,
-// Firestore and predictions, but lives at #/champion; #/ad2l is the league picker).
-const DIVISIONS = {
-  ad2l: { name: "S48 Champion", short: "Champion", file: "data/ad2l.json", slug: "champion" },
-  heroic: { name: "S48 Heroic/Aegis", short: "Heroic/Aegis", file: "data/heroic.json", views: ["a", "b"] },
-  conqueror: { name: "S48 Conqueror", short: "Conqueror", file: "data/conqueror.json" },
-  warrior: { name: "S48 Warrior", short: "Warrior", file: "data/warrior.json" },
-  challenger: { name: "S48 Challenger", short: "Challenger", file: "data/challenger.json" },
-  voyager: { name: "S48 Voyager", short: "Voyager", file: "data/voyager.json" },
-  explorer: { name: "S48 Explorer", short: "Explorer", file: "data/explorer.json" },
-};
+// division's ticketed games (one data file each, built offline from PlayOn rosters + OpenDota
+// match details by `npm run sync -- <division>`). The divisions themselves are listed in
+// lib/divisions.js. Each division has its own unticketed uploads and predictions under its
+// key; the scrim team lists use Champion's ("ad2l"). `views`: the division is played in
+// sub-divisions (Heroic/Aegis: A and B). `slug`: the address when it isn't the key (Champion is
+// keyed "ad2l" in the data files, Firestore and predictions, but lives at #/champion; #/ad2l
+// is the league picker).
+const DIVISIONS = Object.fromEntries(DIVISION_LIST.map((d) => [d.key,
+  { name: fullName(d), short: d.name, file: `data/${d.key}.json`, ...(d.slug && { slug: d.slug }), ...(d.views && { views: d.views }) }]));
 
 async function loadDivision(file) {
   const res = await fetch(file, { cache: "no-cache" });
@@ -1010,7 +1005,7 @@ for (const [key, dv] of Object.entries(DIVISIONS)) {
 // league and, as `division`, the box it plays in (Heroic/Aegis per sub-division), so Matches
 // and Crosstable split by division. Team ids, series ids and match ids don't collide between
 // divisions. Read-only: no Predict or Upload, and a game opens in its own division.
-const ALL_DIVS = ["explorer", "voyager", "challenger", "warrior", "conqueror", "ad2l", "heroic"]; // the menu's order
+const ALL_DIVS = DIVISION_LIST.map((d) => d.key); // the menu's order
 const gameLeague = new Map(); // match id -> division key, filled as the games load
 let allCache = null, allReady = null;
 function allData() {
@@ -1018,7 +1013,7 @@ function allData() {
     for (const [key, d] of parts) for (const g of d.games) gameLeague.set(g.id, key);
     const label = (key, t) => (DIVISIONS[key].views && t.division ? `${DIVISIONS[key].short} ${t.division}` : DIVISIONS[key].short);
     return allCache = {
-      season: "S48 All Divisions", updated: parts.map(([, d]) => d.updated).sort().at(-1), pubs_days: parts[0][1].pubs_days,
+      season: `${SEASON.name} All Divisions`, updated: parts.map(([, d]) => d.updated).sort().at(-1), pubs_days: parts[0][1].pubs_days,
       teams: parts.flatMap(([key, d]) => d.teams.map((t) => ({ ...t, league: key, division: label(key, t) }))),
       series: parts.flatMap(([, d]) => d.series),
       games: parts.flatMap(([, d]) => d.games).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
@@ -1041,7 +1036,7 @@ async function allLoad() {
 }
 SOURCES.all = {
   key: "all", ad2l: true, all: true, root: "#/all", data: allData, cache: () => allCache,
-  division: "S48 All Divisions", kicker: "AD2L · S48 · Every division", load: allLoad,
+  division: `${SEASON.name} All Divisions`, kicker: `AD2L · ${SEASON.name} · Every division`, load: allLoad,
   link: (m) => `${SOURCES[gameLeague.get(m.id)]?.root ?? "#/all"}/game/${m.id}`, base: "#/all/week",
   empty: "No ticketed games found yet.",
   nav: [["#/all/", "standings", "Teams"], ["#/all/week", "week", "Weekly"], ["#/all/players", "players", "Players"], ["#/all/heroes", "heroes", "Heroes"]],
@@ -1416,7 +1411,7 @@ async function renderMatch(id, src) {
     ? `Unticketed AD2L game, uploaded ${when(m.createdAt)} from post-game screenshots, so no draft, gold graph or ward data.
        Wrong? ${mine ? "You uploaded it, so you can edit or delete it below." : "Anyone with the league password can edit or remove it below."}`
     : ad2l
-    ? `Played ${when(m.createdAt)} · AD2L S48 ticketed game ${m.match_id} ·
+    ? `Played ${when(m.createdAt)} · AD2L ${SEASON.name} ticketed game ${m.match_id} ·
        <a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a> ·
        <a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a>`
     : `Uploaded ${when(m.createdAt)}. Wrong? ${mine ? "You uploaded it, so you can edit or delete it below." : "Anyone with the league password can edit or remove it below."}`;
@@ -4814,6 +4809,15 @@ function tierHow(model, src) {
 
 const leagueBtn = document.getElementById("league-btn");
 const leagueMenu = document.getElementById("league-menu");
+// The division links (lowest first) go between Scrim League and All divisions, and each
+// division's colours go in a <style> after style.css: both from lib/divisions.js.
+leagueMenu.querySelector('a[data-league="all"]').before(...DIVISION_LIST.map((d) => {
+  const a = document.createElement("a");
+  a.href = `#/${slugOf(d)}/`; a.dataset.league = d.key;
+  a.innerHTML = `<b>AD2L · ${esc(fullName(d))}</b>`;
+  return a;
+}));
+document.head.append(Object.assign(document.createElement("style"), { id: "division-colors", textContent: divisionCss() }));
 const setMenu = (open) => { leagueMenu.hidden = !open; leagueBtn.setAttribute("aria-expanded", String(open)); };
 leagueBtn.onclick = (e) => { e.stopPropagation(); setMenu(leagueMenu.hidden); };
 document.addEventListener("click", (e) => { if (!e.target.closest(".switcher")) setMenu(false); });
@@ -5288,9 +5292,9 @@ function renderHub() {
   const order = [...leagueMenu.querySelectorAll("a")].map((a) => a.dataset.league).filter((k) => k !== "all");
   const link = (key) => key === "scrim"
     ? `<a href="#/scrims" data-league="scrim" class="hub-scrim"><b>Scrim League</b><span>Our scrims</span></a>`
-    : `<a href="${SOURCES[key].root}/" data-league="${key}"><b>${esc(DIVISIONS[key].short)}</b><span>AD2L S48</span></a>`;
+    : `<a href="${SOURCES[key].root}/" data-league="${key}"><b>${esc(DIVISIONS[key].short)}</b><span>AD2L ${SEASON.name}</span></a>`;
   app.innerHTML = `<section class="hub">
-    <div class="kicker">Dota 2 · Scrims and AD2L Season 48</div>
+    <div class="kicker">Dota 2 · Scrims and AD2L ${SEASON.long}</div>
     <h1 class="hub-title">Pick a league</h1>
     <nav class="hub-list">${order.map(link).join("")}</nav>
     <a class="hub-all" href="#/all/" data-league="all"><b>All divisions</b><span>Every AD2L division's teams, games, players and heroes in one view</span></a>
@@ -5313,7 +5317,7 @@ function route() {
   const isAd2l = src.ad2l, r = src.root;
   document.body.dataset.league = src.key;
   const divLabel = DIVISIONS[src.key]?.views ? (src.view ? `Division ${src.view.toUpperCase()}` : "Combined") : "";
-  const leagueTitle = src.all ? "AD2L S48 · All Divisions" : isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""}` : "Scrim League";
+  const leagueTitle = src.all ? `AD2L ${SEASON.name} · All Divisions` : isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""}` : "Scrim League";
   document.getElementById("league-name").innerHTML = src.all ? "AD2L<b>All Divisions</b>" : isAd2l ? `AD2L<b>${src.division}</b>${divLabel ? `<em class="div-badge">${src.view ? `Div ${src.view.toUpperCase()}` : DIVISIONS[src.key].views.join(" + ").toUpperCase()}</em>` : ""}` : "Scrim<b>League</b>";
   leagueMenu.querySelectorAll("a").forEach((a) => a.classList.toggle("current", a.dataset.league === src.key));
 

@@ -38,15 +38,9 @@ jobs:
           restore-keys: sync-cache-
       # One division failing (PlayOn down, OpenDota rate limit) doesn't stop the others;
       # the job still fails at the end so it shows red.
+      # The divisions come from public/lib/divisions.js; sync-all.js writes FAILED to $GITHUB_ENV.
       - name: Sync every division
-        run: |
-          failed=""
-          for l in ad2l heroic conqueror warrior challenger voyager explorer; do
-            echo "::group::$l"
-            npm run -s "$l:sync" || failed="$failed $l"
-            echo "::endgroup::"
-          done
-          echo "FAILED=$failed" >> "$GITHUB_ENV"
+        run: node scripts/sync/sync-all.js || true
       - uses: actions/cache/save@v4
         if: always()
         with:
@@ -76,4 +70,4 @@ jobs:
         run: gh workflow run pages.yml --ref main
       - name: Report failed divisions
         if: env.FAILED != ''
-        run: echo "::error::Sync failed for:${FAILED}" && exit 1
+        run: echo "::error::Sync failed for: ${FAILED}" && exit 1

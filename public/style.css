@@ -106,19 +106,6 @@ html.light.cb {
 }
 html.light .grain { opacity: .035; }
 html.light :is(.fx-move, .fx-form) :is(input, select) { color-scheme: light; }
-html.light body[data-league="heroic"] { --accent: #7b5ce6; --accent-rgb: 123, 92, 230; }
-html.light body[data-league="conqueror"] { --accent: #2f84c8; --accent-rgb: 47, 132, 200; }
-html.light body[data-league="warrior"] { --accent: #d9731a; --accent-rgb: 217, 115, 26; }
-html.light body[data-league="challenger"] { --accent: #5e9a1c; --accent-rgb: 94, 154, 28; }
-html.light body[data-league="voyager"] { --accent: #d9434d; --accent-rgb: 217, 67, 77; }
-html.light body[data-league="explorer"] { --accent: #1e9a9a; --accent-rgb: 30, 154, 154; }
-html.light :is(.league-menu, .hub-list) a[data-league="heroic"], html.light .lg-chip[data-lg="heroic"] { --lc: #7b5ce6; --lc-rgb: 123, 92, 230; }
-html.light :is(.league-menu, .hub-list) a[data-league="conqueror"], html.light .lg-chip[data-lg="conqueror"] { --lc: #2f84c8; --lc-rgb: 47, 132, 200; }
-html.light :is(.league-menu, .hub-list) a[data-league="warrior"], html.light .lg-chip[data-lg="warrior"] { --lc: #d9731a; --lc-rgb: 217, 115, 26; }
-html.light :is(.league-menu, .hub-list) a[data-league="challenger"], html.light .lg-chip[data-lg="challenger"] { --lc: #5e9a1c; --lc-rgb: 94, 154, 28; }
-html.light :is(.league-menu, .hub-list) a[data-league="voyager"], html.light .lg-chip[data-lg="voyager"] { --lc: #d9434d; --lc-rgb: 217, 67, 77; }
-html.light :is(.league-menu, .hub-list) a[data-league="explorer"], html.light .lg-chip[data-lg="explorer"] { --lc: #1e9a9a; --lc-rgb: 30, 154, 154; }
-html.light :is(.league-menu, .hub-list) a[data-league="ad2l"], html.light .lg-chip[data-lg="ad2l"] { --lc: #bf8514; --lc-rgb: 191, 133, 20; }
 html.light body[data-league] .brand-word b { color: var(--accent); }
 /* Overlays on the (dark) minimap keep light text. */
 html.light :is(.dm-tip, .mz-hint, .mz-ctl button) { color: #efe7da; }
@@ -224,50 +211,13 @@ body[data-league]:not([data-league="scrim"]) .league-btn:hover, body[data-league
 /* Every entry in its own league's colour (--lc), so the menu is a key to the site's colours. */
 .league-menu a { --lc: var(--gold); --lc-rgb: 232, 182, 76; display: block; padding: 11px 12px; color: var(--bone); border-left: 3px solid rgba(var(--lc-rgb), .45); margin-bottom: 2px; }
 .league-menu a[data-league="scrim"], .hub-list a[data-league="scrim"] { --lc: var(--jade); --lc-rgb: var(--jade-rgb); }
-.league-menu a[data-league="heroic"], .hub-list a[data-league="heroic"] { --lc: #a58bff; --lc-rgb: 165, 139, 255; }
-.league-menu a[data-league="conqueror"], .hub-list a[data-league="conqueror"] { --lc: #5aa9e6; --lc-rgb: 90, 169, 230; }
-.league-menu a[data-league="warrior"], .hub-list a[data-league="warrior"] { --lc: #ff9a3c; --lc-rgb: 255, 154, 60; }
-.league-menu a[data-league="challenger"], .hub-list a[data-league="challenger"] { --lc: #9bd34a; --lc-rgb: 155, 211, 74; }
-.league-menu a[data-league="voyager"], .hub-list a[data-league="voyager"] { --lc: #ef6b73; --lc-rgb: 239, 107, 115; }
-.league-menu a[data-league="explorer"], .hub-list a[data-league="explorer"] { --lc: #3cc6c6; --lc-rgb: 60, 198, 198; }
 .league-menu a[data-league="all"] { --lc: var(--bone); --lc-rgb: 239, 231, 218; margin-top: 8px; }
 .league-menu a:hover, .league-menu a.tour-hover { background: rgba(var(--lc-rgb), .1); border-left-color: var(--lc); text-decoration: none; }
 .league-menu a.current { border-left-color: var(--lc); background: rgba(var(--lc-rgb), .14); }
 .league-menu b { display: block; font: 800 18px/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--lc); }
 .league-menu span { display: block; font-size: 12px; color: var(--dust); margin-top: 3px; }
-/* AD2L mode tints the mark so the current league is obvious at a glance. */
-body[data-league="ad2l"] .brand-mark i { background: var(--gold); }
-body[data-league="ad2l"] .brand-mark i + i { background: #b98a2e; }
-/* Heroic/Aegis: violet, so it can't be mistaken for Champion's gold or the scrims' jade/ember. */
-body[data-league="heroic"] .brand-mark i { background: #a58bff; }
-body[data-league="heroic"] .brand-mark i + i { background: #6a4fd6; }
-body[data-league="heroic"] .brand-word b { color: #b9a6ff; }
-body[data-league="heroic"] { --accent: #a58bff; --accent-rgb: 165, 139, 255; }
-/* Conqueror: steel blue, clear of gold, violet, jade and ember. */
-body[data-league="conqueror"] .brand-mark i { background: #5aa9e6; }
-body[data-league="conqueror"] .brand-mark i + i { background: #2f78b5; }
-body[data-league="conqueror"] .brand-word b { color: #8cc4f0; }
-body[data-league="conqueror"] { --accent: #5aa9e6; --accent-rgb: 90, 169, 230; }
-/* Warrior: orange, between Champion's gold and the scrims' red-orange ember. */
-body[data-league="warrior"] .brand-mark i { background: #ff9a3c; }
-body[data-league="warrior"] .brand-mark i + i { background: #c4671c; }
-body[data-league="warrior"] .brand-word b { color: #ffb870; }
-body[data-league="warrior"] { --accent: #ff9a3c; --accent-rgb: 255, 154, 60; }
-/* Challenger: lime green, yellower than the scrims' (and Radiant's) jade. */
-body[data-league="challenger"] .brand-mark i { background: #9bd34a; }
-body[data-league="challenger"] .brand-mark i + i { background: #5e8f22; }
-body[data-league="challenger"] .brand-word b { color: #c2e88e; }
-body[data-league="challenger"] { --accent: #9bd34a; --accent-rgb: 155, 211, 74; }
-/* Voyager: coral red. */
-body[data-league="voyager"] .brand-mark i { background: #ef6b73; }
-body[data-league="voyager"] .brand-mark i + i { background: #a83a44; }
-body[data-league="voyager"] .brand-word b { color: #f7b3b8; }
-body[data-league="voyager"] { --accent: #ef6b73; --accent-rgb: 239, 107, 115; }
-/* Explorer: teal, bluer than the scrims' jade. */
-body[data-league="explorer"] .brand-mark i { background: #3cc6c6; }
-body[data-league="explorer"] .brand-mark i + i { background: #1f8585; }
-body[data-league="explorer"] .brand-word b { color: #9fe6e6; }
-body[data-league="explorer"] { --accent: #3cc6c6; --accent-rgb: 60, 198, 198; }
+/* Each AD2L division's colours (accent, brand mark, menu, search chip, both themes) come from
+   public/lib/divisions.js: app.js adds them as a <style> at start. */
 .div-badge {
   font: 600 11px/1 var(--mono); font-style: normal; letter-spacing: .12em; text-transform: uppercase;
   color: var(--on-accent); background: #a58bff; padding: 4px 6px; margin-left: 8px; vertical-align: middle; border-radius: 2px; white-space: nowrap;
@@ -419,12 +369,6 @@ nav a.nav-cta:hover { background: #f5c862; color: var(--on-accent); }
   color: var(--lc); border: 1px solid var(--lc); border-radius: 2px; padding: 4px 6px;
 }
 .lg-chip[data-lg="scrim"] { --lc: var(--jade); }
-.lg-chip[data-lg="heroic"] { --lc: #a58bff; }
-.lg-chip[data-lg="conqueror"] { --lc: #5aa9e6; }
-.lg-chip[data-lg="warrior"] { --lc: #ff9a3c; }
-.lg-chip[data-lg="challenger"] { --lc: #9bd34a; }
-.lg-chip[data-lg="voyager"] { --lc: #ef6b73; }
-.lg-chip[data-lg="explorer"] { --lc: #3cc6c6; }
 @media (max-width: 720px) {
   .top-tools { width: 100%; flex-wrap: wrap; }
   .search { flex: 1 1 100%; }

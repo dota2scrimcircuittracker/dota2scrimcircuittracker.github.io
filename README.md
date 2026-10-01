@@ -23,7 +23,7 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   Players (one tier list, everyone rated against the whole field) and Heroes. Read-only: no
   Predict or Upload, and a game opens in its own division. Preview pages only for the four tabs.
 - **AD2L S48 Heroic/Aegis** — a second division in the same switcher (PlayOn runs Heroic
-  and Aegis as one season, 676), from its own `public/data/heroic.json` (`npm run heroic:sync`).
+  and Aegis as one season, 676), from its own `public/data/heroic.json` (`npm run sync -- heroic`).
   Everything Champion has, under `#/heroic/`: standings, weekly, players, heroes, teams,
   predictions (picks stored with `league: "heroic"`) and unticketed uploads (Firestore
   `scrimLeague/data/heroic_unticketed`, same rules as Champion's). Scrim team lists stay
@@ -33,20 +33,22 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   Division A (`#/heroic/a/`), Division B (`#/heroic/b/`) or Combined (`#/heroic/`), each
   showing only that division's teams, series and games on every tab.
 - **AD2L S48 Conqueror** — a third division in the switcher (PlayOn season 674), from
-  `public/data/conqueror.json` (`npm run conqueror:sync`), under `#/conqueror/`. Same pages as
+  `public/data/conqueror.json` (`npm run sync -- conqueror`), under `#/conqueror/`. Same pages as
   Champion; predictions use `league: "conqueror"` and unticketed uploads go to
-  `conqueror_unticketed`. One division, no A/B split. Divisions are one table (`DIVISIONS` in
-  `public/app.js`): a new one needs an entry there, a sync script, a menu link, a colour, its
-  collection in `lib/store.js`, the rules (`knownColl()` regex and the prediction leagues),
-  and a `league(...)` line plus a colour in `scripts/deploy/share-pages.js` and the regexes in `lib/share.js`.
+  `conqueror_unticketed`. One division, no A/B split. Divisions are one table,
+  `public/lib/divisions.js` (name, PlayOn season id, colours, menu order, the season name): the
+  menu, routes, share paths, colours, Firestore collections, sync, preview pages and preview
+  cards all read it. A new division or season: edit that file, `npm run sync -- <key>`, redraw
+  the cards (`python scripts/gen/gen-og-images.py`), and add the division to the Firestore
+  rules by hand (`knownColl()` regex and the league lists; `test/divisions.test.js` checks).
 - **AD2L S48 Warrior** — the division below Conqueror (PlayOn season 673), from
-  `public/data/warrior.json` (`npm run warrior:sync`), under `#/warrior/`. Same as Conqueror:
+  `public/data/warrior.json` (`npm run sync -- warrior`), under `#/warrior/`. Same as Conqueror:
   `league: "warrior"`, `warrior_unticketed`.
 - **AD2L S48 Challenger** — the division below Warrior (PlayOn season 672), from
-  `public/data/challenger.json` (`npm run challenger:sync`), under `#/challenger/`; `league:
+  `public/data/challenger.json` (`npm run sync -- challenger`), under `#/challenger/`; `league:
   "challenger"`, `challenger_unticketed`.
-- **AD2L S48 Voyager** (PlayOn season 671, `npm run voyager:sync`, `#/voyager/`) and **AD2L S48
-  Explorer** (season 670, `npm run explorer:sync`, `#/explorer/`) — the two divisions below
+- **AD2L S48 Voyager** (PlayOn season 671, `npm run sync -- voyager`, `#/voyager/`) and **AD2L S48
+  Explorer** (season 670, `npm run sync -- explorer`, `#/explorer/`) — the two divisions below
   Challenger, same shape: `league: "voyager"` / `"explorer"`, `voyager_unticketed` /
   `explorer_unticketed`. The league menu runs lowest to highest: Scrim, Explorer, Voyager,
   Challenger, Warrior, Conqueror, Champion, Heroic/Aegis.
@@ -319,7 +321,7 @@ browser receives it), so what actually protects the project is the key's website
 restriction (only our GitHub Pages sites and localhost — `scripts/firebase/restrict-api-key.cjs`)
 and the Firestore rules.
 Scrim data lives in Firestore (the shared `pistachio-kitchen` Firebase project, under
-`scrimLeague/`); AD2L data is a static file rebuilt by `npm run ad2l:sync`.
+`scrimLeague/`); AD2L data is a static file rebuilt by `npm run sync -- ad2l`.
 
 ## Tier list
 
@@ -412,8 +414,8 @@ ticketed game with full stats, players and heroes for that one division.
 It's a static file, `public/data/ad2l.json`, rebuilt with:
 
 ```
-npm run ad2l:sync     # ~3 min first run; cached after that
-npm run heroic:sync   # same for the Heroic division -> public/data/heroic.json
+npm run sync -- ad2l  # one division (a key from public/lib/divisions.js); ~3 min first run, cached after
+npm run sync:all      # every division, one after another
 git commit -am "Update AD2L data" && git push   # Actions redeploys the site
 ```
 

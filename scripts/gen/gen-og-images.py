@@ -6,6 +6,8 @@
 #   curl -A "Mozilla/4.0" "https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@900&family=Martian+Mono:wght@400;600&family=Epilogue:wght@500"
 # and save the .ttf URLs it lists as display-900.ttf, mono-400.ttf, mono-600.ttf, epilogue-500.ttf.
 # Usage: python scripts/gen/gen-og-images.py
+import json
+import subprocess
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
@@ -16,18 +18,19 @@ W, H = 1200, 630
 INK, BONE, DUST, DIM = "#0c0b0a", "#efe7da", "#9b9184", "#5d564e"
 JADE, EMBER, GOLD = "#5fd39b", "#ff5a36", "#e8b64c"
 
-# key: (kicker, title, accent, mark colours) — colours as style.css's .brand-mark per league.
+# The divisions, season name and colours come from public/lib/divisions.js (read through Node).
+TABLE = json.loads(subprocess.run(
+    ["node", "--input-type=module", "-e",
+     'import { SEASON, DIVISIONS } from "./public/lib/divisions.js"; console.log(JSON.stringify({ SEASON, DIVISIONS }))'],
+    cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+SEASON = TABLE["SEASON"]
+
+# key: (kicker, title, accent, mark colours)
 LEAGUES = {
-    "site": ("Dota 2 · scrims + AD2L S48", "Stat Tracker", GOLD, (JADE, EMBER)),
+    "site": (f"Dota 2 · scrims + AD2L {SEASON['name']}", "Stat Tracker", GOLD, (JADE, EMBER)),
     "scrim": ("Our scrims", "Scrim League", JADE, (JADE, EMBER)),
-    "all": ("AD2L · Season 48", "All Divisions", BONE, (JADE, EMBER)),
-    "ad2l": ("AD2L · Season 48", "Champion", GOLD, (GOLD, "#b98a2e")),
-    "heroic": ("AD2L · Season 48", "Heroic/Aegis", "#a58bff", ("#a58bff", "#6a4fd6")),
-    "conqueror": ("AD2L · Season 48", "Conqueror", "#5aa9e6", ("#5aa9e6", "#2f78b5")),
-    "warrior": ("AD2L · Season 48", "Warrior", "#ff9a3c", ("#ff9a3c", "#c4671c")),
-    "challenger": ("AD2L · Season 48", "Challenger", "#9bd34a", ("#9bd34a", "#5e8f22")),
-    "voyager": ("AD2L · Season 48", "Voyager", "#ef6b73", ("#ef6b73", "#a83a44")),
-    "explorer": ("AD2L · Season 48", "Explorer", "#3cc6c6", ("#3cc6c6", "#1f8585")),
+    "all": (f"AD2L · {SEASON['long']}", "All Divisions", BONE, (JADE, EMBER)),
+    **{d["key"]: (f"AD2L · {SEASON['long']}", d["name"], d["color"], (d["color"], d["dark"])) for d in TABLE["DIVISIONS"]},
 }
 SUB = ("Standings, weekly recaps, players,", "heroes and predictions.")
 
