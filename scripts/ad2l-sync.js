@@ -92,6 +92,13 @@ async function opendota(p, method = "GET") {
       await sleep(wait);
       continue;
     }
+    // 5xx: OpenDota's own hiccups, gone on a retry. One used to fail the whole division.
+    if (res.status >= 500 && attempt < 5) {
+      const wait = 10e3 * (attempt + 1);
+      console.log(`  OpenDota HTTP ${res.status} on ${p}; retrying in ${wait / 1000}s`);
+      await sleep(wait);
+      continue;
+    }
     if (!res.ok) throw new Error(`OpenDota ${p}: HTTP ${res.status}`);
     return res.json();
   }
