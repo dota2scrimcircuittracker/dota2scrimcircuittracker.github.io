@@ -172,7 +172,7 @@ function gameLanesHtml(m, src, cuts) {
     <td>${r.eff == null ? "—" : `${Math.round(r.eff)}%`}</td><td>${r.kills10 ?? "—"}</td><td>${r.deaths10 ?? "—"}</td></tr>`;
   return `<div class="cards ln-cards reveal">${lanes.map(card).join("")}</div>
     <h2>First 10 minutes${info("lane_players")}</h2>
-    <div class="table-wrap"><table class="ln-table"><thead><tr><th class="l">Player</th><th class="l">Hero</th><th class="l">Lane</th><th>Result</th><th>Gold+XP lead</th><th>LH</th><th>DN</th><th>Lane eff.</th><th>Kills</th><th>Deaths</th></tr></thead>
+    <div class="table-wrap"><table class="ln-table"><thead><tr><th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th><th scope="col" class="l">Lane</th><th scope="col">Result</th><th scope="col">Gold+XP lead</th><th scope="col">LH</th><th scope="col">DN</th><th scope="col">Lane eff.</th><th scope="col">Kills</th><th scope="col">Deaths</th></tr></thead>
     <tbody>${["a", "b"].map((t) => rows.filter((x) => x.p.team === t).map(tr).join("")).join("")}</tbody></table></div>
     <p class="table-note">${cutNote(cuts)} Lead = the whole lane's gold + XP against the other side of it. LH, DN, kills and deaths are before 10:00.</p>`;
 }
@@ -194,10 +194,10 @@ function lanesPageHtml(src, matches, pred, cuts, { name, hero = false }) {
   const byRole = [1, 2, 3].map((role) => ({ role, s: laneSummary(rows.filter((r) => r.role === role)) })).filter((x) => x.s.lanes);
   const sorted = [...rows].sort((a, b) => (b.m.start_time ?? 0) - (a.m.start_time ?? 0));
   return `<div class="cards player-cards reveal" style="--cols:3">${cards.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${t}</div></div>`).join("")}</div>
-    ${byRole.length > 1 ? `<h2>By lane</h2><div class="table-wrap"><table><thead><tr><th class="l">Lane</th><th>Lanes</th><th>Won–even–lost</th><th>Lane win %</th><th>Avg lead</th><th>LH at 10'</th></tr></thead><tbody>
+    ${byRole.length > 1 ? `<h2>By lane</h2><div class="table-wrap"><table><thead><tr><th scope="col" class="l">Lane</th><th scope="col">Lanes</th><th scope="col">Won–even–lost</th><th scope="col">Lane win %</th><th scope="col">Avg lead</th><th scope="col">LH at 10'</th></tr></thead><tbody>
       ${byRole.map(({ role, s: x }) => `<tr><td class="l">${LANE_LABEL[role]}</td><td>${x.lanes}</td><td>${x.won}–${x.even}–${x.lost}</td><td>${pct(x.lane_rate)}</td><td>${x.margin == null ? "—" : signedK(x.margin)}</td><td>${dec(x.lh10)}</td></tr>`).join("")}</tbody></table></div>` : ""}
     <h2>Every lane</h2>
-    <div class="table-wrap"><table class="ln-table"><thead><tr><th class="l">Game</th><th class="l">${hero ? "Player" : "Hero"}</th><th class="l">Lane</th><th class="l">With</th><th class="l">Against</th><th>Result</th><th>Lead</th><th>LH/DN</th><th>Game</th></tr></thead><tbody>
+    <div class="table-wrap"><table class="ln-table"><thead><tr><th scope="col" class="l">Game</th><th scope="col" class="l">${hero ? "Player" : "Hero"}</th><th scope="col" class="l">Lane</th><th scope="col" class="l">With</th><th scope="col" class="l">Against</th><th scope="col">Result</th><th scope="col">Lead</th><th scope="col">LH/DN</th><th scope="col">Game</th></tr></thead><tbody>
       ${sorted.map((r) => `<tr><td class="l"><a href="${src.link(r.m)}">${esc(r.p.team === "a" ? r.m.team_b : r.m.team_a)}</a> <span class="muted">${shortDate(r.m.createdAt)}</span></td>
         <td class="l">${hero ? playerLink(src, r.p) : heroLink(src, r.p.hero)}</td><td class="l">${laneName(r)}</td>
         <td class="l ln-faces">${faces(src, r.mates) || '<span class="muted">solo</span>'}</td><td class="l ln-faces">${faces(src, r.foes) || '<span class="muted">nobody</span>'}</td>
@@ -518,7 +518,7 @@ function draftHtml(d) {
         <td><input class="num" data-path="players.${i}.pick" data-type="int-opt" inputmode="numeric" value="${p.pick ?? ""}" style="width:52px" placeholder="—"></td>
         ${STATS.map(([k]) => `<td>${numInput(`players.${i}.${k}`, p[k])}</td>`).join("")}
       </tr>`).join("");
-  const uploadHead = `<th class="l">Player</th><th class="l">Tag</th><th class="l">Hero</th><th title="Draft order, 1–10, from the Scoreboard's PICK column">Pick</th>${STATS.map(([, l]) => `<th>${l}</th>`).join("")}`;
+  const uploadHead = `<th scope="col" class="l">Player</th><th scope="col" class="l">Tag</th><th scope="col" class="l">Hero</th><th scope="col" title="Draft order, 1–10, from the Scoreboard's PICK column">Pick</th>${STATS.map(([, l]) => `<th scope="col">${l}</th>`).join("")}`;
 
   return `
     <h2>Review</h2>
@@ -1299,7 +1299,7 @@ async function renderMatch(id, src) {
     ["Top GPM", top("gpm", fmt), "gpm"],
   ];
   // Header cells, repeated under team B's banner so its columns read without scrolling up.
-  const headCells = `<th class="l">Player${rated.length ? " · rating" : ""}</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}`;
+  const headCells = `<th scope="col" class="l">Player${rated.length ? " · rating" : ""}</th>${cols.map(([k, l]) => `<th scope="col">${l}${info(k)}</th>`).join("")}`;
   const scoreHtml = `<div class="gm-standouts">${cards.map(([k, { p, v }, tip]) => `<div class="gm-stand">${portrait(p.hero, "fact-img")}
       <div><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${playerLink(src, p)}</div></div></div>`).join("")}</div>
     <div class="table-wrap gm-board"><table>
@@ -1556,7 +1556,7 @@ function replayTableHtml(m, src) {
   const best = Object.fromEntries(cols.map(([k, , , low]) => [k, (low ? Math.min : Math.max)(...m.players.map((p) => p[k]))]));
   const row = (p) => `<tr class="team-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td>
     ${cols.map(([k, , f, low]) => `<td class="${p[k] === best[k] && (low || best[k] > 0) ? "best" : ""}">${(f ?? String)(p[k])}</td>`).join("")}</tr>`;
-  const head = `<th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}`;
+  const head = `<th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th>${cols.map(([k, l]) => `<th scope="col">${l}${info(k)}</th>`).join("")}`;
   const side = (t) => `<tr class="sep ${t}"><td colspan="${cols.length + 2}">${t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id)}</td></tr>${t === "b" ? `<tr class="head-repeat">${head}</tr>` : ""}${m.players.filter((p) => p.team === t).map(row).join("")}`;
   return `<h2>Fighting &amp; laning</h2>
     <div class="table-wrap"><table>
@@ -1576,7 +1576,7 @@ function mapTableHtml(m, src) {
     ${cols.map(([k]) => `<td class="${val(p, k) === best[k] && best[k] > 0 ? "best" : ""}">${val(p, k)}</td>`).join("")}</tr>`;
   const total = (t) => `<tr class="total team-${t}"><td class="l" colspan="2">Team total</td>${cols.map(([k]) => `<td>${m.players.filter((p) => p.team === t).reduce((s, p) => s + val(p, k), 0)}</td>`).join("")}</tr>`;
   const objs = (m.objectives ?? []).filter((o) => o.type === "roshan" || o.type === "tormentor").sort((a, b) => a.time - b.time);
-  const head = `<th class="l">Player</th><th class="l">Hero</th>${cols.map(([k, l]) => `<th>${l}${info(k)}</th>`).join("")}`;
+  const head = `<th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th>${cols.map(([k, l]) => `<th scope="col">${l}${info(k)}</th>`).join("")}`;
   return `<h2>Map &amp; objectives${info("map_objectives")}</h2>
     ${objs.length ? `<div class="obj-strip">${objs.map((o) => `<span class="obj-chip s-${o.side}"><b>${o.type === "roshan" ? "Roshan" : "Tormentor"}</b> ${clock(o.time)} · ${esc(o.side === "a" ? m.team_a : m.team_b)}</span>`).join("")}</div>` : ""}
     <div class="table-wrap"><table>
@@ -1603,7 +1603,7 @@ function gameItemsHtml(m, src) {
   const row = (p) => `<tr class="team-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td>
     <td class="l">${p.items ? `${itemRow(p.items.slice(0, 6))}${p.items[6] ? itemIcon(p.items[6], null, "neutral") : ""}` : "—"}</td>
     <td class="l"><span class="item-row timeline">${timingsOf(p).map(({ key, sec }) => itemIcon(key, sec)).join("") || "—"}</span></td></tr>`;
-  const head = `<th class="l">Player</th><th class="l">Hero</th><th class="l">Final items</th><th class="l">Core items finished</th>`;
+  const head = `<th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th><th scope="col" class="l">Final items</th><th scope="col" class="l">Core items finished</th>`;
   const side = (t) => `<tr class="sep ${t}"><td colspan="4">${t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id)}</td></tr>${t === "b" ? `<tr class="head-repeat">${head}</tr>` : ""}${m.players.filter((p) => p.team === t).map(row).join("")}`;
   return `<h2>Items${info("core_items")}</h2>
     <div class="table-wrap items-table"><table>
@@ -1619,7 +1619,7 @@ function heroItemsHtml(src, games, hero) {
   const parsed = games.filter(({ p }) => hasItems(p)).length;
   return `<h2>Core items${info("core_items")}</h2>
     <div class="table-wrap items-table"><table>
-      <thead><tr><th class="l">Item</th><th>Built</th><th>Avg. time</th><th class="l">Fastest</th><th>Win % built</th><th>Lead swing${info("lead_swing")}</th></tr></thead>
+      <thead><tr><th scope="col" class="l">Item</th><th scope="col">Built</th><th scope="col">Avg. time</th><th scope="col" class="l">Fastest</th><th scope="col">Win % built</th><th scope="col">Lead swing${info("lead_swing")}</th></tr></thead>
       <tbody>${stats.map((s) => `<tr><td class="l">${itemIcon(s.key)} ${esc(itemName(s.key))}</td>
         <td>${s.n} · ${pct(s.share)}</td><td>${clock(s.avg)}</td>
         <td class="l">${clock(s.best.sec)} · ${playerLink(src, s.best.p)} · <a href="${src.link(s.best.m)}">game</a></td>
@@ -1655,7 +1655,7 @@ function playerItemsHtml(src, matches, games) {
   return `<h2>Core items${info("core_items")}</h2>
     <div class="ih-chips" role="group" aria-label="Hero">${views.map(chip).join("")}</div>
     ${views.map(([v, , gs], i) => `<div class="ih-view" data-v="${esc(v)}"${i ? " hidden" : ""}><div class="table-wrap items-table"><table>
-      <thead><tr><th class="l">Item</th><th>Built</th><th>Their avg.</th><th>League avg. on ${v === "all" ? "their heroes" : "hero"}</th><th>vs league</th><th>Lead swing${info("lead_swing")}</th></tr></thead>
+      <thead><tr><th scope="col" class="l">Item</th><th scope="col">Built</th><th scope="col">Their avg.</th><th scope="col">League avg. on ${v === "all" ? "their heroes" : "hero"}</th><th scope="col">vs league</th><th scope="col">Lead swing${info("lead_swing")}</th></tr></thead>
       <tbody>${table(gs, v === "all")}</tbody></table></div>
       ${v === "all" ? (() => { const more = itemStats(gs).filter((s) => s.n < 2).length; return more && more < itemStats(gs).length ? `<button type="button" class="ih-more-btn">Show ${more} item${more === 1 ? "" : "s"} built once</button>` : ""; })() : `<p class="table-note">${heroLink(src, v)}: ${gs.length} game${gs.length === 1 ? "" : "s"} with a parsed replay.</p>`}</div>`).join("")}
     <p class="table-note">League avg. = every build of that item on the same hero in this league, theirs included (count in brackets); under All heroes, each of their builds is compared with its own hero's average. vs league: − = they finish it faster; shown only when others have built it too.</p>`;
@@ -1784,8 +1784,8 @@ function crossTableHtml(src, d, order) {
     }).join("")}</td>`;
   };
   const table = (ids, div) => `<div class="ct-wrap reveal">${div ? `<h3 class="ct-div">${src.all ? "" : "Division "}${esc(div)}</h3>` : ""}<table class="ct">
-    <thead><tr><th class="ct-corner"></th>${ids.map((id) => `<th class="ct-col" title="${esc(team[id].name)}"><a href="${src.root}/teams/${id}">${esc(teamInitials(team[id].name))}</a></th>`).join("")}</tr></thead>
-    <tbody>${ids.map((id, i) => `<tr><th class="ct-row"><span class="ct-rank">${i + 1}</span>${teamLink(src, team[id].name, id)}<span class="ct-ab">${esc(teamInitials(team[id].name))}</span></th>${ids.map((o) => cell(id, o)).join("")}</tr>`).join("")}</tbody>
+    <thead><tr><th scope="col" class="ct-corner"></th>${ids.map((id) => `<th scope="col" class="ct-col" title="${esc(team[id].name)}"><a href="${src.root}/teams/${id}">${esc(teamInitials(team[id].name))}</a></th>`).join("")}</tr></thead>
+    <tbody>${ids.map((id, i) => `<tr><th scope="row" class="ct-row"><span class="ct-rank">${i + 1}</span>${teamLink(src, team[id].name, id)}<span class="ct-ab">${esc(teamInitials(team[id].name))}</span></th>${ids.map((o) => cell(id, o)).join("")}</tr>`).join("")}</tbody>
   </table></div>`;
   const ids = order.filter((id) => team[id] && !bye(id));
   const groups = split
@@ -1990,8 +1990,8 @@ function sortableTable(el, columns, rows, sortKey, { toolbar = false } = {}) {
         <button type="button" class="cp-step" data-step="1" ${page === pages.length - 1 ? "disabled" : ""} aria-label="More columns">›</button>
       </div>` : "";
     el.innerHTML = `${bar}${pager}<div class="table-wrap sticky-name${density ? ` d${density}` : ""}"><table>
-      <thead><tr><th class="rank">#</th>${cols.map(([k, label, , cls, , tip]) => label ? `<th class="sortable ${cls ?? ""}${k === key ? " sorted" : ""}" data-k="${k}" title="Sort by ${label}"
-        aria-sort="${k === key ? (dir < 0 ? "descending" : "ascending") : "none"}">${label}${tip === false ? "" : info(tip ?? k)}<span class="sort-ico">${k === key ? (dir < 0 ? "▾" : "▴") : "↕"}</span></th>` : "<th></th>").join("")}</tr></thead>
+      <thead><tr><th scope="col" class="rank">#</th>${cols.map(([k, label, , cls, , tip]) => label ? `<th scope="col" class="sortable ${cls ?? ""}${k === key ? " sorted" : ""}" data-k="${k}" title="Sort by ${label}"
+        aria-sort="${k === key ? (dir < 0 ? "descending" : "ascending") : "none"}">${label}${tip === false ? "" : info(tip ?? k)}<span class="sort-ico">${k === key ? (dir < 0 ? "▾" : "▴") : "↕"}</span></th>` : '<th scope="col"></th>').join("")}</tr></thead>
       <tbody>${sorted.map((r, i) => `<tr><td class="rank${i < 3 ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>${cols.map((c) => cell(c, r)).join("")}</tr>`).join("")}</tbody>
     </table></div>`;
     el.querySelectorAll("th.sortable").forEach((th) => (th.onclick = () => {
@@ -2668,8 +2668,8 @@ async function renderPredict(src) {
   const boardRows = [...board.entries()].sort(([, a], [, b]) => b.points - a.points || (b.accuracy ?? -1) - (a.accuracy ?? -1) || a.name.localeCompare(b.name));
   const pickChip = (s, k) => (k ? `<span class="pk-chip ${k}" title="${k === "tie" ? "1–1" : `${esc(teamName[k === "home" ? s.home : s.away])} 2–0`}">${k === "tie" ? "1–1" : `${esc(teamName[k === "home" ? s.home : s.away])} 2–0`}</span>` : '<span class="muted">—</span>');
   const boardHtml = boardRows.length ? `<div class="table-wrap sticky-name"><table class="pred-board">
-    <thead><tr><th class="rank">#</th><th class="l">Name</th><th>Points${info("points")}</th><th>Correct${info("correct")}</th>
-      ${week.map((s) => `<th class="l pb-series"><span class="a">${esc(teamName[s.home])}</span><span class="b">${esc(teamName[s.away])}</span></th>`).join("")}</tr></thead>
+    <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("points")}</th><th scope="col">Correct${info("correct")}</th>
+      ${week.map((s) => `<th scope="col" class="l pb-series"><span class="a">${esc(teamName[s.home])}</span><span class="b">${esc(teamName[s.away])}</span></th>`).join("")}</tr></thead>
     <tbody>${boardRows.map(([k, r], i) => `<tr class="${k === myKey ? "me" : ""}">
       <td class="rank${i < 3 && r.picks ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
       <td class="l">${r.model ? `<b>${esc(r.name)}</b> <span class="tag">replayed</span>` : esc(r.name)}</td>
@@ -2690,7 +2690,7 @@ async function renderPredict(src) {
         <td class="l">${c?.n ? `${tick(crowdPick)} <span class="muted">${c.n}</span>` : '<span class="muted">—</span>'}</td>${myKey ? `<td class="l">${me ? tick(me.pick) : '<span class="muted">—</span>'}</td>` : ""}</tr>`;
     }).join("");
     return `<h3 class="pred-night">${new Date(t * 1000).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</h3>
-      <div class="table-wrap"><table><thead><tr><th class="l">Series</th><th>Result</th><th class="l">Model${info("model_col")}</th><th class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
+      <div class="table-wrap"><table><thead><tr><th scope="col" class="l">Series</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }).join("");
 
   const called = bt.filter((x) => x.correct).length;
@@ -2830,7 +2830,7 @@ async function renderScrimPredict() {
   // Leaderboard: everyone with a pick that counted, plus the model replayed.
   const st = preds ? standings(preds, series, bt) : [];
   const boardHtml = st.length ? `<div class="table-wrap"><table class="pred-board">
-    <thead><tr><th class="rank">#</th><th class="l">Name</th><th>Points${info("points")}</th><th>Correct${info("correct")}</th></tr></thead>
+    <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("points")}</th><th scope="col">Correct${info("correct")}</th></tr></thead>
     <tbody>${st.map((r, i) => `<tr class="${!r.model && nameKey(r.name) === myKey ? "me" : ""}">
       <td class="rank${i < 3 && r.picks ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
       <td class="l">${r.model ? `<b>${esc(r.name)}</b> <span class="tag">replayed</span>` : esc(r.name)}</td>
@@ -2875,7 +2875,7 @@ async function renderScrimPredict() {
       : `<div class="panel empty">Nothing scheduled. Add the next scrim above.</div>`}
     <h2>Leaderboard</h2>
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / scrims called.</p>` : `<div class="panel empty">No scrims decided yet.</div>`}
-    ${results ? `<h2>Results</h2><div class="table-wrap"><table><thead><tr><th class="l">Date</th><th class="l">Scrim</th><th>Result</th><th class="l">Model${info("model_col")}</th><th class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${results}</tbody></table></div>` : ""}
+    ${results ? `<h2>Results</h2><div class="table-wrap"><table><thead><tr><th scope="col" class="l">Date</th><th scope="col" class="l">Scrim</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${results}</tbody></table></div>` : ""}
     <details class="how"><summary>How it works</summary>
       <p>Odds come from a strength rating per team fitted to every scrim result on the site (private results included), each pulled toward even so one lucky win doesn't make a team a lock. A Bo2 uses the same split as AD2L: the better team on the night tends to win both, so an even Bo2 is 33% / 33% / 33%. A Bo3 is first to two. With no games between the teams the model calls a coin flip: 1–1 in a Bo2, Team A otherwise.</p>
       <p>A scrim is decided once all its games are in (Bo1, Bo2) or a team has two wins (Bo3). Until then it stays under Upcoming with the score so far. If the teams played under different names in game, the upload page offers the scheduled names in one click.</p>
@@ -3338,14 +3338,14 @@ function gameCombatHtml(m, src) {
       <td class="l">${multi(p)}</td><td>${fbTag(m, p)}</td><td title="${p.runes ? esc(p.runes.map((n, k) => (n ? `${RUNES[k]} ${n}` : "")).filter(Boolean).join(", ")) : ""}">${runes ?? "—"}</td>
       <td>${p.courier_kills ?? "—"}</td><td class="l">${p.max_hit ? `${fmt(p.max_hit[0])} <small class="muted">${esc(hitText(p.max_hit))}</small>` : "—"}</td><td>${p.pings ?? "—"}</td></tr>`;
   }).join("");
-  const head = `<th class="l">Player</th><th>APM${info("apm")}</th><th>Fights${info("tf_part")}</th><th>Streak${info("best_streak")}</th><th class="l">Multi-kills</th><th>FB</th><th>Runes</th><th>Couriers</th><th class="l">Biggest hit${info("max_hit")}</th><th>Pings</th>`;
+  const head = `<th scope="col" class="l">Player</th><th scope="col">APM${info("apm")}</th><th scope="col">Fights${info("tf_part")}</th><th scope="col">Streak${info("best_streak")}</th><th scope="col" class="l">Multi-kills</th><th scope="col">FB</th><th scope="col">Runes</th><th scope="col">Couriers</th><th scope="col" class="l">Biggest hit${info("max_hit")}</th><th scope="col">Pings</th>`;
   // Each cell: the percentile as an ordinal over a bar filled that far (50th = halfway).
   const benchCell = (v, label, p) => (v == null ? `<td class="bn-cell">—</td>`
     : `<td class="bn-cell${v >= 75 ? " hot" : v < 25 ? " cold" : ""}" style="--v:${v / 100}" title="${esc(`${p.name}'s ${label}: better than ${v}% of public games on ${p.hero}`)}"><span>${ordinal(v)}</span></td>`);
   const benchRows = (t) => m.players.filter((p) => p.team === t && p.bench).map((p) => `<tr class="team-${t}">${who(p)}${p.bench.map((v, k) => benchCell(v, BENCH[k], p)).join("")}</tr>`).join("");
   const benchTable = m.players.some((p) => p.bench) ? `<h3 class="gm-h3">Percentile against public games${info("benchmarks")}</h3>
     <p class="table-note wm-intro">Each number is a percentile: how this game compares with public games on the same hero (OpenDota's benchmarks). 50th = a typical public game; 90th = better than 90% of them. Gold: 75th and up · red: under 25th.</p>
-    <div class="table-wrap gm-board bn-board"><table><thead><tr><th class="l">Player</th>${BENCH.map((b) => `<th>${b}<small>percentile</small></th>`).join("")}</tr></thead>
+    <div class="table-wrap gm-board bn-board"><table><thead><tr><th scope="col" class="l">Player</th>${BENCH.map((b) => `<th scope="col">${b}<small>percentile</small></th>`).join("")}</tr></thead>
     <tbody>${benchRows("a")}${benchRows("b")}</tbody></table></div>` : "";
   const pz = pausesOf(m);
   const pauseNote = pz?.n ? `<p class="table-note">Paused ${pz.n} time${pz.n === 1 ? "" : "s"}, ${dur(pz.total)} in all.</p>` : "";
@@ -3932,7 +3932,7 @@ function heroNeutralsHtml(src, matches, hero) {
   const rows = heroNeutrals(matches, hero);
   if (!rows.length) return "";
   return `<h2>Neutral items${info("hero_neutrals")}</h2>
-    <div class="table-wrap"><table><thead><tr><th class="l">Neutral item</th><th>Games</th><th>Record</th><th>Win %</th></tr></thead><tbody>
+    <div class="table-wrap"><table><thead><tr><th scope="col" class="l">Neutral item</th><th scope="col">Games</th><th scope="col">Record</th><th scope="col">Win %</th></tr></thead><tbody>
     ${rows.map((r) => `<tr><td class="l">${itemIcon(r.key)} ${esc(itemName(r.key))}</td><td>${r.games}</td><td>${r.wins}–${r.games - r.wins}</td><td>${pct(r.win_rate)}</td></tr>`).join("")}
     </tbody></table></div><p class="table-note">The neutral item in its slot when the game ended.</p>`;
 }
@@ -4630,7 +4630,7 @@ function tierBreakdown(src, p) {
     <div class="bd-right">
     <h4>Where the score comes from <small>${p.games} games; each stat compared with the same position</small></h4>
     <table class="bd-table">
-      <thead><tr><th class="l">Stat</th><th>Theirs</th><th class="bd-wide">Pos. avg${info("tm_avg")}</th><th>0–100${info("tm_stat100")}</th><th>Points${info("tm_points")}</th></tr></thead>
+      <thead><tr><th scope="col" class="l">Stat</th><th scope="col">Theirs</th><th scope="col" class="bd-wide">Pos. avg${info("tm_avg")}</th><th scope="col">0–100${info("tm_stat100")}</th><th scope="col">Points${info("tm_points")}</th></tr></thead>
       <tbody>${rows}
         <tr class="bd-sub"><td class="l">Stat points</td><td></td><td class="bd-wide"></td><td></td><td class="bd-pts">${statShown}<small>/100</small></td></tr>
         ${multRow("survival", "Survival", "", "", p.survival)}
@@ -4703,7 +4703,7 @@ function tierSection(src, matches, model) {
 function tierHow(model, src) {
   const curve = model.curve;
   const pool = src.ad2l ? `this division (${model.games} games)` : `the scrim ledger (${model.games} games)`;
-  const statTable = (role) => `<table class="how-table"><thead><tr><th class="l">Stat</th><th>Points</th><th class="l">What it measures</th></tr></thead><tbody>
+  const statTable = (role) => `<table class="how-table"><thead><tr><th scope="col" class="l">Stat</th><th scope="col">Points</th><th scope="col" class="l">What it measures</th></tr></thead><tbody>
     ${Object.entries(WEIGHTS[role]).map(([m, w]) => `<tr><td class="l">${esc(METRICS[m].label)}</td><td>${Math.abs(w)}${w < 0 ? "↓" : ""}</td><td class="l wrap">${esc(METRICS[m].def)}</td></tr>`).join("")}
     <tr><td class="l"><b>Total</b></td><td><b>${Object.values(WEIGHTS[role]).reduce((t, w) => t + Math.abs(w), 0)}</b></td><td></td></tr>
     </tbody></table>`;
@@ -4770,7 +4770,7 @@ function tierHow(model, src) {
     <h3>7. The rating</h3>
     <p>Everything up to the score is about the player's own games. The rating is the one step that compares them with the rest of their league, and the breakdown shows it as its own row: <b>Rating curve</b>, the rating minus the score, so the rows still add up to the rating exactly.</p>
     <p>Why a curve: scores bunch up (the typical player lands near 40 out of 100, and a great season around 75), which makes small differences hard to read. The curve spreads them onto 0–100: the league's median score becomes a rating of 50, and each step further from the middle is worth a little less, so 0 and 100 stay nearly out of reach. It's a bell curve (a normal distribution) ${RATING_STRETCH}× as wide as the spread of the league's scores; one width above the median rates 84, two widths 98, one below 16. It's refit whenever the data updates. Right now the median score is ${center.toFixed(1)} and a width is ${spread.toFixed(1)}:</p>
-    <table class="how-table how-curve"><thead><tr><th>Score</th><th>Rating</th></tr></thead><tbody>${curveRows}</tbody></table>
+    <table class="how-table how-curve"><thead><tr><th scope="col">Score</th><th scope="col">Rating</th></tr></thead><tbody>${curveRows}</tbody></table>
 
     <h3>8. Tiers</h3>
     <p>Fixed rating cutoffs, the same for cores and supports: ${cuts}. The cutoffs don't move with the field, so a tier can be empty and a strong division can have more S players. A player needs ${floorOf(src)}+ games to be ranked.</p>
@@ -5083,8 +5083,20 @@ const onNav = () => {
     routedAt = location.href;
     return showTab(tabInUrl());
   }
-  route();
+  Promise.resolve(route()).then(focusPage, () => {});
 };
+// After a page change, focus moves to the new page's heading, so a screen reader announces the
+// page and the keyboard starts from it rather than from the link left behind. Not on the first
+// load, not while the tour is moving the page, and not if the visitor has already moved on.
+function focusPage() {
+  if (document.body.classList.contains("touring") || document.body.classList.contains("tour-pick")) return;
+  const a = document.activeElement;
+  if (a && a !== document.body && app.contains(a)) return;
+  const h = app.querySelector("h1");
+  if (!h) return;
+  h.tabIndex = -1;
+  h.focus({ preventScroll: true });
+}
 
 // The home page (#/, and #/ad2l): pick a league. Scrim standings live at #/scrims; Champion's
 // pages moved from #/ad2l/... to #/champion/... (route() forwards old links). Same order as
@@ -5183,7 +5195,7 @@ function route() {
     else { section = "matches"; tm = true; page = () => renderMatches(t); }
   }
   document.getElementById("nav").innerHTML = src.nav
-    .map(([href, key, label, cls]) => `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}">${label}</a>`).join("");
+    .map(([href, key, label, cls]) => `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}"${key === section ? ' aria-current="page"' : ""}>${label}</a>`).join("");
   // League menu: each league opens on the tab you're on (Players stays Players). A team,
   // game or player page opens that tab's list, since it needn't exist in the other league.
   // Standings, the scrim match list and scrim Teams all land on the other league's standings.
@@ -5227,6 +5239,14 @@ const openNested = (e) => {
 };
 app.addEventListener("click", openNested);
 app.addEventListener("keydown", openNested);
+// "Skip to content" (first in the page, shown on focus): to the page's heading. Handled here,
+// since a plain #app link would be read as a route.
+document.getElementById("skip-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  const h = app.querySelector("h1") ?? app;
+  h.tabIndex = -1;
+  h.focus();
+});
 window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();

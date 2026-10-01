@@ -198,7 +198,7 @@ const ABILITY_CDN = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/do
 export function skillGridHtml(grid, named) {
   if (!grid) return "";
   const icon = (key, name, cls = "") => (key ? `<img class="sg-ico ${cls}" src="${ABILITY_CDN}${esc(key)}.png" alt="" title="${esc(name)}" loading="lazy" onerror="this.style.visibility='hidden'">` : `<span class="sg-ico sg-talent ${cls}" title="${esc(name)}">T</span>`);
-  const head = `<tr><th class="l">Ability</th>${Array.from({ length: grid.levels }, (_, i) => `<th>${i + 1}</th>`).join("")}</tr>`;
+  const head = `<tr><th scope="col" class="l">Ability</th>${Array.from({ length: grid.levels }, (_, i) => `<th scope="col">${i + 1}</th>`).join("")}</tr>`;
   const rows = grid.rows.map((r) => `<tr><td class="l sg-name">${icon(r.key, r.name)}${esc(r.name)}</td>${r.cells.map((c, lv) => {
     const tip = c.n ? `Level ${lv + 1}: ${c.n} of ${grid.builds} builds (${pct(c.share)})${r.talent ? ` — ${c.picks.map((p) => `${p.name} ×${p.n}`).join(", ")}` : ""}` : "";
     return `<td class="sg-cell" style="--s:${c.share.toFixed(3)}"${tip ? ` title="${esc(tip)}"` : ""}>${c.share >= 0.5 ? "●" : c.share >= 0.15 ? "•" : ""}</td>`;
