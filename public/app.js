@@ -3398,8 +3398,9 @@ async function renderHeroes(src) {
   ], shown, "picks", { toolbar: true }));
 }
 
-// A series' games, each with its full Captains Mode draft in pick/ban order.
-const seriesDraftsHtml = (src, games) => games.map((m, j) => `<div class="sd-game">
+// A series' games, each with its full Captains Mode draft in pick/ban order. Games without a
+// draft are skipped but keep their number.
+const seriesDraftsHtml = (src, games) => games.map((m, j) => !m.draft?.length ? "" : `<div class="sd-game">
     <div class="sd-game-head"><span class="gp-label">Game ${j + 1}</span>
       <span class="sd-win">${esc(m.winner === "a" ? m.team_a : m.team_b)} win</span>
       <span class="gp-meta">${m.score_a}–${m.score_b} · ${dur(m.duration_sec)} · <a href="${src.link(m)}">Full stats →</a></span></div>
@@ -4023,7 +4024,7 @@ async function renderTeams(src, slug) {
         <span class="hist-score">${done ? `${us}–${them}` : ""}</span>
         <span class="hist-games">${gs.map(({ m, side }, j) => `<a href="${src.link(m)}" class="${m.winner === side ? "w" : "l"}">G${j + 1} ${m.winner === side ? "W" : "L"}</a>`).join("")}</span>
         <span class="hist-date">${s.time ? new Date(s.time * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
-      </div>${gs.some(({ m }) => m.draft?.length) ? `<details class="hist-drafts" data-series="${s.id}"><summary>Drafts</summary><div class="sd-body"></div></details>` : ""}`;
+      </div>${gs.some(({ m }) => m.draft?.length) ? `<div class="hist-drafts">${seriesDraftsHtml(src, gs.map(({ m }) => m))}</div>` : ""}`;
     });
   } else {
     historyRows = h.games.map(({ m, side }, i) => {
@@ -4165,13 +4166,6 @@ async function renderTeams(src, slug) {
   wireMapCards(app);
   wireWardMaps(app);
   wireFightMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
-  // Series drafts are only built when opened.
-  for (const el of app.querySelectorAll("details.hist-drafts")) el.addEventListener("toggle", () => {
-    const b = el.querySelector(".sd-body");
-    if (!el.open || b.childElementCount) return;
-    const gs = h.games.filter(({ m }) => String(m.series_id) === el.dataset.series && m.draft?.length).map(({ m }) => m).sort((a, b) => a.createdAt - b.createdAt);
-    b.innerHTML = seriesDraftsHtml(src, gs);
-  });
   app.querySelectorAll("[data-goto-tab]").forEach((b) => (b.onclick = () => document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click()));
   // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
   app.querySelector(".ph-segs")?.addEventListener("click", (e) => {

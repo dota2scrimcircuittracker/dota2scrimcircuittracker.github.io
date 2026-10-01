@@ -175,8 +175,8 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   team's pick number (1st … last pick) and flag a big last-pick gap; team pages split their
   bans, bans against them and picks by phase. Heroes and Draft tables hide heroes under a
   minimum number of games (default 3, changeable) so one-off 100% heroes don't top the list.
-  On a team's Series tab, each drafted series has a **Drafts** row: open it for each game's full
-  pick/ban order.
+  On a team's Series tab, every drafted series shows each game's full pick/ban draft under its
+  row, the same strip as on the game page.
 - **Laning** (AD2L, parsed replays) — a Laning tab on games: each lane (top, middle, bottom)
   called won, even or lost at 10:00 on the whole lane's gold + XP lead, with each side's heroes,
   then every player's last hits, denies, lane efficiency, kills and deaths before 10:00. Lanes are
