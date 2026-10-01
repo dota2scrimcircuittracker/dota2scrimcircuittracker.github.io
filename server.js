@@ -1,11 +1,12 @@
 // Local dev server: serves public/ exactly as GitHub Pages will. No backend — the site
 // talks to Firestore directly. Usage: npm start → http://localhost:3000
+// `node server.js _site` serves a deploy build instead (preview pages, trimmed data files).
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), process.argv[2] ?? "public");
 const PORT = Number(process.env.PORT ?? 3000);
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",

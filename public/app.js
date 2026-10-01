@@ -19,19 +19,19 @@ import { tune, backtest, fitRatings, seriesOdds, isPlayed, outcomeOf, favourite,
 import { strengthOfSchedule } from "./lib/schedule.js";
 import { submitMatch, editMatch, listMatches, getMatch, deleteMatch, moveMatch, currentUid, listPredictions, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture, listCasts, addCast, deleteCast, MAX_CASTS } from "./lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureOdds, fixtureCall, fixtureBacktest, outcomes, outcomeLabel } from "./lib/fixtures.js";
-import { parseScreenshots } from "./lib/ocr/parse.js";
-import { createBrowserEngine } from "./lib/ocr/engine-browser.js";
 import { info, wireInfo } from "./lib/glossary.js";
 import { RANK_STATS, RANK_GROUPS, formatStat, withPerGame, rankStat, ends, placeOf, ordinal } from "./lib/ranks.js";
 import { routeOf, sharePath } from "./lib/share.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
-import { initTour } from "./lib/tour.js";
-import { initFeedback } from "./lib/feedback.js";
 import { withNicknames } from "./lib/nicknames.js";
 import { itemIcon, itemName, itemStats, averageTimes, timingsOf, hasItems, clock } from "./lib/items.js";
 import { gameLanes, laneCuts, cutFor, verdict, playerLane, laneSummary, laneBoard, laneRoleOf, LANE_LABEL, LANE_GROUPS, MAP_LANE } from "./lib/lanes.js";
 import { hasCombat, bestStreakOf, streakName, firstBloodOf, firstBloodRecord, deathSources, benchSummary, combatTotals, teamSplits, playerPairs, sideRecord, heroPairs, heroNeutrals, skillGrid, pubPrep, medalValue, pausesOf, hitSource, heroOfSlug, MULTI, RUNES, BENCH } from "./lib/combat.js";
 import { streakChartHtml, wireStreakCharts, streakBarsHtml, deathSourcesHtml, benchHtml, lengthHtml, medalScatterHtml, skillGridHtml, buildOrderHtml } from "./lib/combat-charts.js";
+// lib/tour.js loads after the first page (bottom of this file), except when a reload left a
+// tour mid-way: loading it puts the tour's tab choices back in storage, which this file reads
+// as it starts, so then it loads first.
+try { if (sessionStorage.getItem("tour-kept")) await import("./lib/tour.js"); } catch { /* storage blocked */ }
 
 const app = document.getElementById("app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -255,13 +255,15 @@ const STATS = [
 const scrimNames = (m, d) => (m.players ? { ...m, players: m.players.map((p) => ({ ...p, name: aliasOf(d, p.name) ?? p.name })) } : m);
 
 // League data is small; load it once per visit and refresh after uploads.
-let matchesCache = null;
-async function allMatches(force = false) {
-  if (!matchesCache || force) {
-    const [list, d] = await Promise.all([listMatches(), divData("ad2l").catch(() => null)]);
-    matchesCache = list.map((m) => withDerived(scrimNames(m, d)));
+// Callers that ask at the same time share one load.
+let matchesReady = null;
+function allMatches(force = false) {
+  if (!matchesReady || force) {
+    matchesReady = Promise.all([listMatches(), divData("ad2l").catch(() => null)])
+      .then(([list, d]) => list.map((m) => withDerived(scrimNames(m, d))))
+      .catch((e) => { matchesReady = null; throw e; });
   }
-  return matchesCache;
+  return matchesReady;
 }
 
 function errorBox(e) {
@@ -272,7 +274,12 @@ function errorBox(e) {
 
 // ---------- Upload + review ----------
 
-const engine = createBrowserEngine();
+// The screenshot reader (lib/ocr, and Tesseract from jsdelivr) loads on the first upload, not
+// with every page.
+let ocrReady = null;
+const ocr = () => (ocrReady ??= Promise.all([import("./lib/ocr/parse.js"), import("./lib/ocr/engine-browser.js")])
+  .then(([{ parseScreenshots }, { createBrowserEngine }]) => ({ parseScreenshots, engine: createBrowserEngine() }))
+  .catch((e) => { ocrReady = null; throw e; }));
 // league: "scrim" (the ledger), or an AD2L division key ("ad2l" = Champion, "heroic",
 // "conqueror", "warrior", "challenger", "voyager", "explorer"; see DIVISIONS) for an unticketed game in that division, same form.
 const upload = { images: [], draft: null, check: null, notes: [], names: [], standins: new Set(), busy: false, progress: "", message: null, isPrivate: false, league: "scrim", seriesId: null,
@@ -379,7 +386,7 @@ function addFiles(files) {
   for (const f of imgs) upload.images.push({ file: f, url: URL.createObjectURL(f), name: f.name || "pasted image" });
   while (upload.images.length > 2) URL.revokeObjectURL(upload.images.shift().url);
   upload.message = null;
-  engine.warmUp();
+  ocr().then(({ engine }) => engine.warmUp()).catch(() => {}); // runParse reports a failure
   renderUpload();
 }
 
@@ -396,6 +403,7 @@ async function runParse() {
   upload.progress = "Loading the text reader (first time takes a few seconds)…";
   renderUpload();
   try {
+    const { parseScreenshots, engine } = await ocr();
     const { match, notes } = await parseScreenshots(engine, upload.images.map((i) => i.file), {
       onProgress: (msg) => { upload.progress = msg; const el = document.getElementById("progress"); if (el) el.textContent = msg; },
     });
@@ -721,7 +729,16 @@ async function renderEdit(id, league) {
   renderUpload();
 }
 
+// Known player names (scrims + AD2L Champion) help fix OCR misreads in the review form's name
+// boxes. Filled on the first upload or edit page, so other pages don't load them.
+let playerList = null;
+const fillPlayerList = () => (playerList ??= playerIndex("scrim").then((idx) => {
+  const names = idx.map((e) => e.name).sort((a, b) => a.localeCompare(b));
+  document.getElementById("player-list").innerHTML = names.map((n) => `<option value="${esc(n)}">`).join("");
+}).catch(() => {}));
+
 function renderUpload() {
+  fillPlayerList();
   const msg = upload.message;
   if (upload.editing) {
     const e = upload.editing;
@@ -889,10 +906,22 @@ async function loadDivision(file) {
   d.games = d.games.filter((g) => !isRemake(g)).map((g) => withDerived({ ...g, createdAt: new Date(g.start_time * 1000) }));
   return d;
 }
-const divCache = {};
-async function divData(key) {
-  divCache[key] ??= await loadDivision(DIVISIONS[key].file);
-  return divCache[key];
+// divCache: loaded files, for the pages that read them synchronously. divReady: the loads,
+// so callers that ask at the same time share one fetch.
+const divCache = {}, divReady = {};
+function divData(key) {
+  return divReady[key] ??= loadDivision(DIVISIONS[key].file).then((d) => (divCache[key] = d))
+    .catch((e) => { delete divReady[key]; throw e; });
+}
+// Another division's games for the overall ranks and search: the deploy's trimmed copy
+// (scripts/lite-data.js: no timelines, ward spots or items; the ranks come out the same, at
+// about a third of the download). The full file when it's already loaded, or when there's
+// no copy (npm start serves public/ as committed).
+const liteReady = {};
+function divLite(key) {
+  if (divCache[key]) return Promise.resolve(divCache[key]);
+  return liteReady[key] ??= loadDivision(DIVISIONS[key].file.replace(/\.json$/, "-lite.json")).catch(() => divData(key))
+    .catch((e) => { delete liteReady[key]; throw e; });
 }
 
 // Unticketed games uploaded from screenshots (Firestore), per division. If the database
@@ -2073,10 +2102,17 @@ function heroRows(matches) {
 
 // Every AD2L league's games, over the same weeks as `src` when the time machine is on (weeks
 // are calendar weeks, so they line up across leagues). One load per pick.
-const everyLeague = new Map();
+// Each division reads through divLite (the page's own division is already loaded in full).
+const everyLeague = new Map(), liteSrcs = {};
+function liteSrc(key) {
+  if (liteSrcs[key]) return liteSrcs[key];
+  const s = liteSrcs[key] = { ...SOURCES[key], data: () => divLite(key) };
+  s.load = () => divGames(s);
+  return s;
+}
 function allLeagues(src) {
   const sel = src.weeks, sig = sel ? [...sel].sort().join() : "";
-  if (!everyLeague.has(sig)) everyLeague.set(sig, Promise.all(Object.keys(DIVISIONS).map(async (key) => ({ key, matches: (await (sel ? timeSrc(SOURCES[key], sel) : SOURCES[key]).load()).filter(hasDetails) })))
+  if (!everyLeague.has(sig)) everyLeague.set(sig, Promise.all(Object.keys(DIVISIONS).map(async (key) => ({ key, matches: (await (sel ? timeSrc(liteSrc(key), sel) : liteSrc(key)).load()).filter(hasDetails) })))
     .catch((e) => { everyLeague.delete(sig); throw e; }));
   return everyLeague.get(sig);
 }
@@ -4944,7 +4980,7 @@ let searchReady = null, searchIdx = null, searchHits = [], searchAt = -1;
 function loadSearch() {
   searchReady ??= Promise.all([
     Promise.all(Object.entries(DIVISIONS).map(async ([key, dv]) => {
-      try { return { key, label: dv.short, root: SOURCES[key].root, views: dv.views, data: await divData(key) }; }
+      try { return { key, label: dv.short, root: SOURCES[key].root, views: dv.views, data: await divLite(key) }; }
       catch (e) { console.warn(`search: ${key} unavailable`, e); return null; }
     })),
     allMatches().catch((e) => { console.warn("search: scrims unavailable", e); return null; }),
@@ -5166,11 +5202,6 @@ function routeHub() {
 }
 
 document.getElementById("hero-list").innerHTML = HEROES.map((h) => `<option value="${esc(h)}">`).join("");
-// Known player names (scrims + AD2L Champion) help fix OCR misreads in the review form.
-playerIndex().then((idx) => {
-  const names = idx.map((e) => e.name).sort((a, b) => a.localeCompare(b));
-  document.getElementById("player-list").innerHTML = names.map((n) => `<option value="${esc(n)}">`).join("");
-}).catch(() => {});
 app.addEventListener("input", (e) => { if (upload.draft && e.target.closest(".edit")) onDraftInput(e); });
 // Team names inside a card that's itself a link: open the team, not the card.
 const openNested = (e) => {
@@ -5185,16 +5216,17 @@ window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();
 route();
-// Feedback mode (lib/feedback.js): the Feedback button in the top bar.
-initFeedback();
-// Guided tour (lib/tour.js): invites first-time visitors; "New here?" and Restart in the top
-// bar start it. rerender re-routes the current page (after the tour puts back the
-// choices it changed).
-initTour({
+// Feedback mode (lib/feedback.js) and the guided tour (lib/tour.js) load after the first page
+// starts drawing, so they don't hold it up.
+// Feedback: the Feedback button in the top bar.
+import("./lib/feedback.js").then((m) => m.initFeedback()).catch((e) => console.warn("feedback unavailable", e));
+// Tour: invites first-time visitors; "New here?" and Restart in the top bar start it.
+// rerender re-routes the current page (after the tour puts back the choices it changed).
+import("./lib/tour.js").then((m) => m.initTour({
   here,
   go: (h, { rerender } = {}) => {
     if (rerender) return route();
     history.pushState(null, "", addressOf(h));
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   },
-});
+})).catch((e) => console.warn("tour unavailable", e));
