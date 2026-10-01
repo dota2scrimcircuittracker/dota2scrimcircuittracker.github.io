@@ -2118,6 +2118,12 @@ button.ga-go:hover:not(:disabled) { background: var(--accent); color: var(--on-a
   .pp-row .pp-tabs { margin-left: -11px; width: calc(100% + 11px); }
 }
 .pp-league { display: inline-flex; align-items: center; gap: 10px; color: var(--dust); }
+/* Breadcrumbs on detail pages: league › list › this page, in the kicker line. */
+.crumbs ol { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; padding: 0; list-style: none; }
+.crumbs li { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.crumbs li + li::before { content: "›"; color: var(--dim); letter-spacing: 0; }
+.crumbs a { color: inherit; white-space: nowrap; }
+.crumbs [aria-current] { color: var(--dust); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40ch; }
 .pp-league::before { content: "·"; }
 .pp-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 6px 24px; margin-top: 18px; border-bottom: 1px solid var(--seam); }
 .pp-row h1 { margin: 0 0 12px; font-size: clamp(36px, 4.4vw, 58px); }
@@ -2495,7 +2501,7 @@ figure.chart.item-lead .mk-fb { fill: none; stroke: #d0342c; stroke-width: 1.8; 
 
 /* ---------- guided tour (lib/tour.js) ----------
    League accent: gold in Champion, the league's own colour everywhere else. */
-/* "New here?" in the top bar: always there, in the league accent. */
+/* "New here?" in the footer: always there, in the league accent. */
 button.tour-open {
   font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
   color: var(--accent); background: none; border: 1px solid rgba(var(--accent-rgb), .45); padding: 9px 12px; border-radius: 2px;
@@ -2674,18 +2680,19 @@ button.fb-open[aria-pressed="true"] { color: var(--on-accent); background: var(-
 }
 .fb-badge[hidden] { display: none; }
 @media (max-width: 720px) { .fb-open-label { display: none; } }
-/* Discord invite: same frame as the Feedback button, blurple on hover. */
+/* Discord invite (footer): same frame as the Feedback button, blurple on hover. */
 a.discord-join {
   display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
   font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
   color: var(--dust); border: 1px solid var(--seam); padding: 8px 11px; border-radius: 2px;
 }
 a.discord-join:hover { color: #fff; background: #5865f2; border-color: #5865f2; text-decoration: none; }
-@media (max-width: 720px) { .discord-join-label { display: none; } }
-/* Phones: the header row is full, so the footer link carries the invite. */
-@media (max-width: 420px) { a.discord-join { display: none; } }
 .foot a { color: var(--dust); }
 .foot a:hover { color: var(--bone); }
+.foot a.discord-join:hover { color: #fff; } /* over .foot a:hover */
+/* Footer: the tour ("New here?" / Resume) and the Discord invite, right of the disclaimer. */
+.foot { align-items: center; }
+.foot-links { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 .fb[hidden] { display: none; }
 .fb-banner {

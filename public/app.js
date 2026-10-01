@@ -46,6 +46,17 @@ const pageHead = (kicker, title, sub = "") => `
     <h1 style="--i:1">${title}</h1>
     ${sub ? `<p style="--i:2">${sub}</p>` : ""}
   </header>`;
+// Browser tab title: the page first, then where it sits, then the site.
+const setTitle = (...parts) => { document.title = [...parts, "AD2L Stat Tracker"].join(" · "); };
+// Breadcrumbs on a detail page (player, hero, team, game): league › list › this page, and the
+// tab title from the same trail. `list` is [label, href]; `name` is plain text (escaped here).
+const leagueCrumb = (src) => src.all ? ["All divisions", "#/all/"]
+  : src.ad2l ? [`${DIVISIONS[src.key].short}${src.view ? ` ${src.view.toUpperCase()}` : ""}`, `${src.root}/`] : ["Scrim League", "#/scrims"];
+function crumbs(src, list, name) {
+  const trail = [leagueCrumb(src), list];
+  setTitle(name, list[0], trail[0][0]);
+  return `<nav class="crumbs" aria-label="Breadcrumb"><ol>${trail.map(([label, href]) => `<li><a href="${href}">${esc(label)}</a></li>`).join("")}<li aria-current="page">${esc(name)}</li></ol></nav>`;
+}
 // A team name that opens the team's page. AD2L teams by PlayOn id (looked up by name when
 // only the name is known); scrim teams by name. Inside something that's already a link
 // (a match card), nested=true gives a span handled by the click listener at the bottom.
@@ -1153,7 +1164,7 @@ async function renderMatch(id, src) {
       <div class="team">${t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id)}</div>
       <div class="n">${t === "a" ? m.score_a : m.score_b}</div></div>`;
     app.innerHTML = `
-      <div class="kicker" style="margin-bottom:16px"><a href="${src.base}">← The ledger</a></div>
+      <div class="kicker" style="margin-bottom:16px">${crumbs(src, ["Standings", src.base], `${m.team_a} vs ${m.team_b}`)}</div>
       <section class="banner">${side("a")}${side("b")}
         <div class="banner-meta">${esc(m.game_mode || "Match")} · <b>${dur(m.duration_sec)}</b></div></section>
       <div class="panel empty"><strong>Private scrim</strong>Only the result was posted. Heroes, players and stats were never uploaded.<br>
@@ -1415,7 +1426,7 @@ async function renderMatch(id, src) {
   ], { store: "gameTab", label: "Game sections" });
 
   app.innerHTML = `
-    <div class="kicker gm-back"><a href="${src.base}">← ${ad2l ? "Weekly" : "The ledger"}</a>${ad2l && !m.unticketed ? `<span class="gm-ext"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a></span>` : ""}</div>
+    <div class="kicker gm-back">${crumbs(src, ad2l ? ["Weekly", src.base] : ["Standings", src.base], `${m.team_a} vs ${m.team_b}`)}${ad2l && !m.unticketed ? `<span class="gm-ext"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a></span>` : ""}</div>
     <section class="banner compact">
       ${plate("a")}${plate("b")}
       <div class="banner-meta">${esc(m.game_mode || "Match")} · <b>${dur(m.duration_sec)}</b>${m.createdAt ? ` · ${shortDate(m.createdAt)}` : ""}</div>
@@ -3502,7 +3513,7 @@ async function renderPlayer(src, key) {
   // tabs on a single row (the tabs wrap under it on narrow screens).
   app.innerHTML = `
     <header class="page-head pp-head reveal">
-      <div class="kicker" style="--i:0"><a href="${src.ad2l ? `${src.root}/players` : "#/players"}">← All players</a><span class="pp-league">${src.kicker}</span></div>
+      <div class="kicker" style="--i:0">${crumbs(src, ["Players", src.ad2l ? `${src.root}/players` : "#/players"], s.name)}</div>
       <div class="pp-row" style="--i:1">
         <h1><span class="h1-name">${esc(s.name)}</span>${tierOf ? `<button type="button" class="tier-badge t-${tierOf.tier}" id="tier-open" aria-haspopup="dialog"
           aria-label="${tierOf.tier} tier, rating ${tierOf.rating}. Open the breakdown" title="${tierOf.tier} tier · ${tierOf.rating} rating · click for the breakdown">
@@ -3760,7 +3771,7 @@ async function renderHero(src, slug) {
   // Same compact header as the player page: back link and league, then art, name, the pick line
   // and the tabs on one row.
   const header = (bar = "") => `<header class="page-head pp-head reveal">
-      <div class="kicker" style="--i:0"><a href="${src.ad2l ? `${src.root}/heroes` : "#/heroes"}">← All heroes</a><span class="pp-league">${src.kicker}</span></div>
+      <div class="kicker" style="--i:0">${crumbs(src, ["Heroes", src.ad2l ? `${src.root}/heroes` : "#/heroes"], hero)}</div>
       <div class="pp-row" style="--i:1">
         ${img ? `<img class="pp-hero-img" src="${img}" alt="">` : ""}
         <h1><span class="h1-name">${esc(hero)}</span></h1>
@@ -4455,7 +4466,7 @@ async function renderTeams(src, slug) {
   // then name, the record line and the tabs.
   app.innerHTML = `
     <header class="page-head pp-head reveal">
-      <div class="kicker" style="--i:0"><a href="${base}">← ${src.ad2l ? "Teams" : "All teams"}</a><span class="pp-league">${src.kicker}</span>
+      <div class="kicker" style="--i:0">${crumbs(src, ["Teams", base], team.name)}
         <label class="team-picker"><span class="sr-only">Team</span>
           <select id="team-select" aria-label="Team">${teams.map((t) => `<option value="${t.slug}" ${t.slug === slug ? "selected" : ""}>${esc(t.name)} (${t.wins}–${t.losses})</option>`).join("")}</select></label></div>
       <div class="pp-row" style="--i:1">
@@ -5107,7 +5118,7 @@ function route() {
   const isAd2l = src.ad2l, r = src.root;
   document.body.dataset.league = src.key;
   const divLabel = DIVISIONS[src.key]?.views ? (src.view ? `Division ${src.view.toUpperCase()}` : "Combined") : "";
-  document.title = src.all ? "AD2L S48 · All Divisions · AD2L Stat Tracker" : isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""} · AD2L Stat Tracker` : "Scrim League · AD2L Stat Tracker";
+  const leagueTitle = src.all ? "AD2L S48 · All Divisions" : isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""}` : "Scrim League";
   document.getElementById("league-name").innerHTML = src.all ? "AD2L<b>All Divisions</b>" : isAd2l ? `AD2L<b>${src.division}</b>${divLabel ? `<em class="div-badge">${src.view ? `Div ${src.view.toUpperCase()}` : DIVISIONS[src.key].views.join(" + ").toUpperCase()}</em>` : ""}` : "Scrim<b>League</b>";
   leagueMenu.querySelectorAll("a").forEach((a) => a.classList.toggle("current", a.dataset.league === src.key));
 
@@ -5183,6 +5194,10 @@ function route() {
   });
   divisionBar(src, h);
   timeBar(src, tm);
+  // The tab's own name first ("Players · AD2L S48 Warrior"); detail pages put theirs in front
+  // when they draw (crumbs).
+  const label = src.nav.find(([, key]) => key === section)?.[2] ?? "";
+  setTitle(...(label ? [label] : []), leagueTitle);
   return page();
 }
 
@@ -5220,7 +5235,7 @@ route();
 // starts drawing, so they don't hold it up.
 // Feedback: the Feedback button in the top bar.
 import("./lib/feedback.js").then((m) => m.initFeedback()).catch((e) => console.warn("feedback unavailable", e));
-// Tour: invites first-time visitors; "New here?" and Restart in the top bar start it.
+// Tour: invites first-time visitors; "New here?" (or Resume) in the footer starts it.
 // rerender re-routes the current page (after the tour puts back the choices it changed).
 import("./lib/tour.js").then((m) => m.initTour({
   here,

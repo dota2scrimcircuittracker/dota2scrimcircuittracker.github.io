@@ -9,7 +9,7 @@ const SEEN_KEY = "tour-seen";
 // The saved choices, also kept for the session: a reload mid-tour restores them on load.
 const KEPT_KEY = "tour-kept";
 // Where a paused (or reloaded) tour stands: its chapter, stop, start page and picked pages.
-// While it's set, the top bar's "New here?" reads "Resume tour", with "Restart" beside it.
+// While it's set, the footer's "New here?" reads "Resume tour", with "Restart" beside it.
 const PAUSE_KEY = "tour-paused";
 // The tour opens tabs and works filters, and the site remembers some of those choices: all of
 // localStorage is snapshotted at the start and put back at the end.
@@ -859,7 +859,7 @@ class Tour {
     return true;
   }
 
-  // Pause: stay on this page to look around; the top bar offers Resume tour and Restart.
+  // Pause: stay on this page to look around; the footer offers Resume tour and Restart.
   pause() {
     if (!this.close()) return;
     syncTopBar();
@@ -952,7 +952,7 @@ const CHAPTERS = {
     stops: DEEP,
     closing: {
       title: "You're set",
-      text: "Take the tour again any time with New here? at the top of the page.",
+      text: "Take the tour again any time with New here? at the bottom of the page.",
       buttons: (tour) => [["primary", "Done", () => tour.end()]],
     },
   },
@@ -982,7 +982,7 @@ export async function startTour({ resume = false } = {}) {
   await t.chapter(at?.chapter in CHAPTERS ? at.chapter : "core", at?.at ?? null);
 }
 
-// Top bar: "New here?" normally; while a tour is paused, "Resume" joined to a small restart icon.
+// Footer: "New here?" normally; while a tour is paused, "Resume" joined to a small restart icon.
 function syncTopBar() {
   const open = document.getElementById("tour-open"), restart = document.getElementById("tour-restart");
   const paused = !run && !!pausedSpot();
@@ -1016,7 +1016,7 @@ try { const k = JSON.parse(sessionStorage.getItem(KEPT_KEY)); if (k) restoreKept
 // go(href, { rerender }) navigates in-app; here() is the current "#/..." route.
 export function initTour({ go, here }) {
   deps = { go, here };
-  // Top bar: New here? / Resume tour, and Restart.
+  // Footer: New here? / Resume tour, and Restart.
   const on = (id, fn) => document.getElementById(id)?.addEventListener("click", (e) => { e.preventDefault(); fn(); });
   on("tour-open", () => startTour({ resume: !!pausedSpot() }));
   on("tour-restart", () => startTour());

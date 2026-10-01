@@ -13,10 +13,10 @@ A for-fun stats site for Dota 2 scrims and our AD2L division.
   with full stats, players and heroes, pulled from PlayOn + OpenDota. Lives at `/champion/`
   (`slug` in `DIVISIONS`); its key stays `ad2l` for the data file, Firestore and predictions.
 - **Home page** — `/` (also `/ad2l/`) is a league picker: Scrim League and every AD2L division,
-  centred, in the menu's order and colours. The guided tour ("New here?") only tours AD2L
-  divisions: its first stop waits for you to pick one (no Next; Scrim League is hidden). Old
-  `/ad2l/<page>` links forward to `/champion/<page>` (in the app, and via preview pages the deploy
-  writes at the old paths).
+  centred, in the menu's order and colours. The guided tour ("New here?", in the footer beside
+  the Discord invite) only tours AD2L divisions: its first stop waits for you to pick one (no
+  Next; Scrim League is hidden). Old `/ad2l/<page>` links forward to `/champion/<page>` (in the
+  app, and via preview pages the deploy writes at the old paths).
 - **All divisions** (`/all/`, "All divisions" under the picker and last in the league menu) —
   every AD2L division's files merged into one view: Teams (one table with a Division column;
   Matches and Crosstable boxed per division, Heroic/Aegis per sub-division; no Race), Weekly,
