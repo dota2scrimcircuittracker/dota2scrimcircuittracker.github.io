@@ -1,0 +1,31 @@
+// Visitor counts with GoatCounter (goatcounter.com): no cookies, no personal data, one small
+// script. Each page change counts as one view of its address (path + #route, no query).
+// The guided tour's automatic page moves don't count. Off until SITE_CODE is set; GoatCounter
+// itself ignores localhost. To stop counting your own browser, open the site once with
+// #toggle-goatcounter on the end of the address.
+const SITE_CODE = ""; // e.g. "ad2l" for https://ad2l.goatcounter.com
+
+let loading = null;
+function load() {
+  if (!SITE_CODE) return null;
+  loading ??= new Promise((resolve) => {
+    window.goatcounter = { no_onload: true };
+    const s = document.createElement("script");
+    s.async = true;
+    s.src = "https://gc.zgo.at/count.js";
+    s.dataset.goatcounter = `https://${SITE_CODE}.goatcounter.com/count`;
+    s.onload = () => resolve(window.goatcounter);
+    s.onerror = () => resolve(null); // blocked by an ad blocker: count nothing
+    document.head.append(s);
+  });
+  return loading;
+}
+
+let last = null;
+export function countVisit() {
+  if (document.body.classList.contains("touring")) return;
+  const path = (location.pathname + location.hash) || "/";
+  if (path === last) return;
+  last = path;
+  load()?.then((gc) => gc?.count?.({ path }));
+}
