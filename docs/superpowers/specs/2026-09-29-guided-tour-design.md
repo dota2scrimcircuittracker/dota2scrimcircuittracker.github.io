@@ -62,8 +62,8 @@ no stat cards, standouts, page headers, or pages the core tour already covered.
 
 - First-visit invite (below).
 - Footer: **New here?** starts the tour (moved from the top bar 2026-09-30). The card's
-  **Pause tour** (or Esc) closes it where it is; the footer button then reads **Resume tour**,
-  with **Restart** beside it. Resume
+  **Pause tour** (or Esc) closes it where it is; the footer button then reads **Resume**. The
+  card's **Exit tour** closes it and forgets the place, so it reads **New here?** again. Resume
   goes back to the same stop (same league: same team/game/player/hero; another league: fresh
   picks). Every stop saves its place, so a reload mid-tour also offers Resume.
 - Done at the end forgets the place and returns to the starting page.

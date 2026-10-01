@@ -9,7 +9,7 @@ const SEEN_KEY = "tour-seen";
 // The saved choices, also kept for the session: a reload mid-tour restores them on load.
 const KEPT_KEY = "tour-kept";
 // Where a paused (or reloaded) tour stands: its chapter, stop, start page and picked pages.
-// While it's set, the footer's "New here?" reads "Resume tour", with "Restart" beside it.
+// While it's set, the footer's "New here?" reads "Resume". Exit tour clears it.
 const PAUSE_KEY = "tour-paused";
 // The tour opens tabs and works filters, and the site remembers some of those choices: all of
 // localStorage is snapshotted at the start and put back at the end.
@@ -591,6 +591,7 @@ class Tour {
     this.saveSpot(stopKey(s));
     this.card(`${s.group ? `${s.group} · ` : ""}${this.i + 1} of ${this.stops.length}`, title, text, [
       ["skip", "Pause tour", () => this.pause()],
+      ["exit", "Exit tour", () => this.exit()],
       this.i > 0 && ["back", "Back", () => this.back()],
       !s.pick && ["next", this.i === this.stops.length - 1 ? "Finish" : "Next", () => this.next()],
     ]);
@@ -859,7 +860,15 @@ class Tour {
     return true;
   }
 
-  // Pause: stay on this page to look around; the footer offers Resume tour and Restart.
+  // Exit: stay on this page and forget the tour's place; the footer reads "New here?" again.
+  exit() {
+    if (!this.close()) return;
+    try { localStorage.removeItem(PAUSE_KEY); } catch { /* private mode */ }
+    syncTopBar();
+    deps.go(deps.here(), { rerender: true }); // show the restored tab choices
+  }
+
+  // Pause: stay on this page to look around; the footer offers Resume.
   pause() {
     if (!this.close()) return;
     syncTopBar();
@@ -982,16 +991,15 @@ export async function startTour({ resume = false } = {}) {
   await t.chapter(at?.chapter in CHAPTERS ? at.chapter : "core", at?.at ?? null);
 }
 
-// Footer: "New here?" normally; while a tour is paused, "Resume" joined to a small restart icon.
+// Footer button: "New here?" normally; "Resume" while a tour is paused.
 function syncTopBar() {
-  const open = document.getElementById("tour-open"), restart = document.getElementById("tour-restart");
+  const open = document.getElementById("tour-open");
   const paused = !run && !!pausedSpot();
   if (open) {
     open.textContent = paused ? "Resume" : "New here?";
     open.title = paused ? "Resume the tour where you left it" : "A guided tour of the site";
     open.classList.toggle("paused", paused);
   }
-  if (restart) restart.hidden = !paused;
 }
 
 let invite = null;
@@ -1016,10 +1024,9 @@ try { const k = JSON.parse(sessionStorage.getItem(KEPT_KEY)); if (k) restoreKept
 // go(href, { rerender }) navigates in-app; here() is the current "#/..." route.
 export function initTour({ go, here }) {
   deps = { go, here };
-  // Footer: New here? / Resume tour, and Restart.
+  // Footer: New here? / Resume.
   const on = (id, fn) => document.getElementById(id)?.addEventListener("click", (e) => { e.preventDefault(); fn(); });
   on("tour-open", () => startTour({ resume: !!pausedSpot() }));
-  on("tour-restart", () => startTour());
   syncTopBar();
   if (localGet(SEEN_KEY)) return;
   // Wait for the first page to render, then a moment more.
