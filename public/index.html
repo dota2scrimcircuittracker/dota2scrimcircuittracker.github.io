@@ -21,6 +21,19 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://dota2scrimcircuittracker.github.io/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- Third-party modules (Firebase, Tesseract, modern-screenshot) load only if their bytes match
+       these hashes. After changing a CDN URL or version: node scripts/gen/cdn-integrity.js -->
+  <script type="importmap">
+  {
+    "integrity": {
+      "https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/dist/index.mjs": "sha384-eDCjprrMFWrElLAfGhefpqsn3Vyw6dm8//RmsFZjqo8/AZ1P/CEiLIiLX7Zc64B3",
+      "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.esm.min.js": "sha384-fDdNU3AFf+hEiUiSjD96lSEFawtCYOWQFSrFyHZOkX2jhwuUQKiSOAgWNfuKg4B6",
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js": "sha384-cB901C0jnWultb8ZAaei2mehR8EQfJQfMBokc5Z5dc56nSWK3DgeQCJsIkE7DJg8",
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js": "sha384-nAwz6HvSTJ343VaB9sqZFItIinAPkFyiRV2sk7FSMgfcNPSltnISTMD7RQz8yEBf",
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js": "sha384-D9sv3kF5iLMmc0vLazG8S4gM2bVmmBw+lb+7Cn0pIpfdMOpWTVrLBLrweEmES+YZ"
+    }
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@600;800;900&family=Epilogue:wght@400;500;600;700&family=Martian+Mono:wght@300;400;600&display=swap" rel="stylesheet">
