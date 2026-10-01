@@ -1,5 +1,6 @@
 node_modules/
 .env
+.env.local
 
 # Dev-only: debug crops and screenshots served to the local dev server.
 public/_dev/

@@ -13,8 +13,10 @@
 //                                                 and every open one if today's digest is due
 //   node scripts/feedback.cjs emailed [--new FB-A,FB-B] [--digest]
 //                                                 record what the email task sent
+//   node scripts/feedback.cjs discord [--dry-run]  post tickets not sent yet, and the digest when due, to the
+//                                                 Discord webhook in DISCORD_FEEDBACK_WEBHOOK (.env.local)
 //
-// Which tickets were emailed, and when the last digest went, is kept in
+// Which tickets were sent (email or Discord), and when the last digest went, is kept in
 // .cache/feedback-state.json (gitignored; this machine only).
 const fs = require("fs");
 const path = require("path");
@@ -173,11 +175,95 @@ const commands = {
     writeState(s);
     console.log(`Recorded: ${ids.length} new${args.includes("--digest") ? " + today's digest" : ""}.`);
   },
+
+  async discord(...args) {
+    const dry = args.includes("--dry-run");
+    const hook = webhookUrl();
+    if (!hook && !dry) throw new Error("No DISCORD_FEEDBACK_WEBHOOK. Put it in .env.local in the project folder.");
+    const all = await tickets();
+    const s = readState();
+    const digestDue = new Date().getHours() >= DIGEST_HOUR && s.lastDigest !== today();
+    const fresh = all.filter((t) => !s.emailed[t.id]).map(summary);
+    const post = async (body) => (dry ? console.log(JSON.stringify(body, null, 2)) : postWebhook(hook, body));
+
+    // One message per ticket, recorded as soon as it posts, so a failure part way never double-posts the rest.
+    for (const t of fresh) {
+      await post({ content: `New site feedback: **${t.id}**`, embeds: [ticketEmbed(t, true)], allowed_mentions: { parse: [] } });
+      if (!dry) { s.emailed[t.id] = new Date().toISOString(); writeState(s); }
+    }
+    let digest = "not due";
+    if (digestDue) {
+      if (all.length) {
+        const embeds = all.map(summary).map((t) => ticketEmbed(t, false));
+        // Discord caps a message at 10 embeds and 6000 characters; ticket embeds are capped well under 2000.
+        for (let i = 0; i < embeds.length; i += 3) {
+          await post({
+            content: i ? "" : `Site feedback: **${all.length}** open ticket${all.length === 1 ? "" : "s"}\n${FOOTER("FB-XXXXXX")}`,
+            embeds: embeds.slice(i, i + 3), allowed_mentions: { parse: [] },
+          });
+        }
+        digest = "sent";
+      } else digest = "due, nothing open";
+      if (!dry) { s.lastDigest = today(); writeState(s); }
+    }
+    console.log(`${dry ? "[dry run] " : ""}Posted ${fresh.length} new ticket${fresh.length === 1 ? "" : "s"}; digest ${digest}.`);
+  },
 };
+
+// ---- Discord ----
+// Ticket text comes from anonymous visitors: markdown is escaped and mentions are off on every post.
+function webhookUrl() {
+  if (!process.env.DISCORD_FEEDBACK_WEBHOOK) {
+    try { process.loadEnvFile(path.join(ROOT, ".env.local")); } catch {}
+  }
+  const u = process.env.DISCORD_FEEDBACK_WEBHOOK?.trim();
+  if (u && !/^https:\/\/(canary\.|ptb\.)?discord(app)?\.com\/api\/webhooks\//.test(u)) throw new Error("DISCORD_FEEDBACK_WEBHOOK isn't a Discord webhook URL.");
+  return u;
+}
+const esc = (x) => String(x ?? "").replace(/[\\`*_~|>#\[\]()<@-]/g, "\\$&");
+const clip = (x, n) => (x.length > n ? x.slice(0, n - 1) + "…" : x);
+const pacific = (iso) => new Date(iso).toLocaleString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium", timeStyle: "short" }) + " PT";
+const FOOTER = (id) => `Review: \`node scripts/feedback.cjs show ${id}\`, then http://localhost:3000/?fbreview=${id} (npm start)\nClose: \`node scripts/feedback.cjs done ${id} "what was done"\``;
+
+function ticketEmbed(t, withFooter) {
+  const notes = t.notes.map((n) => {
+    let page = n.page;
+    try { const u = new URL(n.page); page = u.pathname + u.search + u.hash; } catch {}
+    return [
+      `**${n.n}. ${esc(n.kind)}** on ${esc(page)}`,
+      `> ${clip(esc(n.note).replace(/\s+/g, " "), 400)}`,
+      n.element !== undefined ? `Element: ${clip(esc(n.element ?? "(no text)"), 80)} · ${clip(esc(n.selector), 120)}` : null,
+      n.screen ? `Screen: ${esc(n.screen)}` : null,
+    ].filter(Boolean).join("\n");
+  });
+  let desc = "";
+  for (const [i, block] of notes.entries()) {
+    const next = (desc ? desc + "\n\n" : "") + block;
+    if (next.length > 1500) { desc += `\n\n…and ${notes.length - i} more (run show).`; break; }
+    desc = next;
+  }
+  return {
+    title: `${t.id} from ${clip(t.from ?? "anonymous", 80)}`,
+    description: withFooter ? `${desc}\n\n${FOOTER(t.id)}` : desc,
+    footer: { text: `${t.notes.length} note${t.notes.length === 1 ? "" : "s"} · sent ${pacific(t.sent)}` },
+    timestamp: t.sent,
+    color: 0x5865f2,
+  };
+}
+
+async function postWebhook(url, body, tries = 3) {
+  const r = await fetch(url + "?wait=true", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (r.status === 429 && tries > 1) {
+    const wait = Number((await r.json().catch(() => ({}))).retry_after ?? 2);
+    await new Promise((res) => setTimeout(res, Math.ceil(wait * 1000) + 250));
+    return postWebhook(url, body, tries - 1);
+  }
+  if (!r.ok) throw new Error(`Discord webhook ${r.status}: ${clip(await r.text(), 300)}`);
+}
 
 const [cmd, ...rest] = process.argv.slice(2);
 if (!commands[cmd]) {
-  console.error("usage: node scripts/feedback.cjs list | show FB-X | done FB-X \"summary\" | check | emailed [--new FB-A,FB-B] [--digest]");
+  console.error("usage: node scripts/feedback.cjs list | show FB-X | done FB-X \"summary\" | check | emailed [--new FB-A,FB-B] [--digest] | discord [--dry-run]");
   process.exit(1);
 }
 commands[cmd](...rest).catch((e) => { console.error("FAILED:", e.message); process.exit(1); });

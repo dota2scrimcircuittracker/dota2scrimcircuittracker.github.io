@@ -41,3 +41,26 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # After a push deploys, post its commit subjects to the Discord updates channel
+  # (scripts/discord-updates.cjs). Sync deploys come in as workflow_dispatch and are skipped.
+  # No DISCORD_UPDATES_WEBHOOK secret → the script logs that and posts nothing.
+  announce:
+    needs: deploy
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Post to Discord
+        env:
+          DISCORD_UPDATES_WEBHOOK: ${{ secrets.DISCORD_UPDATES_WEBHOOK }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: node scripts/discord-updates.cjs
