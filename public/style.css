@@ -2735,6 +2735,8 @@ a.discord-join:hover { color: #fff; background: #5865f2; border-color: #5865f2; 
 /* Footer: the tour ("New here?" / Resume) and the Discord invite, right of the disclaimer. */
 .foot { align-items: center; }
 .foot-links { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.foot-data { flex: 1 1 320px; text-transform: none; letter-spacing: .02em; }
+.foot-data a { text-decoration: underline; text-underline-offset: 3px; }
 
 .fb[hidden] { display: none; }
 .fb-banner {

@@ -552,11 +552,18 @@ export function route() {
   // when they draw (crumbs).
   const label = src.nav.find(([, key]) => key === section)?.[2] ?? "";
   setTitle(...(label ? [label] : []), leagueTitle);
-  return page();
+  return Promise.resolve(page()).finally(() => footSync(src));
+}
+// Footer: when the page's division last synced (from its data file), on AD2L pages.
+function footSync(src) {
+  const el = document.getElementById("foot-sync");
+  const at = src?.ad2l && src.cache?.()?.updated;
+  el.textContent = at ? ` · ${src.all ? "All divisions" : DIVISIONS[src.key].short} synced ${new Date(at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "";
 }
 
 // The picker page: no tabs, no time machine, and the menu opens each league's first page.
 function routeHub() {
+  footSync(null);
   document.body.dataset.league = "hub";
   document.title = "AD2L Stat Tracker";
   document.getElementById("league-name").innerHTML = "AD2L<b>Stat Tracker</b>";
