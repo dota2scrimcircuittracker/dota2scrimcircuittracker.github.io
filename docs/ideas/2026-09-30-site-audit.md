@@ -2,10 +2,9 @@
 
 Measured on the live site and in the code on 2026-09-30.
 
-Status (2026-10-01): speed #1–#4, missing basics #5–#8, navigation #9, #10 (tour and Discord
-moved to the footer), #12 and accessibility #13–#16 are built and live. Still open: #11 (more
-footer content) and code organisation #17–#21, written up for review at the end
-("Code organisation: for review").
+Status (2026-10-01): everything here is built. Speed #1–#4, missing basics #5–#8, navigation
+#9, #10, #12 and accessibility #13–#16 are live; #11 (footer) and code organisation #17–#21 are on
+the `code-organisation` branch, decided below under "Code organisation: for review".
 
 ## Missing basics
 
