@@ -70,6 +70,55 @@ export function lanesPageHtml(src, matches, pred, cuts, { name, hero = false }) 
     <p class="table-note">${cutNote(cuts)}</p>`;
 }
 
+// Team page, Laning tab: the team's three lanes (safe, mid, off) across its games, then every
+// game lane by lane. `games` are { m, side } with side "a" or "b".
+const OPP_ROLE = { 1: 3, 2: 2, 3: 1 };
+export function teamLanesHtml(src, games, cuts, team) {
+  if (!cuts) return "";
+  // A game's three lanes from this team's side: role 1 safe, 2 mid, 3 off.
+  const lanesOf = ({ m, side }) => {
+    const all = gameLanes(m);
+    if (!all.length) return null;
+    return [1, 2, 3].map((role) => {
+      const l = all.find((x) => x.lane === (side === "a" ? role : OPP_ROLE[role]));
+      const margin = l?.margin == null ? null : side === "a" ? l.margin : -l.margin;
+      return { role, margin, v: verdict(margin, cutFor(cuts, role)), us: l ? (side === "a" ? l.a : l.b) : [], them: l ? (side === "a" ? l.b : l.a) : [] };
+    });
+  };
+  const rows = games.map((g) => ({ ...g, lanes: lanesOf(g) })).filter((g) => g.lanes).sort((x, y) => (y.m.start_time ?? 0) - (x.m.start_time ?? 0));
+  if (!rows.length) return "";
+  const opp = ({ m, side }) => (side === "a" ? m.team_b : m.team_a);
+  const tally = (role) => {
+    const ls = rows.map((g) => g.lanes[role - 1]).filter((l) => l.v);
+    const n = (v) => ls.filter((l) => l.v === v).length, won = n("won"), even = n("even"), lost = n("lost");
+    const lead = ls.length ? ls.reduce((t, l) => t + l.margin, 0) / ls.length : null;
+    // Who played this lane most for the team.
+    const who = new Map();
+    for (const g of rows) for (const p of g.lanes[role - 1].us) { const k = playerKey(p), e = who.get(k) ?? { p, n: 0 }; e.n++; who.set(k, e); }
+    return { lanes: ls.length, won, even, lost, lead, rate: ls.length ? (won + even / 2) / ls.length : null, who: [...who.values()].sort((x, y) => y.n - x.n).slice(0, 3) };
+  };
+  const card = (role, i) => {
+    const t = tally(role), tone = t.rate == null ? "" : t.rate > 0.55 ? "won" : t.rate < 0.45 ? "lost" : "even";
+    const w = (x) => (t.lanes ? ((x / t.lanes) * 100).toFixed(1) : 0);
+    return `<div class="card tl-card ${tone}" style="--i:${i}">
+      <div class="k">${LANE_LABEL[role]}</div>
+      <div class="v">${t.won}–${t.even}–${t.lost}</div>
+      <div class="tl-split" role="img" aria-label="${t.won} won, ${t.even} even, ${t.lost} lost"><i class="won" style="width:${w(t.won)}%"></i><i class="even" style="width:${w(t.even)}%"></i><i class="lost" style="width:${w(t.lost)}%"></i></div>
+      <div class="s">won–even–lost · ${t.rate == null ? "—" : pct(t.rate)} lane win · avg ${t.lead == null ? "—" : signedK(t.lead)}</div>
+      <div class="tl-who">${t.who.map((x) => `<span>${playerLink(src, x.p)} <small>×${x.n}</small></span>`).join("")}</div>
+    </div>`;
+  };
+  const cell = (l) => `<td class="l tl-cell ${l.v ?? ""}"><div class="tl-faces"><span class="tl-us">${faces(src, l.us) || '<span class="muted">—</span>'}</span><span class="tl-vs">vs</span><span class="tl-them">${faces(src, l.them) || '<span class="muted">—</span>'}</span></div>
+    <div class="tl-res">${verdictTag(l.v)} <b>${l.margin == null ? "" : signedK(l.margin)}</b></div></td>`;
+  return `<div class="cards tl-cards reveal">${[1, 2, 3].map(card).join("")}</div>
+    <h2>Every game, lane by lane</h2>
+    <div class="table-wrap"><table class="tl-table"><thead><tr><th scope="col" class="l">Game</th>${[1, 2, 3].map((r) => `<th scope="col" class="l">${LANE_LABEL[r]}</th>`).join("")}<th scope="col">Game</th></tr></thead><tbody>
+      ${rows.map((g) => `<tr><td class="l tl-game"><a href="${src.link(g.m)}">vs ${esc(opp(g))}</a><small>${shortDate(g.m.createdAt)}</small></td>${g.lanes.map(cell).join("")}
+        <td>${g.m.winner === g.side ? '<span class="ln-w">W</span>' : '<span class="ln-l">L</span>'}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="table-note">${esc(team.name)}'s side of each lane: their heroes first, and the lead is theirs. ${cutNote(cuts)}</p>`;
+}
+
 // Highest lane score among players with `min`+ lanes (a week: 2, or 1 if nobody has 2).
 export function bestLaner(rows, min = 2) {
   const top = (n) => rows.filter((r) => r.lanes >= n).sort((a, b) => b.score - a.score || b.lanes - a.lanes)[0];

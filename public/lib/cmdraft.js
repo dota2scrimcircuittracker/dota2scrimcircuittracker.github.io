@@ -395,6 +395,17 @@ export function heroRoleShare(hero, pos) {
 // played it there in 2+ lane-parsed games (measured by Sybil on 9,522 real 7.41 picks: keeps
 // 98.2% of them at the position actually played, with 49–62 heroes per position).
 export const ROLE_SHARE_FLOOR = 0.08, PLAYED_IN_ROLE = 2;
+// How much a pick's position follows its player rather than the hero (sideComposition).
+export const POS_LEAN = 0.25;
+// A flex hero: one that plays two or more roles (carry, mid, off lane, support; 4 and 5 count as
+// one), by the population (FLEX_SHARE+ of its games there) or by any of `players`
+// (FLEX_PLAYED+ lane-parsed games there). Returns its positions, or [] when it isn't flex.
+export const FLEX_SHARE = 0.2, FLEX_PLAYED = 4;
+const FLEX_GROUP = [0, 1, 2, 3, 3];
+export function flexPositions(hero, players = []) {
+  const at = [0, 1, 2, 3, 4].filter((r) => heroRoleShare(hero, r) >= FLEX_SHARE || players.some((p) => (p.playedAt?.get(hero)?.[r] ?? 0) >= FLEX_PLAYED));
+  return new Set(at.map((r) => FLEX_GROUP[r])).size > 1 ? at : [];
+}
 export const fitsRole = (hero, pos, playedAt) => (playedAt?.get(hero)?.[pos] ?? 0) >= PLAYED_IN_ROLE || heroRoleShare(hero, pos) >= ROLE_SHARE_FLOOR;
 
 // A player's lane-parsed games on each hero at each position, each counted whole at its likeliest
@@ -411,21 +422,28 @@ export function playedAtRoles(index) {
   return out;
 }
 
-// The positions (0–4) a side's picks play: each pick weighs P(position | hero) times its players'
-// positions (their share of the pick, from the model's assignment), matched one position each
-// over every matching; the strongest reading takes its position first. Returns each pick's
-// position and the positions still open.
-export function sideComposition(players, picks, assignment) {
-  if (!picks.length) return { positions: [], open: [0, 1, 2, 3, 4] };
+// The positions (0–4) a side's picks play. In league Dota a hero plays where its player plays,
+// so the player's own positions lead (their share of the pick, from the model's assignment) and
+// the hero's population positions only lean: a mid player's Earth Spirit is a 2, not the 3/4 it
+// usually is in pubs. Each weight is the player's share at the position times (POS_LEAN + the
+// hero's share there), matched one position each over every matching; the strongest reading
+// takes its position first. Returns each pick's position and the positions still open.
+// `fixed[k]`, when set, is the position pick k was made for (the Drafter's "as pos N"); those
+// are kept and the rest are fitted around them. `reserve` is a position held for the pick about
+// to be made, so no earlier pick is fitted there.
+export function sideComposition(players, picks, assignment, fixed = [], reserve = null) {
+  if (!picks.length) return { positions: [], open: [0, 1, 2, 3, 4].filter((r) => r !== reserve) };
   const playerPos = picks.map((_, k) => {
     const out = [0, 0, 0, 0, 0];
     players.forEach((p, j) => { const sh = poolShares(p.pool); for (let r = 0; r < POSITIONS; r++) out[r] += assignment[j][k] * sh[r]; });
     return out;
   });
-  const weights = [0, 1, 2, 3, 4].map((r) => picks.map((h, k) => heroRoleShare(h, r) * playerPos[k][r] + 1e-9));
+  const weights = [0, 1, 2, 3, 4].map((r) => picks.map((h, k) => (POS_LEAN + heroRoleShare(h, r)) * playerPos[k][r] + 1e-9));
   const m = assignmentMarginals(weights);
   const takenR = new Set(), takenH = new Set(), positions = new Array(picks.length).fill(null);
-  for (let n = 0; n < picks.length; n++) {
+  if (reserve != null) takenR.add(reserve);
+  picks.forEach((_, k) => { const r = fixed[k]; if (r != null && !takenR.has(r)) { takenR.add(r); takenH.add(k); positions[k] = r; } });
+  while (takenH.size < picks.length) {
     let best = null;
     for (let r = 0; r < POSITIONS; r++) {
       if (takenR.has(r)) continue;

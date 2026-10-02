@@ -47,7 +47,9 @@ once (see "Firebase key").
 
 Where features live in `public/lib/`: search `search.js`; feedback `feedback.js` (review:
 `feedback-review.js`); tour `tour.js`; scrim schedule `fixtures.js`; predictions and the model
-`predict.js`; the draft model `cmdraft.js` (its page part `parts/cmdraft.js`); laning `lanes.js`; combat `combat.js` (charts `combat-charts.js`); items `items.js`,
+`predict.js`; strength of schedule `schedule.js` (AD2L's definition); the playoff picture
+`playoffs.js` (its page part `parts/playoffs.js`; the AD2L rules it follows are in its header,
+re-check them each season); the draft model `cmdraft.js` (its page part `parts/cmdraft.js`); laning `lanes.js`; combat `combat.js` (charts `combat-charts.js`); items `items.js`,
 the "Items & fights" chart `itemlead.js`; gold `timeline.js`, charts `charts.js`; maps `wardmap.js`,
 `deathmap.js`, `towermap.js`, `fightmap.js`, the shared overlays `maplayers.js`; vision `vision.js`
 (the line of sight, shared with the sync) and `visionmap.js`; unticketed uploads `unticketed.js`;
@@ -142,8 +144,9 @@ Backfills refill a field for games already synced, from the cached OpenDota matc
 - **Laning** — `lane_role` (OpenDota's own lanes; older games fall back to positions: 1+5 safe,
   2 mid, 3+4 off), `roaming`, `lh10`, `dn10`: `node scripts/backfill/lanes-backfill.js`.
 - **Combat** — per player `apm`, `tf_part`, `first_blood`, `multi`, `streaks`, `kill_t`,
-  `runes`, `courier_kills`, `max_hit`, `pings`, `bench`; per game `pauses`
-  (`scripts/sync/combat-fields.js`): `node scripts/backfill/combat-backfill.js`.
+  `runes`, `courier_kills`, `max_hit`, `pings`, `bench`, `smoke_kill_t` (seconds of kills
+  OpenDota flags as out of smoke); per game `pauses`, `fight_smokes` (smokes each side used in
+  each teamfight; both read by `public/lib/smokemap.js`) (`scripts/sync/combat-fields.js`): `node scripts/backfill/combat-backfill.js`.
 - **First blood** — per game `first_blood_at` [second, killer, victim] (player indexes;
   OpenDota's flagged killer at their first kill; its own `first_blood_time` reads 0 for kills
   before the horn, so it isn't used) and per player `first_blood` / `first_death`.
@@ -221,7 +224,8 @@ header says how to delete it.
 
 Reviewing (your Firebase login): `node scripts/feedback.cjs list`, `show FB-XXXXXX` (saves the
 screenshots and a replay file in gitignored `public/_dev/feedback/`), `done FB-XXXXXX "summary"`
-(deletes it, logs it in `docs/feedback-log.md`). With `npm start` running,
+(deletes it and its Discord post, reposts today's digest without it, logs it in
+`docs/feedback-log.md`). With `npm start` running,
 `http://localhost:3000/?fbreview=FB-XXXXXX` replays a shown ticket on the real pages: its marks,
 pins and notes drawn where the visitor made them, a clicked element found again by its selector,
 and a panel to step through the notes (`public/lib/feedback-review.js`, loaded on localhost only).

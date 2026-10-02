@@ -9,6 +9,7 @@ import { wardMapHtml, wardsOf, wireWardMaps } from "../lib/wardmap.js";
 import { visionMapHtml, wireVisionMaps } from "../lib/visionmap.js";
 import { mapLayerData, wireMapLayers } from "../lib/maplayers.js";
 import { deathMapHtml, wireDeathMaps } from "../lib/deathmap.js";
+import { smokeMapHtml, wireSmokeMaps } from "../lib/smokemap.js";
 import { towerMapHtml, wireTowerMaps } from "../lib/towermap.js";
 import { itemLeadHtml, LAYERS } from "../lib/itemlead.js";
 import { asAd2l, sameTeams } from "../lib/unticketed.js";
@@ -377,7 +378,7 @@ export async function renderMatch(id, src) {
     </section>`;
   }
 
-  // Map tab: wards, towers, deaths.
+  // Map tab: wards, towers, deaths, smokes.
   const deaths = deathMapHtml(m);
   const laneCuts_ = src.ad2l && !m.unticketed ? await laneCutsOf(src) : null;
   const mapHtml = mapCard([
@@ -388,6 +389,7 @@ export async function renderMatch(id, src) {
     ["vision", "Vision", "vision_map", visionMapHtml(m, { id: "match-vision" })],
     ["towers", "Towers", "tower_map", m.buildings?.length ? towerMapHtml(m, { id: "match-towers" }) : ""],
     ["deaths", "Deaths", "fight_deaths", deaths],
+    ["smokes", "Smokes", "smoke_map", smokeMapHtml(m, { id: "match-smokes" })],
   ], { layers: mapLayerData(m) });
 
   const footer = m.unticketed
@@ -459,6 +461,7 @@ export async function renderMatch(id, src) {
   wireMapLayers(app);
   wireTowerMaps(app);
   wireDeathMaps(app);
+  wireSmokeMaps(app);
   wireStreakCharts(app);
   // Draft tab: load the model and the division's draft file the first time the tab is shown.
   const cmBox = app.querySelector("#cm-box");

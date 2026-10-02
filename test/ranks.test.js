@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { RANK_STATS, withPerGame, rankStat, ends, placeOf, ordinal, formatStat } from "../public/lib/ranks.js";
-import { heroRatings, gameRatings, tierModel, tierList, MIN_GAMES, TIERS } from "../public/lib/tiers.js";
+import { heroRatings, heroTierList, heroPowerList, K_HERO, gameRatings, tierModel, tierList, MIN_GAMES, TIERS } from "../public/lib/tiers.js";
 import { playerLeaderboard } from "../public/lib/stats.js";
 import { parseDuration } from "../public/lib/validate.js";
 
@@ -96,4 +96,40 @@ test("gameRatings: the ten players of one game, best first, each with a tier", (
   const key = list.find((p) => p.name === games[3].players[0].name).key;
   const at = (m) => gameRatings(m, games, { model }).find((p) => p.key === key).rating_exact;
   assert.ok(at(games[3]) > at(games[0]));
+});
+
+test("heroTierList: player-hero pairs at the games floor, banded by the tier cutoffs, best first", () => {
+  const games = [0, 1, 2, 3].map((i) => { const g = game(i); g.players[0].kills += 5 * i; if (i === 3) g.players[1].hero = "Pudge"; return g; });
+  const ratings = heroRatings(games, { model: tierModel(games) });
+  const bands = heroTierList(ratings, { minGames: 2 });
+  assert.deepEqual(bands.map((b) => b.tier), TIERS.map((t) => t.tier));
+  const pairs = bands.flatMap((b) => b.pairs);
+  // Ten players on their usual hero (4 or 3 games); the one Pudge game is under the floor.
+  assert.equal(pairs.length, 10);
+  assert.ok(pairs.every((p) => p.games >= 2 && p.hero !== "Pudge"));
+  for (const b of bands) for (const p of b.pairs) assert.equal(p.tier, TIERS.find((t) => p.rating_exact >= t.min).tier);
+  for (let i = 1; i < pairs.length; i++) assert.ok(pairs[i - 1].rating_exact >= pairs[i].rating_exact);
+  assert.equal(heroTierList(ratings, { minGames: 1 }).flatMap((b) => b.pairs).length, 11);
+  // The cached ratings aren't touched.
+  assert.ok([...ratings.values()].flat().every((p) => p.tier === undefined));
+});
+
+test("heroPowerList: heroes by padded games-weighted hero rating, on a curve, at the games floor", () => {
+  const games = [0, 1, 2, 3].map((i) => { const g = game(i); g.players[0].kills += 5 * i; if (i === 3) g.players[1].hero = "Pudge"; return g; });
+  const ratings = heroRatings(games, { model: tierModel(games) });
+  const { tiers } = heroPowerList(ratings, { minGames: 2 });
+  assert.deepEqual(tiers.map((t) => t.tier), TIERS.map((t) => t.tier));
+  const heroes = tiers.flatMap((t) => t.heroes);
+  assert.equal(heroes.length, 10); // Pudge's one game is under the floor
+  for (const h of heroes) {
+    const ps = ratings.get(h.hero);
+    const games = ps.reduce((s, p) => s + p.games, 0);
+    assert.equal(h.games, games);
+    assert.ok(Math.abs(h.avg - (ps.reduce((s, p) => s + p.rating_exact * p.games, 0) + 50 * K_HERO) / (games + K_HERO)) < 1e-9);
+    assert.equal(h.tier, TIERS.find((t) => h.rating_exact >= t.min).tier);
+    assert.equal(h.best, ps[0]);
+  }
+  // Same order as the padded averages: the curve only stretches them.
+  for (let i = 1; i < heroes.length; i++) assert.ok(heroes[i - 1].avg >= heroes[i].avg - 1e-9);
+  assert.equal(heroPowerList(ratings, { minGames: 1 }).tiers.flatMap((t) => t.heroes).length, 11);
 });

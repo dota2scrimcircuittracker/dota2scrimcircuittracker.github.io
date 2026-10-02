@@ -9,6 +9,7 @@ import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, allMa
 import { loading, errorBox } from "../parts/lanes.js";
 import { lastNight, sinceLabel } from "../parts/ranks.js";
 import { draftHtml, upload } from "./upload.js";
+import { playoffsHtml } from "../parts/playoffs.js";
 
 // ---------- Predictions (AD2L) ----------
 
@@ -216,6 +217,8 @@ export async function renderPredict(src) {
       : `<div class="panel empty">PlayOn hasn't posted the next week's schedule yet. It shows up here after the next sync.</div>`}
     <h2>Leaderboard</h2>
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks.</p>` : `<div class="panel empty">No picks yet.</div>`}
+    <h2>Playoff picture</h2>
+    <section class="po reveal">${playoffsHtml(src, d, ratings)}</section>
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model = what it would have picked that week from earlier results only. Crowd = most-picked call (count after it). Picks saved after a series started don't count.</p></details>` : ""}
     <details class="how"><summary>How the model works</summary>
       <p>Each team has a strength rating fitted to every game result so far (PlayOn's series scores, so games OpenDota never saw still count). With only ${playedNights.length} weeks played, results alone jump around, so each rating is pulled toward a starting point from the average PlayOn medal of the team's top three players. How hard to pull, and how much medals matter, were chosen by replaying all seven divisions together: predicting each week from only the weeks before it and keeping what did best. So far medals have predicted results far better than past results have, so the pull is strong.</p>

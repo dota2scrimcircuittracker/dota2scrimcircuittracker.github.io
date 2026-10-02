@@ -5,6 +5,7 @@ import { listTeams, standingsRows, teamHistory, sideOf } from "../lib/teams.js";
 import { wireCharts } from "../lib/charts.js";
 import { collectWards, wireWardMaps } from "../lib/wardmap.js";
 import { teamFightMapHtml, wireFightMaps } from "../lib/fightmap.js";
+import { teamSmokeHtml, wireSmokeMaps } from "../lib/smokemap.js";
 import { teamDraftPhases, PHASES } from "../lib/draft.js";
 import { teamByName } from "../lib/unticketed.js";
 import { info } from "../lib/glossary.js";
@@ -12,7 +13,7 @@ import { clock } from "../lib/items.js";
 import { teamSplits, playerPairs } from "../lib/combat.js";
 import { lengthHtml } from "../lib/combat-charts.js";
 import { divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt } from "../core.js";
-import { loading, errorBox } from "../parts/lanes.js";
+import { loading, errorBox, laneCutsOf, teamLanesHtml } from "../parts/lanes.js";
 import { tierRef } from "../parts/tiers.js";
 
 // ---------- Teams ----------
@@ -96,7 +97,7 @@ export async function renderTeams(src, slug) {
   const others = roster ? h.players.filter((p) => !onRoster.has(p.key)) : [];
 
   // Tier letters from the league's tier list (players with enough games).
-  const detailed = matches.filter(hasDetails), model = await tierRef(src);
+  const detailed = matches.filter(hasDetails), model = await tierRef(src), laneCuts_ = await laneCutsOf(src);
   const tierOf = new Map(tierList(detailed, { model, minGames: floorOf(src) }).tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { ...p, tier }])));
   const tierTag = (key) => { const t = tierOf.get(key); return t ? `<span class="rc-tier t-${t.tier}" title="${t.tier} tier · ${t.rating} rating">${t.tier}</span>` : ""; };
 
@@ -261,9 +262,10 @@ export async function renderTeams(src, slug) {
       ${h.detailed.length ? `<h2>Player stats for this team</h2><div id="t"></div>` : ""}
       ${pairs.pairs.length ? `<h2>Pairs${info("team_pairs")}</h2><div id="pairs"></div>
         <h2>Lineups</h2><div id="lineups"></div>` : ""}`],
-    ["games", ad2l ? "Series" : "Games", `<div class="history reveal">${historyRows.join("") || noGames}</div>`],
-    // The draft model's read of every drafted series (parts/cmdraft.js), filled when first shown.
-    ["drafts", "Drafts", ad2l && h.games.some(({ m }) => m.draft?.some((x) => x.pick)) ? `<div id="td-box"><div class="panel empty">Reading the drafts…</div></div>` : ""],
+    // Series, then the draft model's read of each drafted one (parts/cmdraft.js), filled when
+    // the tab is first shown.
+    ["games", ad2l ? "Series" : "Games", `<div class="history reveal">${historyRows.join("") || noGames}</div>
+      ${ad2l && h.games.some(({ m }) => m.draft?.some((x) => x.pick)) ? `<h2>Drafts</h2><div id="td-box"><div class="panel empty">Reading the drafts…</div></div>` : ""}`],
     ["heroes", "Heroes", h.heroes.length ? `${cardsHtml([
         ["Hero pool", String(h.heroes.length), `different heroes in ${plural(h.detailed.length, "game")}`],
         ["Most played", esc(top.hero), `${plural(top.picks, "game")} · ${top.wins}–${top.picks - top.wins}`],
@@ -272,12 +274,14 @@ export async function renderTeams(src, slug) {
       ])}
       <h2>Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
       ${phases}` : ""],
+    ["lanes", "Laning", teamLanesHtml(src, h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side), laneCuts_, team)],
     ["map", "Map", `${teamMapHtml(src, matches, teams, team, h)}
       ${(() => { const gs = h.games.map(({ m }) => m), mine = (p, m) => p.team === sideOf(m, team);
         const fights = teamFightMapHtml(gs, (m) => sideOf(m, team), { name: team.name });
         return mapCard([
           ["wards", "Wards", "ward_map", wardView(collectWards(gs, mine), team.name)],
           ["fights", "Team fights", "team_fights", fights || ""],
+          ["smokes", "Smokes", "team_smokes", teamSmokeHtml(gs, (m) => sideOf(m, team), { name: team.name })],
         ]); })()}`],
   ], { store: "teamTab", label: "Team sections" });
 
@@ -314,9 +318,9 @@ export async function renderTeams(src, slug) {
           const games = h.games.filter(({ m }) => m.series_id === x.id).filter(drafted).sort((p, q) => p.m.start_time - q.m.start_time);
           const home = x.home === team.id, [us, them] = home ? [x.home_score, x.away_score] : [x.away_score, x.home_score];
           const date = x.time ? new Date(x.time * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
-          return { label: `${date} · vs ${esc(tname[home ? x.away : x.home] ?? "TBD")} · ${us ?? 0}–${them ?? 0}`, games };
+          return { label: `<span class="td-sdate">${date}</span><span>vs <b>${esc(tname[home ? x.away : x.home] ?? "TBD")}</b></span><span class="td-sscore ${(us ?? 0) > (them ?? 0) ? "w" : (us ?? 0) < (them ?? 0) ? "l" : ""}">${us ?? 0}–${them ?? 0}</span>`, games };
         }).filter((x) => x.games.length);
-        tdBox.innerHTML = cm.teamDraftsHtml(team, series, src, data, tdBox.clientWidth || 1000);
+        tdBox.innerHTML = cm.teamDraftsHtml(team, series, src, data, (tdBox.clientWidth || 1000) - 36);
       }).catch((e) => { tdBox.innerHTML = errorBox(e); });
     };
     if (!panel.hidden) fill();
@@ -325,6 +329,7 @@ export async function renderTeams(src, slug) {
   wireMapCards(app);
   wireWardMaps(app);
   wireFightMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
+  wireSmokeMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
   app.querySelectorAll("[data-goto-tab]").forEach((b) => (b.onclick = () => document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click()));
   // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
   app.querySelector(".ph-segs")?.addEventListener("click", (e) => {

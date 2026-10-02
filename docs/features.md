@@ -62,9 +62,10 @@ and change it: [maintaining.md](maintaining.md).
 
 ## Teams tab (AD2L) and team pages
 
-- **Table** — standings from PlayOn's series scores, with form. **Strength of schedule** (SOS and
-  Still to play): RPI-style, opponents' game win % (without their games against you) and their
-  opponents' win %, plus how tough the remaining schedule is (a coming bye week doesn't count).
+- **Table** — standings from PlayOn's series scores, with form. **Strength of schedule** (SOS):
+  AD2L's own tiebreaker (rules §7), the total game wins of every opponent played (a team met
+  twice counts twice, a bye counts 0). Still to play: the same total for the posted opponents
+  still to come (a coming bye week doesn't count).
 - **Matches** — every series, one box per week (per division in Combined Heroic), like a
   Liquipedia group stage: winner green, loser red, a tie gold; upcoming pairings with the model's
   odds on hover; G1/G2 links to each ticketed game. PlayOn posts pairings about a week ahead, so
@@ -160,6 +161,18 @@ rest) and recent pubs.
 
 ## Heroes tab and hero pages
 
+The Heroes tab has three sub-tabs (`?tab=tiers|players|table`):
+
+- **Hero tiers** — the heroes themselves, ranked S–D by how well players do on them: the
+  games-weighted average hero rating of everyone who played it, padded with 3 games at 50 (the
+  median player), then put on a curve fitted to the heroes with 2+ games (median 50, 1.5 × their
+  spread), same cutoffs as the tier list. Each card: rating, best player on it, W–L, games,
+  players. Games floor default 3 (drops when nothing reaches it). Not a win-rate ranking.
+- **Players on heroes** — every player on every hero, ranked S–D by hero rating (the tier rating
+  from just their games on that hero; same cutoffs as the tier list). Filters: Everyone / Cores /
+  Supports, one hero, and a games floor (default 2; drops to 1 when nobody has 2).
+- Both boards show 24 cards per tier, then "+N more".
+- **All heroes** — the draft cards and the table below:
 - **Heroes** — every hero picked: picks, bans, contest rate (picked or banned per drafted
   game), win rate, Radiant's win rate, the division's "team that drew first blood won X%".
   Bans and picks split by Captains Mode phase (phase 1 = opening 7 bans + first 2 picks, phase 2
@@ -198,7 +211,9 @@ rest) and recent pubs.
   swaps and tri-lanes count as played. Won/lost cut-offs are fitted per division, a third of
   lanes each way, side lanes and mid separately (S48 Champion: ~1,000 side, ~850 mid). Player and
   hero pages get a Laning tab (record, averages, by lane, every lane with who they laned with and
-  against). Lane score = average lead ÷ the won cut-off, padded with 2 even lanes.
+  against). Team pages get one too: each lane's won–even–lost record with who played it, then
+  every game lane by lane (heroes on both sides, verdict, lead). Lane score = average lead ÷ the
+  won cut-off, padded with 2 even lanes.
 - **Map & objectives** (AD2L, parsed replays) — lane / neutral / ancient creep kills, camps
   stacked, observers and sentries placed, dewards, Roshan and Tormentor last hits, and a timeline
   of who took each Roshan and Tormentor.
@@ -229,13 +244,20 @@ rest) and recent pubs.
   games mirrored so it's always "own base bottom left"), or As Radiant / As Dire. Filter by ward
   type and game phase (0–10', 10–20', 20–35', 35'+).
 - **Map tab** (game, player, hero, team) — one map at a time with buttons to switch between
-  wards, towers, deaths, team fights and vision; the last pick is remembered from page to page.
+  wards, towers, deaths, team fights, smokes and vision; the last pick is remembered from page to page.
   A game's maps share overlay checkboxes (off at first, remembered): Kills (the dead hero's
   portrait; teamfight kills only, since OpenDota records no spot for the rest), Teamfights,
   Objectives (buildings; Roshan and Tormentor at the pit / spot for that time of day) and Wards
   (placed, crossed when dewarded). Each map draws them over its own window and counts what's in
   it, including kills with no recorded spot (about 46% of deaths across S48: lane kills and
   pickoffs).
+- **Smokes** (AD2L game and team Map tabs) — kills OpenDota flags as made out of Smoke of Deceit.
+  OpenDota keeps no time or place for when a smoke was used, so the map shows where each gank
+  ended (the victim's spot, only for deaths inside a teamfight; about 55% of smoked kills) and the
+  chart shows when. Game: a timeline with a row per team, shaded where a team used a smoke inside a
+  teamfight, and smokes used per team. Team: their smoke kills and the ones on them (Dire games
+  mirrored, or one side), kills out of smoke by game minute, and per game smokes used, kills out
+  of smoke and their share of all kills, against the opponents'.
 - **Tower maps** (AD2L) — every tower, barracks and Ancient by game phase: what's standing at the
   end of the phase, what fell in it (with the time) and what fell earlier (faded). Hover for who
   took it, creeps, or a deny. Building spots are hand-placed along the lanes, so they can be a
@@ -320,7 +342,7 @@ shrunk-resolution problem above, not a finding problem.
   counts too. Not in yet: counters and synergy (Sybil's tables per patch), and how the teams have
   done this season (the rating is 0, as in Sybil's own sandbox). So bans never move the chance:
   a ban only denies.
-- **Team Drafts tab** (AD2L teams) — every drafted series, newest first, with each game's draft
+- **Team drafts** (AD2L teams, under the Series tab) — every drafted series, newest first, with each game's draft
   chart drawn from the team's side (their chance to win before the draft and after every step),
   how far the draft moved it, and a link to the game's step-by-step Draft tab. A line on top says
   in how many drafts the model moved the team's chance up, and by how much on average.
@@ -328,7 +350,7 @@ shrunk-resolution problem above, not a finding problem.
   division, any two teams from any division, or a past game (its draft loads in full; click any
   step to rewind and branch, and "In the game" shows what was actually picked there). Pick who
   has first pick and who is Radiant, and which five play (default: the five with the most league
-  games for the team). On a pick, **Picking for** says which player the pick is for (default: the player with no hero yet) and at which open position (default: the open one they play most); the list then shows heroes for that player at that position, scored with the hero as theirs, and the pick is recorded as theirs. A past game's picks are pinned to who actually played them. Every step lists the model's best 10 (picks: the team's chance to win with
+  games for the team). On a pick, **Picking for** says which player the pick is for (default: the player with no hero yet) and at which open position (default: the open one they play most); the list then shows heroes for that player at that position, scored with the hero as theirs, and the pick is recorded as theirs. A past game's picks are pinned to who actually played them. Every step lists the model's best 8 (picks: the team's chance to win with
   the hero and who would play it; bans: points the hero would add to the other team and who on
   it would play it), and every hero in the grid shows its value. Undo, reset, or click a filled
   slot to rewind. **Positions:** the model has no rule against a third carry (Sybil measured a
@@ -336,7 +358,13 @@ shrunk-resolution problem above, not a finding problem.
   a pick for a position the team hasn't filled, and a ban for one the other team hasn't. A hero
   fits a position when ranked pubs play it there 8%+ of the time (Sybil's lane-parsed table) or a
   player on the team has played it there in 2+ lane-parsed games. Each suggestion and pick slot
-  shows its position; "Only open positions" turns the filter off. A player with no history (a stand-in, a private profile, or a division not yet
+  shows its position; "Only open positions" turns the filter off. Any of the five positions can
+  be picked for; one an earlier pick holds moves that pick. On a ban, **Ban for** narrows the list
+  to one of the other team's positions. A pick plays where its player plays (a mid player's Earth
+  Spirit is a 2), with the hero's pub positions only breaking ties; a position you chose for a
+  pick is kept. **Flex** heroes (two or more roles, 4 and 5 counting as one: 20%+ of pub games
+  there, or 4+ lane-parsed games there by someone in the game) are marked in the list, the grid
+  (gold corner) and the board. A player with no history (a stand-in, a private profile, or a division not yet
   synced) reads as an average player at the game's rank.
 
 ## Predictions
@@ -361,6 +389,17 @@ shrunk-resolution problem above, not a finding problem.
   and after it, the step chart, and each team's heroes, players and bans. Measured on this
   season's games read before they were played (`scripts/measure/draft-model.js`): before
   the draft it was no better than the ratings, which is why the ratings stay as they are.
+- **Playoff picture** (Predict, below the leaderboard; `lib/playoffs.js`, `parts/playoffs.js`) —
+  the playoffs if every remaining call goes the model's way. Unreported series get the model's
+  call; weeks PlayOn hasn't posted (up to 7) are paired swiss-style as a labelled stand-in (table
+  order, nearest team not yet met). Then the final table (wins, SoS, where each place goes), the
+  week 8 tiebreakers by the rules' table (ties across the 4th/5th and 8th/9th lines are played,
+  with the predicted winners; seed-only ties go SoS → head to head → highest common opponent →
+  coin flip) and the double-elim bracket to a champion. Bracket shape from S47 on PlayOn: seed 1
+  takes the weaker of 3 and 4, lower round 1 is 5v8 and 6v7, the loser of seed 1's match meets
+  the 6v7 winner. Under 8 teams everyone's in (4: all upper; 5–6: 5v6 lower), the site's
+  assumption. Heroic/Aegis shows A and B (top 4 → Aegis, 5–8 → Heroic) with no bracket until AD2L
+  says how A and B are seeded against each other.
 - **Scrims** (Scrims → Predict) — anyone adds an upcoming scrim (two teams, start time,
   Bo1/Bo2/Bo3); everyone calls it until it starts, same name-based leaderboard. Each card has
   **Upload game N** and **Private result** buttons that open the upload page with the scrim's

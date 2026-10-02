@@ -5,6 +5,7 @@
 //   dota.playon.gg/seasons/{id}   -> the division's teams and PlayOn match (series) links
 //   dota.playon.gg/matches/{id}   -> series time, home/away team, series score
 //   dota.playon.gg/teams/{id}     -> roster: player name + 32-bit account id + smurfs
+//   OpenDota /players/{id}        -> current rank (PlayOn's roster rank is the fallback)
 //   OpenDota /players/{id}/matches?lobby_type=1  -> candidate practice-lobby games
 //   OpenDota /matches/{id}        -> full stats; `leagueid` says if it's this AD2L season
 // OpenDota has no per-league match list for amateur leagues (S48's league returns 0), and
@@ -171,6 +172,26 @@ for (const [id, name] of season.teams) {
   const roster = parseRoster(await playon(`/teams/${id}`, 72));
   teams.push({ id, name, ...(season.division.has(id) && { division: season.division.get(id) }), players: roster });
 }
+// Current rank from OpenDota (the main account's Steam profile); PlayOn's lags, often by a
+// medal or more. Kept PlayOn's when OpenDota has none or the call fails. Cached 11 hours so
+// the twice-daily runs each refresh it but Thursday night's back-to-back runs don't.
+async function odRank(acct) {
+  const file = path.join(CACHE, "opendota", `player_${acct}.json`);
+  if (existsSync(file)) {
+    const { mtimeMs } = await import("node:fs").then((fs) => fs.statSync(file));
+    if (Date.now() - mtimeMs < 11 * 3600e3) return JSON.parse(await readFile(file, "utf8")).rank_tier ?? null;
+  }
+  const p = await opendota(`/players/${acct}`);
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, JSON.stringify({ rank_tier: p.rank_tier ?? null }));
+  return p.rank_tier ?? null;
+}
+let rankChanged = 0;
+for (const t of teams) for (const p of t.players) {
+  const r = await odRank(p.account_ids[0]).catch((e) => (console.log(`  rank for ${p.name}: ${e.message}`), null));
+  if (r != null && r !== p.rank_tier) { rankChanged++; p.rank_tier = r; }
+}
+console.log(`  ranks: ${rankChanged} differ from PlayOn, OpenDota's used`);
 const owner = new Map(); // account id -> { team, player name }
 // `main` is the player's main account: smurf games count for the same person.
 for (const t of teams) for (const p of t.players) for (const a of p.account_ids) owner.set(a, { team: t.id, name: p.name, main: p.account_ids[0], rank_tier: p.rank_tier });
@@ -342,7 +363,7 @@ for (const id of [...candidates].sort()) {
       // flat [key, sec, ...] (see public/lib/items.js).
       ...itemsFrom(p),
       // APM, multi-kills, kill streaks, kill times, first blood, teamfight share, runes, courier
-      // kills, biggest hit, pings and public benchmarks (see scripts/sync/combat-fields.js).
+      // kills, biggest hit, pings, public benchmarks and smoke kills (see scripts/sync/combat-fields.js).
       ...combatFields(p, firstDeathOf(extras.first_blood_at, i)),
     })),
   });

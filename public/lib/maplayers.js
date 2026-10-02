@@ -89,10 +89,10 @@ const boxes = (data, base) => {
     `<label title="${attr(TIPS[k])}"><input type="checkbox" data-map-layer="${k}"${on[k] ? " checked" : ""}> ${label}</label>`).join("");
 };
 // Which map a figure is.
-const baseOf = (fig) => (fig.classList.contains("visionmap") ? "vision" : fig.classList.contains("deathmap") ? "deaths" : fig.classList.contains("towermap") ? "towers" : "wards");
+const baseOf = (fig) => (fig.classList.contains("visionmap") ? "vision" : fig.classList.contains("deathmap") ? "deaths" : fig.classList.contains("towermap") ? "towers" : fig.classList.contains("smokemap") ? "smokes" : "wards");
 
 // Draws the checked overlays into fig's map for seconds [from, to). base: which map this is
-// ("wards", "vision", "towers", "deaths"). fade: older marks fainter (the vision map's moment
+// ("wards", "vision", "towers", "deaths", "smokes"). fade: older marks fainter (the vision map's moment
 // view, where [from, to) is the two minutes up to the slider). Remembered on the figure for
 // when a box changes.
 export function drawLayers(fig, from, to, base, { fade: fading = false } = {}) {

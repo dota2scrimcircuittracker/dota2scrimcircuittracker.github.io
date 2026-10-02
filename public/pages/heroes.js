@@ -1,11 +1,15 @@
-// Heroes tab: every hero picked, with pick, ban and win rates.
+// Heroes tab: three sub-tabs. Hero tiers (the heroes, by how well players do on them), Players on
+// heroes (every player-hero pair) and All heroes (every hero picked, with pick, ban and win rates).
 import { hasDetails, heroStats } from "../lib/stats.js";
 import { byHero } from "../lib/timeline.js";
 import { draftAnalysis } from "../lib/draft.js";
 import { info } from "../lib/glossary.js";
 import { firstBloodRecord, sideRecord } from "../lib/combat.js";
-import { app, pageHead, pct, heroLink, minBar, MIN_DEFAULT, wireMinBar, sortableTable, portrait, fmt, esc } from "../core.js";
+import { app, pageHead, pct, heroLink, minBar, MIN_DEFAULT, wireMinBar, sortableTable, portrait, fmt, esc, playerTabs, wirePlayerTabs } from "../core.js";
 import { loading, errorBox } from "../parts/lanes.js";
+import { heroRanks } from "../parts/ranks.js";
+import { tierRef } from "../parts/tiers.js";
+import { heroTierSection, heroPowerSection } from "../parts/herotiers.js";
 
 export async function renderHeroes(src) {
   app.innerHTML = loading(src.kicker, "Heroes");
@@ -13,6 +17,8 @@ export async function renderHeroes(src) {
   try { all = await src.load(); } catch (e) { app.innerHTML = `${pageHead(src.kicker, "Heroes")}${errorBox(e)}`; return; }
   const matches = all.filter(hasDetails);
   const rows = heroStats(matches);
+  const ratings = matches.length ? heroRanks(matches, await tierRef(src)) : null;
+  const ht = ratings && heroTierSection(src, ratings), hp = ratings && heroPowerSection(src, ratings);
   // Captains Mode drafts (AD2L replays) add the by-phase columns and the highlight cards.
   const a = draftAnalysis(all);
   const byHero = new Map(a.games ? a.heroes.map((h) => [h.hero, h]) : []);
@@ -43,10 +49,20 @@ export async function renderHeroes(src) {
       b1: h.bans[0], b2: h.bans[1], b3: h.bans[2], p1_ban_share: h.p1_ban_share, p1: 0, p2: 0, p3: 0, w1: null, w2: null, w3: null, avg_damage: null, avg_kda: null });
   }
   app.innerHTML = `${pageHead(src.kicker, "Heroes", merged.length ? `${rows.length} heroes picked across ${matches.length} ${matches.length === 1 ? "game" : "games"}${a.games ? `, with bans and picks by draft phase from ${a.games} Captains Mode drafts` : ""}.` : "")}
-    ${merged.length ? `${cards}${minBar(a.games ? "Show heroes picked or banned at least" : "Show heroes picked at least", "times", MIN_DEFAULT(matches))}<div id="t" class="reveal"></div>
-    ${a.games ? `<p class="table-note">B1–B3 = bans in draft phase 1–3; P1–P3 = picks, with the win % when picked in that phase (P3 = last picks).</p>` : ""}`
+    ${merged.length ? (() => {
+      const tabs = playerTabs([
+        ["tiers", "Hero tiers", hp?.html ?? ""],
+        ["players", "Players on heroes", ht?.html ?? ""],
+        ["table", "All heroes", `${cards}${minBar(a.games ? "Show heroes picked or banned at least" : "Show heroes picked at least", "times", MIN_DEFAULT(matches))}<div id="t" class="reveal"></div>
+          ${a.games ? `<p class="table-note">B1–B3 = bans in draft phase 1–3; P1–P3 = picks, with the win % when picked in that phase (P3 = last picks).</p>` : ""}`],
+      ], { store: "heroesTab", label: "Heroes sections" });
+      return `<div class="heroes-tabs">${tabs.bar}</div>${tabs.panels}`;
+    })()
     : `<div class="panel empty"><strong>No picks yet</strong>${src.empty}</div>`}`;
   if (!merged.length) return;
+  wirePlayerTabs();
+  hp?.draw();
+  ht?.draw();
   wireMinBar(merged, (r) => (r.picks ?? 0) + (a.games ? r.bans ?? 0 : 0), (shown) => sortableTable(document.getElementById("t"), [
     ["hero", "Hero", (v) => `<span class="hero-cell">${portrait(v)}${heroLink(src, v)}</span>`, "l"], ["picks", "Picks", null, "", "gold"], ["pick_rate", "Pick rate", pct], ["wins", "Wins"],
     ["win_rate", "Win %", pct, "", "jade"],

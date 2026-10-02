@@ -26,7 +26,7 @@ const parsed = (p) => Array.isArray(p.kills_log) || p.actions_per_min != null;
 
 // firstDeath: 1 if this player was first blood's victim, 0 if not (gameExtras works it out).
 export function combatFields(p, firstDeath = null) {
-  if (!parsed(p)) return { apm: null, tf_part: null, first_blood: null, first_death: null, multi: null, streaks: null, kill_t: null, runes: null, courier_kills: null, max_hit: null, pings: null, bench: null };
+  if (!parsed(p)) return { apm: null, tf_part: null, first_blood: null, first_death: null, multi: null, streaks: null, kill_t: null, runes: null, courier_kills: null, max_hit: null, pings: null, bench: null, smoke_kill_t: null };
   const hit = p.max_hero_hit;
   return {
     apm: p.actions_per_min ?? null,
@@ -46,6 +46,8 @@ export function combatFields(p, firstDeath = null) {
     max_hit: hit?.value ? [hit.value, hit.inflictor ?? null, hit.key?.replace(/^npc_dota_hero_/, "") ?? null] : null,
     pings: p.pings ?? null,
     bench: p.benchmarks ? BENCH_KEYS.map((k) => (p.benchmarks[k]?.pct == null ? null : Math.round(p.benchmarks[k].pct * 100))) : null,
+    // Second of each hero kill OpenDota flags as made out of Smoke of Deceit (public/lib/smokemap.js).
+    smoke_kill_t: Array.isArray(p.kills_log) ? p.kills_log.filter((k) => k.smoke).map((k) => k.time) : null,
   };
 }
 
@@ -64,9 +66,18 @@ export function firstBloodFrom(d) {
   return [k.time, i, v];
 }
 
-// Game-level: first blood (above) and every pause as flat [second, length, ...].
+// Smokes of Deceit used in each teamfight, flat pairs in `fights` order: [Radiant, Dire, ...].
+// Null without teamfights.
+export function fightSmokesFrom(d) {
+  if (!Array.isArray(d.teamfights) || !Array.isArray(d.players)) return null;
+  return d.teamfights.flatMap((f) => [true, false].map((rad) => d.players.reduce((n, p, i) =>
+    n + (p.isRadiant === rad ? f.players?.[i]?.item_uses?.smoke_of_deceit ?? 0 : 0), 0)));
+}
+
+// Game-level: first blood (above), every pause as flat [second, length, ...], and smokes per
+// teamfight (above).
 export function gameExtras(d) {
-  return { first_blood_at: firstBloodFrom(d), pauses: Array.isArray(d.pauses) ? d.pauses.flatMap((x) => [x.time, x.duration]) : null };
+  return { first_blood_at: firstBloodFrom(d), pauses: Array.isArray(d.pauses) ? d.pauses.flatMap((x) => [x.time, x.duration]) : null, fight_smokes: fightSmokesFrom(d) };
 }
 // Each player's first_death flag from a game's first_blood_at.
 export const firstDeathOf = (fb, i) => (fb ? (fb[2] === i ? 1 : 0) : null);

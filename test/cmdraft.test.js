@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { rankValue, rowPositions, rowSupportness, assignmentMarginals, heroWinRate, bracketOf, indexHistory, lobbyRank,
   historyReading, gameContext, draftProbability, scoreHeroes, readDraft, CM_STEPS, HISTORY_FIELDS, ROLES,
-  heroRoleShare, fitsRole, playedAtRoles, sideComposition, openRoleFor, stateFeatures, buildDraft } from "../public/lib/cmdraft.js";
+  heroRoleShare, fitsRole, playedAtRoles, sideComposition, flexPositions, openRoleFor, stateFeatures, buildDraft } from "../public/lib/cmdraft.js";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} vs ${b}`);
 const NOW = 1_790_000_000, DAY = 86400;
@@ -127,12 +127,38 @@ test("composition: two carries take position 1 once; a third carry fits no open 
   const ctx = gameContext(data, sides, NOW);
   const state = { radiant: [48, 2], dire: [] };
   const comp = sideComposition(ctx.radiant, state.radiant, stateFeatures(ctx, state).assignment.radiant);
-  assert.deepEqual(comp.positions, [0, 2]);
-  assert.deepEqual(comp.open, [1, 3, 4]);
+  assert.equal(comp.positions[0], 0);
+  assert.notEqual(comp.positions[1], 0);
+  assert.ok(!comp.open.includes(0) && comp.open.includes(4));
   // Lifestealer only plays 1 (taken); Crystal Maiden fits the open 5.
   const fake = ctx.radiant.map((p) => ({ ...p, playedAt: new Map() }));
   assert.equal(openRoleFor(54, comp.open, fake), null);
   assert.equal(openRoleFor(5, comp.open, fake), 4);
+});
+
+test("composition: a hero plays where its player plays, not where pubs play it", () => {
+  const ctx = gameContext(data, sides, NOW);
+  // Axe (pubs: a 3) picked for p1, who plays mid: a 2. For p2, the off laner: a 3.
+  for (const [j, pos] of [[1, 1], [2, 2]]) {
+    const state = { radiant: [2], dire: [], pins: { radiant: [j], dire: [] } };
+    assert.equal(sideComposition(ctx.radiant, state.radiant, stateFeatures(ctx, state).assignment.radiant).positions[0], pos);
+  }
+  // Axe is an off laner only; Earth Spirit plays mid and support. A 4/5 swap alone isn't flex.
+  assert.deepEqual(flexPositions(2), []);
+  assert.deepEqual(flexPositions(107), [1, 3]);
+});
+
+test("composition: a pick's chosen position is kept, and a held position refits the pick there", () => {
+  const ctx = gameContext(data, sides, NOW);
+  const state = { radiant: [48, 2], dire: [] };
+  const m = stateFeatures(ctx, state).assignment.radiant;
+  // Axe picked as a 4: kept, though the model would fit it at 3.
+  assert.deepEqual(sideComposition(ctx.radiant, state.radiant, m, [null, 3]).positions, [0, 3]);
+  // Position 3 held for the next pick: Axe, fitted there before, moves.
+  const held = sideComposition(ctx.radiant, state.radiant, m, [], 2);
+  assert.equal(held.positions[0], 0);
+  assert.notEqual(held.positions[1], 2);
+  assert.ok(!held.open.includes(2));
 });
 
 test("buildDraft: 24 steps, no hero twice, each side's picks to five different players at five positions", () => {

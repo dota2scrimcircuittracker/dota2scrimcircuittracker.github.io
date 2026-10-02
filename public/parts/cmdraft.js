@@ -128,10 +128,10 @@ export const rankName = (v) => (v >= 36 ? "Immortal" : `${MEDALS[Math.floor((Mat
 // gives every slot ({ who, pick }) so open steps draw as empty columns; `current` marks the step
 // in play; with `rewind`, filled columns carry data-rewind (the Drafter rewinds on a click).
 const LO = 0.15, HI = 0.85;
-export function draftChart({ values, steps, order = steps, nameX, nameY, current = null, rewind = false, width = 1000 }) {
+export function draftChart({ values, steps, order = steps, nameX, nameY, current = null, rewind = false, width = 1000, height = 236, cells = true }) {
   // Drawn at the container's own pixel width and a fixed height, so text and icons keep their
   // size on any screen instead of the whole chart scaling up with the page.
-  const W = Math.max(320, Math.round(width)), H = 236, L = 44, R = 8, T = 22, B = 46;
+  const W = Math.max(320, Math.round(width)), H = height, L = 44, R = 8, T = 22, B = cells ? 46 : 8;
   const cols = order.length + 1, cw = (W - L - R) / cols;
   const x = (i) => L + (i + 0.5) * cw;
   const y = (p) => T + (1 - (Math.min(HI, Math.max(LO, p)) - LO) / (HI - LO)) * (H - T - B);
@@ -166,16 +166,17 @@ export function draftChart({ values, steps, order = steps, nameX, nameY, current
   });
   // The whole draft order along the bottom, done and to come: each step's number and PICK or
   // BAN in a cell edged in its team's colour; the step in play filled in. Filled columns rewind
-  // on a click.
+  // on a click. `cells: false` leaves the cells out (the Drafter has its own board).
   const narrow = cw < 36;
   order.forEach((o, i) => {
+    if (rewind && i < steps.length) svg += `<rect class="dc-hit" data-rewind="${i}" x="${L + (i + 1) * cw}" y="${T}" width="${cw}" height="${H - T}"><title>Rewind to step ${i + 1}</title></rect>`;
+    if (!cells) return;
     const c = i + 1, cy = H - B + 6, ch = B - 10;
     const state = i < steps.length ? "done" : i === current ? "now" : "todo";
     svg += `<g class="dc-cell ${o.who === "X" ? "dc-sx" : "dc-sy"} ${o.pick ? "pick" : "ban"} ${state}"><title>${c}. ${esc(o.who === "X" ? nameX : nameY)} ${o.pick ? "pick" : "ban"}</title>
       <rect x="${L + c * cw + 2}" y="${cy}" width="${cw - 4}" height="${ch}"/>
       <text class="dc-cn" x="${x(c)}" y="${cy + 13}" text-anchor="middle">${c}</text>
       <text class="dc-ck" x="${x(c)}" y="${cy + ch - 6}" text-anchor="middle">${o.pick ? (narrow ? "P" : "PICK") : (narrow ? "B" : "BAN")}</text></g>`;
-    if (rewind && i < steps.length) svg += `<rect class="dc-hit" data-rewind="${i}" x="${L + c * cw}" y="${T}" width="${cw}" height="${H - T}"><title>Rewind to step ${c}</title></rect>`;
   });
   return `<figure class="dchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(nameX)}'s chance to win through the draft: ${pct(values[0])} before it, ${pct(values[values.length - 1])} now">${svg}</svg></figure>`;
 }
@@ -199,14 +200,14 @@ export function teamDraftsHtml(team, series, src, data, width = 1000) {
       if ((post >= 0.5) === won) tally.postRight++;
       const chart = draftChart({ values, nameX: team.name, nameY: opp, width,
         steps: read.steps.map((st) => ({ who: (st.side === "radiant") === (side === "a") ? "X" : "Y", pick: st.pick, hero: st.name })) });
-      return `<div class="td-game">
+      return `<div class="td-game ${won ? "won" : "lost"}">
         <div class="td-head"><span class="gp-label">Game ${j + 1}</span>
           ${resultChip(won, post)}
           <a href="${src.link(m)}?tab=draft">Step by step →</a></div>
         ${oddsBars(team.name, opp, pre, post)}
         ${chart}</div>`;
     }).join("");
-    return `<section class="td-series"><h3 class="gm-h3">${label}</h3>${gamesHtml}</section>`;
+    return `<section class="td-series"><h3 class="td-shead">${label}</h3>${gamesHtml}</section>`;
   }).join("");
   if (!tally.n) return `<p class="muted">No drafted games yet.</p>`;
   const t = tally;

@@ -1,6 +1,6 @@
-// Add the combat fields (APM, multi-kills, streaks, kill times, first blood and its victim,
+// Add the combat fields (APM, multi-kills, streaks, kill times, smoke kills, first blood and its victim,
 // teamfight share, runes, courier kills, biggest hit, pings, benchmarks) and game-level first
-// blood and pauses to every game already in public/data/*.json, and write each division's detail
+// blood, pauses and smokes per teamfight to every game already in public/data/*.json, and write each division's detail
 // file (purchases and skill builds), from the cached OpenDota matches (.cache/opendota), with no
 // network calls. The sync writes all of it from now on. Usage: node scripts/backfill/combat-backfill.js
 import { readdir, readFile, writeFile } from "node:fs/promises";
@@ -13,7 +13,7 @@ import { leagueJson } from "../sync/league-json.js";
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DATA = path.join(ROOT, "public", "data");
 
-// Keys go in after `item_times` (players) and `fights` (games), where the sync writes them, so
+// Keys go in after `item_times` (players) and `vision` (games; `fights` before it existed), where the sync writes them, so
 // the next sync doesn't reorder anything.
 const placeAfter = (obj, after, add) => {
   const out = {};
@@ -21,7 +21,7 @@ const placeAfter = (obj, after, add) => {
   return after in obj ? out : { ...out, ...add };
 };
 
-for (const f of (await readdir(DATA)).filter((f) => f.endsWith(".json") && !f.endsWith("-detail.json"))) {
+for (const f of (await readdir(DATA)).filter((f) => f.endsWith(".json") && !/-(detail|draft|lite)\.json$/.test(f))) {
   const d = JSON.parse(await readFile(path.join(DATA, f), "utf8"));
   const detail = {};
   let done = 0, missing = 0;
@@ -34,7 +34,7 @@ for (const f of (await readdir(DATA)).filter((f) => f.endsWith(".json") && !f.en
     if (det) detail[g.match_id] = det;
     done++;
     const extras = gameExtras(od);
-    return placeAfter({ ...g, players: g.players.map((p, i) => placeAfter(p, "item_times", combatFields(bySlot[i], firstDeathOf(extras.first_blood_at, i)))) }, "fights", extras);
+    return placeAfter({ ...g, players: g.players.map((p, i) => placeAfter(p, "item_times", combatFields(bySlot[i], firstDeathOf(extras.first_blood_at, i)))) }, "vision" in g ? "vision" : "fights", extras);
   }));
   await writeFile(path.join(DATA, f), leagueJson(d));
   await writeFile(path.join(DATA, detailName(f)), detailJson(detail));

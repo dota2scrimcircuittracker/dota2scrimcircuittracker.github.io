@@ -1,7 +1,7 @@
 // AD2L Teams tab: standings, Matches (series by week) and Crosstable.
 import { lineChart, wireCharts } from "../lib/charts.js";
 import { isPlayed, seriesOdds, tune, fitRatings } from "../lib/predict.js";
-import { strengthOfSchedule } from "../lib/schedule.js";
+import { strengthOfSchedule, gameWins } from "../lib/schedule.js";
 import { info } from "../lib/glossary.js";
 import { weekStart, DIVISIONS, teamLink, pct, esc, app, pageHead, playerTabs, sortableTable, SOURCES, wirePlayerTabs } from "../core.js";
 import { loading, errorBox } from "../parts/lanes.js";
@@ -176,7 +176,7 @@ export async function renderStandings(src) {
   const cards = [
     leader?.series && ["League leader", teamLink(src, leader.team, leader.id), `<b>${leader.gw}–${leader.gl}</b> in games · ${leader.w}–${leader.tie}–${leader.l} in series`, "standings_leader"],
     hot?.streak >= 2 && ["Hottest team", teamLink(src, hot.team, hot.id), `<b>${hot.streak} series</b> won in a row`, "standings_streak"],
-    tough && ["Toughest schedule so far", teamLink(src, name[tough.id], tough.id), `Strength of schedule <b>${pct(tough.sos)}</b>`, "sos"],
+    tough && ["Toughest schedule so far", teamLink(src, name[tough.id], tough.id), `Opponents have won <b>${tough.sos}</b> games`, "sos"],
     upset && upset.p < 0.4 && ["Biggest upset", teamLink(src, name[upset.w], upset.w),
       `beat <b>${esc(name[upset.l])}</b> ${score(upset.s)}; the model gave that <b>${pct(upset.p)}</b>`, "standings_upset"],
   ].filter(Boolean);
@@ -235,23 +235,24 @@ export async function renderStandings(src) {
     ${tabs.panels}`;
 
   // A bye is a forfeit win with no games behind it: its own muted square, not a real W.
+  const oppWins = gameWins(d.series);
   const squares = (fs) => fs.map((f) => bye.has(f.opp)
     ? `<span class="sos-sq ${f.result} bye" title="Bye week: ${f.us}–${f.them} forfeit, no games played">BYE</span>`
     : `<a class="sos-sq ${f.result}" href="${src.root}/teams/${f.opp}"
-      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${f.opp_rate != null ? ` (their other games: ${pct(f.opp_rate)})` : ""}">${esc(teamInitials(name[f.opp] ?? "?"))}</a>`).join("");
+      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${bye.has(f.opp) ? "" : ` (${oppWins.get(f.opp) ?? 0} wins)`}">${esc(teamInitials(name[f.opp] ?? "?"))}</a>`).join("");
   // Form: five slots, empty ones first, so the newest series always sits in the last column.
   const form = (fs) => `<span class="sos-faced st-form">${'<span class="sos-sq e"></span>'.repeat(5 - fs.length)}${squares(fs)}</span>`;
   const rmax = Math.max(0.01, ...rows.map((r) => Math.abs(r.model_rating ?? 0)));
   const rating = (v) => v == null ? "—" : `<span class="st-rating"><span class="st-track"><i class="${v >= 0 ? "up" : "down"}" style="width:${(Math.min(1, Math.abs(v) / rmax) * 50).toFixed(1)}%"></i></span>${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}</span>`;
 
-  // Strength of schedule (lib/schedule.js) rides along on each team's row.
+  // Strength of schedule (lib/schedule.js, AD2L's own tiebreaker) rides along on each team's row.
   const sosOf = new Map(sos.map((x) => [x.id, x]));
   sortableTable(document.getElementById("t"), [
     ["team", "Team", (v, r) => teamLink(src, v, r.id), "l"], ...(src.all ? [["division", "Division", (v, r) => `<a href="${SOURCES[teamById.get(r.id)?.league]?.root ?? ""}/">${esc(v)}</a>`, "l", null, false]] : []), ["series", "Series"], ["w", "W"], ["tie", "T"], ["l", "L"],
     ["gw", "Games won", null, "", "jade"], ["gl", "Games lost"], ["game_rate", "Game win %", pct, "", "jade"],
     ["series_form", "Form", (v, r) => form(r.form), "l"], ["model_rating", "Rating", rating],
-    ["sos", "SOS", pct, "", "gold"],
-    ["remaining_sos", "Still to play", (v, r) => r.remaining.length && v != null ? `${pct(v)} <span class="muted">· ${r.remaining.length} left</span>` : "—", "", "ember"],
+    ["sos", "SOS", (v) => v ?? "—", "", "gold"],
+    ["remaining_sos", "Still to play", (v, r) => r.remaining.length && v != null ? `${v} <span class="muted">· ${r.remaining.length} left</span>` : "—", "", "ember"],
     ["tracked", "Stats"],
   ], rows.map((r) => ({ ...r, sos: sosOf.get(r.id)?.sos ?? null, remaining_sos: sosOf.get(r.id)?.remaining_sos ?? null, remaining: sosOf.get(r.id)?.remaining ?? [] })), "gw");
 

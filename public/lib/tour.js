@@ -479,16 +479,23 @@ class Tour {
     };
     document.addEventListener("keydown", this.onKey, true);
     // Clicks on the dimmed page stop here, so the page's own "click outside" handlers (which
-    // close the league menu) don't fire. A stop with pass() lets clicks inside its box through.
-    this.ui.block.addEventListener("click", (e) => {
+    // close the league menu and the ⓘ bubble a stop is boxing) don't fire. It listens on
+    // window in the capture phase, ahead of those document-level capture handlers. A stop
+    // with pass() lets clicks inside its box through; the Feedback button always works.
+    this.onBlockClick = (e) => {
+      if (e.target !== this.ui.block) return;
       e.stopPropagation();
+      const fb = document.getElementById("fb-open");
+      if (fb && document.elementsFromPoint(e.clientX, e.clientY).includes(fb)) return fb.click();
       const s = this.stops?.[this.i];
       if (this.busy || !s?.pass || !this.target) return;
       const under = document.elementsFromPoint(e.clientX, e.clientY).find((el) => !this.ui.root.contains(el));
       if (under && this.target.some((el) => el.contains(under))) s.pass(this, under);
-    });
+    };
+    window.addEventListener("click", this.onBlockClick, true);
     // The overlay also swallows hover: on a stop with pass(), mark the link under the pointer
     // (.tour-hover, styled like :hover) so the choices still light up as you point at them.
+    // The Feedback button lights up the same way.
     let hovered = null;
     const setHover = (el) => {
       if (el === hovered) return;
@@ -499,6 +506,8 @@ class Tour {
     };
     this.clearHover = () => setHover(null);
     this.ui.block.addEventListener("mousemove", (e) => {
+      const fb = document.getElementById("fb-open");
+      if (fb && document.elementsFromPoint(e.clientX, e.clientY).includes(fb)) return setHover(fb);
       const s = this.stops?.[this.i];
       if (this.busy || !s?.pass || !this.target) return setHover(null);
       const under = document.elementsFromPoint(e.clientX, e.clientY).find((el) => !this.ui.root.contains(el));
@@ -648,9 +657,11 @@ class Tour {
     const phone = innerWidth < 640;
     u.card.classList.toggle("docked", phone || !els);
     if (!phone || !els) u.card.classList.remove("up");
+    // No box (the closing card), or the boxed element went away (a bubble closed): the caption
+    // sits mid-screen, so its buttons stay in reach.
     if (!els || !els[0].isConnected || !visible(els[0])) {
       u.box.hidden = true; u.block.classList.add("dim");
-      u.card.classList.toggle("center", !els);
+      u.card.classList.add("center");
       u.card.style.left = u.card.style.top = "";
       return;
     }
@@ -777,10 +788,10 @@ class Tour {
         team: [navHref(standingsKey(this.ctx)), ad2l ? '#pp-panel-table #t tbody a[href*="/teams/"]' : "#standings a.team-link"],
         game: ad2l ? [navHref("week"), 'a[href*="/game/"]'] : [navHref("matches"), 'a.fixture[href*="match/"]'],
         player: [navHref("players"), '#tiers a[href*="player/"], #t a[href*="player/"]'],
-        hero: [navHref("heroes"), '#t a[href*="hero/"]'],
+        hero: [navHref("heroes"), '#pp-panel-table #t a[href*="hero/"]'],
       }[kind];
       await this.visit(from[0]);
-      if (kind === "team" && ad2l) await this.tab("table");
+      if ((kind === "team" && ad2l) || kind === "hero") await this.tab("table");
       await this.find(from[1]);
       // Private scrims have no stats to show: skip them.
       const link = [...document.querySelectorAll(from[1])].find((a) => visible(a) && !a.querySelector(".priv"));
@@ -854,6 +865,7 @@ class Tour {
     this.dead = true;
     cancelAnimationFrame(this.raf);
     document.removeEventListener("keydown", this.onKey, true);
+    window.removeEventListener("click", this.onBlockClick, true);
     restoreKept(this.kept);
     this.ui.root.remove();
     document.body.classList.remove("touring");
