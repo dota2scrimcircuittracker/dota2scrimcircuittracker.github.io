@@ -8,7 +8,7 @@ import { liteDivision } from "../../public/lib/lite.js";
 
 const dir = path.join(path.resolve(process.argv[2] ?? "_site"), "data");
 for (const f of await readdir(dir)) {
-  if (!f.endsWith(".json") || /-(detail|lite)\.json$/.test(f)) continue;
+  if (!f.endsWith(".json") || /-(detail|lite|draft)\.json$/.test(f)) continue;
   const full = await readFile(path.join(dir, f), "utf8");
   const lite = JSON.stringify(liteDivision(JSON.parse(full)));
   const out = f.replace(/\.json$/, "-lite.json");

@@ -145,6 +145,14 @@ export async function renderPredict(src) {
           <span class="pk-sub">${Math.round(o[k] * 100)}%${c ? ` · ${n} pick${n === 1 ? "" : "s"}` : ""}${k === call ? ' · <b>model</b>' : ""}</span>
         </button>`;
       }).join("")}</div>
+      <div class="pcm" data-home="${s.home}" data-away="${s.away}"></div>
+      <details class="pcm-dr"><summary>Draft model: its best draft, and the odds after it</summary>
+        <div class="pd-toggle" role="group" aria-label="First pick"><span class="pd-lbl">First pick</span>
+          <button type="button" data-cmfp="home" aria-pressed="true">${esc(teamName[s.home])}</button>
+          <button type="button" data-cmfp="away" aria-pressed="false">${esc(teamName[s.away])}</button></div>
+        <div class="pcm-body"><div class="panel empty">Building the draft…</div></div>
+        <p class="table-note">Sybil's draft model drafting both teams the way the Drafter's suggestions do: every pick for a player who has no hero yet, at the open position they play most, the best hero for them there; every ban the hero worth most to the other team among those that fit a position it still needs. The first-pick team is on Radiant. Before the draft is the ten players alone; after it adds these heroes. The ratings above don't use any of this.</p>
+      </details>
       ${read(s)}
     </article>`;
   };
@@ -216,6 +224,29 @@ export async function renderPredict(src) {
     </details>`;
 
   const input = wireNameBar(() => renderPredict(src));
+
+  // The draft model (parts/cmdraft.js): its pre-draft chance on every card once the division's
+  // draft file loads, and its own draft when a card's "Draft model's draft" is opened. Separate
+  // from the ratings: the odds, the model's call and the standings don't change.
+  const cards = [...app.querySelectorAll(".pcm[data-home]")];
+  if (cards.length) import("../parts/cmdraft.js").then(async (cm) => {
+    const data = await cm.draftData(src.key);
+    if (!data || !document.body.contains(cards[0])) return;
+    for (const box of cards) {
+      const home = d.teams.find((t) => t.id === Number(box.dataset.home)), away = d.teams.find((t) => t.id === Number(box.dataset.away));
+      if (!home || !away) continue;
+      const r = cm.seriesRead(home, away, d.games, data);
+      box.innerHTML = cm.preDraftLine(home, away, r.pre);
+      const dr = box.nextElementSibling, body = dr.querySelector(".pcm-body"), built = {};
+      const show = (fp) => {
+        built[fp] ??= r.draft(fp === "home");
+        body.innerHTML = cm.modelDraftHtml(home, away, built[fp], body.clientWidth || 900);
+        dr.querySelectorAll("[data-cmfp]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.cmfp === fp)));
+      };
+      dr.addEventListener("toggle", () => { if (dr.open && !body.dataset.done) { body.dataset.done = "1"; show("home"); } });
+      dr.querySelectorAll("[data-cmfp]").forEach((b) => (b.onclick = () => show(b.dataset.cmfp)));
+    }
+  }).catch((e) => console.warn("draft model unavailable", e));
 
   app.querySelectorAll("details.dr").forEach((dr) => {
     const sel = { fp: "home", g: "1" };

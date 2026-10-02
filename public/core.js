@@ -1,6 +1,7 @@
 // Shared by every page: escaping and formatting helpers, page headers and breadcrumbs, the
 // AD2L divisions and their data (loading, caches, the time machine), the scrim list, the
 // upload/edit lock and the review form's pieces other pages reuse, page tabs, sortable tables.
+import { BASE, STAGING } from "./lib/site.js";
 import { playerKey, heroSlug, withDerived, isRemake, hasDetails } from "./lib/stats.js";
 import { MIN_GAMES } from "./lib/tiers.js";
 import { heroImg } from "./lib/hero-meta.js";
@@ -260,7 +261,7 @@ for (const [key, dv] of Object.entries(DIVISIONS)) {
     division: dv.name, kicker: `AD2L · ${dv.name}`, load: () => divGames(SOURCES[key]),
     link: (m) => `${root}/game/${m.id}`, base: `${root}/week`,
     empty: `No ticketed ${dv.short} games found yet.`,
-    nav: [[`${root}/`, "standings", "Teams"], [`${root}/week`, "week", "Weekly"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
+    nav: [[`${root}/`, "standings", "Teams"], [`${root}/week`, "week", "Weekly"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/drafter`, "drafter", "Drafter"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
   };
   // Sub-division views (#/heroic/a/..., #/heroic/b/...): same pages and league key, data
   // narrowed to that sub-division. Plain #/<key>/... is Combined.
@@ -806,10 +807,11 @@ export const leagueSrc = (src) => (src.weeks ? timeSrc(SOURCES[src.key], src.wee
 // reload, or the local server) routes from the path.
 export function here() {
   if (location.hash) return location.hash;
-  const p = location.pathname.replace(/index\.html$/, "");
+  const p = location.pathname.replace(/index\.html$/, "").slice(BASE.length - 1);
   return p === "/" ? "#/" : routeOf(p);
 }
-export const addressOf = (h) => sharePath(h) ?? `/${h === "#/" ? "" : h}`;
+// Staging (lib/site.js) has no preview pages, so its addresses stay /staging/#/... .
+export const addressOf = (h) => (STAGING ? `${BASE}${h === "#/" ? "" : h}` : sharePath(h) ?? `/${h === "#/" ? "" : h}`);
 // hashchange and popstate both fire on some back/forward steps: route once per address.
 export let routedAt = null;
 // app.js moves it too (an imported binding is read-only there).

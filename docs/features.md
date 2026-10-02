@@ -184,7 +184,14 @@ rest) and recent pubs.
   OpenDota's own graph). "Items & fights": the gold lead with every teamfight (sized by deaths,
   coloured by who lost fewer) and each team's core items on one clock. Roshan, Tormentor and
   first blood are marked on the chart.
-- **Ratings**, **Laning**, **Farm & vision**, **Combat**, **Items**, **Map** tabs, below.
+- **Draft**, **Ratings**, **Laning**, **Farm & vision**, **Combat**, **Items**, **Map** tabs, below.
+- **Draft** (AD2L games with a Captains Mode draft) — the draft model's read of the draft (see
+  "Draft model" below), with each player read only from games before this one: each team's
+  chance to win before the draft and after every step (a chart), and a row per step with where
+  the model ranked the actual pick or ban among the heroes left, its value (the team's chance with
+  that pick; for a ban, the points that hero would have added to the other team), the model's top
+  3 at that step, and the chance after it. Then who the model thought would play each hero
+  against who did, and how each player was read (games found, rank).
 - **Laning** (AD2L, parsed replays) — each lane (top, middle, bottom) called won, even or lost at
   10:00 on the whole lane's gold + XP lead, with each side's heroes, then every player's last
   hits, denies, lane efficiency, kills and deaths before 10:00. Lanes are the replay's own, so
@@ -300,6 +307,38 @@ visible in another window. On the test screenshots pasted into wider frames, eve
 as well as the original; the one miss left is a full-monitor capture at 1920 wide, which is the
 shrunk-resolution problem above, not a finding problem.
 
+## Draft model and Drafter
+
+- **The model** (`public/lib/cmdraft.js`) is Project Sybil's Captains Mode draft model (by
+  ybabts and Fav; [muelltyl.dev](https://muelltyl.dev/)), ported to the site, with Sybil's fitted
+  weights (`public/lib/sybil-fitted.js`): fitted on 10,461 AD2L games, S31–S48; held out on patch
+  7.41 its favourite won 64% (AUC 0.70). It reads each picked hero as the player most likely to
+  play it (worked out from every player's recent heroes and positions, over every way to give the
+  side's heroes to different players), and that player's record on it, shrunk toward the hero's
+  win rate at the game's rank. A pick moves the chance only by how much better or worse the hero
+  is for that player than their usual heroes; a hero nobody on the team plays costs. The rank gap
+  counts too. Not in yet: counters and synergy (Sybil's tables per patch), and how the teams have
+  done this season (the rating is 0, as in Sybil's own sandbox). So bans never move the chance:
+  a ban only denies.
+- **Team Drafts tab** (AD2L teams) — every drafted series, newest first, with each game's draft
+  chart drawn from the team's side (their chance to win before the draft and after every step),
+  how far the draft moved it, and a link to the game's step-by-step Draft tab. A line on top says
+  in how many drafts the model moved the team's chance up, and by how much on average.
+- **Drafter** (AD2L, its own tab) — draft for any two teams. Start from an upcoming series in the
+  division, any two teams from any division, or a past game (its draft loads in full; click any
+  step to rewind and branch, and "In the game" shows what was actually picked there). Pick who
+  has first pick and who is Radiant, and which five play (default: the five with the most league
+  games for the team). On a pick, **Picking for** says which player the pick is for (default: the player with no hero yet) and at which open position (default: the open one they play most); the list then shows heroes for that player at that position, scored with the hero as theirs, and the pick is recorded as theirs. A past game's picks are pinned to who actually played them. Every step lists the model's best 10 (picks: the team's chance to win with
+  the hero and who would play it; bans: points the hero would add to the other team and who on
+  it would play it), and every hero in the grid shows its value. Undo, reset, or click a filled
+  slot to rewind. **Positions:** the model has no rule against a third carry (Sybil measured a
+  doubled-position penalty as worth nothing), so, as on Sybil's own drafter, the list only offers
+  a pick for a position the team hasn't filled, and a ban for one the other team hasn't. A hero
+  fits a position when ranked pubs play it there 8%+ of the time (Sybil's lane-parsed table) or a
+  player on the team has played it there in 2+ lane-parsed games. Each suggestion and pick slot
+  shows its position; "Only open positions" turns the filter off. A player with no history (a stand-in, a private profile, or a division not yet
+  synced) reads as an average player at the game's rank.
+
 ## Predictions
 
 - **AD2L** (Predict) — type your name and call each series this week: a 2–0 either way or 1–1.
@@ -314,6 +353,14 @@ shrunk-resolution problem above, not a finding problem.
   Bans weigh the team's recency-weighted ban habit in that phase, what the opponents still to pick
   have been playing (league games with a two-week half-life, pubs since the last league night),
   and the division's usual bans; picks give each player the best hero left in their pool.
+  Each card also carries the **draft model** (separate from the ratings, which it doesn't
+  change): its chance for one game before the draft, from the ten likely players alone (each
+  team's five with the most league games, averaged over who takes Radiant), and, under "Draft
+  model: its best draft, and the odds after it", a full draft it builds for both teams with the
+  Drafter's rules (first-pick team on Radiant, toggle who picks first), with the chance before
+  and after it, the step chart, and each team's heroes, players and bans. Measured on this
+  season's games read before they were played (`scripts/measure/draft-model.js`): before
+  the draft it was no better than the ratings, which is why the ratings stay as they are.
 - **Scrims** (Scrims → Predict) — anyone adds an upcoming scrim (two teams, start time,
   Bo1/Bo2/Bo3); everyone calls it until it starts, same name-based leaderboard. Each card has
   **Upload game N** and **Private result** buttons that open the upload page with the scrim's

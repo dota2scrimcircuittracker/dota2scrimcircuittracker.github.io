@@ -80,6 +80,7 @@ function league(root, key, name, d, view, { brief = false } = {}) {
   if (brief) return;
   const upcoming = d.series.filter((s) => !((s.home_score ?? 0) + (s.away_score ?? 0)) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).length;
   page(`${root}/predict`, `Predictions · ${label}`, `${upcoming ? `${plural(upcoming, "series")} to call. ` : ""}Pick the winners and see how the model's picks have done.`, color, key);
+  page(`${root}/drafter`, `Drafter · ${label}`, "Draft Captains Mode for any two teams, with the model scoring every hero at every step.", color, key);
   page(`${root}/upload`, `Upload a game · ${label}`, "Played without a league ticket? Upload the post-game screenshots so the game counts in the stats.", color, key);
 
   if (view) return;

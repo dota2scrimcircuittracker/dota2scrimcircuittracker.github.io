@@ -401,6 +401,8 @@ export async function renderMatch(id, src) {
 
   const tabs = playerTabs([
     ["board", "Scoreboard", scoreHtml],
+    // The draft model's read of this draft: filled when the tab first opens (parts/cmdraft.js).
+    ["draft", "Draft", ad2l && !m.unticketed && m.draft?.some((s) => s.pick) && m.players?.length === 10 ? `<div id="cm-box" data-game="${esc(m.id)}"><div class="panel empty">Reading the draft…</div></div>` : ""],
     ["ratings", "Ratings", ratingsHtml],
     ["lanes", "Laning", gameLanesHtml(m, src, laneCuts_) && `${fb ? `<p class="table-note wm-intro fb-note"><span class="fb-tag">FB</span> First blood at <b>${clock(fb.t)}</b>: ${playerLink(src, fbP)} (${esc(fbP.hero)})${fb.victim != null ? ` killed ${playerLink(src, m.players[fb.victim])} (${esc(m.players[fb.victim].hero)})` : ""}${fb.t < 0 ? ", before the horn" : ""}.</p>` : ""}${gameLanesHtml(m, src, laneCuts_)}`],
     ["farm", "Farm &amp; vision", mapTableHtml(m, src) + replayTableHtml(m, src)],
@@ -458,6 +460,22 @@ export async function renderMatch(id, src) {
   wireTowerMaps(app);
   wireDeathMaps(app);
   wireStreakCharts(app);
+  // Draft tab: load the model and the division's draft file the first time the tab is shown.
+  const cmBox = app.querySelector("#cm-box");
+  if (cmBox) {
+    const panel = cmBox.closest(".pp-panel");
+    const fill = () => {
+      if (cmBox.dataset.filled) return;
+      cmBox.dataset.filled = "1";
+      import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(src.key)]).then(([cm, data]) => {
+        if (document.getElementById("cm-box") !== cmBox) return;
+        cmBox.innerHTML = data ? cm.gameDraftHtml(m, src, data, cmBox.clientWidth) : `<p class="muted">The draft model's data for this division hasn't synced yet.</p>`;
+        wireCharts(cmBox);
+      }).catch((e) => { cmBox.innerHTML = errorBox(e); });
+    };
+    if (!panel.hidden) fill();
+    else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  }
   // Build order from the division's detail file, once it loads (still this game's page?).
   if (ad2l && !m.unticketed && app.querySelector("#bo-box")) detailsFor(src).then((det) => {
     const box = document.getElementById("bo-box");

@@ -11,6 +11,7 @@ import { FIREBASE_CONFIG } from "../firebase-config.js";
 import { matchId } from "./stats.js";
 import { parseDuration } from "./validate.js";
 import { DIVISIONS, collectionOf } from "./divisions.js";
+import { STAGING, READ_ONLY_MESSAGE } from "./site.js";
 
 const app = initializeApp(FIREBASE_CONFIG, "scrim-league");
 const auth = getAuth(app);
@@ -23,6 +24,9 @@ const COLLECTIONS = { scrim: "matches", ...Object.fromEntries(DIVISIONS.map((d) 
 const coll = (league = "scrim") => collection(db, "scrimLeague", "data", COLLECTIONS[league]);
 
 export const MAX_MATCHES = 500;
+
+// Staging (lib/site.js) is read-only: every write below starts with this.
+const writable = () => { if (STAGING) throw new Error(READ_ONLY_MESSAGE); };
 
 // Resolves once Firebase has restored any saved session from this browser.
 const authReady = new Promise((resolve) => { const off = onAuthStateChanged(auth, () => { off(); resolve(); }); });
@@ -68,6 +72,7 @@ export function toStored(draft, { isPrivate = false, seriesId = null } = {}) {
 
 // Returns { id } on success or { duplicateOf: id } if the game is already uploaded.
 export async function submitMatch(draft, { isPrivate = false, league = "scrim", seriesId = null } = {}) {
+  writable();
   const data = toStored(draft, { isPrivate, seriesId: league !== "scrim" ? seriesId : null });
   const id = await matchId(data);
   const ref = doc(coll(league), id);
@@ -92,6 +97,7 @@ async function signedIn() {
   if (!auth.currentUser) await signInAnonymously(auth);
 }
 export async function deleteMatch(id, league = "scrim") {
+  writable();
   await signedIn();
   await deleteDoc(doc(coll(league), id));
 }
@@ -99,6 +105,7 @@ export async function deleteMatch(id, league = "scrim") {
 // Save corrections to an upload in place: same ID, uploader, upload time, private flag and
 // series (the rules check all of that). Behind the same password as delete.
 export async function editMatch(id, draft, league = "scrim") {
+  writable();
   await signedIn();
   const ref = doc(coll(league), id);
   const snap = await getDoc(ref);
@@ -112,6 +119,7 @@ export async function editMatch(id, draft, league = "scrim") {
 // ID (the ID doesn't depend on the series). Behind the same password as delete. If saving
 // fails, the original is put back.
 export async function moveMatch(id, seriesId, league = "ad2l") {
+  writable();
   await signedIn();
   const ref = doc(coll(league), id);
   const snap = await getDoc(ref);
@@ -152,6 +160,7 @@ export async function listPredictions() {
 // league "ad2l" (Champion), "heroic", "conqueror", "warrior", "challenger", "voyager" or "explorer": seriesId is a PlayOn series (number); "scrim": a
 // fixture's document ID.
 export async function savePrediction(seriesId, pick, name, league = "ad2l") {
+  writable();
   await signedIn();
   const uid = auth.currentUser.uid;
   await setDoc(doc(predictions, `${seriesId}_${uid}`), {
@@ -172,6 +181,7 @@ export async function listFixtures() {
 }
 
 export async function addFixture({ team_a, team_b, start, best_of }) {
+  writable();
   await signedIn();
   const ref = doc(fixtures); // random 20-character ID
   await setDoc(ref, {
@@ -183,11 +193,13 @@ export async function addFixture({ team_a, team_b, start, best_of }) {
 
 // Reschedule: only the start time and format can change.
 export async function moveFixture(id, start, best_of) {
+  writable();
   await signedIn();
   await updateDoc(doc(fixtures, id), { start: Timestamp.fromDate(start), best_of });
 }
 
 export async function deleteFixture(id) {
+  writable();
   await signedIn();
   await deleteDoc(doc(fixtures, id));
 }
@@ -209,6 +221,7 @@ export async function listCasts(game, league = "scrim") {
 }
 
 export async function addCast(game, league, { url, caster }) {
+  writable();
   await signedIn();
   const ref = doc(casts); // random 20-character ID
   await setDoc(ref, {
@@ -219,6 +232,7 @@ export async function addCast(game, league, { url, caster }) {
 }
 
 export async function deleteCast(id) {
+  writable();
   await signedIn();
   await deleteDoc(doc(casts, id));
 }
@@ -235,6 +249,7 @@ export const MAX_FEEDBACK_ITEMS = 10;
 
 // Returns { id: "FB-XXXXXX" } or { retryAt: Date } when this browser has sent its 5 this hour.
 export async function submitFeedback(name, items) {
+  writable();
   await signedIn();
   const uid = auth.currentUser.uid;
   const limitRef = doc(db, "scrimLeague", "data", "feedback_limits", uid);

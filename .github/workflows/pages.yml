@@ -1,4 +1,7 @@
-# Publish public/ to GitHub Pages on every push to main.
+# Publish public/ to GitHub Pages on every push to main, with the `staging` branch under
+# /staging/ (Pages serves one site per repo, so each deploy builds both). A push to staging runs
+# this from main through staging.yml: the Pages environment only deploys from main.
+# Staging is read-only (public/lib/site.js) and runs on main's latest synced data.
 # public/firebase-config.js is generated here from the FIREBASE_WEB_API_KEY repository
 # secret, so the key never sits in the repository.
 name: Deploy to GitHub Pages
@@ -24,7 +27,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # The live site is always main, whichever branch was pushed.
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -38,6 +44,21 @@ jobs:
       # an older week, a typo), and the app opens that route (lib/share.js routeOf).
       - name: Build site with link-preview pages
         run: cp -r public _site && node scripts/deploy/share-pages.js _site && node scripts/deploy/lite-data.js _site && cp _site/index.html _site/404.html
+      # Staging: the staging branch's public/ under /staging/, with main's synced data copied
+      # over its own (so it's as fresh as the live site; data files only staging writes are
+      # kept). No preview pages: its addresses stay /staging/#/... . Skipped while there is no
+      # staging branch.
+      - name: Build staging
+        run: |
+          if ! git ls-remote --exit-code --heads origin staging >/dev/null; then echo "No staging branch."; exit 0; fi
+          git fetch --depth=1 origin staging
+          git worktree add ../staging-src FETCH_HEAD
+          cp -r ../staging-src/public _site/staging
+          cp -r public/data/. _site/staging/data/
+          cp public/firebase-config.js _site/staging/
+          sed -i 's|<base href="/">|<base href="/staging/"><meta name="robots" content="noindex">|' _site/staging/index.html
+          grep -q '<base href="/staging/">' _site/staging/index.html
+          node ../staging-src/scripts/deploy/lite-data.js _site/staging
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

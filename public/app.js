@@ -1,3 +1,4 @@
+import { STAGING } from "./lib/site.js";
 import { HEROES } from "./lib/heroes.js";
 import { listTeams } from "./lib/teams.js";
 import { info, wireInfo } from "./lib/glossary.js";
@@ -18,6 +19,7 @@ import { renderWeek } from "./pages/week.js";
 // Upload (and editing an upload) and Predictions load on first visit.
 const uploadPage = () => import("./pages/upload.js");
 const predictPage = () => import("./pages/predict.js");
+const drafterPage = () => import("./pages/drafter.js");
 
 // ---------- League switcher + router ----------
 
@@ -502,9 +504,10 @@ export function route() {
     else if (h.startsWith(`${r}/players`)) { section = "players"; tm = true; page = () => renderPlayers(t); }
     else if (h.startsWith(`${r}/hero/`)) { section = "heroes"; tm = true; page = () => renderHero(t, h.slice(`${r}/hero/`.length)); }
     else if (h.startsWith(`${r}/heroes`)) { section = "heroes"; tm = true; page = () => renderHeroes(t); }
-    else if (h.startsWith(`${r}/draft`)) { section = "heroes"; tm = true; page = () => renderHeroes(t); } // old Draft tab: now part of Heroes
-    else if (src.all && /^\/(predict|upload|edit)/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
+    else if (h.startsWith(`${r}/draft`) && !h.startsWith(`${r}/drafter`)) { section = "heroes"; tm = true; page = () => renderHeroes(t); } // old Draft tab: now part of Heroes
+    else if (src.all && /^\/(predict|drafter|upload|edit)/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
     else if (h.startsWith(`${r}/predict`)) { section = "predict"; page = async () => (await predictPage()).renderPredict(src); }
+    else if (h.startsWith(`${r}/drafter`)) { section = "drafter"; page = async () => (await drafterPage()).renderDrafter(src); }
     else if (new RegExp(`^${r}/edit/[0-9a-f]{32}$`).test(h)) { section = "week"; page = async () => (await uploadPage()).renderEdit(h.slice(`${r}/edit/`.length), src.key); }
     else if (h.startsWith(`${r}/upload`)) { section = "upload"; page = async () => { const { endEdit, upload, checkDraft, renderUpload } = await uploadPage(); endEdit(); upload.league = src.key; await src.data().catch(() => null); await divUploaded(src.key); if (upload.draft) upload.check = checkDraft(upload.draft); return renderUpload(); }; }
     else { section = "standings"; tm = true; page = () => renderStandings(t); }
@@ -544,7 +547,7 @@ export function route() {
   const tab = { standings: "", matches: "", teams: "" }[section] ?? section;
   leagueMenu.querySelectorAll("a").forEach((a) => {
     const l = a.dataset.league;
-    a.href = l === "scrim" ? `#/${tab || "scrims"}` : `${SOURCES[l].root}/${tab}`;
+    a.href = l === "scrim" ? `#/${tab === "drafter" ? "scrims" : tab || "scrims"}` : `${SOURCES[l].root}/${tab}`;
   });
   divisionBar(src, h);
   timeBar(src, tm);
@@ -598,6 +601,11 @@ document.getElementById("skip-link").addEventListener("click", (e) => {
 window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();
+// Staging (lib/site.js): say so on every page, and that it's read-only.
+if (STAGING) {
+  document.documentElement.classList.add("staging");
+  document.body.insertAdjacentHTML("afterbegin", `<div class="staging-bar" role="note"><b>Staging</b> Read-only preview of the next version. Uploads, picks, casts and feedback only work on the <a href="/">live site</a>.</div>`);
+}
 route();
 countVisit();
 // Feedback mode (lib/feedback.js) and the guided tour (lib/tour.js) load after the first page

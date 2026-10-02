@@ -28,7 +28,10 @@ export function asAd2l(u, d) {
     // team_name is what credits the game to a team.
     players: (u.players ?? []).map((p) => {
       const side = p.team === "a" ? ta : tb;
-      const k = acct.get(nameKey(p.name));
+      // The side's own roster first: two divisions' players can share a name (Champion has
+      // two Icarus), and the division-wide lookup keeps only the last one it read.
+      const own = side?.players?.find((r) => nameKey(r.name) === nameKey(p.name));
+      const k = own ? { name: own.name, account_id: own.account_id, rank_tier: own.rank_tier } : acct.get(nameKey(p.name));
       if (!k?.account_id) return side ? { ...p, team_name: side.name, standin: true } : p;
       return {
         ...p, name: k.name, account_id: k.account_id, player_key: String(k.account_id), rank_tier: p.rank_tier ?? k.rank_tier ?? null,

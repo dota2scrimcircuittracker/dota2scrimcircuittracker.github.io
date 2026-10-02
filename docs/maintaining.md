@@ -34,7 +34,7 @@ once (see "Firebase key").
 - `public/parts/` — pieces several pages share: lanes, items, combat, draft, tiers, analysis,
   ranks.
 - `public/pages/` — one file per page: games (scrim standings and the game page), standings
-  (AD2L Teams tab), players, player, heroes, hero, week, teams, and upload and predict, which load
+  (AD2L Teams tab), players, player, heroes, hero, week, teams, and upload, predict and drafter, which load
   on first visit.
 - `public/lib/` — logic with no page code, most of it tested in `test/`: `stats.js`
   (leaderboards), `tiers.js` (tier list), `store.js` (Firestore), `divisions.js` (the divisions
@@ -47,7 +47,7 @@ once (see "Firebase key").
 
 Where features live in `public/lib/`: search `search.js`; feedback `feedback.js` (review:
 `feedback-review.js`); tour `tour.js`; scrim schedule `fixtures.js`; predictions and the model
-`predict.js`; laning `lanes.js`; combat `combat.js` (charts `combat-charts.js`); items `items.js`,
+`predict.js`; the draft model `cmdraft.js` (its page part `parts/cmdraft.js`); laning `lanes.js`; combat `combat.js` (charts `combat-charts.js`); items `items.js`,
 the "Items & fights" chart `itemlead.js`; gold `timeline.js`, charts `charts.js`; maps `wardmap.js`,
 `deathmap.js`, `towermap.js`, `fightmap.js`, the shared overlays `maplayers.js`; vision `vision.js`
 (the line of sight, shared with the sync) and `visionmap.js`; unticketed uploads `unticketed.js`;
@@ -93,6 +93,30 @@ version, run `node scripts/gen/cdn-integrity.js` (`--check` only reports);
 `test/integrity.test.js` fails if a CDN URL in the code has no hash. Tesseract's worker, WASM and
 language files load on its own defaults, without hashes.
 
+## Staging
+
+Push to the `staging` branch to try a change before it goes live. Every deploy builds both:
+`main` at the root and `staging` at **https://dota2scrimcircuittracker.github.io/staging/**
+(`.github/workflows/pages.yml`, "Build staging"). A push to `staging` redeploys both through
+`staging.yml`, which starts `pages.yml` on main: the Pages environment only deploys from main.
+
+```
+git switch staging && git merge <your branch> && git push    # preview it
+git switch main && git merge staging && git push               # ship it
+```
+
+- **Read-only.** `public/lib/site.js` reads the base path (`<base href="/staging/">`, set by the
+  workflow) and `public/lib/store.js` refuses every write there: no uploads, picks, casts,
+  fixtures or feedback reach Firestore from staging. A gold bar on every page says so.
+- **Live data.** Staging runs on main's synced `public/data/` copied over its own (data files
+  only staging writes, from a sync change not yet on main, are kept).
+- **Addresses** stay `/staging/#/...`: staging has no preview pages or sitemap. A deep
+  `/staging/...` address that GitHub Pages answers with the live 404 page is sent back to
+  staging by a line at the top of `index.html`.
+- Kept out of search (`robots.txt` and a noindex tag) and out of the Discord updates channel
+  (only pushes to main announce). Same Firebase key: same domain.
+- No `staging` branch, no staging site: the step skips itself.
+
 ## AD2L data and the sync
 
 Each division is a static file, `public/data/<division>.json`, built from public data (no keys):
@@ -104,7 +128,7 @@ git commit -am "Update AD2L data" && git push   # by hand only; the auto sync do
 ```
 
 **Auto sync:** `.github/workflows/sync.yml` runs `sync-all.js` twice a day (midnight and noon
-Pacific; run it by hand from the Actions tab too), commits `public/data/` when anything but the
+Pacific) plus Thursday 9pm Pacific after league night (run it by hand from the Actions tab too), commits `public/data/` when anything but the
 timestamp changed, and starts the Pages deploy. That picks up new schedules for predictions,
 results, newly parsed replays and pubs. A division that fails (PlayOn down, OpenDota rate limit)
 doesn't stop the others; the run shows red. The sync caches (`.cache/`) carry over between runs.
@@ -158,6 +182,21 @@ Backfills refill a field for games already synced, from the cached OpenDota matc
   [leamare/dota-map-coordinates](https://github.com/leamare/dota-map-coordinates), downloaded into
   `.cache/vision/` on first use and not committed (the repo has no licence); the site's Vision map
   fetches them straight from GitHub, so the site never serves them.
+- **Draft files** — `public/data/<division>-draft.json`, loaded only by the game page's Draft
+  tab and the Drafter: hero names, each hero's ranked picks and wins per bracket (OpenDota
+  `/heroStats`, one call per division), and every rostered player's games in the last 390 days
+  (main account, smurfs merged), one player per line so the auto sync's timestamp-only check sees
+  real changes. They come from the same `/players/{id}/matches` call the sync already makes, with
+  `project=` adding last hits, GPM, healing, lane and lobby rank, so the draft model costs one
+  extra OpenDota call per division per run. The deploy's trimmed copies skip them.
+- **Draft model** — `public/lib/cmdraft.js` is a port of Project Sybil's model
+  (`packages/sybil/{cmDraft,cmPlayers,leagueReading,math}.ts`, ybabts/Project-Sybil; ideas are
+  shared both ways). It was checked against Sybil's TypeScript, run through Node's
+  `--experimental-strip-types`, on random histories: largest difference 0. `test/cmdraft.test.js`
+  holds its pieces. The weights and the hero-by-position shares are Sybil's fit:
+  after Sybil refits, `node scripts/gen/gen-sybil-fitted.js <Project-Sybil checkout>` rewrites
+  `public/lib/sybil-fitted.js`. Counter/synergy tables would plug into `stateFeatures`
+  (`counters`/`synergy`, 0 for now).
 - **Detail files** — `public/data/<division>-detail.json`: every player's purchases and skill
   build per game, loaded only by game pages (Build order) and hero pages (Skill build). Ability
   names: `public/lib/abilities-data.js`, regenerated by `node scripts/gen/gen-ability-meta.js`

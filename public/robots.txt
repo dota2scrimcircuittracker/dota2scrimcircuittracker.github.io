@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /staging/
 
 Sitemap: https://dota2scrimcircuittracker.github.io/sitemap.xml

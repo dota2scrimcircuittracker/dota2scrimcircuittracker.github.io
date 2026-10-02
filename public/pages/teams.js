@@ -262,6 +262,8 @@ export async function renderTeams(src, slug) {
       ${pairs.pairs.length ? `<h2>Pairs${info("team_pairs")}</h2><div id="pairs"></div>
         <h2>Lineups</h2><div id="lineups"></div>` : ""}`],
     ["games", ad2l ? "Series" : "Games", `<div class="history reveal">${historyRows.join("") || noGames}</div>`],
+    // The draft model's read of every drafted series (parts/cmdraft.js), filled when first shown.
+    ["drafts", "Drafts", ad2l && h.games.some(({ m }) => m.draft?.some((x) => x.pick)) ? `<div id="td-box"><div class="panel empty">Reading the drafts…</div></div>` : ""],
     ["heroes", "Heroes", h.heroes.length ? `${cardsHtml([
         ["Hero pool", String(h.heroes.length), `different heroes in ${plural(h.detailed.length, "game")}`],
         ["Most played", esc(top.hero), `${plural(top.picks, "game")} · ${top.wins}–${top.picks - top.wins}`],
@@ -295,6 +297,31 @@ export async function renderTeams(src, slug) {
     ${tabs.panels}`;
   wirePlayerTabs();
   wireCharts(app);
+  // Drafts tab: load the model and the division's draft file the first time the tab is shown.
+  const tdBox = app.querySelector("#td-box");
+  if (tdBox) {
+    const panel = tdBox.closest(".pp-panel");
+    const fill = () => {
+      if (tdBox.dataset.filled) return;
+      tdBox.dataset.filled = "1";
+      import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(src.key)]).then(([cm, data]) => {
+        if (document.getElementById("td-box") !== tdBox) return;
+        if (!data) { tdBox.innerHTML = `<p class="muted">The draft model's data for this division hasn't synced yet.</p>`; return; }
+        const tname = Object.fromEntries(ad2l.teams.map((t) => [t.id, t.name]));
+        const drafted = ({ m }) => m.draft?.some((x) => x.pick) && m.players?.length === 10;
+        const mine = ad2l.series.filter((x) => x.home === team.id || x.away === team.id).sort((x, y) => (y.time ?? 0) - (x.time ?? 0));
+        const series = mine.map((x) => {
+          const games = h.games.filter(({ m }) => m.series_id === x.id).filter(drafted).sort((p, q) => p.m.start_time - q.m.start_time);
+          const home = x.home === team.id, [us, them] = home ? [x.home_score, x.away_score] : [x.away_score, x.home_score];
+          const date = x.time ? new Date(x.time * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+          return { label: `${date} · vs ${esc(tname[home ? x.away : x.home] ?? "TBD")} · ${us ?? 0}–${them ?? 0}`, games };
+        }).filter((x) => x.games.length);
+        tdBox.innerHTML = cm.teamDraftsHtml(team, series, src, data, tdBox.clientWidth || 1000);
+      }).catch((e) => { tdBox.innerHTML = errorBox(e); });
+    };
+    if (!panel.hidden) fill();
+    else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  }
   wireMapCards(app);
   wireWardMaps(app);
   wireFightMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });

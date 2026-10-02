@@ -189,15 +189,24 @@ const firstSeries = series.find((s) => s.time)?.time ?? Math.floor(Date.now() / 
 const days = Math.ceil((Date.now() / 1000 - firstSeries) / 86400) + 10;
 console.log(`  series: ${series.filter((s) => (s.home_score ?? 0) + (s.away_score ?? 0) > 0).length} played of ${series.length}; searching the last ${days} days`);
 
-// One call per rostered account (smurfs included) for every game since the season began:
-// practice lobbies (lobby_type 1) are candidate league games; public and ranked games
-// (0, 7) are that player's recent pubs, used for pub form and draft predictions.
+// One call per rostered account (smurfs included) for every game in the last HISTORY_DAYS:
+// practice lobbies (lobby_type 1) since the season began are candidate league games; public
+// and ranked games (0, 7) in the last PUB_DAYS are that player's recent pubs, used for pub form
+// and draft predictions. Every game is also the draft model's history (lib/cmdraft.js): its
+// records reach back about 390 days (90-day half-life, cut below 5%), and farm and lane say
+// what position each game was played at. Same one call; the extra fields are projected.
 const PUB_DAYS = 30;
+const HISTORY_DAYS = 390;
+const PROJECT = ["hero_id", "kills", "deaths", "assists", "last_hits", "gold_per_min", "hero_healing", "lane_role", "average_rank"].map((f) => `&project=${f}`).join("");
 const candidates = new Set();
 const pubRows = new Map(); // main account -> rows
+const historyRows = new Map(); // main account -> rows (smurfs merged), for the draft model
 for (const [acct, o] of owner) {
-  const rows = await opendota(`/players/${acct}/matches?date=${Math.max(days, PUB_DAYS)}`);
+  const rows = await opendota(`/players/${acct}/matches?date=${Math.max(days, PUB_DAYS, HISTORY_DAYS)}${PROJECT}`);
+  const hist = historyRows.get(o.main) ?? historyRows.set(o.main, []).get(o.main);
+  for (const r of rows) if (r.hero_id && r.start_time) hist.push(r);
   for (const r of rows) {
+    if (r.lobby_type === 1 && r.start_time < Date.now() / 1000 - days * 86400) continue;
     if (r.lobby_type === 1) candidates.add(r.match_id);
     else if ((r.lobby_type === 0 || r.lobby_type === 7) && r.start_time > Date.now() / 1000 - PUB_DAYS * 86400 && r.duration >= 600) {
       const list = pubRows.get(o.main) ?? [];
@@ -211,6 +220,9 @@ console.log(`  ${candidates.size} candidate practice-lobby games; pubs for ${pub
 const heroList = await opendota("/heroes");
 const heroes = Object.fromEntries(heroList.map((h) => [h.id, h.localized_name === "Ring Master" ? "Ringmaster" : h.localized_name]));
 const heroKeys = Object.fromEntries(heroList.map((h) => [h.id, h.name])); // "npc_dota_hero_…", as the death logs name killers
+// Each hero's ranked picks and wins per bracket (Herald 1 … Immortal 8): the draft model's hero
+// baselines, which a player's record on a hero is shrunk toward.
+const heroStats = await opendota("/heroStats");
 
 const games = [], detail = {};
 for (const id of [...candidates].sort()) {
@@ -356,5 +368,25 @@ await mkdir(path.dirname(OUT), { recursive: true });
 await writeFile(OUT, leagueJson(out));
 // Purchases and skill builds, loaded only by the pages that show them.
 await writeFile(detailName(OUT), detailJson(detail));
+// The draft model's inputs (lib/cmdraft.js), loaded only by the Draft tab and the Drafter:
+// hero names and baselines, and every rostered player's games (main account, smurfs merged)
+// in flat groups of 10: start time, hero id, won (1/0), lobby type, duration, last hits, GPM,
+// healing, lane role (0 unparsed), lobby average rank (0 unknown). Oldest first.
+const num = (v) => (Number.isFinite(v) ? v : -1);
+const draftOut = {
+  updated: out.updated,
+  history_days: HISTORY_DAYS,
+  heroes,
+  baselines: Object.fromEntries(heroStats.map((h) => [h.id, [1, 2, 3, 4, 5, 6, 7, 8].map((b) => h[`${b}_pick`] ?? 0).concat([1, 2, 3, 4, 5, 6, 7, 8].map((b) => h[`${b}_win`] ?? 0))])),
+  history: Object.fromEntries([...historyRows].map(([acct, rows]) => [acct, [...new Map(rows.map((r) => [r.match_id, r])).values()]
+    .sort((a, b) => a.start_time - b.start_time)
+    .flatMap((r) => [r.start_time, r.hero_id, (r.player_slot < 128) === r.radiant_win ? 1 : 0, r.lobby_type ?? 0, r.duration ?? 0, num(r.last_hits), num(r.gold_per_min), num(r.hero_healing), r.lane_role ?? 0, r.average_rank ?? 0])])),
+};
+// One line per key and per player, so the auto sync's "only the timestamp changed" check (it
+// drops a file whose every changed line holds "updated":) sees real changes, and diffs stay small.
+const line = ([k, v]) => `${JSON.stringify(k)}:${JSON.stringify(v)}`;
+const { history, ...head } = draftOut;
+await writeFile(OUT.replace(/\.json$/, "-draft.json"),
+  `{${Object.entries(head).map(line).join(",\n")},\n"history":{\n${Object.entries(history).map(line).join(",\n")}\n}}\n`);
 console.log(`  ${games.length} division games from league ${LEAGUE_ID}; ${odCalls} OpenDota calls this run`);
 console.log(`wrote ${path.relative(ROOT, OUT)}`);
