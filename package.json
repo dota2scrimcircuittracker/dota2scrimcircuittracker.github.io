@@ -6,19 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test test/*.test.js",
-    "ocr:check": "node scripts/ocr-check.js",
-    "ocr:robustness": "node scripts/ocr-robustness.js",
-    "ocr:wide": "node scripts/ocr-wide.js",
-    "rules:test": "node scripts/rules-dry-test.cjs",
-    "ad2l:sync": "node scripts/ad2l-sync.js",
-    "heroic:sync": "node scripts/ad2l-sync.js --season 676 --out heroic.json",
-    "conqueror:sync": "node scripts/ad2l-sync.js --season 674 --out conqueror.json",
-    "warrior:sync": "node scripts/ad2l-sync.js --season 673 --out warrior.json",
-    "challenger:sync": "node scripts/ad2l-sync.js --season 672 --out challenger.json",
-    "voyager:sync": "node scripts/ad2l-sync.js --season 671 --out voyager.json",
-    "explorer:sync": "node scripts/ad2l-sync.js --season 670 --out explorer.json",
-    "sync:all": "npm run -s ad2l:sync && npm run -s heroic:sync && npm run -s conqueror:sync && npm run -s warrior:sync && npm run -s challenger:sync && npm run -s voyager:sync && npm run -s explorer:sync",
-    "config:write": "node scripts/write-firebase-config.js"
+    "ocr:check": "node scripts/ocr/ocr-check.js",
+    "ocr:robustness": "node scripts/ocr/ocr-robustness.js",
+    "ocr:wide": "node scripts/ocr/ocr-wide.js",
+    "rules:test": "node scripts/rules/rules-dry-test.cjs",
+    "sync": "node scripts/sync/ad2l-sync.js --division",
+    "sync:all": "node scripts/sync/sync-all.js",
+    "config:write": "node scripts/deploy/write-firebase-config.js"
   },
   "devDependencies": {
     "firebase-tools": "^15.31.0",

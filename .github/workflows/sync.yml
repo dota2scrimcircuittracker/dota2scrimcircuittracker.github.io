@@ -8,6 +8,10 @@ on:
     # 07:00 and 19:00 UTC = midnight and noon Pacific (PDT): midnight catches Thursday's
     # league night right after it ends, noon catches late replay parses and new schedules.
     - cron: "0 7,19 * * *"
+    # Thursday 9pm Pacific, right after league night. GitHub cron is UTC only, so this is
+    # Friday 04:00 UTC (9pm PDT) and 05:00 UTC (9pm PST); the other one of the pair is a
+    # harmless extra run an hour off.
+    - cron: "0 4,5 * * 5"
   workflow_dispatch:
 
 permissions:
@@ -38,15 +42,9 @@ jobs:
           restore-keys: sync-cache-
       # One division failing (PlayOn down, OpenDota rate limit) doesn't stop the others;
       # the job still fails at the end so it shows red.
+      # The divisions come from public/lib/divisions.js; sync-all.js writes FAILED to $GITHUB_ENV.
       - name: Sync every division
-        run: |
-          failed=""
-          for l in ad2l heroic conqueror warrior challenger voyager explorer; do
-            echo "::group::$l"
-            npm run -s "$l:sync" || failed="$failed $l"
-            echo "::endgroup::"
-          done
-          echo "FAILED=$failed" >> "$GITHUB_ENV"
+        run: node scripts/sync/sync-all.js || true
       - uses: actions/cache/save@v4
         if: always()
         with:
@@ -61,7 +59,9 @@ jobs:
       - name: Commit and push
         id: commit
         run: |
-          if git diff --quiet -- public/data; then echo "No data changes."; exit 0; fi
+          # status, not diff: a division's first draft file (<division>-draft.json) is a new,
+          # untracked file, which `git diff` doesn't see.
+          if [ -z "$(git status --porcelain -- public/data)" ]; then echo "No data changes."; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/data
@@ -76,4 +76,5 @@ jobs:
         run: gh workflow run pages.yml --ref main
       - name: Report failed divisions
         if: env.FAILED != ''
-        run: echo "::error::Sync failed for:${FAILED}" && exit 1
+        run: |
+          echo "::error::Sync failed for: ${FAILED}" && exit 1

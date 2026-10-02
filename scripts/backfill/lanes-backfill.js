@@ -1,0 +1,26 @@
+// Add `lane_role`, `roaming`, `lh10` and `dn10` to every game already in public/data/*.json from
+// the cached OpenDota matches (.cache/opendota), with no network calls. The sync writes them
+// from now on. Usage: node scripts/backfill/lanes-backfill.js
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { laneFields } from "../sync/lane-fields.js";
+import { leagueJson } from "../sync/league-json.js";
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const DATA = path.join(ROOT, "public", "data");
+for (const f of (await readdir(DATA)).filter((f) => f.endsWith(".json") && !f.endsWith("-detail.json"))) {
+  const d = JSON.parse(await readFile(path.join(DATA, f), "utf8"));
+  let done = 0, missing = 0;
+  for (const g of d.games) {
+    const file = path.join(ROOT, ".cache", "opendota", `match_${g.match_id}.json`);
+    if (!existsSync(file)) { missing++; continue; }
+    const od = JSON.parse(await readFile(file, "utf8"));
+    const bySlot = [...od.players].sort((x, y) => x.player_slot - y.player_slot);
+    g.players.forEach((p, i) => Object.assign(p, laneFields(bySlot[i])));
+    done++;
+  }
+  await writeFile(path.join(DATA, f), leagueJson(d));
+  console.log(`${f}: ${done} games with lanes${missing ? `, ${missing} not in the cache` : ""}`);
+}

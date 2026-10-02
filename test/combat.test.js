@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { firstBloodRecord, streakRuns, bestStreakOf, multiKillsOf, firstBloodOf, deathSources, fullDeathLog, teamSplits, playerPairs, sideRecord, heroPairs, heroNeutrals, skillGrid, pubPrep, medalValue, medalFit, pausesOf, hitSource, heroOfSlug, benchSummary, combatTotals } from "../public/lib/combat.js";
 import { combatSummary } from "../public/lib/stats.js";
-import { combatFields, gameExtras, detailOf, firstBloodFrom, firstDeathOf } from "../scripts/combat-fields.js";
+import { combatFields, gameExtras, detailOf, firstBloodFrom, firstDeathOf } from "../scripts/sync/combat-fields.js";
 import { streakChartHtml, skillGridHtml, buildOrderHtml, medalScatterHtml } from "../public/lib/combat-charts.js";
 
 // death_log entry: [second, killer, gold lost, seconds dead, x, y]
@@ -179,7 +179,7 @@ test("benchmarks and combat totals over player-games", () => {
 
 test("sync fields from an OpenDota player and match", () => {
   const p = combatFields({
-    kills_log: [{ time: 10, key: "x" }, { time: 20, key: "y" }], actions_per_min: 250, teamfight_participation: 0.6666, firstblood_claimed: 1,
+    kills_log: [{ time: 10, key: "x" }, { time: 20, key: "y", smoke: true }], actions_per_min: 250, teamfight_participation: 0.6666, firstblood_claimed: 1,
     multi_kills: { 2: 3, 6: 1 }, kill_streaks: { 3: 2, 12: 1 }, runes: { 5: 4, 0: 1 }, courier_kills: 1, pings: 7,
     max_hero_hit: { value: 900, inflictor: "lina_laguna_blade", key: "npc_dota_hero_axe" },
     benchmarks: { gold_per_min: { pct: 0.5 }, xp_per_min: { pct: 0.991 } },
@@ -192,8 +192,14 @@ test("sync fields from an OpenDota player and match", () => {
   assert.deepEqual(p.max_hit, [900, "lina_laguna_blade", "axe"]);
   assert.deepEqual(p.bench.slice(0, 3), [50, 99, null]);
   assert.deepEqual(p.kill_t, [10, 20]);
+  assert.deepEqual(p.smoke_kill_t, [20]);
   assert.equal(combatFields({}).apm, null); // unparsed
-  assert.deepEqual(gameExtras({ pauses: [{ time: 5, duration: 30 }] }), { first_blood_at: null, pauses: [5, 30] });
+  assert.deepEqual(gameExtras({ pauses: [{ time: 5, duration: 30 }] }), { first_blood_at: null, pauses: [5, 30], fight_smokes: null });
+  // Smokes per teamfight: [Radiant, Dire] per fight, teamfight players in d.players order.
+  assert.deepEqual(gameExtras({ players: [{ isRadiant: true }, { isRadiant: false }, { isRadiant: false }], teamfights: [
+    { players: [{ item_uses: { smoke_of_deceit: 1 } }, { item_uses: { smoke_of_deceit: 1 } }, { item_uses: { smoke_of_deceit: 1 } }] },
+    { players: [{}, {}, {}] },
+  ] }).fight_smokes, [1, 2, 0, 0]);
   const det = detailOf({ players: [
     { player_slot: 128, purchase_log: [{ key: "tango", time: -80 }, { key: "tango", time: 300 }, { key: "blink", time: 600 }], ability_upgrades_arr: [5, 6] },
     { player_slot: 0, purchase_log: [], ability_upgrades_arr: null },

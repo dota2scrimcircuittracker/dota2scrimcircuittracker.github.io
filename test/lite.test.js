@@ -7,6 +7,7 @@ import { isRemake, withDerived, hasDetails, playerLeaderboard, heroStats } from 
 import { withPerGame } from "../public/lib/ranks.js";
 import { heroRatings } from "../public/lib/tiers.js";
 import { buildSearchIndex } from "../public/lib/search.js";
+import { DIVISIONS } from "../public/lib/divisions.js";
 
 // As app.js loads a division (loadDivision), then what the overall ranks read (statRows,
 // heroRows, heroRanks) and the search index.
@@ -26,7 +27,7 @@ const ranks = (raw) => {
   };
 };
 
-for (const key of ["ad2l", "heroic", "conqueror", "warrior", "challenger", "voyager", "explorer"]) {
+for (const { key } of DIVISIONS) {
   const file = `public/data/${key}.json`;
   test(`trimmed ${key} file gives the same ranks and search`, { skip: !existsSync(file) && "no data file" }, () => {
     const raw = JSON.parse(readFileSync(file, "utf8"));

@@ -4,21 +4,21 @@ AD2L divisions only. Scrims come from OCR of post-game screenshots, which can't 
 
 ## Data
 
-`scripts/ad2l-sync.js` adds two fields per player, from the cached OpenDota match JSON:
+`scripts/sync/ad2l-sync.js` adds two fields per player, from the cached OpenDota match JSON:
 
 - `items`: final inventory, `[slot0..slot5, neutral]` as item keys (`"bfury"`), `null` for empty.
 - `item_times`: flat `[key, sec, key, sec, …]`, the first purchase of each core item, in order.
   Core = built from components with cost ≥ 1000, or Blink Dagger / Aghanim's Shard.
   Consumables, recipes and components are left out.
 
-`scripts/items-backfill.js` adds the same fields to existing `public/data/*.json` from `.cache/opendota`
+`scripts/backfill/items-backfill.js` adds the same fields to existing `public/data/*.json` from `.cache/opendota`
 with no network calls. Games with no cached match keep no item fields; the UI skips them.
 
 Aggregates are computed in the browser so the week filter applies.
 
 ## Catalog
 
-`scripts/gen-item-meta.js` writes `public/lib/items-data.js` from OpenDota `/constants/items` and
+`scripts/gen/gen-item-meta.js` writes `public/lib/items-data.js` from OpenDota `/constants/items` and
 `/constants/item_ids`: key → display name, cost, icon slug, kind (built / consumable / recipe / neutral).
 Icons come from `cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/`.
 

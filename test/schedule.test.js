@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { strengthOfSchedule } from "../public/lib/schedule.js";
+import { strengthOfSchedule, gameWins } from "../public/lib/schedule.js";
 
 const S = (home, away, hs, as) => ({ home, away, home_score: hs, away_score: as });
 // A beats everyone 2-0; B and C split; D loses everything.
@@ -11,31 +11,33 @@ const series = [
 ];
 const by = Object.fromEntries(strengthOfSchedule([1, 2, 3, 4], series).map((r) => [r.id, r]));
 
-test("OWP leaves out games against the team itself", () => {
-  // D's opponents without their games vs D: A 4-0, B 1-3, C 1-3 → (1 + .25 + .25) / 3
-  assert.ok(Math.abs(by[4].owp - 0.5) < 1e-9);
-  // A's opponents without A: B 3-1, C 3-1, D 0-4 → (.75 + .75 + 0) / 3
-  assert.ok(Math.abs(by[1].owp - 0.5) < 1e-9);
+test("game wins come from played series only", () => {
+  assert.deepEqual(Object.fromEntries(gameWins(series)), { 1: 6, 2: 3, 3: 3, 4: 0 });
 });
 
-test("SOS mixes OWP and OOWP 2:1; playing the top team is a harder schedule", () => {
-  for (const r of Object.values(by)) assert.ok(Math.abs(r.sos - (2 * r.owp + r.oowp) / 3) < 1e-9);
-  // E only played A (unbeaten), F only played D (winless).
-  const more = [...series, S(5, 1, 0, 2), S(6, 4, 2, 0)];
-  const r = Object.fromEntries(strengthOfSchedule([1, 2, 3, 4, 5, 6], more).map((x) => [x.id, x]));
-  assert.ok(r[5].sos > r[6].sos);
-  assert.equal(r[5].owp, 1);
+test("SoS is the total game wins of the opponents played (AD2L rules §7)", () => {
+  assert.equal(by[1].sos, 3 + 3 + 0); // B, C, D
+  assert.equal(by[2].sos, 6 + 3 + 0); // A, C, D
+  assert.equal(by[4].sos, 6 + 3 + 3); // A, B, C
+  // Opponents' wins include their wins against this team.
+  assert.equal(by[4].faced.find((f) => f.opp === 1).opp_wins, 6);
 });
 
-test("remaining schedule uses unplayed series and full records", () => {
+test("meeting a team twice counts their wins twice; a 0-win bye adds nothing", () => {
+  const r = Object.fromEntries(strengthOfSchedule([2, 9], [...series, S(2, 3, 2, 0), S(9, 2, 0, 1)]).map((x) => [x.id, x]));
+  // B played A (6 wins), C (3), D (0), C again (3) and the bye (0).
+  assert.equal(r[2].sos, 12);
+});
+
+test("remaining schedule uses unplayed series and current wins", () => {
   assert.deepEqual(by[4].remaining, [1]);
-  assert.equal(by[4].remaining_sos, 1); // A is 6-0
+  assert.equal(by[4].remaining_sos, 6);
   assert.deepEqual(by[2].remaining, [3]);
   assert.equal(by[1].faced.length, 3);
   assert.equal(by[2].faced.find((f) => f.opp === 3).result, "t");
 });
 
-test("teams with no games get nulls, not NaN", () => {
+test("teams with no games get nulls, not 0 or NaN", () => {
   const [r] = strengthOfSchedule([9], series);
-  assert.equal(r.owp, null); assert.equal(r.sos, null); assert.equal(r.remaining_sos, null);
+  assert.equal(r.sos, null); assert.equal(r.remaining_sos, null);
 });

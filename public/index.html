@@ -8,7 +8,7 @@
   <title>AD2L Stat Tracker</title>
   <meta name="description" content="Dota 2 AD2L and scrim stats: standings, weekly recaps, players, heroes and predictions.">
   <meta name="theme-color" content="#0c0b0a">
-  <!-- Link previews. Other pages get their own from scripts/share-pages.js at deploy. -->
+  <!-- Link previews. Other pages get their own from scripts/deploy/share-pages.js at deploy. -->
   <meta property="og:site_name" content="AD2L Stat Tracker">
   <meta property="og:type" content="website">
   <meta property="og:title" content="AD2L Stat Tracker">
@@ -21,6 +21,19 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://dota2scrimcircuittracker.github.io/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- Third-party modules (Firebase, Tesseract, modern-screenshot) load only if their bytes match
+       these hashes. After changing a CDN URL or version: node scripts/gen/cdn-integrity.js -->
+  <script type="importmap">
+  {
+    "integrity": {
+      "https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/dist/index.mjs": "sha384-eDCjprrMFWrElLAfGhefpqsn3Vyw6dm8//RmsFZjqo8/AZ1P/CEiLIiLX7Zc64B3",
+      "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.esm.min.js": "sha384-fDdNU3AFf+hEiUiSjD96lSEFawtCYOWQFSrFyHZOkX2jhwuUQKiSOAgWNfuKg4B6",
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js": "sha384-cB901C0jnWultb8ZAaei2mehR8EQfJQfMBokc5Z5dc56nSWK3DgeQCJsIkE7DJg8",
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js": "sha384-nAwz6HvSTJ343VaB9sqZFItIinAPkFyiRV2sk7FSMgfcNPSltnISTMD7RQz8yEBf",
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js": "sha384-D9sv3kF5iLMmc0vLazG8S4gM2bVmmBw+lb+7Cn0pIpfdMOpWTVrLBLrweEmES+YZ"
+    }
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@600;800;900&family=Epilogue:wght@400;500;600;700&family=Martian+Mono:wght@300;400;600&display=swap" rel="stylesheet">
@@ -56,13 +69,7 @@
         <div class="league-menu" id="league-menu" hidden>
           <div class="menu-label">Switch league</div>
           <a href="#/scrims" data-league="scrim"><b>Scrim League</b><span>Our scrims · uploaded screenshots</span></a>
-          <a href="#/explorer/" data-league="explorer"><b>AD2L · S48 Explorer</b></a>
-          <a href="#/voyager/" data-league="voyager"><b>AD2L · S48 Voyager</b></a>
-          <a href="#/challenger/" data-league="challenger"><b>AD2L · S48 Challenger</b></a>
-          <a href="#/warrior/" data-league="warrior"><b>AD2L · S48 Warrior</b></a>
-          <a href="#/conqueror/" data-league="conqueror"><b>AD2L · S48 Conqueror</b></a>
-          <a href="#/champion/" data-league="ad2l"><b>AD2L · S48 Champion</b></a>
-          <a href="#/heroic/" data-league="heroic"><b>AD2L · S48 Heroic/Aegis</b></a>
+          <!-- The AD2L divisions go here, lowest first (app.js, from lib/divisions.js). -->
           <a href="#/all/" data-league="all"><b>AD2L · All Divisions</b><span>Every division in one view</span></a>
         </div>
       </div>
@@ -96,6 +103,9 @@
   <main id="app"></main>
   <footer class="foot">
     <span>Not affiliated with Valve.</span>
+    <!-- Where the numbers come from; on AD2L pages, when that division last synced (app.js footSync). -->
+    <span class="foot-data">AD2L data from <a href="https://dota.playon.gg/" target="_blank" rel="noopener">PlayOn</a> and
+      <a href="https://www.opendota.com/" target="_blank" rel="noopener">OpenDota</a>; scrims uploaded here<span id="foot-sync"></span></span>
     <div class="foot-links">
       <button class="tour-open" id="tour-open" type="button" title="A guided tour of the site">New here?</button>
       <a class="discord-join" href="https://discord.gg/rPWa2tvt9k" target="_blank" rel="noopener" title="Join the Discord" aria-label="Join the Discord">

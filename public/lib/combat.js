@@ -1,5 +1,5 @@
 // Combat and fun stats (AD2L parsed replays; scrim screenshots have none of these). Each game
-// player can carry, from scripts/combat-fields.js:
+// player can carry, from scripts/sync/combat-fields.js:
 //   apm, tf_part (0-1 share of the team's teamfights), first_blood (1 = drew it),
 //   multi [double, triple, ultra, rampage], streaks [times reaching 3 … 10+ kills without dying],
 //   kill_t [second of each hero kill], runes [count per RUNES type], courier_kills,

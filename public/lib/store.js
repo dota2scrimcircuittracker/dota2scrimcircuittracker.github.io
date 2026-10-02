@@ -10,14 +10,16 @@ import {
 import { FIREBASE_CONFIG } from "../firebase-config.js";
 import { matchId } from "./stats.js";
 import { parseDuration } from "./validate.js";
+import { DIVISIONS, collectionOf } from "./divisions.js";
 
 const app = initializeApp(FIREBASE_CONFIG, "scrim-league");
 const auth = getAuth(app);
 const db = getFirestore(app);
 // Scrims in `matches`; AD2L division games played without a league ticket, uploaded from
-// screenshots the same way, in `ad2l_unticketed` (Champion), `heroic_unticketed`
-// (Heroic/Aegis), `conqueror_unticketed`, `warrior_unticketed`, `challenger_unticketed`, `voyager_unticketed` and `explorer_unticketed`. Same document shape and rules for all of them.
-const COLLECTIONS = { scrim: "matches", ad2l: "ad2l_unticketed", heroic: "heroic_unticketed", conqueror: "conqueror_unticketed", warrior: "warrior_unticketed", challenger: "challenger_unticketed", voyager: "voyager_unticketed", explorer: "explorer_unticketed" };
+// screenshots the same way, in `<division>_unticketed` (`ad2l_unticketed` is Champion; see
+// lib/divisions.js). Same document shape and rules for all of them; a new division's
+// collection also needs adding to the rules' knownColl() by hand.
+const COLLECTIONS = { scrim: "matches", ...Object.fromEntries(DIVISIONS.map((d) => [d.key, collectionOf(d.key)])) };
 const coll = (league = "scrim") => collection(db, "scrimLeague", "data", COLLECTIONS[league]);
 
 export const MAX_MATCHES = 500;

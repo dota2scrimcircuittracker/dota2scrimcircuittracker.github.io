@@ -23,11 +23,9 @@ export const INFO = {
   game_rate: "Games won ÷ games played, from PlayOn's series scores.",
   tracked: "Games whose full stats were found on OpenDota. A game can be missing when nobody in it has public match history.",
   record: "Series won–tied–lost.",
-  sos: "Strength of schedule: (2 × opponents' game win % + their opponents' game win %) ÷ 3, the same idea as RPI. Opponents' win % leaves out their games against this team, so beating them doesn't make the schedule look easier. Higher = tougher opponents so far.",
-  owp: "Opponents' game win %, leaving out their games against this team, so beating them doesn't make your own schedule look easier.",
-  oowp: "How tough the opponents' own schedules were: their opponents' game win %.",
+  sos: "Strength of schedule, the way AD2L's rules count it: the total game wins of every opponent this team has played (a team met twice counts twice; a bye counts as 0). It's the first tiebreaker for playoff seeding. Higher = tougher opponents so far.",
   faced: "Every series played, oldest first: green won, red lost, gold tied. Hover a square for the score.",
-  remaining_sos: "Average game win % of the opponents still to play. Higher = harder run-in.",
+  remaining_sos: "Total game wins so far of the opponents still to play (only the posted week, since PlayOn pairs each week as it goes). Higher = harder run-in.",
   series_form: "The last five series, newest on the right: green won, red lost, gold tied. Sorting ranks wins minus losses over those five.",
   model_rating: "The team's strength in the model behind Predict: fitted to every game result so far and, pulled toward the average medal of the team's top three players (so far, medals have predicted better than results). 0 = an average team; the gap between two teams sets the odds.",
   standings_leader: "Most games won; game win % breaks a tie.",
@@ -164,6 +162,8 @@ export const INFO = {
   fight_deaths: "Left: where each hero died in a teamfight. OpenDota records a death's spot only inside a teamfight, so lane deaths and pickoffs have no place on the map. Right: every death on a time axis, one row per hero; deaths outside a teamfight count as lane deaths before 10:00 and pickoffs after. From the parsed replay.",
   player_deaths: "Where and when this player dies, over every parsed game. Map: their teamfight deaths in Radiant games or Dire games, picked with the As Radiant / As Dire switch (OpenDota records a spot only for teamfight deaths). Chart: their deaths in each 2-minute stretch, split into lane deaths (before 10:00, outside a teamfight), pickoffs (after 10:00, outside a teamfight) and teamfight deaths. Filter to wins or losses to compare.",
   team_fights: "Where this team takes teamfights, from the spot of every teamfight death in their parsed games (theirs and the enemy's). Both sides: Dire games mirrored so own base is bottom left; As Radiant / As Dire: only games on that side, at their real spots. Heat shows where fights happen; Net shows where they come out ahead (green) or behind (red); Fights shows each teamfight, coloured by who lost more heroes. OpenDota records a spot only for deaths inside its teamfights.",
+  smoke_map: "Kills OpenDota flags as made out of Smoke of Deceit. Left: where each smoke gank ended (the victim's spot; OpenDota keeps a spot only for deaths inside a teamfight). Right: every smoked kill on a time axis, a row per team, with bands for teamfights a team used a smoke in. OpenDota doesn't record when or where a smoke was used, only how many each player used.",
+  team_smokes: "Smoke ganks in this team's parsed games: kills out of Smoke of Deceit by them and by their opponents. Map: where each gank ended (only deaths inside a teamfight have a spot); Both sides mirrors Dire games so own base is bottom left. Chart: smoked kills by game minute. Per game: smokes used, kills out of smoke, and the share of all kills that came out of smoke.",
   map_objectives: "Creeps, stacks, wards and objectives per player, from the parsed replay.",
   stat_leaders: "The top and bottom 3 in this league on the stat you pick, among players with 3+ games. Per-game stats are totals over games played. A badge means the player is also top or bottom 3 across all seven AD2L leagues together (Heroic/Aegis counted once, as Combined). Raw numbers, no adjustment for how strong each league is.",
   stat_ranks: "This player's place on each stat among players with 3+ games: in this league, and across all seven AD2L leagues together. Colour by league place: gold, silver, bronze for the top 3, green for the top 10, soft green for the top 25, red for the bottom 3. The same colours mark the all-leagues place.",
@@ -176,6 +176,8 @@ export const INFO = {
   game_analysis: "One game at a time: pick any game above or hit Analyze in the table below. Stat places are among the ten players in that game. Wards come from the parsed replay; kills and deaths are on the gold chart (only where the replay has a death log).",
   game_gold: "Total gold earned by minute from the replay (gold lost on death isn't subtracted), against the enemy player at the same position. Kills and deaths sit on their gold line; Roshan, Tormentors, towers and barracks are on the map lane (their team's above the line, the enemy's below); shaded bands are teamfights. Lead = their team's total gold lead.",
   game_rating: "The tier rating worked out from this one game: the same stats and multipliers as the tier list, against this league's players at the same position. The curve is fitted to every game in the league the way the tier list's is fitted to seasons, so games spread across S–D in about the same shares as players do.",
+  hero_power_list: "The heroes ranked S–D by how well players perform on them: the average hero rating of everyone who played the hero, weighted by games and padded with 3 games at the league median so a hero with a few great games can't top it. Those averages sit close together, so they go on a curve fitted to the heroes (median hero = 50), the same way the tier list spreads players. It measures performance on the hero, not its win rate or draft priority.",
+  hero_tier_list: "Every player on every hero, ranked S–D by hero rating: the tier rating from just their games on that hero, against this league's players at the same position. Pairs need 2+ games on the hero by default (change it with the menu); the hero menu narrows it to one hero.",
   hero_rating: "The tier rating worked out from just a player's games on this hero: the same stats, multipliers and curve as the tier list, against this league's players at the same position. Opponent strength still uses all the league's games. With few games the stats are padded toward the average, which softens a single great or awful game but doesn't remove it: one game can still rate very high or very low. Across leagues, players are compared on these ratings, each measured against their own league.",
     tier_list: "Players with 3+ games ranked S–D. Score = stat points out of 100 (each stat compared with the same position) × survival × consistency × opponent strength × winning; the rating puts that on a curve. Click a player for every point.",
   time_machine: "Count only the weeks picked: standings, team pages, player stats, tiers and heroes are worked out from those weeks' games and series alone. Pick one week, several, or weeks 1 to N to see the league as it stood then. Cross-league \"overall\" ranks and lane cut-offs use the same weeks. With one or two weeks picked, players need only that many games to be ranked (3 otherwise).",
@@ -282,7 +284,8 @@ export function wireInfo() {
       if (owner === btn && pinned) hide(); else show(btn, true);
       return;
     }
-    if (owner && !pop.contains(e.target)) hide();
+    // Not on clicks in the guided tour's caption, which may be pointing at this bubble.
+    if (owner && !pop.contains(e.target) && !e.target.closest?.(".tour")) hide();
   }, true);
 
   const canHover = window.matchMedia?.("(hover: hover)").matches;

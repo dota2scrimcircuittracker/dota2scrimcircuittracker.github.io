@@ -501,6 +501,38 @@ export function heroRatings(matches, { model = null, minGames = MIN_GAMES } = {}
     .sort((a, b) => b.score - a.score)]));
 }
 
+// The hero tier list: every player-on-hero pair from heroRatings with `minGames`+ games on that
+// hero, best first, each with its tier letter (same cutoffs as the tier list).
+export const HERO_TIER_MIN = 2;
+export function heroTierList(ratings, { minGames = HERO_TIER_MIN } = {}) {
+  const pairs = [...ratings.values()].flat().filter((p) => p.games >= minGames)
+    .map((p) => ({ ...p, tier: TIERS.find((t) => p.rating_exact >= t.min).tier }))
+    .sort((a, b) => b.rating_exact - a.rating_exact || b.games - a.games);
+  return TIERS.map(({ tier }) => ({ tier, pairs: pairs.filter((p) => p.tier === tier) }));
+}
+
+// Heroes themselves, ranked by how well players do on them: the games-weighted average hero
+// rating of everyone who played it, padded with K_HERO games at 50 (the league's median player)
+// so a 3-game hero can't top the list. Those averages bunch up, so like the tier list they go
+// on a curve: fitted to the heroes with HERO_TIER_MIN+ games (median 50, RATING_STRETCH × their
+// spread). Heroes need `minGames`+ games. Bands by the tier cutoffs, best first.
+export const K_HERO = 3;
+export function heroPowerList(ratings, { minGames = MIN_GAMES } = {}) {
+  const heroes = [...ratings].map(([hero, ps]) => {
+    const games = ps.reduce((s, p) => s + p.games, 0);
+    const avg = (ps.reduce((s, p) => s + p.rating_exact * p.games, 0) + 50 * K_HERO) / (games + K_HERO);
+    return { hero, games, wins: ps.reduce((s, p) => s + p.wins, 0), players: ps.length, avg, best: ps[0] };
+  });
+  const fit = heroes.filter((h) => h.games >= HERO_TIER_MIN).length >= 5 ? heroes.filter((h) => h.games >= HERO_TIER_MIN) : heroes;
+  const avgs = fit.map((h) => h.avg).sort((a, b) => a - b);
+  const curve = avgs.length >= 5 && sdOf(avgs) > 0 ? [avgs[Math.floor(avgs.length / 2)], RATING_STRETCH * sdOf(avgs)] : DEFAULT_CURVE;
+  const shown = heroes.filter((h) => h.games >= minGames).map((h) => {
+    const rating_exact = ratingOf(h.avg, curve);
+    return { ...h, rating_exact, rating: Math.round(rating_exact), tier: TIERS.find((t) => rating_exact >= t.min).tier };
+  }).sort((a, b) => b.rating_exact - a.rating_exact || b.games - a.games);
+  return { tiers: TIERS.map(({ tier }) => ({ tier, heroes: shown.filter((h) => h.tier === tier) })), curve };
+}
+
 // One game's ratings: its ten players, each scored on that game alone against the league's
 // model (opponent strength from all of `matches`), on the league's game curve (the tier curve's
 // method fitted to single games), so game ratings spread across S–D like the tier list. Best first.

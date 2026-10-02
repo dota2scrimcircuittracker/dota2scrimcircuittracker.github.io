@@ -4,6 +4,10 @@
 // itself ignores localhost. To stop counting your own browser, open the site once with
 // #toggle-goatcounter on the end of the address.
 const SITE_CODE = ""; // e.g. "ad2l" for https://ad2l.goatcounter.com
+// GoatCounter's versioned script (its plain count.js changes without notice) and its hash: the
+// browser refuses a copy that doesn't match. scripts/gen/cdn-integrity.js refreshes the hash.
+const COUNT_JS = "https://gc.zgo.at/count.v5.js";
+const COUNT_JS_INTEGRITY = "sha384-atnOLvQb9t+jTSipvd75X2yginT4PjVbqDdlJAmxMm+wYElFmeR6EmLP5bYeoRVQ";
 
 let loading = null;
 function load() {
@@ -12,7 +16,9 @@ function load() {
     window.goatcounter = { no_onload: true };
     const s = document.createElement("script");
     s.async = true;
-    s.src = "https://gc.zgo.at/count.js";
+    s.src = COUNT_JS;
+    s.integrity = COUNT_JS_INTEGRITY;
+    s.crossOrigin = "anonymous";
     s.dataset.goatcounter = `https://${SITE_CODE}.goatcounter.com/count`;
     s.onload = () => resolve(window.goatcounter);
     s.onerror = () => resolve(null); // blocked by an ad blocker: count nothing

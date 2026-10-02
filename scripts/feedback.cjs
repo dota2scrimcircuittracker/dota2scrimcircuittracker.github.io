@@ -9,7 +9,8 @@
 //                                                 marks drawn on the real pages
 //   node scripts/feedback.cjs done FB-XXXXXX "summary"
 //                                                 delete the ticket and its items, log it in docs/feedback-log.md,
-//                                                 and delete its Discord post (when its message ID was recorded)
+//                                                 delete its Discord post (when its message ID was recorded), and
+//                                                 repost today's digest without it
 //   node scripts/feedback.cjs check               JSON for the email task: tickets not emailed yet,
 //                                                 and every open one if today's digest is due
 //   node scripts/feedback.cjs emailed [--new FB-A,FB-B] [--digest]
@@ -168,6 +169,16 @@ const commands = {
       else discord = "no DISCORD_FEEDBACK_WEBHOOK, so its Discord post is still up";
     }
     delete s.emailed[t.id]; delete s.posts[t.id]; writeState(s);
+    // Today's digest lists it too: replace the digest with the tickets still open (none: just delete it).
+    if (s.digestPosts.length) {
+      const hook = webhookUrl();
+      if (hook) {
+        try {
+          const left = await postDigest(hook, s, (await tickets()).map(summary));
+          discord += left ? `, and reposted today's digest with the ${left} still open` : ", and deleted today's digest";
+        } catch (e) { discord += `; couldn't update today's digest (${e.message}), delete it by hand`; }
+      }
+    }
     console.log(`Deleted ${t.id} (${t.items.length} item${t.items.length === 1 ? "" : "s"}), logged it in docs/feedback-log.md, ${discord}.`);
   },
 
@@ -210,23 +221,9 @@ const commands = {
     }
     let digest = "not due";
     if (digestDue) {
-      // Each digest replaces the last one, so closed tickets don't linger in old digests.
-      if (!dry) {
-        for (const id of s.digestPosts) await deleteWebhookMessage(hook, id);
-        s.digestPosts = []; writeState(s);
-      }
-      if (all.length) {
-        const embeds = all.map(summary).map((t) => ticketEmbed(t, false));
-        // Discord caps a message at 10 embeds and 6000 characters; ticket embeds are capped well under 2000.
-        for (let i = 0; i < embeds.length; i += 3) {
-          const msg = await post({
-            content: i ? "" : `Site feedback: **${all.length}** open ticket${all.length === 1 ? "" : "s"}\n${FOOTER("FB-XXXXXX")}`,
-            embeds: embeds.slice(i, i + 3), allowed_mentions: { parse: [] },
-          });
-          if (msg?.id) { s.digestPosts.push(msg.id); writeState(s); }
-        }
-        digest = "sent";
-      } else digest = "due, nothing open";
+      if (dry) for (const body of digestBodies(all.map(summary))) await post(body);
+      else await postDigest(hook, s, all.map(summary));
+      digest = all.length ? "sent" : "due, nothing open";
       if (!dry) { s.lastDigest = today(); writeState(s); }
     }
     console.log(`${dry ? "[dry run] " : ""}Posted ${fresh.length} new ticket${fresh.length === 1 ? "" : "s"}; digest ${digest}.`);
@@ -284,6 +281,29 @@ async function postWebhook(url, body, tries = 3) {
   if (!r.ok) throw new Error(`Discord webhook ${r.status}: ${clip(await r.text(), 300)}`);
   return r.json(); // ?wait=true: the message, whose id `done` uses to delete it
 }
+// The digest: every open ticket, three embeds a message (Discord caps a message at 10 embeds and
+// 6000 characters; ticket embeds are capped well under 2000).
+const digestBodies = (open) => {
+  const embeds = open.map((t) => ticketEmbed(t, false));
+  const out = [];
+  for (let i = 0; i < embeds.length; i += 3) out.push({
+    content: i ? "" : `Site feedback: **${open.length}** open ticket${open.length === 1 ? "" : "s"}\n${FOOTER("FB-XXXXXX")}`,
+    embeds: embeds.slice(i, i + 3), allowed_mentions: { parse: [] },
+  });
+  return out;
+};
+// Each digest replaces the last one, so closed tickets don't linger in old digests. Returns how
+// many tickets it lists.
+async function postDigest(hook, s, open) {
+  for (const id of s.digestPosts) await deleteWebhookMessage(hook, id);
+  s.digestPosts = []; writeState(s);
+  for (const body of digestBodies(open)) {
+    const msg = await postWebhook(hook, body);
+    if (msg?.id) { s.digestPosts.push(msg.id); writeState(s); }
+  }
+  return open.length;
+}
+
 // A webhook can delete its own messages. Already gone (404) counts as done.
 async function deleteWebhookMessage(url, id, tries = 3) {
   const r = await fetch(`${url}/messages/${id}`, { method: "DELETE" });

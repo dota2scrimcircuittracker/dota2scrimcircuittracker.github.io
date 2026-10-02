@@ -1,7 +1,9 @@
 # Dota 2 Scrim Circuit Tracker
 
-See README.md for what the site does and how data flows. Feature ideas and decisions:
-`docs/ideas/2026-09-28-feature-ideas.md`.
+What the site does: `docs/features.md`. How it's built, synced, deployed and changed (code
+layout, adding a division or season, Firestore rules, feedback tickets): `docs/maintaining.md`.
+Feature ideas and decisions: `docs/ideas/2026-09-28-feature-ideas.md`; the site audit and its
+decisions: `docs/ideas/2026-09-30-site-audit.md`.
 
 ## Parked: Discord highlight cards
 
