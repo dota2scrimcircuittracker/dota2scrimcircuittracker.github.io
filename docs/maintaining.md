@@ -93,30 +93,6 @@ version, run `node scripts/gen/cdn-integrity.js` (`--check` only reports);
 `test/integrity.test.js` fails if a CDN URL in the code has no hash. Tesseract's worker, WASM and
 language files load on its own defaults, without hashes.
 
-## Staging
-
-Push to the `staging` branch to try a change before it goes live. Every deploy builds both:
-`main` at the root and `staging` at **https://dota2scrimcircuittracker.github.io/staging/**
-(`.github/workflows/pages.yml`, "Build staging"). A push to `staging` redeploys both through
-`staging.yml`, which starts `pages.yml` on main: the Pages environment only deploys from main.
-
-```
-git switch staging && git merge <your branch> && git push    # preview it
-git switch main && git merge staging && git push               # ship it
-```
-
-- **Read-only.** `public/lib/site.js` reads the base path (`<base href="/staging/">`, set by the
-  workflow) and `public/lib/store.js` refuses every write there: no uploads, picks, casts,
-  fixtures or feedback reach Firestore from staging. A gold bar on every page says so.
-- **Live data.** Staging runs on main's synced `public/data/` copied over its own (data files
-  only staging writes, from a sync change not yet on main, are kept).
-- **Addresses** stay `/staging/#/...`: staging has no preview pages or sitemap. A deep
-  `/staging/...` address that GitHub Pages answers with the live 404 page is sent back to
-  staging by a line at the top of `index.html`.
-- Kept out of search (`robots.txt` and a noindex tag) and out of the Discord updates channel
-  (only pushes to main announce). Same Firebase key: same domain.
-- No `staging` branch, no staging site: the step skips itself.
-
 ## AD2L data and the sync
 
 Each division is a static file, `public/data/<division>.json`, built from public data (no keys):

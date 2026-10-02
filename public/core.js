@@ -1,7 +1,6 @@
 // Shared by every page: escaping and formatting helpers, page headers and breadcrumbs, the
 // AD2L divisions and their data (loading, caches, the time machine), the scrim list, the
 // upload/edit lock and the review form's pieces other pages reuse, page tabs, sortable tables.
-import { BASE, STAGING } from "./lib/site.js";
 import { playerKey, heroSlug, withDerived, isRemake, hasDetails } from "./lib/stats.js";
 import { MIN_GAMES } from "./lib/tiers.js";
 import { heroImg } from "./lib/hero-meta.js";
@@ -807,11 +806,10 @@ export const leagueSrc = (src) => (src.weeks ? timeSrc(SOURCES[src.key], src.wee
 // reload, or the local server) routes from the path.
 export function here() {
   if (location.hash) return location.hash;
-  const p = location.pathname.replace(/index\.html$/, "").slice(BASE.length - 1);
+  const p = location.pathname.replace(/index\.html$/, "");
   return p === "/" ? "#/" : routeOf(p);
 }
-// Staging (lib/site.js) has no preview pages, so its addresses stay /staging/#/... .
-export const addressOf = (h) => (STAGING ? `${BASE}${h === "#/" ? "" : h}` : sharePath(h) ?? `/${h === "#/" ? "" : h}`);
+export const addressOf = (h) => sharePath(h) ?? `/${h === "#/" ? "" : h}`;
 // hashchange and popstate both fire on some back/forward steps: route once per address.
 export let routedAt = null;
 // app.js moves it too (an imported binding is read-only there).

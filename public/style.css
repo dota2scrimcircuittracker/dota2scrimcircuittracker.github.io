@@ -3210,8 +3210,3 @@ figure.chart .ms-fit { stroke: var(--bone); stroke-width: 1.4; stroke-dasharray:
 .bn-cell.hot::after { background: var(--gold); }
 .bn-cell.cold span { color: var(--ember); }
 .bn-cell.cold::after { background: var(--ember); }
-
-/* ---------- staging (lib/site.js) ---------- */
-.staging-bar { position: sticky; top: 0; z-index: 100; padding: 6px 16px; background: var(--gold); color: var(--ink); font: 400 12px/1.4 var(--mono); text-align: center; }
-.staging-bar b { font-weight: 700; letter-spacing: .14em; text-transform: uppercase; margin-right: 8px; }
-.staging-bar a { color: inherit; font-weight: 700; }

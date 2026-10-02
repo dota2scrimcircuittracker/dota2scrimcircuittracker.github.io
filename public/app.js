@@ -1,4 +1,3 @@
-import { STAGING } from "./lib/site.js";
 import { HEROES } from "./lib/heroes.js";
 import { listTeams } from "./lib/teams.js";
 import { info, wireInfo } from "./lib/glossary.js";
@@ -601,11 +600,6 @@ document.getElementById("skip-link").addEventListener("click", (e) => {
 window.addEventListener("hashchange", onNav);
 window.addEventListener("popstate", onNav);
 wireInfo();
-// Staging (lib/site.js): say so on every page, and that it's read-only.
-if (STAGING) {
-  document.documentElement.classList.add("staging");
-  document.body.insertAdjacentHTML("afterbegin", `<div class="staging-bar" role="note"><b>Staging</b> Read-only preview of the next version. Uploads, picks, casts and feedback only work on the <a href="/">live site</a>.</div>`);
-}
 route();
 countVisit();
 // Feedback mode (lib/feedback.js) and the guided tour (lib/tour.js) load after the first page

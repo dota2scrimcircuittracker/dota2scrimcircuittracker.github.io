@@ -76,4 +76,5 @@ jobs:
         run: gh workflow run pages.yml --ref main
       - name: Report failed divisions
         if: env.FAILED != ''
-        run: echo "::error::Sync failed for: ${FAILED}" && exit 1
+        run: |
+          echo "::error::Sync failed for: ${FAILED}" && exit 1
