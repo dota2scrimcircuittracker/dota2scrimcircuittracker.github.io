@@ -32,6 +32,31 @@ export function bestOfP(p, n) {
   if (n === 5) return p ** 3 * (10 - 15 * p + 6 * p * p);
   return p;
 }
+// Every final score of a best-of-n (odd n; anything else plays as a Bo1) and its chance, from
+// the first team's one-game chance: [{ a, b, p }], first team's wins first (Bo3: 2–0, 2–1, 1–2,
+// 0–2). A first-to-k win with j losses: the last game won, j of the other k-1+j lost.
+export function bestOfScores(p, n) {
+  const k = n === 3 || n === 5 ? (n + 1) / 2 : 1, q = 1 - p;
+  const choose = (m, r) => { let c = 1; for (let i = 0; i < r; i++) c = (c * (m - i)) / (i + 1); return c; };
+  const ways = (j) => choose(k - 1 + j, j);
+  const out = [];
+  for (let j = 0; j < k; j++) out.push({ a: k, b: j, p: ways(j) * p ** k * q ** j });
+  for (let j = k - 1; j >= 0; j--) out.push({ a: j, b: k, p: ways(j) * q ** k * p ** j });
+  return out;
+}
+// The likeliest score with `side` ("a" or "b") winning, as [winner's wins, loser's wins]. For
+// the favourite a Bo3 is always 2–0 (2–1 needs a dropped game); a Bo5 is 3–1 below 2/3 a game.
+export function likelyScore(scores, side) {
+  const won = scores.filter((s) => (side === "a" ? s.a > s.b : s.b > s.a));
+  const top = won.reduce((x, s) => (s.p > x.p ? s : x));
+  return side === "a" ? [top.a, top.b] : [top.b, top.a];
+}
+// One match the model's way: the winner, its chance, the likeliest score and every score's chance.
+function callMatch(ratings, a, b, bestOf) {
+  const p = gameP(ratings.get(a) ?? 0, ratings.get(b) ?? 0), pa = bestOfP(p, bestOf ?? 1);
+  const winner = pa >= 0.5 ? a : b, scores = bestOfScores(p, bestOf ?? 1);
+  return { winner, loser: winner === a ? b : a, p: winner === a ? pa : 1 - pa, score: likelyScore(scores, winner === a ? "a" : "b"), scores };
+}
 
 // ---------- the rest of the group stage ----------
 
@@ -171,11 +196,7 @@ export function resolveTable(ids, series, ratings, lines) {
     if (last && w(last[0]) === w(t)) last.push(t); else segs.push([t]);
   }
   const tiebreakers = [];
-  const play = (pName) => (a, b, bestOf, note) => {
-    const p = gameP(ratings.get(a) ?? 0, ratings.get(b) ?? 0), pa = bestOfP(p, bestOf ?? 1);
-    const winner = pa >= 0.5 ? a : b;
-    return { a, b, bestOf, note, winner, loser: winner === a ? b : a, p: winner === a ? pa : 1 - pa, for: pName };
-  };
+  const play = (pName) => (a, b, bestOf, note) => ({ a, b, bestOf, note, ...callMatch(ratings, a, b, bestOf), for: pName });
   for (const line of lines) {
     let start = 0;
     const i = segs.findIndex((seg) => { const hit = start < line.after && start + seg.length > line.after; if (!hit) start += seg.length; return hit; });
@@ -213,11 +234,7 @@ export function bracket(seeds, ratings) {
   const M = (id, side, week, a, b, bestOf, label) => {
     let m;
     if (a == null || b == null) m = { a, b, winner: a ?? b, loser: null, bye: true };
-    else {
-      const p = gameP(ratings.get(a) ?? 0, ratings.get(b) ?? 0), pa = bestOfP(p, bestOf);
-      const winner = pa >= 0.5 ? a : b;
-      m = { a, b, winner, loser: winner === a ? b : a, p: winner === a ? pa : 1 - pa };
-    }
+    else m = { a, b, ...callMatch(ratings, a, b, bestOf) };
     ms.push({ id, side, week, bestOf, label, ...m });
     return ms.at(-1);
   };

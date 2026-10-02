@@ -1650,6 +1650,7 @@ button.linkish:hover { text-decoration: underline; }
 .pred-teams .b { color: var(--ember); text-align: right; }
 .pred-teams .a a, .pred-teams .b a { color: inherit; }
 .pred-teams i { font: 600 10px var(--mono); color: var(--dim); font-style: normal; letter-spacing: .14em; }
+.fx-model { margin-top: 8px; font-size: 13px; color: var(--dust); }
 .pred-picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .pred-picks button {
   display: grid; gap: 5px; align-content: start; text-align: left;
@@ -3335,6 +3336,11 @@ figure.chart .ms-fit { stroke: var(--bone); stroke-width: 1.4; stroke-dasharray:
 .po-slot.win a { color: inherit; }
 .po-seed { flex: 0 0 14px; font: 600 10px var(--mono); color: var(--dim); text-align: right; }
 .po-mp { padding: 4px 8px 6px; font: 10px var(--mono); color: var(--dim); border-top: 1px solid var(--seam); }
+.po-gw { margin-left: auto; flex: 0 0 auto; font: 600 13px var(--mono); color: var(--dim); }
+.po-slot.win .po-gw { color: var(--jade); }
+.po-m .po-odds { padding: 0 8px 6px; margin-top: -2px; }
+.po-odds { display: block; font: 10px var(--mono); color: var(--dust); }
+.po-tb .po-odds { margin: 2px 0 0 0; }
 .po-champ { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--accent); text-align: center; font: 800 16px/1.15 var(--display); letter-spacing: .04em; text-transform: uppercase; }
 .po-champ span { font: 600 9px var(--mono); letter-spacing: .16em; color: var(--accent); }
 .po-champ a { color: var(--bone); }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, bestOfP } from "../public/lib/playoffs.js";
+import { tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, bestOfP, bestOfScores, likelyScore } from "../public/lib/playoffs.js";
 
 // Higher id = stronger, so the model's winner is always the higher id.
 const rate = (ids) => new Map(ids.map((id) => [id, id / 10]));
@@ -121,4 +121,34 @@ test("playoffPicture: split leagues get tables per division and no bracket", () 
 test("best-of odds", () => {
   assert.equal(bestOfP(0.5, 3), 0.5);
   assert.ok(bestOfP(0.6, 3) > 0.6 && bestOfP(0.6, 5) > bestOfP(0.6, 3));
+});
+
+test("bestOfScores: every score of a Bo3/Bo5, adding up to 1 and to the series chance", () => {
+  const sum = (xs) => xs.reduce((a, s) => a + s.p, 0);
+  for (const [n, p] of [[3, 0.6], [5, 0.55], [5, 0.8], [1, 0.7]]) {
+    const s = bestOfScores(p, n);
+    assert.ok(Math.abs(sum(s) - 1) < 1e-12);
+    assert.ok(Math.abs(sum(s.filter((x) => x.a > x.b)) - bestOfP(p, n)) < 1e-12);
+  }
+  assert.deepEqual(bestOfScores(0.6, 3).map((s) => `${s.a}-${s.b}`), ["2-0", "2-1", "1-2", "0-2"]);
+  const [w20, w21] = bestOfScores(0.6, 3);
+  assert.ok(Math.abs(w20.p - 0.36) < 1e-12 && Math.abs(w21.p - 2 * 0.36 * 0.4) < 1e-12);
+});
+
+test("likelyScore: a Bo3 favourite's is 2–0; a Bo5's is 3–1 until 2/3 a game, then 3–0", () => {
+  assert.deepEqual(likelyScore(bestOfScores(0.55, 3), "a"), [2, 0]);
+  assert.deepEqual(likelyScore(bestOfScores(0.3, 3), "b"), [2, 0]);
+  assert.deepEqual(likelyScore(bestOfScores(0.6, 5), "a"), [3, 1]);
+  assert.deepEqual(likelyScore(bestOfScores(0.75, 5), "a"), [3, 0]);
+  assert.deepEqual(likelyScore(bestOfScores(0.7, 1), "a"), [1, 0]);
+});
+
+test("bracket matches carry the model's score from the winner's side", () => {
+  const ratings = new Map([["a", 2], ["b", 1], ["c", 0], ["d", -1]]);
+  const b = bracket(["a", "b", "c", "d"], ratings);
+  for (const m of b.matches) {
+    assert.equal(m.score.length, 2);
+    assert.ok(m.score[0] > m.score[1]);
+    assert.equal(m.score[0], m.bestOf === 5 ? 3 : 2);
+  }
 });

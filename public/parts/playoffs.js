@@ -9,6 +9,9 @@ const RULES = "https://dota.playon.gg/rules";
 const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 const to = (where) => (where === "out" ? "out" : `to the ${where}`);
 const bo = (n) => (n ? `Bo${n}` : "best-of not set in the rules");
+// The model's score ("2–0") and each score's chance from the first-listed team's side.
+const sc = (m) => `${m.score[0]}–${m.score[1]}`;
+const scoreOdds = (m) => m.scores.map((s) => `${s.a}–${s.b} <span class="muted">${pct(s.p)}</span>`).join(" · ");
 
 export function playoffsHtml(src, d, ratings) {
   const split = !!DIVISIONS[src.key]?.views;
@@ -50,7 +53,8 @@ export function playoffsHtml(src, d, ratings) {
     const tbs = dv.tiebreakers.map((tb) => {
       const [a, b] = tb.places;
       const m = (x) => `<li><span class="po-bo">${bo(x.bestOf)}</span> ${link(x.a)} <span class="muted">v</span> ${link(x.b)}${x.note ? ` <span class="muted">(${esc(x.note)})</span>` : ""}
-        → <b>${esc(name[x.winner])}</b> <span class="muted">${pct(x.p)}</span></li>`;
+        → <b>${esc(name[x.winner])} ${sc(x)}</b> <span class="muted">${pct(x.p)} to win</span>
+        ${x.bestOf > 1 ? `<span class="po-odds">${scoreOdds(x)}</span>` : ""}</li>`;
       return `<div class="po-tb">
         <p><b>${tb.teams.length} teams tied on ${tb.wins} wins</b> for ${ord(a)}–${ord(b)}: ${tb.slots} ${tb.slots === 1 ? "goes" : "go"} ${esc(to(tb.line.above))}, the rest ${esc(to(tb.line.below))}.
           Ranked by SoS: ${tb.sosRank.map((x) => `${esc(name[x.id])} <span class="muted">${x.sos}${x.by && x.by.by !== "SoS" ? `, behind on ${esc(x.by.by)}` : ""}</span>`).join(" · ")}.</p>
@@ -76,11 +80,12 @@ export function playoffsHtml(src, d, ratings) {
     const seedOf = new Map(dv.rows.slice(0, 8).map((r) => [r.id, r.place]));
     const b = dv.bracket;
     const slot = (m, id) => id == null ? `<div class="po-slot bye"><span class="po-seed"></span><span>bye</span></div>`
-      : `<div class="po-slot${m.winner === id && !m.bye ? " win" : ""}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}</div>`;
+      : `<div class="po-slot${m.winner === id && !m.bye ? " win" : ""}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
     const box = (m) => `<div class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}">
-        <div class="po-mh">${esc(m.label)}${m.side === "final" ? " · Bo3 or Bo5" : ""}</div>
+        <div class="po-mh">${esc(m.label)} · ${m.side === "final" ? "Bo3 or Bo5" : bo(m.bestOf)}</div>
         ${slot(m, m.a)}${slot(m, m.b)}
-        ${m.bye ? "" : `<div class="po-mp">${esc(name[m.winner])} ${pct(m.p)}${m.side === "final" ? " (as Bo5)" : ""}</div>`}
+        ${m.bye ? "" : `<div class="po-mp">${esc(name[m.winner])} ${sc(m)} · ${pct(m.p)} to win${m.side === "final" ? " (as Bo5)" : ""}</div>
+        <div class="po-odds">${scoreOdds(m)}</div>`}
       </div>`;
     const weeks = Math.max(...b.matches.map((m) => m.week));
     const col = (side, w) => b.matches.filter((m) => m.side === side && m.week === w).map(box).join("");
@@ -100,7 +105,7 @@ export function playoffsHtml(src, d, ratings) {
       AD2L hasn't said how Division A and B teams are seeded against each other, so there's no bracket here until it does.</p>` : "";
 
   return `<p class="po-lead">What the playoffs look like if every call goes the model's way: the rest of the ${REG_WEEKS}-week group stage, the final table, the week 8 tiebreakers and the bracket, all by
-      <a href="${RULES}" target="_blank" rel="noopener">AD2L's rules</a>. Every result is the model's pick (2–0 to the favourite, 1–1 for a coin flip; in Bo3s and the bracket the stronger team wins) with its chance alongside.</p>
+      <a href="${RULES}" target="_blank" rel="noopener">AD2L's rules</a>. Every result is the model's pick (2–0 to the favourite, 1–1 for a coin flip; in Bo3s and the bracket the stronger team wins by its likeliest score) with its chance alongside, and under each Bo3 or Bo5 the chance of every score, top team first.</p>
     <h3 class="po-sub">Rest of the group stage</h3>
     ${restHtml}
     <h3 class="po-sub">Final table and tiebreakers</h3>
@@ -110,5 +115,6 @@ export function playoffsHtml(src, d, ratings) {
       <p>The table counts game wins (a bye is 1–0). <b>SoS</b> (strength of schedule) is the total wins of every opponent a team has played; a team met twice counts twice.</p>
       <p>A tie <b>across a dividing line</b> (upper/lower bracket, playoffs/out${split ? ", Aegis/Heroic" : ""}) is played off in week 8. The tied teams are ranked by SoS (then head to head, record against the highest common opponent, and a 1v1 mid), and the rules' table sets the games: 1 place for 2 teams is a Bo3; 1 place for 3 is 2nd v 3rd then the winner v 1st (Bo1s); 1 place for 4 is 1v4 and 2v3, winners meet; 2 places for 3 puts the best SoS through and 2nd v 3rd plays a Bo3; 2 places for 4 or more is 1v4 and 2v3 (Bo3s), 5th and below out; with more places the best SoS teams go through until it's one of those.</p>
       <p>A tie that only decides <b>seed order</b> isn't played: SoS, then head to head, then record against the highest common opponent, then a coin flip. Where it comes down to a 1v1 or a coin flip, the page shows the model's stronger team.</p>
+      <p><b>Scores.</b> Each game is the model's one-game chance, played independently. The score shown is the winner's likeliest: in a Bo3 that's always 2–0, because 2–1 needs the favourite to drop a game. A close Bo3 shows up in the odds below it (2–1 either way adds up). In a Bo5 the favourite's likeliest score is 3–1 unless it wins over 2 games in 3, then 3–0.</p>
     </details>`;
 }

@@ -9,6 +9,7 @@
 // fixture takes games until it's decided, earliest upload first.
 
 import { fitRatings, seriesOdds, TIE_EDGE } from "./predict.js";
+import { bestOfScores, likelyScore } from "./playoffs.js";
 
 export const BEFORE_MS = 2 * 3600e3;
 export const AFTER_MS = 3 * 864e5;
@@ -74,6 +75,14 @@ export function fixtureOdds(f, ratings) {
   if (f.best_of === 1) return { game: p, home: p, away: 1 - p };
   if (f.best_of === 3) return { game: p, home: p * p * (3 - 2 * p), away: (1 - p) ** 2 * (1 + 2 * p) };
   return seriesOdds(ratings.get(k(f.team_a)) ?? 0, ratings.get(k(f.team_b)) ?? 0);
+}
+
+// A Bo3's likeliest score for the model's call and every score's chance (lib/playoffs.js),
+// from the home team's side; null for a Bo1 or Bo2.
+export function fixtureScores(f, o) {
+  if (f.best_of !== 3) return null;
+  const scores = bestOfScores(o.game, 3);
+  return { score: likelyScore(scores, o.game >= 0.5 ? "a" : "b"), scores };
 }
 
 // The model's call: the favourite, or 1–1 in a Bo2 that's a coin flip.

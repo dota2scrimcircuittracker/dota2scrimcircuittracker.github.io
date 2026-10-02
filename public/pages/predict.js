@@ -3,7 +3,7 @@ import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, crowd, standings, validPicks, favourite, outcomeOf, TIE_EDGE } from "../lib/predict.js";
 import { listPredictions, currentUid, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
-import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, outcomes, outcomeLabel } from "../lib/fixtures.js";
+import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
 import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, allMatches, editUnlocked, when, unlockEdit } from "../core.js";
 import { loading, errorBox } from "../parts/lanes.js";
@@ -328,7 +328,7 @@ export async function renderScrimPredict() {
 
   const card = (f, i) => {
     const locked = now >= f.start;
-    const o = fixtureOdds(f, ratings), call = fixtureCall(f, o);
+    const o = fixtureOdds(f, ratings), call = fixtureCall(f, o), fs = fixtureScores(f, o);
     const my = mine(f.id);
     const c = preds ? crowd(preds, asSeries(f)) : null;
     const opts = outcomes(f.best_of);
@@ -346,6 +346,7 @@ export async function renderScrimPredict() {
           <span class="pk-sub">${Math.round(o[k] * 100)}%${c ? ` · ${n} pick${n === 1 ? "" : "s"}` : ""}${k === call ? " · <b>model</b>" : ""}</span>
         </button>`;
       }).join("")}</div>
+      ${fs ? `<div class="fx-model">Model: <b>${esc(call === "home" ? f.team_a : f.team_b)} ${fs.score[0]}–${fs.score[1]}</b> <span class="muted">· ${fs.scores.map((s) => `${s.a}–${s.b} ${pct(s.p)}`).join(" · ")} (${esc(f.team_a)} first)</span></div>` : ""}
       <div class="fx-actions">
         <button type="button" class="${locked ? "primary" : ""}" data-up="shots">Upload game ${f.games.length + 1}</button>
         <button type="button" data-up="quick">Private result</button>
@@ -413,7 +414,7 @@ export async function renderScrimPredict() {
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / scrims called.</p>` : `<div class="panel empty">No scrims decided yet.</div>`}
     ${results ? `<h2>Results</h2><div class="table-wrap"><table><thead><tr><th scope="col" class="l">Date</th><th scope="col" class="l">Scrim</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${results}</tbody></table></div>` : ""}
     <details class="how"><summary>How it works</summary>
-      <p>Odds come from a strength rating per team fitted to every scrim result on the site (private results included), each pulled toward even so one lucky win doesn't make a team a lock. A Bo2 uses the same split as AD2L: the better team on the night tends to win both, so an even Bo2 is 33% / 33% / 33%. A Bo3 is first to two. With no games between the teams the model calls a coin flip: 1–1 in a Bo2, Team A otherwise.</p>
+      <p>Odds come from a strength rating per team fitted to every scrim result on the site (private results included), each pulled toward even so one lucky win doesn't make a team a lock. A Bo2 uses the same split as AD2L: the better team on the night tends to win both, so an even Bo2 is 33% / 33% / 33%. A Bo3 is first to two, each game played on its own: the card shows the model's likeliest score (for the favourite always 2–0, since 2–1 needs a dropped game) and the chance of every score. With no games between the teams the model calls a coin flip: 1–1 in a Bo2, Team A otherwise.</p>
       <p>A scrim is decided once all its games are in (Bo1, Bo2) or a team has two wins (Bo3). Until then it stays under Upcoming with the score so far. If the teams played under different names in game, the upload page offers the scheduled names in one click.</p>
     </details>`;
 

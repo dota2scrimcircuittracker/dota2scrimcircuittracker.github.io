@@ -79,3 +79,13 @@ test("labels", () => {
   assert.equal(outcomeLabel(fx("f", 2), "tie"), "1–1");
   assert.equal(outcomeLabel(fx("f", 3), "away"), "Owls wins");
 });
+
+test("fixtureScores: a Bo3 gets the call's likeliest score and every score; Bo1/Bo2 none", async () => {
+  const { fixtureScores } = await import("../public/lib/fixtures.js");
+  const o = { game: 0.35, home: 0, away: 0 };
+  const r = fixtureScores({ best_of: 3 }, o);
+  assert.deepEqual(r.score, [2, 0]);
+  assert.equal(r.scores.length, 4);
+  assert.equal(fixtureScores({ best_of: 2 }, o), null);
+  assert.equal(fixtureScores({ best_of: 1 }, o), null);
+});

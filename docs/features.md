@@ -399,10 +399,14 @@ shrunk-resolution problem above, not a finding problem.
   takes the weaker of 3 and 4, lower round 1 is 5v8 and 6v7, the loser of seed 1's match meets
   the 6v7 winner. Under 8 teams everyone's in (4: all upper; 5–6: 5v6 lower), the site's
   assumption. Heroic/Aegis shows A and B (top 4 → Aegis, 5–8 → Heroic) with no bracket until AD2L
-  says how A and B are seeded against each other.
+  says how A and B are seeded against each other. Every Bo3/Bo5 (tiebreakers, bracket; the grand
+  final as a Bo5) shows the model's score and the chance of every score (`bestOfScores`, games
+  independent). The winner's likeliest Bo3 score is always 2–0, since 2–1 needs a dropped game;
+  a Bo5 is 3–1 until the favourite wins over 2 games in 3, then 3–0.
 - **Scrims** (Scrims → Predict) — anyone adds an upcoming scrim (two teams, start time,
   Bo1/Bo2/Bo3); everyone calls it until it starts, same name-based leaderboard. Each card has
   **Upload game N** and **Private result** buttons that open the upload page with the scrim's
   team names filled in (and a one-click fix if the in-game names differ). A game counts toward a
   scrim when it's between the same two teams and was uploaded from 2 hours before the start to 3
-  days after. Odds come from a rating per team fitted to every scrim result, pulled toward even.
+  days after. Odds come from a rating per team fitted to every scrim result, pulled toward even. A Bo3
+  card also shows the model's score and each score's chance (picks are still just the winner).
