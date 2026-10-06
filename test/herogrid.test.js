@@ -185,3 +185,9 @@ test("heroSources: bans split by Captains Mode ban phase, theirs and against the
   const model = heroSources([], { model: { banPhases: [[{ hero: "Axe" }], [], [{ hero: "Lion" }]] } });
   assert.deepEqual([model.banvs1?.heroes[0].hero, model.banvs2, model.banvs3?.heroes[0].hero], ["Axe", undefined, "Lion"]);
 });
+
+test("placedConfig: a box name both sides share says whose it is", () => {
+  const row = (name, col, hero) => ({ name, col, heroes: [{ hero }], x: 0, y: 0, w: 300, h: 100 });
+  const c = placedConfig("vs X", [row("Threats pos 1 Carry", "them", "Axe"), row("Threats pos 1 Carry", "us", "Lion"), row("Ban phase 1", "bans", "Zeus")], { them: "WOT", us: null });
+  assert.deepEqual(c.categories.map((x) => x.category_name), ["WOT: Threats pos 1 Carry", "Us: Threats pos 1 Carry", "Ban phase 1"]);
+});

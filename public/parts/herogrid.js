@@ -156,7 +156,7 @@ export function heroGridHtml(team, games, { pubs = null, compact = false } = {})
           <code class="hg-path">${esc(FOLDER)}${SEP}<i>your number</i>${SEP}${esc(TAIL)}</code>
           <button type="button" class="link-btn hg-copy">Copy the userdata folder</button>
           <small>Paste that into the file picker's address bar. <i>Your number</i> is your Steam friend code: the same number as your Dota ID on your Dota profile, or in your OpenDota or Dotabuff link. It's the short one (like 75379546), not the 17-digit Steam ID that starts 7656119. If there are several folders, pick the one with that number. Steam installed somewhere else? Use that folder's <code>userdata</code> instead.</small></li>
-        <li><b>Add the grid to it.</b> Pick the file here; you get it back with this grid added. Every grid you already have stays; an earlier ${esc(name)} is replaced.
+        <li><b>Add the grid to it.</b> This adds the grid shown above, as it is now (template: <b class="hg-which">${esc(t.name)}</b>; change it at the top first if you want a different one). Pick the file here; you get it back with this grid added. Every grid you already have stays; an earlier ${esc(name)} is replaced.
           <div class="row hg-btns">
             <button type="button" class="primary hg-pick">Choose ${FILE}</button>
             <button type="button" class="hg-new">I don't have one</button>
@@ -202,13 +202,15 @@ export function wireHeroGrid(root, team, games, { pubs = null, totals = null, he
   let selected = null; // the box being edited (an index into draft.boxes)
   const shown = () => draft ?? current;
   const rowsNow = () => templateRows(shown(), sources, usSources, { all: !!draft });
-  const config = () => placedConfig(name, placeRows(shown(), templateRows(shown(), sources, usSources)));
+  const config = () => placedConfig(name, placeRows(shown(), templateRows(shown(), sources, usSources)), { them: team.name, us: usName });
   const input = box.querySelector("input[type=file]"), msg = box.querySelector(".hg-msg");
   const tpl = box.querySelector(".hg-tpl"), editor = box.querySelector(".hg-editor"), grid = box.querySelector(".hg-grid"), side = box.querySelector(".hg-side");
   const say = (text, cls = "") => { msg.textContent = text; msg.className = `hg-msg ${cls}`; };
   const sourcesOf = (i) => (colOf(draft.boxes[i]) === "us" ? usSources ?? {} : sources);
 
   const drawGrid = () => {
+    const which = box.querySelector(".hg-which");
+    if (which) which.textContent = shown().name ?? "Custom";
     grid.innerHTML = `${legendHtml(team.name, usName)}${canvasHtml(rowsNow(), shown(), { editing: !!draft, selected, noTeam: !usSources, play })}`;
     side.hidden = !draft;
     side.innerHTML = draft ? inspectorHtml(draft, selected, { them: sources, us: usSources, list }) : "";
@@ -477,7 +479,7 @@ export function wireHeroGrid(root, team, games, { pubs = null, totals = null, he
       const out = mergeGrid(mine, config());
       const kept = out.configs.length - 1, replaced = mine.configs.length === out.configs.length;
       save(out);
-      say(`Downloaded. ${kept} of your grid${kept === 1 ? "" : "s"} kept${replaced ? `; your earlier ${name} grid was replaced` : ""}. Now step 4.`, "ok");
+      say(`Downloaded a new ${FILE} to your downloads: ${kept} of your grid${kept === 1 ? "" : "s"} kept${replaced ? `, your earlier ${name} replaced` : ""}, plus ${name}. Nothing in your cfg folder has changed yet; that's step 4.`, "ok");
     } catch (e) {
       say(e instanceof SyntaxError ? "That file isn't readable as a grid file. Pick hero_grid_config.json from the cfg folder." : e.message, "err");
     }

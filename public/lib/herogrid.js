@@ -298,12 +298,17 @@ export function freezeLayout(template, rows) {
 }
 
 // The file's categories from placed rows; empty boxes are left out.
-export function placedConfig(config_name, rows) {
+// A name two boxes share (the same source for them and for your team) says whose it is, since
+// Dota shows only the names. `names`: { them, us } (team names; "Them" / "Us" otherwise).
+export function placedConfig(config_name, rows, names = {}) {
+  const count = new Map();
+  for (const r of rows) count.set(r.name, (count.get(r.name) ?? 0) + 1);
+  const whose = (r) => (count.get(r.name) > 1 && (r.col === "us" || r.col === "them") ? `${String(r.col === "us" ? names.us || "Us" : names.them || "Them").slice(0, 20)}: ` : "");
   return {
     config_name,
     categories: rows.flatMap((r) => {
       const ids = r.heroes.map((h) => heroIdOf(h.hero)).filter((id) => id != null);
-      return ids.length ? [{ category_name: String(r.name).slice(0, 60), x_position: r.x, y_position: r.y, width: r.w, height: r.h, hero_ids: ids }] : [];
+      return ids.length ? [{ category_name: `${whose(r)}${r.name}`.slice(0, 60), x_position: r.x, y_position: r.y, width: r.w, height: r.h, hero_ids: ids }] : [];
     }),
   };
 }
