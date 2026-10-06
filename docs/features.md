@@ -154,10 +154,12 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 ## Players tab
 
 - **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). Filters:
-  Everyone / Cores / Supports, and Pos 1–5 (everyone who played that position in at least a
-  third of their games, so a 4/5 swapper shows under both; their overall rating, since every game
-  is already scored against its own position). Each chip says the position played most; its
-  tooltip lists games at each.
+  Everyone / Cores / Supports, and Pos 1–5: that position's own list, each player's games
+  there only, rated against that position's players (its anchors, consistency and curve come
+  from pos N games; `lib/tiers.js` tierModel/tierList `pos`), so a 4/5 swapper shows in both with
+  each set of games. Each chip says the position played most; its tooltip lists games at each.
+  A breakdown has a × in its top-right corner, and its stat table sorts by Stat, 0–100 or Points
+  (the order holds for every breakdown while the page is open).
 - **Stat leaders** — top and bottom 3 on any stat, with "1st overall" badges across every division.
 - **Laning** — laning ranked by position (safe, mid, off, supports; 3+ lanes), with best-laner
   cards for the latest week and the season.

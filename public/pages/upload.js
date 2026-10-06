@@ -478,7 +478,7 @@ export function renderUpload() {
   app.innerHTML = `
     ${isDiv(upload.league)
       ? pageHead(SOURCES[upload.league].kicker, "Upload an unticketed game", `For ${SOURCES[upload.league].division} games played <b>without a league ticket</b>, which never reach OpenDota's league list, so the site can't find them. ${how}
-         They count on team, player, hero and tier pages, marked “Unticketed”; standings stay PlayOn's. No draft, gold graph or ward data (that only comes from replays).`)
+         They count on team, player, hero and tier pages, marked “Unticketed”; standings stay PlayOn's. No draft, gold graph or ward data: those need a replay.`)
       : pageHead("Post-game intake", "Upload a scrim", how)}
     <div class="reveal">
       ${upload.images.length || upload.draft ? "" : examples}

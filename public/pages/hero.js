@@ -99,7 +99,7 @@ export async function renderHero(src, slug) {
       ${h.players.length ? `<h2>Every player</h2><div id="players"></div>` : ""}
       <h2>Teams</h2>
       <div id="teams"></div>
-      <p class="table-note">Win % is that team's record when they picked ${esc(hero)}.${S.drafted ? " Bans come from Captains Mode drafts; “Banned vs them” = opponents banned it against that team." : ""}</p>`],
+      <p class="table-note">Win % is that team's record when they picked ${esc(hero)}.${S.drafted ? " Bans are Captains Mode drafts only; “Banned vs them” = opponents banned it against that team." : ""}</p>`],
     ["draft", `${(() => { const da = draftAnalysis(matches); return heroPhaseHtml(da.heroes.find((x) => x.hero === hero), da.games); })()}
       ${draftSlotHtml(draftSlotRecord(matches, byHero(hero)), src, hero, rateOf(h.games, gameRated))}`],
     ["matchups", heroMatchupsHtml(src, matches, hero)],

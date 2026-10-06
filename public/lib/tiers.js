@@ -420,12 +420,14 @@ const ends = (xs) => (xs.length >= 2 ? [Math.min(...xs), Math.max(...xs)] : null
 
 // The reference a tier list is scored against. `matches` is the league's games: one AD2L
 // division, or the scrim ledger. `minGames`: the games a player needs to count toward the
-// anchors and the curve (lower when the time machine picks only a week or two).
-export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
-  const rows = matches.flatMap(gameRows);
+// anchors and the curve (lower when the time machine picks only a week or two). `pos` (1–5):
+// a model for one position, whose anchors, consistency and curve come from that position's
+// games and players only, so its tier list rates pos 4s against pos 4s.
+export function tierModel(matches, { minGames = MIN_GAMES, pos = null } = {}) {
+  const all = matches.flatMap(gameRows);
   const positions = {};
   for (const pos of [1, 2, 3, 4, 5]) {
-    const here = rows.filter((r) => r.pos === pos);
+    const here = all.filter((r) => r.pos === pos);
     positions[pos] = {};
     for (const metric of Object.keys(METRICS)) {
       const with_ = here.filter((r) => r.metrics[metric] != null);
@@ -434,8 +436,10 @@ export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
       positions[pos][metric] = LENGTH_FIT.has(metric) ? lineFit(with_.map((r) => r.minutes), vs) : [mean(vs), sdOf(vs)];
     }
   }
-  const model = { games: matches.length, positions, anchors: {}, win_minutes: rows.filter((r) => r.won && r.pos === 1).map((r) => r.minutes).sort((a, b) => a - b) };
-  for (const r of rows) scoreRow(r, model);
+  const model = { games: matches.length, pos, positions, anchors: {}, win_minutes: all.filter((r) => r.won && r.pos === 1).map((r) => r.minutes).sort((a, b) => a - b) };
+  for (const r of all) scoreRow(r, model);
+  // Opponent strength always from every game; everything else from the rows this model rates.
+  const teams = teamGames(all), rows = pos ? all.filter((r) => r.pos === pos) : all;
   // Anchors: every player with minGames+ games in a role, their shrunk average per stat; the
   // best and worst of those set 100 and 0.
   const byPlayerRole = new Map();
@@ -451,7 +455,7 @@ export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
     }
   }
   // Consistency reference: eligible players' series spreads (2+ series).
-  const first = scorePlayers(rows, model, { consistency: false }).filter((p) => p.games >= minGames && p.series_points.length >= 2);
+  const first = scorePlayers(rows, model, { consistency: false, teams }).filter((p) => p.games >= minGames && p.series_points.length >= 2);
   const sds = first.map((p) => sdOf(p.series_points)).sort((a, b) => a - b);
   if (sds.length) {
     const typical = sds[Math.floor(sds.length / 2)];
@@ -460,23 +464,26 @@ export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
     const e = ends(shrunk);
     model.consistency = { typical, best: e ? e[0] : typical * 0.5, worst: e ? e[1] : typical * 1.5 };
   }
-  const scores = scorePlayers(rows, model).filter((p) => p.games >= minGames).map((p) => p.score).sort((a, b) => a - b);
+  const scores = scorePlayers(rows, model, { teams }).filter((p) => p.games >= minGames).map((p) => p.score).sort((a, b) => a - b);
   model.curve = scores.length >= 5 ? [scores[Math.floor(scores.length / 2)], RATING_STRETCH * sdOf(scores)] : DEFAULT_CURVE;
   // One game's score sits closer to the middle than a season's (no averaging luck out, and the
   // shrinking pulls one game hard), so on the season curve almost no game reached S or D.
   // Game ratings get their own curve, fitted the same way to every player-game in the league,
   // so a game rating spreads like the tier list.
-  const teams = teamGames(rows), byGame = new Map();
+  const byGame = new Map();
   for (const r of rows) { const k = r.match.id ?? r.match.match_id; (byGame.get(k) ?? byGame.set(k, []).get(k)).push(r); }
   const games = [...byGame.values()].flatMap((rs) => scorePlayers(rs, model, { teams }).map((p) => p.score)).sort((a, b) => a - b);
   model.game_curve = games.length >= 10 ? [games[Math.floor(games.length / 2)], RATING_STRETCH * sdOf(games)] : model.curve;
   return model;
 }
 
-export function tierList(matches, { minGames = MIN_GAMES, model = null } = {}) {
-  model ??= tierModel(matches, { minGames });
-  const rows = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
-  const players = scorePlayers(rows, model);
+// `pos` (1–5): only games at that position, rated against that position's players (the
+// model must be the same position's; one is built if none is given).
+export function tierList(matches, { minGames = MIN_GAMES, model = null, pos = null } = {}) {
+  model ??= tierModel(matches, { minGames, pos });
+  const all = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
+  const rows = pos ? all.filter((r) => r.pos === pos) : all;
+  const players = scorePlayers(rows, model, { teams: teamGames(all) });
   for (const p of players) { p.rating_exact = ratingOf(p.score, model.curve); p.rating = Math.round(p.rating_exact); p.curve = model.curve; }
 
   const eligible = players.filter((p) => p.games >= minGames).sort((a, b) => b.score - a.score);

@@ -185,7 +185,7 @@ export async function renderTeams(src, slug) {
     : h.players.map((p, i) => playerCard(p, p, i)).join("");
   const standinCards = others.map((p, i) => playerCard(p, p, members.length + i, { standin: true })).join("");
   const rosterNote = roster
-    ? `${src.ad2l ? "The PlayOn roster" : "The Champion roster (scrim teams are the Champion teams)"}${hasPos ? ", in the position each player plays most" : ""}. Record, KDA and heroes come from ${esc(team.name)}'s games with stats${h.private_games ? `; ${plural(h.private_games, "private scrim")} have no lineups` : ""}.`
+    ? `${src.ad2l ? "The PlayOn roster" : "The Champion roster (scrim teams are the Champion teams)"}${hasPos ? ", in the position each player plays most" : ""}. Record, KDA and heroes are from ${esc(team.name)}'s games with stats${h.private_games ? `; ${plural(h.private_games, "private scrim")} have no lineups` : ""}.`
     : `No official roster for this team, so this is everyone who has played for it, most games first.`;
 
   // Compact roster for the overview.

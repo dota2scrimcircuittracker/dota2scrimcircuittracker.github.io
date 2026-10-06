@@ -77,7 +77,7 @@ function heroBreakdown(src, h, curve) {
     </ul>
     </div>
     <div class="bd-right">
-    <h4>Where the rating comes from <small>each player's points = games × hero rating ÷ ${n}</small></h4>
+    <h4>Players <small>points = games × hero rating ÷ ${n}</small></h4>
     <table class="bd-table">
       <thead><tr><th scope="col" class="l">Player</th><th scope="col">W–L</th><th scope="col">Hero rating${info("hero_rating")}</th><th scope="col" class="bd-wide">Games × rating</th><th scope="col">Points</th></tr></thead>
       <tbody>${h.on.map(row).join("")}

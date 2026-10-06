@@ -3817,3 +3817,24 @@ html.light .po-need-p, html.light .po-tbar { --pc: hsl(var(--ph, 40) 60% 34%); }
 .hgm-built summary { padding: 8px 12px; cursor: pointer; font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
 .hgm-msg:empty { display: none; }
 .hgm-msg { margin: 0; padding: 10px 12px; color: var(--bone); }
+
+/* Team and player names wrap rather than cut off with "…" (team names here run long). */
+.sh-name, .td-us, .td-them, .td-nm, .lu-name, .hist-vs, .h2h-name, .chip-name, .chip-meta, .bd-vs, .ld-meta,
+.ga-g-vs, .ga-ten-name, .rt-who b, .mx-t, .ct-row, .bo-who, .sp-tabs .sp-team, .gm-fact .v a, .gm-stand .s,
+.po-poss tbody th, .po-poss tbody th button, .pk-chip, .dx-pickbtn small {
+  white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word;
+}
+.po-poss tbody th { max-width: 22ch; }
+.pk-chip { max-width: 220px; }
+
+/* Tier breakdowns: a close button in the open card's top-right corner, and sortable stat headers. */
+.chip.open { position: relative; }
+.chip.open .chip-top { padding-right: 34px; }
+.bd-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center;
+  font: 400 20px/1 var(--body); color: var(--dust); background: var(--stone-2); border: 1px solid var(--seam-2); clip-path: none; cursor: pointer; }
+.bd-x:hover:not(:disabled) { color: var(--bone); border-color: var(--dust); }
+.tm-body .bd-x { display: none; }
+.bd-sort { padding: 0; background: none; border: 0; clip-path: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.bd-sort:hover:not(:disabled) { background: none; color: var(--bone); }
+.bd-sort i { font-style: normal; margin-left: 3px; color: var(--dim); }
+.bd-sort.on, .bd-sort.on i { color: var(--accent); }

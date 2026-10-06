@@ -13,10 +13,11 @@ const tierOpen = new Set(); // player keys whose card is expanded
 // the same field as in Combined. With the time machine on, only the picked weeks' games, and
 // the lower game floor. One model per game list and floor.
 const refMemo = new WeakMap();
-export async function tierRef(src) {
+// `pos` (1–5): that position's model, rating its players against each other.
+export async function tierRef(src, pos = null) {
   const all = await (src.view ? leagueSrc(src) : src).load(), min = floorOf(src);
-  const m = refMemo.get(all) ?? refMemo.set(all, new Map()).get(all);
-  return m.get(min) ?? m.set(min, tierModel(all.filter(hasDetails), { minGames: min })).get(min);
+  const m = refMemo.get(all) ?? refMemo.set(all, new Map()).get(all), k = `${min}|${pos ?? ""}`;
+  return m.get(k) ?? m.set(k, tierModel(all.filter(hasDetails), { minGames: min, pos })).get(k);
 }
 
 // How each tier-list stat reads in a breakdown, and the raw number shown under a share.
@@ -50,6 +51,37 @@ export function tenths(values, total) {
 const maxPts = (v) => (Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1));
 export const meter = (v) => `<span class="bd-meter"><i style="width:${Math.max(0, Math.min(100, v))}%"></i></span>`;
 
+// The stat table sorts by stat, 0–100 or points (click a header; again flips it). One order for
+// every breakdown, kept while the page is open; the default is the scoring's own order.
+let bdSort = { by: null, dir: -1 };
+const sortVal = { name: (r) => r.dataset.name, score: (r) => Number(r.dataset.score), pts: (r) => Number(r.dataset.pts) };
+const cmpBy = (get) => (a, b) => { const x = get(a), y = get(b); return (typeof x === "string" ? x.localeCompare(y) : x - y) * (bdSort.by === "name" ? -bdSort.dir : bdSort.dir); };
+function sortStats(stats, ptsOf) {
+  if (!bdSort.by) return stats;
+  const get = { name: (s) => METRICS[s.metric].label, score: (s) => s.score, pts: (s) => Number(ptsOf.get(s)) }[bdSort.by];
+  return [...stats].sort(cmpBy(get));
+}
+const sortBtn = (k, label) => `<button type="button" class="bd-sort${bdSort.by === k ? " on" : ""}" data-sort="${k}" aria-label="Sort by ${label}">${label}<i aria-hidden="true">${bdSort.by === k ? (bdSort.dir < 0 ? (k === "name" ? "▴" : "▾") : (k === "name" ? "▾" : "▴")) : "↕"}</i></button>`;
+if (typeof document !== "undefined" && !window.__bdWired) {
+  window.__bdWired = true;
+  document.addEventListener("click", (e) => {
+    const x = e.target.closest?.(".bd-x");
+    if (x) { x.closest(".chip")?.querySelector(".chip-caret")?.click(); return; }
+    const b = e.target.closest?.(".bd-sort");
+    if (!b) return;
+    bdSort = bdSort.by === b.dataset.sort ? { by: b.dataset.sort, dir: -bdSort.dir } : { by: b.dataset.sort, dir: -1 };
+    // Every open breakdown: re-sort each run of stat rows (each role's) in place.
+    for (const t of document.querySelectorAll(".bd-table")) {
+      t.querySelectorAll(".bd-sort").forEach((h) => { h.outerHTML = sortBtn(h.dataset.sort, h.textContent.replace(/[▴▾↕]/g, "")); });
+      const rows = [...t.tBodies[0].rows];
+      let run = [];
+      const flush = () => { if (run.length > 1) { const after = run[run.length - 1].nextSibling, parent = run[0].parentNode; run.sort(cmpBy(sortVal[bdSort.by])).forEach((r) => parent.insertBefore(r, after)); } run = []; };
+      for (const r of rows) { if (r.classList.contains("bd-stat")) run.push(r); else flush(); }
+      flush();
+    }
+  });
+}
+
 // The expanded card: every point of the score (stat by stat, then what each multiplier adds or
 // takes away), the rating, and each series.
 export function tierBreakdown(src, p) {
@@ -65,7 +97,7 @@ export function tierBreakdown(src, p) {
   const statShown = (shown.slice(0, stats.length).reduce((t, v) => t + Math.round(Number(v) * 10), 0) / 10).toFixed(1);
   const signedPts = (v) => (Number(v) > 0 ? `+${v}` : Number(v) < 0 ? `−${v.replace("-", "")}` : "0.0");
 
-  const statRow = (s) => `<tr>
+  const statRow = (s) => `<tr class="bd-stat" data-name="${esc(METRICS[s.metric].label)}" data-score="${s.score}" data-pts="${ptsOf.get(s)}" data-max="${s.max}">
       <td class="l">${esc(METRICS[s.metric].label)}${info(`tm_${s.metric}`)}${s.weight < 0 ? `<span class="bd-note"> fewer is better</span>` : ""}</td>
       <td>${METRIC_FMT[s.metric](s.value)}${s.raw != null ? `<small class="bd-raw">${RAW_FMT[s.metric](s.raw)}</small>` : ""}</td>
       <td class="bd-dim bd-wide">${METRIC_FMT[s.metric](s.avg)}</td>
@@ -78,7 +110,7 @@ export function tierBreakdown(src, p) {
       <td class="bd-100"><b>${Math.round(s.score)}</b>${meter(s.score)}</td><td class="bd-dim">${Math.round(s.share * 100)}%</td></tr>`;
   const roleHead = (r) => p.roles.length > 1
     ? `<tr class="bd-role"><td class="l" colspan="5">As ${r.role} · ${r.games} of ${p.games} games</td></tr>` : "";
-  const rows = p.roles.map((r) => roleHead(r) + r.stats.map(statRow).join("")).join("");
+  const rows = p.roles.map((r) => roleHead(r) + sortStats(r.stats, ptsOf).map(statRow).join("")).join("");
   const main = p.roles[0];
   const multRow = (k, label, theirs, sub, of100) => `<tr class="bd-mult">
       <td class="l">${label}${info(`tm_${k}`)}</td>
@@ -103,7 +135,7 @@ export function tierBreakdown(src, p) {
   const curveWidths = Math.abs((p.score - p.curve[0]) / p.curve[1]).toFixed(1);
   // Two columns on wide screens (rating, score and series left; the stat table right), one
   // column otherwise with the series straight under the score.
-  return `<div class="bd">
+  return `<div class="bd"><button type="button" class="bd-x" aria-label="Close the breakdown" title="Close">×</button>
     <div class="bd-left">
     <div class="bd-sum">
       <div class="bd-total"><b>${p.rating}</b><small>rating</small></div>
@@ -116,9 +148,9 @@ export function tierBreakdown(src, p) {
       ${series}${seriesAvg}</div>
     </div>
     <div class="bd-right">
-    <h4>Where the score comes from <small>${p.games} games; each stat compared with the same position</small></h4>
+    <h4>Stats <small>${p.games} games, against the same position</small></h4>
     <table class="bd-table">
-      <thead><tr><th scope="col" class="l">Stat</th><th scope="col">Theirs</th><th scope="col" class="bd-wide">Pos. avg${info("tm_avg")}</th><th scope="col">0–100${info("tm_stat100")}</th><th scope="col">Points${info("tm_points")}</th></tr></thead>
+      <thead><tr><th scope="col" class="l">${sortBtn("name", "Stat")}</th><th scope="col">Theirs</th><th scope="col" class="bd-wide">Pos. avg${info("tm_avg")}</th><th scope="col">${sortBtn("score", "0–100")}${info("tm_stat100")}</th><th scope="col">${sortBtn("pts", "Points")}${info("tm_points")}</th></tr></thead>
       <tbody>${rows}
         <tr class="bd-sub"><td class="l">Stat points</td><td></td><td class="bd-wide"></td><td></td><td class="bd-pts">${statShown}<small>/100</small></td></tr>
         ${multRow("survival", "Survival", "", "", p.survival)}
@@ -142,15 +174,17 @@ const posTitle = (p) => `${p.role === "core" ? "Core" : "Support"}. ` + Object.e
 // The tier list, shown at the top of the Players page: returns its HTML and a function
 // that fills it in once it's on the page.
 export function tierSection(src, matches, model) {
-  const list = tierList(matches, { model, minGames: floorOf(src) });
-  const draw = () => {
+  const full = tierList(matches, { model, minGames: floorOf(src) });
+  // Pos 1–5: that position's own list (its games only, rated against its players), made once.
+  const posLists = {};
+  const draw = async () => {
+    const posOf = (k) => (k.startsWith("pos") ? Number(k.slice(3)) : null);
+    const n = posOf(tierRole);
+    if (n && !posLists[n]) posLists[n] = tierList(matches, { model: await tierRef(src, n), minGames: floorOf(src), pos: n });
+    const list = n ? posLists[n] : full;
     const el = document.getElementById("tiers");
     if (!el) return;
-    // A position filter shows everyone who played it in at least a third of their games (always
-    // their most played), so a pos 4/5 swapper shows under both.
-    const posOf = (k) => (k.startsWith("pos") ? Number(k.slice(3)) : null);
-    const playsAt = (p, n) => p.pos === n || (p.pos_games?.[n] ?? 0) * 3 >= p.games;
-    const show = (p) => tierRole === "all" || (posOf(tierRole) ? playsAt(p, posOf(tierRole)) : p.role === tierRole);
+    const show = (p) => tierRole === "all" || n || p.role === tierRole;
     const chip = (p, i) => {
       const rank = rankLabel(p.rank_tier);
       const open = tierOpen.has(p.key);
@@ -173,9 +207,9 @@ export function tierSection(src, matches, model) {
     el.innerHTML = `
       <div class="row segs">${tab("all", "Everyone")}${tab("core", "Cores")}${tab("support", "Supports")}</div>
       <div class="row segs tier-pos">${[1, 2, 3, 4, 5].map((n) => tab(`pos${n}`, `Pos ${n}`)).join("")}</div>
-      ${posOf(tierRole) ? `<p class="table-note">Everyone who played pos ${posOf(tierRole)} in at least a third of their games. Ratings are each player's overall rating: every game is already scored against its own position.</p>` : ""}
+      ${n ? `<p class="table-note">Pos ${n} only: each player's games at pos ${n}, rated against the other pos ${n} players (best = 100 on each stat, the middle player 50). A player who also plays elsewhere shows here with just these games.</p>` : ""}
       <div class="tier-board">${bands}</div>
-      ${list.unranked.length ? `<p class="table-note">Not ranked yet (needs ${floorOf(src)}+ games): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
+      ${list.unranked.length ? `<p class="table-note">Not ranked yet (needs ${floorOf(src)}+ games${n ? ` at pos ${n}` : ""}): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
     el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { tierRole = b.dataset.role; draw(); }));
     const toggle = (c) => {
       const k = c.dataset.key;
@@ -188,10 +222,10 @@ export function tierSection(src, matches, model) {
       c.onkeydown = (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === c) { e.preventDefault(); toggle(c); } };
     });
   };
-  const html = list.eligible ? `<h2 id="tier-list">Tier list${info("tier_list")}</h2>
-    <p class="table-note wm-intro">${list.eligible} players ranked from ${matches.length} ${matches.length === 1 ? "game" : "games"}.</p>
+  const html = full.eligible ? `<h2 id="tier-list">Tier list${info("tier_list")}</h2>
+    <p class="table-note wm-intro">${full.eligible} players ranked from ${matches.length} ${matches.length === 1 ? "game" : "games"}.</p>
     <div id="tiers"></div>
-    ${tierHow(list.model, src)}`
+    ${tierHow(full.model, src)}`
     : `<p class="table-note">Tier list: players need ${floorOf(src)}+ games to be ranked.</p>`;
   return { html, draw };
 }
