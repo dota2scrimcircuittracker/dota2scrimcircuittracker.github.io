@@ -45,7 +45,7 @@ const standingsKey = (ctx) => (ctx.ad2l ? "standings" : "matches");
 const CORE = [
   {
     title: "Pick a league",
-    text: `Every AD2L ${SEASON.name} division has its own standings, games, players and heroes. Switching keeps you on the same tab: Players stays Players. Pick one to tour it.`,
+    text: `Every AD2L ${SEASON.name} division has its own standings, games, players and heroes. Switching keeps you on the same tab. Pick one to tour it.`,
     // No Next: the tour waits for a pick. The home page's buttons, else the league menu;
     // the scrims are hidden while it waits (body.tour-pick).
     pick: true,
@@ -77,7 +77,7 @@ const CORE = [
   {
     title: "Standings",
     text: (ctx) => ctx.ad2l
-      ? "Every team by games won, with form, the model's rating and strength of schedule (how tough its opponents have been, and the ones still to play). Click a team for its page."
+      ? "Every team by games won, with form, the model's rating and strength of schedule (past and remaining opponents). Click a team for its page."
       : "Every scrim team by game wins, with win %, kill difference and form. Private scrims count here too.",
     enter: async (t) => {
       await t.visit(navHref(standingsKey(t.ctx)));
@@ -102,12 +102,12 @@ const CORE = [
   },
   {
     title: "Pages have tabs",
-    text: "Team, player, hero and game pages split into tabs like these. Your last pick is remembered, and Back takes you to the tab you were on before.",
+    text: "Team, player, hero and game pages have tabs like these. Your last tab is remembered, and Back returns to the one before.",
     enter: async (t) => { if (!(await t.visitPicked("team"))) return null; return t.find(".pp-tabs"); },
   },
   {
     title: "Draft by phase",
-    text: "What this team bans, what gets banned against it, and what it picks, in each phase of the draft. Hero pool W–L sits above it.",
+    text: "The team's bans, bans against it, and picks in each draft phase. Hero pool W–L is above.",
     enter: async (t) => {
       if (!(await t.visitPicked("team"))) return null;
       const panel = await t.tab("heroes");
@@ -115,7 +115,7 @@ const CORE = [
       const grid = panel && (await t.find("#pp-panel-heroes .phase-grid", 1500));
       return grid ? [grid, grid.previousElementSibling, grid.previousElementSibling?.previousElementSibling].filter(Boolean) : panel;
     },
-    alt: { selector: ".pp-panel", title: "Hero pool", text: "Heroes shows what this team plays, with its W–L on each." },
+    alt: { selector: ".pp-panel", title: "Hero pool", text: "The heroes this team plays, with W–L on each." },
   },
   {
     title: "Division A, B or both",
@@ -258,7 +258,7 @@ const DEEP = [
     part({ page: "standings", tab: "cross", sel: "table.ct", btn: true, when: ad2l, title: "Crosstable",
       text: "Every team against every other. Read across: the row team's score and the week. Empty cells haven't met yet." }),
     part({ page: "standings", tab: "race", sel: "figure.chart", btn: true, when: ad2l, title: "Race",
-      text: "Every team's wins, week by week. Hover a line for its week-by-week totals." }),
+      text: "Every team's wins, week by week. Hover a line for its totals." }),
   ]),
 
   ...group("Content", [
@@ -293,17 +293,17 @@ const DEEP = [
     part({ page: "team", tab: "games", sel: ".history", btn: true, title: "Every result",
       text: (ctx) => ctx.ad2l ? "Every series with each game's result, newest first, and the next one scheduled." : "Every game, newest first." }),
     part({ btn: true, page: "team", tab: "heroes", sel: ".phase-grid", head: true, when: ad2l, title: "Draft by phase",
-      text: "What the team bans, what gets banned against it, and what it picks, in each of the three phases." }),
+      text: "The team's bans, bans against it, and picks in each of the three phases." }),
     part({ page: "team", tab: "map", sel: ".tm-sum", btn: true, when: ad2l, title: "Strengths and weak spots",
       text: "Where the team ranks in the league on objectives, gold and vision: its best and worst." }),
     part({ page: "team", tab: "map", sel: ".tg-grid", head: true, when: ad2l, title: "Gold",
       text: "The gold lead in every game on one chart: when the team gets ahead, and whether it holds." }),
-    view("team", "wards", "Team wards", "Where the team places its wards over every parsed game. Both sides shows Radiant and Dire games together, with Dire games flipped so own base is bottom left."),
+    view("team", "wards", "Team wards", "Where the team places its wards. Both sides shows Radiant and Dire games together, with Dire games flipped so the team's base is bottom left."),
     filter({ page: "team", view: "wards", act: otherSide, title: "Radiant or Dire",
       text: "Pick a side to see only those games, at their real spots on the map. Team fights has the same switch." }),
     filter({ page: "team", view: "wards", act: seg(/^0–10'$/), title: "Filter by time",
       text: "Every map filters by stretch of the game. Here: only wards placed in the first 10 minutes. You can also pick observers or sentries, one player, or switch dots to heat." }),
-    view("team", "fights", "Team fights", "Where the team takes its fights. Heat shows where they happen; Net shows where it comes out ahead or behind."),
+    view("team", "fights", "Team fights", "Where the team takes its fights. Heat shows where they happen. Net shows where it comes out ahead or behind."),
     filter({ page: "team", view: "fights", act: seg(/^Net$/), title: "Where it wins fights",
       text: "Net: green where the team comes out ahead, red where it comes out behind. Filter to wins or losses, own or enemy deaths, or a stretch of the game." }),
   ]),
@@ -311,7 +311,7 @@ const DEEP = [
   ...group("Game page", [
     part({ page: "game", sel: ".gm-draft", when: ad2l, title: "Draft",
       text: "All 24 draft steps in order: every ban and pick for both teams." }),
-    chart("fights", "Items & fights", "The gold lead minute by minute, every teamfight sized by deaths and coloured by who came out ahead, and each core item on the same clock. Tick the boxes to show or hide layers."),
+    chart("fights", "Items & fights", "The gold lead minute by minute, with each teamfight sized by deaths and coloured by who came out ahead, and core items on the same clock."),
     filter({ page: "game", scope: ".gm-hero-chart", title: "Chart layers",
       text: "Tick layers on and off: items, hero deaths, Roshan and Tormentor, towers and buybacks.",
       act: async (t, scope) => {
@@ -348,7 +348,7 @@ const DEEP = [
     filter({ page: "players", scope: "#tiers", act: seg(/^Supports$/), when: always, title: "Cores or supports",
       text: "Show the tier list for cores or supports only." }),
     part({ page: "players", sel: "details.how-tiers", title: "How it's scored",
-      text: "Open this for exactly how the tier list is worked out." }),
+      text: "Open this for how the tier list is worked out." }),
     filter({ page: "players", act: choose("#ld-stat", /^GPM$/), box: "#leaders", when: always, title: "Stat leaders",
       text: "Pick any stat from the list and see who leads the league in it. Here: GPM." }),
     filter({ page: "players", scope: "#lane-board", act: seg(/^Mid$/), title: "Lane board",
@@ -368,10 +368,10 @@ const DEEP = [
       text: "Pick a hero to see their item timings on it." }),
     part({ page: "player", tab: "items", sel: ".ih-view", when: ad2l, title: "Their timings",
       text: "Each core item: how often they build it, their average time, the league's on the same heroes, and the lead swing after it." }),
-    view("player", "wards", "Their wards", "Where they place wards over every parsed game, both sides together or only their Radiant or Dire games."),
+    view("player", "wards", "Their wards", "Where they place wards: both sides together, or only their Radiant or Dire games."),
     view("player", "deaths", "Their deaths", "Where and when they die, as Radiant or as Dire."),
     filter({ page: "player", view: "deaths", title: "Radiant or Dire",
-      text: "The map flips with the side they played: switch between their Radiant games and their Dire games. You can also filter by hero, wins or losses, and time.",
+      text: "Switch between their Radiant and Dire games. You can also filter by hero, wins or losses, and time.",
       act: otherSide }),
     filter({ page: "player", tab: "games", act: choose("select.sort-key", /^GPM$/), box: "#pp-panel-games #t", when: always, title: "Sort any table",
       text: "Every table sorts by any column: pick from the list, or click a column header." }),
@@ -410,7 +410,7 @@ const DEEP = [
     part({ page: "predict", tab: "calls", sel: ".sticky-name", head: true, when: ad2l, title: "Leaderboard",
       text: "One point per correct call. The model competes too." }),
     part({ page: "predict", tab: "bracket", btn: true, sel: ".po-progress", when: ad2l, title: "Your bracket",
-      text: "Your calls played out to the final table and week 8 tiebreakers. Click winners to fill in the bracket from week 1 on; flip to Model's picks to see the model's." }),
+      text: "Your calls played out to the final table and week 8 tiebreakers. Click winners to fill in the bracket from week 1 on. Switch to Model's picks to see the model's." }),
     part({ page: "predict", tab: "odds", btn: true, sel: ".po-poss", when: ad2l, title: "Seeding",
       text: "Each team's chance of each seed at the end of the group stage (not the playoff result). Click a cell for what that team needs." }),
     part({ page: "predict", sel: ".fx-add", when: scrim, title: "Add a scrim",
@@ -967,7 +967,7 @@ const CHAPTERS = {
     stops: CORE,
     closing: {
       title: "That's the basics",
-      text: "Want everything? The detailed tour opens every tab on every page, and shows the filters on each.",
+      text: "The detailed tour opens every tab on every page and shows its filters.",
       buttons: (tour) => [
         ["skip", "Done", () => tour.end()],
         ["primary", "Show me everything", () => tour.chapter("deep")],
@@ -1028,7 +1028,7 @@ function showInvite() {
   invite.className = "tour-invite";
   invite.setAttribute("role", "dialog");
   invite.setAttribute("aria-label", "Site tour");
-  invite.innerHTML = `<b>First time here?</b><span>Take the one-minute tour of what the site can do.</span>
+  invite.innerHTML = `<b>First time here?</b><span>Take a one-minute tour of the site.</span>
     <div class="tour-btns"><button type="button" class="tour-btn tour-skip">Not now</button><button type="button" class="tour-btn tour-primary">Start tour</button></div>`;
   invite.querySelector(".tour-skip").onclick = () => { markSeen(); closeInvite(); };
   invite.querySelector(".tour-primary").onclick = () => startTour();

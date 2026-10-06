@@ -95,7 +95,7 @@ export const TOPICS = [
   { id: "pairs", title: "Pairs and lineups", key: "team_pairs",
     words: ["pairs", "pair", "duo", "duos", "lineups", "five stack"],
     team: { tab: "roster", at: "team_pairs" } },
-  { id: "outcomes", title: "Outcomes", text: "Every way the rest of the season can go for the team: playoff chances and seeds.",
+  { id: "outcomes", title: "Outcomes", text: "The team's playoff chances and possible seeds.",
     words: ["chances", "outcomes", "playoffs", "playoff", "seed", "seeding", "make playoffs"],
     team: { tab: "chances" } },
   { id: "kda", table: { player: ["kda"], hero: ["avg_kda"] }, title: "KDA", key: "kda",
