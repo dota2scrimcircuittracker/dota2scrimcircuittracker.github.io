@@ -376,7 +376,7 @@ export const colOf = (b) => (COLS.includes(b.col) ? b.col : "them");
 export function templateRows(template, them, us = null, { all = false } = {}) {
   return template.boxes.flatMap((b, box) => {
     const col = colOf(b), sources = col === "us" ? us : them;
-    const src = !sources ? null : b.source === "custom" ? { name: "My heroes", note: "" } : sources[b.source];
+    const src = b.source === "custom" ? { name: "My heroes", note: "" } : !sources ? null : sources[b.source];
     if (!src && !all) return [];
     return [{ box, col, name: b.label?.trim() || src?.name || sourceLabel(b.source), note: src?.note ?? (sources ? "not available here" : ""), heroes: src || b.add?.length ? boxHeroes(b, sources ?? {}) : [], missing: !src }];
   });

@@ -15,7 +15,7 @@
 // hero outside editing plays it.
 import {
   heroSources, templateRows, placeRows, placedConfig, freezeLayout, freeSpot, fitIcons, snap, configName, mergeGrid,
-  addToBox, dropFromBox, placeHero, colOf, TEMPLATES, SOURCES, COLS, CANVAS_W, MIN_W, MIN_H, LABEL_H,
+  addToBox, dropFromBox, placeHero, colOf, sourceLabel, TEMPLATES, SOURCES, COLS, CANVAS_W, MIN_W, MIN_H, LABEL_H,
 } from "../lib/herogrid.js";
 import { sideOf } from "../lib/teams.js";
 import { hasDetails } from "../lib/stats.js";
@@ -53,6 +53,96 @@ if (typeof document !== "undefined" && !window.__hgDrag) {
     e.dataTransfer.effectAllowed = "copyMove";
   });
 }
+// ---------- right-click a hero: add it to a grid ----------
+// Any hero picture (or data-hero-name) on the site: a menu of your grids and their boxes. A saved
+// template takes the hero in place; a built-in one is saved as your own copy first. Shift +
+// right-click keeps the browser's menu. Grids on the page showing that template redraw.
+const heroAt = (t) => {
+  const el = t?.closest?.("[data-hero-name]") ?? t?.closest?.(".hero-img");
+  return canonicalHero(el?.dataset?.heroName ?? el?.getAttribute?.("alt") ?? el?.getAttribute?.("title") ?? "") || null;
+};
+const boxName = (b) => `${SIDES[colOf(b)].split(" ")[0]} · ${b.label?.trim() || sourceLabel(b.source).replace(/: (heroes played there|league heroes)$/, "")}`;
+let menu = null;
+const closeMenu = () => { menu?.remove(); menu = null; };
+function openMenu(hero, x, y) {
+  closeMenu();
+  const saved = readSaved();
+  menu = Object.assign(document.createElement("div"), { className: "hgm", role: "menu" });
+  menu.setAttribute("aria-label", `Add ${hero} to a hero grid`);
+  // Step 1: which grid. Step 2: which section of it.
+  const gridBtn = (t, own) => `<button type="button" role="menuitem" class="hgm-grid" data-t="${esc(t.id)}" data-own="${own ? 1 : 0}">${esc(t.name)}<small>${t.boxes.length} section${t.boxes.length === 1 ? "" : "s"}</small></button>`;
+  const step1 = () => `<div class="hgm-t">1. Pick a grid</div>
+      ${saved.length ? `<div class="hgm-g"><div class="hgm-sub">Yours</div>${saved.map((t) => gridBtn(t, true)).join("")}</div>` : '<p class="hgm-none">No grids of your own yet.</p>'}
+      <button type="button" class="hgm-new" role="menuitem">+ New grid with just ${esc(hero)}</button>
+      <div class="hgm-g"><div class="hgm-sub">Built-in (saves your own copy)</div>${TEMPLATES.map((t) => gridBtn(t, false)).join("")}</div>`;
+  const step2 = (t, own) => `<button type="button" class="hgm-back" role="menuitem">← Grids</button>
+      <div class="hgm-t">2. Pick a section of ${esc(t.name)}</div>
+      ${t.boxes.map((b, i) => {
+        const has = (b.add ?? []).includes(hero);
+        return `<button type="button" role="menuitem" class="hgm-box" data-t="${esc(t.id)}" data-b="${i}" data-own="${own ? 1 : 0}"${has ? ' disabled title="Already in it"' : ""}>${esc(boxName(b))}${has ? " ✓" : ""}</button>`;
+      }).join("")}`;
+  menu.innerHTML = `<div class="hgm-h">${portrait(hero)}<span>Add <b>${esc(hero)}</b> to a hero grid</span></div>
+    <div class="hgm-body">${step1()}</div><p class="hgm-msg" role="status"></p>`;
+  document.body.append(menu);
+  const r = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+  const body = menu.querySelector(".hgm-body");
+  const show = (html) => { body.innerHTML = html; body.scrollTop = 0; body.querySelector("button:not([disabled]):not(.hgm-back)")?.focus(); };
+  body.querySelector("button")?.focus();
+  const done = (t, b) => {
+    try { localStorage.setItem(PICK_KEY, t.id); } catch {}
+    dispatchEvent(new CustomEvent("herogrid-saved", { detail: t.id }));
+    const msg = menu.querySelector(".hgm-msg");
+    msg.innerHTML = `Added ${esc(hero)} to <b>${esc(t.name)}</b> · ${esc(boxName(b))}. Team pages' grids open on it.`;
+    body.hidden = true;
+    const m = menu;
+    setTimeout(() => { if (menu === m) closeMenu(); }, 2200);
+  };
+  const fail = () => (menu.querySelector(".hgm-msg").textContent = "This browser won't save it (private window or blocked storage).");
+  menu.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const all = readSaved();
+    if (btn.matches(".hgm-back")) return show(step1());
+    if (btn.matches(".hgm-new")) {
+      const t = { id: `t${Date.now().toString(36)}`, name: `My heroes${all.some((x) => x.name === "My heroes") ? ` ${all.length + 1}` : ""}`, boxes: [{ col: "us", source: "custom", label: "My heroes", add: [hero] }] };
+      return writeSaved([...all, t]) ? done(t, t.boxes[0]) : fail();
+    }
+    const own = btn.dataset.own === "1";
+    let t = own ? all.find((x) => x.id === btn.dataset.t) : TEMPLATES.find((x) => x.id === btn.dataset.t);
+    if (!t) return;
+    if (btn.matches(".hgm-grid")) return show(step2(t, own));
+    if (!own) t = { ...JSON.parse(JSON.stringify(t)), id: `t${Date.now().toString(36)}`, name: `My ${t.name.toLowerCase()}` };
+    const b = t.boxes[Number(btn.dataset.b)];
+    addToBox(b, hero);
+    const at = all.findIndex((x) => x.id === t.id);
+    if (at >= 0) all[at] = t; else all.push(t);
+    return writeSaved(all) ? done(t, b) : fail();
+  });
+  menu.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeMenu(); return; }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const items = [...menu.querySelectorAll("button:not([disabled])")].filter((b) => b.offsetParent);
+    const i = items.indexOf(document.activeElement);
+    items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+    e.preventDefault();
+  });
+}
+if (typeof document !== "undefined" && !window.__hgMenu) {
+  window.__hgMenu = true;
+  document.addEventListener("contextmenu", (e) => {
+    if (e.shiftKey) return;
+    const hero = heroAt(e.target instanceof Element ? e.target : null);
+    if (!hero) return;
+    e.preventDefault();
+    openMenu(hero, e.clientX, e.clientY);
+  });
+  document.addEventListener("pointerdown", (e) => { if (menu && !menu.contains(e.target)) closeMenu(); }, true);
+  addEventListener("scroll", () => closeMenu(), { passive: true });
+  addEventListener("hashchange", closeMenu);
+}
+
 // The hero a drop carries, or null.
 function droppedHero(dt) {
   const own = dt.getData(HERO_TYPE);
@@ -273,6 +363,14 @@ export function wireHeroGrid(root, team, games, { pubs = null, totals = null, he
   // The model is many full drafts' work: wait until the grid is on screen (a closed tab or
   // folded section isn't), then follow my team.
   let seen = false;
+  // A hero added from the right-click menu: show that template (unless mid-edit).
+  const onSaved = (e) => {
+    if (!box.isConnected) return removeEventListener("herogrid-saved", onSaved);
+    if (draft) return;
+    current = findTemplate(e.detail, sources);
+    redraw();
+  };
+  addEventListener("herogrid-saved", onSaved);
   live.set(box, (t) => {
     if (meSel.options.length > 1) meSel.value = t ? `${t.div}:${t.id}` : "";
     if (seen) readModel(t);

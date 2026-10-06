@@ -120,7 +120,10 @@ and change it: [maintaining.md](maintaining.md).
   open (`parts/cmdraft.js` heroGridModelFor). Heroes played in pubs in the last 30 days get a green
   outline and their pub count. **Customise** / **New template…**: drag heroes off a box (or click
   them) to take them out; drag them in from the grid, the Drafter's heroes and suggestions, or any
-  hero picture or name on the page; drop one on another hero to put it there. The grid is drawn
+  hero picture or name on the page; drop one on another hero to put it there. **Right-click any hero
+  picture** on the site (Shift + right-click keeps the browser's menu): "Add to a hero grid", step 1
+  the grid (yours, a new one with just that hero, or a built-in, which saves your own copy), step 2
+  the section; open grids switch to it and team pages open on it. The grid is drawn
   as Dota's canvas (1100 units wide, the export's own x/y/width/height; heroes shrink to fit a box
   as Dota does). Built-ins lay boxes out in the three columns; customising freezes every box's
   place so it can be dragged by its name bar and resized from the corner (snaps to 10, Alt for
