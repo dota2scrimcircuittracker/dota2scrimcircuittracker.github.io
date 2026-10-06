@@ -1,5 +1,19 @@
 # Team Tables Implementation Plan
 
+> **Revision 2 (2026-10-06):** the spec's revision 2 adds player and hero tables and scope
+> control (`league=` incl. All AD2L and Heroic A/B, `weeks=`, player `team=`). The tasks
+> below stand, with these renames and widenings, applied when building:
+> - `lib/teamtable.js` → `lib/tables.js`, with `KINDS.team / .player / .hero`, each holding
+>   `columns`, `presets` and `rows(scope)`. `parseTable` / `tableParams` carry `kind`,
+>   `weeks` and `team`. Team columns are as in Task 2.
+> - Player rows come from `playerLeaderboard`, hero rows from `heroStats`, over the scope's
+>   games with details (the Players and Heroes pages' own inputs).
+> - Topics carry `table: { team, player, hero }` in place of `cols`. `siteSearch` returns
+>   `table: { kind, cols, sort }` and card scopes `teams` / `players` / `heroes`.
+> - `parts/teamtable.js` → `parts/tables.js`; the builder gains Rows (kind), Period and, for
+>   players, Team selects.
+> - Tests: `test/tables.test.js`, plus player and hero rows, scope filters and kind picking.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Every team side by side on the site search results page: a team table that leads the results when a query asks for every team ("compare first blood"), an **All teams** scope on team-stat topic cards, and a table builder (columns, presets, minimum games, league, saved sets) whose state lives in the address.

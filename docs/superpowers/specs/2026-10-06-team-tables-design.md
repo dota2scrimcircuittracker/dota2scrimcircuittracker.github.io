@@ -1,6 +1,70 @@
-# Team tables: every team side by side, in site search
+# Tables: every team, player or hero side by side, in site search
 
-Status: draft for approval, 2026-10-06. Not built.
+Status: approved 2026-10-06 with revision 2 (below): player and hero tables, and scope
+control. Built on `claude/magical-fermat-lo3krv`.
+
+## Revision 2 (2026-10-06): kinds and scope
+
+The user asked for full-AD2L or single-league tables, team or player tables, and control
+over the scope. This revision changes the sections below it where they differ.
+
+### Kinds
+
+A table is one of three kinds, `table=team|player|hero`:
+
+| Kind | Rows | Values from | Sample size (n) |
+|---|---|---|---|
+| Team | every team in scope (section 3) | `lib/tables.js` team aggregates | per column, as section 3 |
+| Player | everyone with a game with details in scope | `playerLeaderboard` (the Players page's) | games; replay columns: `map_games`; combat columns: `combat_games` |
+| Hero | every hero picked in scope | `heroStats` (the Heroes page's) | picks; bans and contest: drafted games |
+
+- **Player columns:** games, Win %, kills, deaths and assists per game, KDA, GPM, XPM,
+  damage per minute, damage per 1k net worth, damage taken per game, Avg KP, healing,
+  building damage, stuns, stacks, observers, sentries, dewards, lane creeps and neutrals per
+  game, Roshans, APM, teamfight participation, first blood %, died first %, best streak,
+  rampages, ultra kills, runes, buybacks, heroes played, and the player's team (text).
+- **Hero columns:** picks, pick rate, Win %, bans, ban rate, contest rate, average hero damage,
+  average KDA.
+
+Each kind has its own presets. Player and hero names link to their pages, as on the Players
+and Heroes pages.
+
+### Scope
+
+- **`league=`:** a division key, `heroic_a` / `heroic_b` (one Heroic/Aegis division),
+  `all` (**All AD2L**: every division, with a Division column) or `scrim`. The default is the
+  address's league. The builder's select lists All AD2L first, then the divisions in menu
+  order (with the Heroic A and B views), then Scrims.
+- **`weeks=`:** 2, 4 or 8 to use only games (and, for the AD2L team record, series) from that
+  many weeks back. Default: the whole season. The builder labels it "Period".
+- **`team=`** (player tables only): only players whose team (as the Players page shows it) is
+  this one. The builder's Team select lists the teams in scope.
+- **`min=`:** applies to every kind, against each cell's own n.
+
+### Search
+
+- **Topic columns per kind:** topics carry `table: { team: [...], player: [...], hero: [...] }`
+  in place of `cols`. For example, kda has `player: ["kda"]` and `hero: ["avg_kda"]`; ban rate
+  has `hero: ["ban_rate", "bans"]`.
+- **Choosing the kind for a table result:**
+  - A kind word in the query decides it: player or players → player; hero or heroes → hero;
+    team or teams → team.
+  - Otherwise, the first kind the matched topics have columns for, in the order team,
+    player, hero.
+  - A table word with no topic gives the team Overview preset, or the named kind's first
+    preset.
+- **`siteSearch` returns** `table: { kind, cols, sort }`.
+- **Card scopes:** `"teams"`, `"players"`, `"heroes"` (All teams / All players / All
+  heroes), between League and Team, for each kind the topic has columns for.
+
+### Files (replacing section 7's names)
+
+| File | Change |
+|---|---|
+| `public/lib/tables.js` | was `teamtable.js`: kinds, columns, presets, rows, cell text, address state |
+| `public/parts/tables.js` | was `parts/teamtable.js`: load a scope, draw a table, the builder |
+| `test/tables.test.js` | was `teamtable.test.js` |
+
 
 ## Goal
 

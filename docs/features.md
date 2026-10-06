@@ -43,6 +43,17 @@ and change it: [maintaining.md](maintaining.md).
   link to search the exact words. Questions it can't place get an empty page with examples.
   The words each section answers to are in `lib/topics.js`; a search that comes back empty is
   fixed by adding words there. Spec: `docs/superpowers/specs/2026-10-06-site-search-design.md`.
+  **Tables:** a search that asks for every team, player or hero ("compare first blood",
+  "radiant win rate all teams", "compare kda", "ban rate table") leads with a table of every one
+  in the league; a stat's card has **All teams / All players / All heroes** scopes; and **Build a
+  table →** (under the filters, or `&table=team|player|hero`) opens the builder: rows (teams,
+  players, heroes), league (**All AD2L**, a division, Heroic A or B, Scrims), period (whole
+  season or the last 2, 4 or 8 weeks), a player table's team, minimum games (values from fewer
+  games show greyed and sort last), presets, column sets saved in this browser, and columns in
+  groups. Everything is in the address (`&cols=…&sort=…&dir=…&min=…&weeks=…&team=…&league=…`),
+  so a table can be shared. Values come from the team, Players and Heroes pages' own functions
+  (`lib/tables.js`); an AD2L team's win % is PlayOn's record (`lib/teams.js` `seriesRecords`).
+  Spec: `docs/superpowers/specs/2026-10-06-team-tables-design.md`.
 - **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
   pasted into Discord previews as that page (its title, description and a card in the league's
   colours). Pages without a preview (player pages, older weeks, uploaded games) keep `/#/…`
