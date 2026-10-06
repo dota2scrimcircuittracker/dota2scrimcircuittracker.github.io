@@ -16,9 +16,9 @@ test("menu tabs: AD2L-only tabs drop out for scrims, labels follow the source", 
 });
 
 test("page tabs: list order and labels, label override, out-of-step lists throw", () => {
-  const panels = STANDINGS_TABS.map(([id]) => [id, id === "next" ? { label: "Up next · 3", html: "n" } : id]);
+  const panels = STANDINGS_TABS.map(([id]) => [id, id === "matches" ? { label: "Matches · 3", html: "n" } : id]);
   assert.deepEqual(pageTabs(STANDINGS_TABS, ad2l, panels.reverse()).map(([id, label]) => `${id}:${label}`),
-    ["table:Table", "matches:Matches", "cross:Crosstable", "race:Race", "next:Up next · 3"]);
+    ["table:Table", "matches:Matches · 3", "cross:Crosstable", "race:Race"]);
   assert.throws(() => pageTabs(TEAM_TABS, ad2l, [["overview", "x"]]), /-roster/);
   assert.throws(() => pageTabs(HERO_TABS, ad2l, [...HERO_TABS.map(([id]) => [id, "x"]), ["extra", "x"]]), /\+extra/);
   // A scrim page needn't fill the AD2L-only tabs.

@@ -25,7 +25,7 @@ and change it: [maintaining.md](maintaining.md).
   tab. Forfeits against PlayOn's "Heroic Bye Week" placeholder aren't uploadable games.
 - **All divisions** (`/all/`, under the picker and last in the league menu) — every division's
   files merged: Teams (one table with a Division column; Matches and Crosstable boxed per
-  division, Heroic/Aegis per sub-division; no Race), Weekly, Players (one tier list, everyone
+  division, Heroic/Aegis per sub-division; no Race), Content, Players (one tier list, everyone
   rated against the whole field) and Heroes. Read-only: no Predict or Upload, and a game opens
   in its own division.
 - **League switching** keeps the tab you're on: Players in Champion → Warrior opens Warrior's
@@ -114,7 +114,10 @@ and change it: [maintaining.md](maintaining.md).
   updates the other and open grids). Templates: by position, by player (the five with the most
   games), picks and bans (model's likely picks, picks most; bans: the model's ban-against-them,
   banned against them, what they ban), recent pubs (each player's last 30 days), draft model
-  threats per position. Every built-in puts the model's bans in the middle, split by Captains Mode ban
+  threats per position. **Depth** (built-ins; remembered): Quick (the enemy's five boxes, top 5
+  heroes each, and one ban-against-them box of 8), Standard (as built), Deep (no caps, plus real
+  drafts' "banned against them" and "they ban" by phase); customising keeps the depth's boxes.
+  Every built-in puts the model's bans in the middle, split by Captains Mode ban
   phase (phase 1 before any pick, 2 after two picks, 3 after eight: scored at the start of each
   phase after the model's own draft to there, both first-pick orders averaged, heroes already
   taken left out; `parts/cmdraft.js` phaseBans). Real drafts split the same way: "banned against
@@ -124,7 +127,10 @@ and change it: [maintaining.md](maintaining.md).
   open (`parts/cmdraft.js` heroGridModelFor). Heroes played in pubs in the last 30 days get a green
   outline and their pub count. **Customise** / **New template…**: drag heroes off a box (or click
   them) to take them out; drag them in from the grid, the Drafter's heroes and suggestions, or any
-  hero picture or name on the page; drop one on another hero to put it there. The grid is drawn
+  hero picture or name on the page; drop one on another hero to put it there. **Right-click any hero
+  picture** on the site (Shift + right-click keeps the browser's menu): "Add to a hero grid", step 1
+  the grid (yours, a new one with just that hero, or a built-in, which saves your own copy), step 2
+  the section; open grids switch to it and team pages open on it. The grid is drawn
   as Dota's canvas (1100 units wide, the export's own x/y/width/height; heroes shrink to fit a box
   as Dota does). Built-ins lay boxes out in the three columns; customising freezes every box's
   place so it can be dragged by its name bar and resized from the corner (snaps to 10, Alt for
@@ -141,9 +147,10 @@ and change it: [maintaining.md](maintaining.md).
   Roshans and Tormentors taken vs given up, first-Roshan rate, and wards / dewards / stacks per
   game. Team names link to team pages everywhere on the site.
 
-## Weekly recap
+## Content (was Weekly)
 
-One week at a time: highlights (player of the week, biggest damage, best KDA, top GPM, most
+AD2L: **Up next** at the top of the latest week: the series still to play, each with the
+model's odds (as on Predict); it used to be a Teams tab. Then one week at a time: highlights (player of the week, biggest damage, best KDA, top GPM, most
 kills, fastest core item, best laner, biggest comeback, most wards / stacks / dewards, fastest
 first blood, longest streak, rampages, biggest hit, highest APM, aegis steals, most paused game)
 and every game with lineups and MVP. AD2L games also show the full Captains Mode draft in pick/ban
@@ -151,7 +158,13 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 
 ## Players tab
 
-- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below).
+- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). Filters:
+  Everyone / Cores / Supports, and Pos 1–5: that position's own list, each player's games
+  there only, rated against that position's players (its anchors, consistency and curve come
+  from pos N games; `lib/tiers.js` tierModel/tierList `pos`), so a 4/5 swapper shows in both with
+  each set of games. Each chip says the position played most; its tooltip lists games at each.
+  A breakdown has a × in its top-right corner, and its stat table sorts by Stat, 0–100 or Points
+  (the order holds for every breakdown while the page is open).
 - **Stat leaders** — top and bottom 3 on any stat, with "1st overall" badges across every division.
 - **Laning** — laning ranked by position (safe, mid, off, supports; 3+ lanes), with best-laner
   cards for the latest week and the season.
@@ -467,7 +480,7 @@ shrunk-resolution problem above, not a finding problem.
 - **Playoff picture** (`lib/playoffs.js`, `parts/playoffs.js`) — Predict has three tabs, each
   its own link (`?tab=calls|bracket|odds`, Back works, the last one remembered): **Predictions**
   (this week's cards, leaderboard, past weeks), **Bracket** (a Your picks / Model's picks toggle)
-  and **Possibilities** (worked out the first time its tab opens). The name bar sits above them.
+  and **Seeding** (worked out the first time its tab opens). The name bar sits above them.
   - **Your picks** (Bracket's default): unreported series go the way the viewer called them on the cards
     above (uncalled ones, and unposted weeks, take the model's call and say so). The table and
     tiebreakers follow from that; the viewer then clicks winners in the tiebreakers and the
@@ -477,7 +490,7 @@ shrunk-resolution problem above, not a finding problem.
     clears it. A progress strip counts series, tiebreakers and bracket matches picked. Saved in localStorage per division, keyed by
     the two teams, so a pick sticks while that pairing exists.
   - **Model's picks** (Bracket's other side): everything below.
-  - **Possibilities**: every way the open series go (3 results each, so 3^n outcomes), and in
+  - **Seeding**: every way the open series go (3 results each, so 3^n outcomes), and in
     each every way its week 8 tiebreakers go; a grid of each team's share of each place plus
     summary columns: upper bracket and playoffs (running totals), or for Heroic/Aegis the four
     brackets on their own (Aegis upper 1–2, Aegis lower 3–4, Heroic upper 5–6, Heroic lower
@@ -488,8 +501,9 @@ shrunk-resolution problem above, not a finding problem.
     (every order the same for 3+ teams) whatever the weighting, one result per group of teams.
     "How the tiebreakers work" sits under the grid too. Under it, per division, two tables:
     **Possible week 8 tiebreakers** (chance, line, teams level, wins, places, the rules' format
-    for that case) and **Possible 1v1 mids** (chance, teams, wins, what it decides: seed order, or
-    their order in a line's tiebreaker). Top 10 each, "Show all" for the rest; "What leads to it"
+    for that case) and **Possible 1v1 mids** (chance, teams, wins, what they're still level on in
+    the likeliest way there: SoS, head to head, record v the highest common opponent; what it
+    decides: seed order, or their order in a line's tiebreaker). Top 10 each, "Show all" for the rest; "What leads to it"
     lists the ways there, like a place's (`lib/playoffs.js` `pathsToEvent`). Random runs give the
     chances only.
     Click a cell for what it takes to finish there, or a team for every place: the ways, each a
@@ -505,8 +519,8 @@ shrunk-resolution problem above, not a finding problem.
     results can't move the other's table), so Heroic is 3^6 and 3^5, not 3^11.
   - **Team page → Outcomes** (AD2L teams): the same for one team, worked out when the tab opens:
     likeliest place, the summary columns as cards, a bar per place (click one for what it
-    takes; every place shown by default), and a link to Predict's Possibilities. A 1v1 mid counts 50/50, as
-    on Possibilities; a line under the bars says how ties go.
+    takes; every place shown by default), and a link to Predict's Seeding. A 1v1 mid counts 50/50, as
+    on Seeding; a line under the bars says how ties go.
 
   The model's picks: the playoffs if every remaining call goes the model's way. Unreported series get the model's
   call; weeks PlayOn hasn't posted (up to 7) are paired swiss-style as a labelled stand-in (table

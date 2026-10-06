@@ -26,7 +26,7 @@ export const RATE_WORDS = ["win", "wins", "winning", "rate", "rates", "wr", "win
 
 // Section headings with an id (no info button to find them by).
 // "tier-open": the tier badge in a player page's header.
-export const ANCHORS = ["head-to-head", "hero-pool", "tier-open"];
+export const ANCHORS = ["head-to-head", "hero-pool", "tier-open", "up-next"];
 
 export const TOPICS = [
   { id: "record", table: { team: ["games", "win_rate"], player: ["games", "win_rate"], hero: ["picks", "win_rate"] }, title: "Record", text: "Wins and losses.", rate: true,
@@ -95,7 +95,7 @@ export const TOPICS = [
   { id: "pairs", title: "Pairs and lineups", key: "team_pairs",
     words: ["pairs", "pair", "duo", "duos", "lineups", "five stack"],
     team: { tab: "roster", at: "team_pairs" } },
-  { id: "outcomes", title: "Outcomes", text: "Every way the rest of the season can go for the team: playoff chances and seeds.",
+  { id: "outcomes", title: "Outcomes", text: "The team's playoff chances and possible seeds.",
     words: ["chances", "outcomes", "playoffs", "playoff", "seed", "seeding", "make playoffs"],
     team: { tab: "chances" } },
   { id: "kda", table: { player: ["kda"], hero: ["avg_kda"] }, title: "KDA", key: "kda",
@@ -178,7 +178,7 @@ export const TOPICS = [
     league: { path: "", tab: "cross", ad2l: true } },
   { id: "up_next", title: "Up next", text: "The next round of matches.",
     words: ["up next", "next", "upcoming", "fixtures", "schedule", "next week"],
-    league: { path: "", tab: "next", ad2l: true } },
+    league: { path: "week", at: "up-next", ad2l: true } },
   { id: "mvp", title: "MVP and highlights", key: "mvp",
     words: ["mvp", "mvps", "player of the week", "highlights", "potw"],
     league: { path: "week" } },
@@ -187,7 +187,7 @@ export const TOPICS = [
 // League pages, matched by name. `tabs`: "standings" = lib/pagetabs.js STANDINGS_TABS.
 export const PAGES = [
   { id: "page_standings", title: "Standings", words: ["standings", "table", "ladder", "teams"], path: "", tabs: "standings" },
-  { id: "page_weekly", title: "Weekly", words: ["weekly", "week", "weeks", "games", "matches", "results"], path: "week" },
+  { id: "page_weekly", title: "Content", words: ["content", "weekly", "week", "weeks", "games", "matches", "results", "recap"], path: "week" },
   { id: "page_players", title: "Players", words: ["players", "player list"], path: "players" },
   { id: "page_heroes", title: "Heroes", words: ["heroes", "hero list"], path: "heroes", tabs: [["tiers", "Hero tiers"], ["players", "Players on heroes"], ["table", "All heroes"]] },
   { id: "page_predict", title: "Predict", words: ["predict", "prediction", "predictions", "odds"], path: "predict" },

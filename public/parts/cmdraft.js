@@ -41,7 +41,7 @@ export function readGame(m, data, { alternatives = 3 } = {}) {
 
 const pts = (x) => `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(1)}`;
 const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
-export const MODEL_NOTE = `Sybil's Captains Mode draft model (by ybabts and Fav), fitted on ${FIT.games.toLocaleString()} AD2L games, ${FIT.seasons}. Held out on patch ${FIT.heldOut.split.split(" ")[0]}, its favourite won ${Math.round(FIT.heldOut.accuracy * 100)}% of the time. Each picked hero is read as the player most likely to play it: their record on it (shrunk toward the hero's win rate at this rank), their usual heroes, and the rank gap. It doesn't see counters or synergy yet, or how the teams have done this season.`;
+export const MODEL_NOTE = `Draft model: Sybil's Captains Mode model (by ybabts and Fav), trained on ${FIT.games.toLocaleString()} AD2L games, ${FIT.seasons}. On held-out patch ${FIT.heldOut.split.split(" ")[0]} games its favourite won ${Math.round(FIT.heldOut.accuracy * 100)}%. Each pick is rated for the player most likely to play it: their record on the hero (shrunk toward its win rate at this rank), their usual heroes, and the rank gap. It doesn't account for counters, synergy or this season's results yet.`;
 
 // The game page's Draft tab: the win chance after every step, and what the model would have
 // done at each one.
@@ -100,15 +100,15 @@ export function gameDraftHtml(m, src, data, width = null) {
     ${oddsBars(m.team_a, m.team_b, read.start, end)}
     ${chart}
     <h3 class="gm-h3">Step by step</h3>
-    <p class="table-note cm-legend">Rank: where the model put the actual choice among the heroes left (picks by the team's chance to win with it, bans by how much the hero would have given the other team). Model's top 3: its best options at that step.</p>
+    <p class="table-note cm-legend">Rank: where the model placed the actual choice among the heroes left (picks by win chance, bans by how much the hero would have given the other team). Model's top 3: its best options at that step.</p>
     <div class="table-wrap"><table class="cm-steps">
       <thead><tr><th>#</th><th class="l">Team</th><th class="l"></th><th class="l">Hero</th><th>Rank</th><th>Value</th><th class="l">Model's top 3</th><th>Win after</th><th>Change</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <h3 class="gm-h3">Who plays what</h3>
-    <p class="table-note">The model never sees who played which hero: it guesses from each player's heroes and positions. It got ${right} of ${total} right in this game.</p>
+    <p class="table-note">The model doesn't know who played which hero; it guesses from each player's heroes and positions. It got ${right} of ${total} right here.</p>
     <div class="table-wrap"><table><thead><tr><th class="l">Team</th><th class="l">Hero</th><th class="l">Model's guess</th><th class="l">Played by</th><th></th></tr></thead><tbody>${whoRows}</tbody></table></div>
     <h3 class="gm-h3">Players as read</h3>
-    <p class="table-note">Games before this one in each player's last ${data.history_days} days (pubs and league). Rank from their recent pub lobbies, or their PlayOn medal without them.${unknown ? ` ${unknown} player${unknown === 1 ? " has" : "s have"} no history here (a stand-in, or a private profile), so they read as an average player at this rank.` : ""}</p>
+    <p class="table-note">Pub and league games in the ${data.history_days} days before this game. Rank is from recent pub lobbies, or PlayOn medal if there are none.${unknown ? ` ${unknown} player${unknown === 1 ? " has" : "s have"} no history (a stand-in or private profile) and count${unknown === 1 ? "s" : ""} as an average player at this rank.` : ""}</p>
     <div class="table-wrap"><table><thead><tr><th class="l">Team</th><th class="l">Player</th><th>Games</th><th>Rank</th></tr></thead><tbody>${readRows}</tbody></table></div>
     <p class="table-note">${esc(MODEL_NOTE)}</p>
   </div>`;
@@ -216,7 +216,7 @@ export function teamDraftsHtml(team, series, src, data, width = 1000) {
       ${statTile("Model after the draft", `${t.postRight} of ${t.n}`, "games where its favourite won")}
       ${statTile(`${esc(team.name)}'s drafts`, pts(t.swing / t.n), `points a draft, on average · up in ${t.up}, down in ${t.n - t.up}`, t.swing >= 0 ? "cm-up" : "cm-down")}
     </div>
-    <p class="table-note">Every percentage is ${esc(team.name)}'s chance to win. "Before the draft" is the model's read of the ten players alone; "after the draft" adds the heroes and who plays them. Each chart walks from one to the other, step by step.</p>
+    <p class="table-note">Every percentage is ${esc(team.name)}'s chance to win. "Before the draft" rates the ten players alone; "after the draft" adds the heroes and who plays them. Each chart shows the change step by step.</p>
     ${blocks}
     <p class="table-note">${esc(MODEL_NOTE)}</p>`;
 }

@@ -76,7 +76,7 @@ export function draftSlotHtml(rec, src, who, rate = null) {
     </div>`;
   const cmp = (label, w, g, x) => `<div><b>${g ? wl(w, g) : "—"}</b><small>${label}${g ? ` · ${pct(w / g)}` : ""}${x?.rating != null ? ` · ${Math.round(x.rating)} rating` : ""}</small></div>`;
   return `<h2>By draft pick${info("by_draft_pick")}</h2>
-    <p class="table-note wm-intro">Which of the team's five picks ${esc(who)} came in, from ${rec.games} drafted game${rec.games === 1 ? "" : "s"}, and how it played from each: average game rating, KDA, GPM, damage per minute and kill participation.${base?.rating != null ? ` Green or red = clearly above or below its ${Math.round(base.rating)} average across every slot (2+ games).` : ""}</p>
+    <p class="table-note wm-intro">${esc(who)} by the team's pick order, from ${rec.games} drafted game${rec.games === 1 ? "" : "s"}: average game rating, KDA, GPM, damage per minute and kill participation from each slot.${base?.rating != null ? ` Green or red = clearly above or below the ${Math.round(base.rating)} average across all slots (2+ games).` : ""}</p>
     <div class="sr-summary dp-compare">${cmp("Picks 1–4", early.wins, early.games, earlyImp)}${cmp("Last pick", last.wins, last.games, imp[4])}${verdict}</div>
     <div class="dp-grid reveal">${rec.slots.map(slot).join("")}</div>`;
 }

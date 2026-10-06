@@ -157,7 +157,7 @@ export function heroRanksHtml(src, key, h, ratings, overallOn) {
     </div>`;
   };
   return `<h2 id="hero-pool">Hero pool${info("hero_rating")}</h2>
-    <p class="table-note wm-intro">Hero rating = the tier rating from just the games on that hero, against the same league, with its tier letter. Place = among everyone in ${league} who played it${src.ad2l ? `, and across all ${LEAGUE_COUNT} leagues` : ""}. One or two games is a small sample.</p>
+    <p class="table-note wm-intro">Hero rating: the tier rating from their games on that hero only. Place: among everyone in ${league} who played it${src.ad2l ? `, and across all ${LEAGUE_COUNT} leagues` : ""}. One or two games is a small sample.</p>
     <div class="hp-grid reveal">${h.heroes.map(card).join("")}</div>`;
 }
 export function heroPlayersHtml(src, hero, list, lines, overallList) {
@@ -184,7 +184,7 @@ export function heroPlayersHtml(src, hero, list, lines, overallList) {
   };
   const more = list.length - HERO_PLAYERS_SHOWN;
   return `<h2 id="hero-players">Players on it${info("hero_rating")}</h2>
-    <p class="table-note wm-intro">Hero rating = the tier rating from just their games on ${esc(hero)}, against the same league, with its tier letter. Place = among the ${list.length} player${list.length === 1 ? "" : "s"} in ${league} who played it${src.ad2l ? `, and across all ${LEAGUE_COUNT} leagues` : ""}. One or two games is a small sample.</p>
+    <p class="table-note wm-intro">Hero rating: the tier rating from their games on ${esc(hero)} only. Place: among the ${list.length} player${list.length === 1 ? "" : "s"} in ${league} who played it${src.ad2l ? `, and across all ${LEAGUE_COUNT} leagues` : ""}. One or two games is a small sample.</p>
     <div class="hp-grid reveal">${list.slice(0, HERO_PLAYERS_SHOWN).map(card).join("")}</div>
     ${more > 0 ? `<p class="table-note">${more} more in the Players table below.</p>` : ""}`;
 }
@@ -218,7 +218,7 @@ export function pubSection(src, accountId) {
     </div>`;
   };
   return `<h2>Recent pubs${info("recent_pubs")}</h2>
-    <p class="table-note wm-intro">Public and ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), from OpenDota; smurf accounts on their PlayOn roster included. Updated with each sync.</p>
+    <p class="table-note wm-intro">Public and ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), including smurf accounts on their PlayOn roster.</p>
     <div class="sr-summary pub-summary">
       <div><b class="res-${good(ps.win_rate)}">${ps.wins}–${ps.games - ps.wins}</b><small>record${info("pub_record")}</small></div>
       <div><b class="res-${good(ps.win_rate)}">${pct(ps.win_rate)}</b><small>win rate</small></div>
@@ -238,7 +238,7 @@ export function pubPrepHtml(src, accountId, games) {
   if (!r.games) return "";
   const line = (x) => (x.games ? `<b class="res-${x.wins * 2 >= x.games ? "w" : "l"}">${x.wins}–${x.games - x.wins}</b>` : "<b>—</b>");
   return `<h2>Pub practice${info("pub_prep")}</h2>
-    <p class="table-note wm-intro">Their ${r.games} league game${r.games === 1 ? "" : "s"} since ${new Date((pubStart(d) + PREP_DAYS * 86400) * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" })} (the pub log only reaches back ${PUB_DAYS} days), split by whether they'd played that hero in pubs in the ${PREP_DAYS} days before.</p>
+    <p class="table-note wm-intro">Their ${r.games} league game${r.games === 1 ? "" : "s"} since ${new Date((pubStart(d) + PREP_DAYS * 86400) * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" })} (pub history covers ${PUB_DAYS} days), split by whether they'd played that hero in pubs in the ${PREP_DAYS} days before.</p>
     <div class="sr-summary pub-summary">
       <div>${line(r.practiced)}<small>practised in pubs first</small></div>
       <div>${line(r.fresh)}<small>not played in pubs that week</small></div>
@@ -266,7 +266,7 @@ export function heroPubSection(src, hero, known) {
       <div class="ld-meter"><i></i></div>
     </div>`;
   return `<h2>Recent pubs${info("hero_pubs")}</h2>
-    <p class="table-note wm-intro">${esc(leagueShort(src))} players on ${esc(hero)} in public and ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), from OpenDota. Private match histories are missing.</p>
+    <p class="table-note wm-intro">${esc(leagueShort(src))} players on ${esc(hero)} in public and ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}). Private match histories are missing.</p>
     <div class="sr-summary pub-summary">
       <div><b class="res-${good(ps.win_rate)}">${ps.wins}–${ps.games - ps.wins}</b><small>record</small></div>
       <div><b class="res-${good(ps.win_rate)}">${pct(ps.win_rate)}</b><small>win rate</small></div>

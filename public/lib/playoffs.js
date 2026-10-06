@@ -183,7 +183,13 @@ function comparer(series, wins, sos, ratings) {
       if (r) return { d: -r, by: "highest common opponent", detail: "record against the highest common opponent", opp: best };
     }
     const ra = ratings.get(a) ?? 0, rb = ratings.get(b) ?? 0;
-    return { d: rb - ra || a - b, by: "1v1 mid", detail: "1v1 mid (model: the stronger team)" };
+    // Everything that came out level on the way here, for the 1v1 tables.
+    const games = (x, y) => played.filter((s) => (s.home === x && s.away === y) || (s.home === y && s.away === x))
+      .reduce(([w, l], s) => (s.home === x ? [w + s.home_score, l + s.away_score] : [w + s.away_score, l + s.home_score]), [0, 0]);
+    const top = common.length ? Math.max(...common.map((o) => wins.get(o) ?? 0)) : null;
+    const why = { sos: sa, h2h: oa.has(b) ? games(a, b) : null,
+      hco: common.filter((o) => (wins.get(o) ?? 0) === top).map((o) => ({ opp: o, wins: top, a: games(a, o), b: games(b, o) })) };
+    return { d: rb - ra || a - b, by: "1v1 mid", detail: "1v1 mid (model: the stronger team)", why };
   };
 }
 
@@ -191,7 +197,8 @@ function comparer(series, wins, sos, ratings) {
 // — places 1..after are above the line. Returns rows in order, the tiebreakers played across
 // lines (with predicted winners), the seed-order ties settled without playing and `mids`, every
 // 1v1 mid it came down to ({ teams, purpose: "week8" (ranking for a line's tiebreaker, `line`)
-// or "seed", places }).
+// or "seed", places, why: what came out level (SoS, head to head games or null, the highest
+// common opponents with each side's games against them), from its first two teams }).
 // `choose(key, a, b, bestOf, p)` may name a tiebreaker's winner (key "tb:<pairKey>"; otherwise
 // the model's) or a 1v1 mid's (key "mid:…", b null: returning `a` puts it next, chance p).
 export function resolveTable(ids, series, ratings, lines, choose) {
@@ -256,7 +263,7 @@ export function resolveTable(ids, series, ratings, lines, choose) {
     if (i < 0) continue;
     const seg = segs[i], slots = line.after - start;
     const sorted = [...seg].sort((a, b) => tie(a, b).d);
-    for (const [k, e] of midRuns(sorted)) midsFound.push({ teams: sorted.slice(k, e).sort(byId), purpose: "week8", line, places: [start + 1, start + seg.length] });
+    for (const [k, e] of midRuns(sorted)) midsFound.push({ teams: sorted.slice(k, e).sort(byId), purpose: "week8", line, places: [start + 1, start + seg.length], why: tie(sorted[k], sorted[k + 1]).why });
     const ranked = mids(sorted);
     const r = tiebreakFormat(slots, ranked, play(line.above));
     const byPos = (xs) => mids([...xs].sort((a, b) => tie(a, b).d));
@@ -269,7 +276,7 @@ export function resolveTable(ids, series, ratings, lines, choose) {
   // The 1v1s that set seed order, with the places they decide between.
   for (const seg of segs) for (const [k, e] of midRuns(seg)) {
     const from = final.indexOf(seg[k]) + 1;
-    midsFound.push({ teams: seg.slice(k, e).sort(byId), purpose: "seed", places: [from, from + e - k - 1] });
+    midsFound.push({ teams: seg.slice(k, e).sort(byId), purpose: "seed", places: [from, from + e - k - 1], why: tie(seg[k], seg[k + 1]).why });
   }
   // Seed-order ties: neighbours on the same wins whose order no tiebreaker match decided.
   const settled = [];
@@ -393,8 +400,8 @@ function linesFor(n, split) {
       { after: 4, above: "Aegis lower bracket", below: "Heroic upper bracket", col: "Aegis lower", band: true },
       { after: 6, above: "Heroic upper bracket", below: "Heroic lower bracket", col: "Heroic upper", band: true },
       { after: 8, above: "Heroic lower bracket", below: "out", col: "Heroic lower", band: true }]
-    : n >= 8 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Upper bracket" }, { after: 8, above: "playoffs", below: "out", col: "Playoffs" }]
-    : n > 4 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Upper bracket" }] : [];
+    : n >= 8 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Starts upper" }, { after: 8, above: "playoffs", below: "out", col: "Makes playoffs" }]
+    : n > 4 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Starts upper" }] : [];
 }
 
 // ---------- every possible outcome ----------
@@ -448,8 +455,10 @@ export function possibilities(teams, series, ratings, { split = false, weight = 
         const note = (key, info) => {
           if (seen.has(key)) return;
           seen.add(key);
-          const e = dv.events.get(key) ?? dv.events.set(key, { key, ...info, p: 0 }).get(key);
+          const e = dv.events.get(key) ?? dv.events.set(key, { key, ...info, p: 0, best: 0 }).get(key);
           e.p += w * bw;
+          // Details that differ by outcome (a 1v1's SoS and records): the likeliest one's.
+          if (w * bw > e.best) Object.assign(e, info, { best: w * bw });
           if (exact) ev.set(key, (ev.get(key) ?? 0) + bw);
         };
         for (const tb of t.tiebreakers) {

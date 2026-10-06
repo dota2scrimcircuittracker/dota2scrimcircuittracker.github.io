@@ -59,7 +59,7 @@ export async function renderDrafter(src) {
         ${drafted.length ? `<label>Team <select id="dx-gteam">${[...new Set(drafted.flatMap((g) => [g.team_a_id, g.team_b_id]))].map((id) => teamById.get(id)).filter(Boolean)
             .sort((a, b) => a.name.localeCompare(b.name)).map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join("")}</select></label>
           <label>Week <select id="dx-gweek"></select></label><label>Game <select id="dx-game"></select></label>
-          <p class="table-note">The game's draft loads in full. Click any step to rewind to it and draft differently from there. Players are read as of the game, so the model only knows what it knew then.</p>`
+          <p class="table-note">Loads the game's full draft. Click any step to rewind and draft differently from there. The model only knows what it knew at the time of the game.</p>`
           : `<p class="muted">No drafted games in ${esc(src.division)} yet.</p>`}
       </div>
       <div class="dx-opts" id="dx-opts"></div>
@@ -88,7 +88,7 @@ export async function renderDrafter(src) {
     board.innerHTML = `<div class="panel empty">Loading the draft model…</div>`;
     gridBox.innerHTML = ""; gridCtl = null; play = null;
     data = await draftDataFor([X.div, Y.div]);
-    if (!data) { board.innerHTML = `<p class="muted">The draft model's data hasn't synced for ${esc(DIVISIONS[X.div].short)}${X.div !== Y.div ? ` or ${esc(DIVISIONS[Y.div].short)}` : ""} yet.</p>`; opts.innerHTML = ""; return; }
+    if (!data) { board.innerHTML = `<p class="muted">No draft model data for ${esc(DIVISIONS[X.div].short)}${X.div !== Y.div ? ` or ${esc(DIVISIONS[Y.div].short)}` : ""} yet.</p>`; opts.innerHTML = ""; return; }
     heroes = heroIndex(data);
     // Grid heroes come by name, in the site's spelling or the draft file's.
     idOf = new Map(heroes.ids.flatMap((h) => [[heroes.name(h), h], [canonicalHero(heroes.name(h)), h]]));
@@ -116,7 +116,7 @@ export async function renderDrafter(src) {
     if (run !== gridRun) return;
     const html = heroGridHtml(t, t.lineups, { pubs, compact: true });
     gridBox.innerHTML = `<div class="segs dx-gridfor" role="group" aria-label="Whose heroes">${["X", "Y"].map((w) => `<button type="button" class="seg${w === gridFor ? " on" : ""}" data-grid="${w}" aria-pressed="${w === gridFor}">${esc(s[w].name)}</button>`).join("")}</div>
-      ${html || `<p class="muted">No ${esc(t.name)} games say who played which position yet. Switch team, or pick from All heroes.</p>`}`;
+      ${html || `<p class="muted">No ${esc(t.name)} games with positions yet. Switch team or use All heroes.</p>`}`;
     gridBox.querySelector(".dx-gridfor").onclick = (e) => { const b = e.target.closest("[data-grid]"); if (b && b.dataset.grid !== gridFor) { gridFor = b.dataset.grid; drawGrid(); } };
     // The model reads them against my team, or else the other team in this draft.
     // "You" (the right-hand column) is my team, or else the other team in this draft.
@@ -339,13 +339,13 @@ export async function renderDrafter(src) {
       </div>
       <div class="dx-cols">
         <section class="dx-sugg"><h3 class="dx-h">${over ? "Done" : kind === "pick" ? "Best picks" : "Best bans"}</h3>
-          <p class="table-note">${over ? "" : kind === "pick" ? `${esc(team(who).name)}'s chance to win with each hero, and who would play it.` : `How many points each hero would add to ${esc(team(other(who)).name)}'s chance if they got it, and who'd play it.`}</p>
+          <p class="table-note">${over ? "" : kind === "pick" ? `${esc(team(who).name)}'s chance to win with each hero, and who would play it.` : `Points each hero would add to ${esc(team(other(who)).name)}'s chance, and who'd play it.`}</p>
           ${sugg}</section>
         <section class="dx-heroes"><div class="dx-hhead"><h3 class="dx-h">Heroes</h3>
           <div class="segs dx-views" role="group" aria-label="Pick from">${VIEWS.map(([k, l]) => `<button type="button" class="seg${k === view ? " on" : ""}" data-view="${k}" aria-pressed="${k === view}">${l}</button>`).join("")}</div>
           <input type="search" id="dx-find" placeholder="Find a hero" autocomplete="off" aria-label="Find a hero"></div>
           ${view === "grid" ? `<div class="dx-findrow" hidden></div>
-          <p class="table-note dx-gridnote">Click a hero in the grid to ${over ? "play it" : kind === "pick" ? "pick it" : "ban it"}. Faded: gone, or no open position. Customise the grid to move heroes around, drag them in from the suggestions or the search, or use + on a suggestion.</p>
+          <p class="table-note dx-gridnote">Click a hero in the grid to ${over ? "play it" : kind === "pick" ? "pick it" : "ban it"}. Faded: taken, or no open position. Customise to rearrange the grid; drag heroes in from the suggestions or search, or press + on a suggestion.</p>
           <div class="dx-gridslot"></div>` : `<div class="dx-attrs">${ATTRS.map(([a, label]) => { const ids = heroes.ids.filter((h) => (heroAttr(heroes.name(h)) ?? "all") === a), left = ids.filter((h) => !gone.has(h)).length; return `<div class="dx-attr attr-${a}" data-attr="${a}">
             <div class="dx-attr-h"><i></i>${label}<small>${left} of ${ids.length} left</small></div>
           <div class="dx-grid">${ids.map(tile).join("")}</div></div>`; }).join("")}</div>`}
@@ -353,7 +353,7 @@ export async function renderDrafter(src) {
       </div>
       <details class="dx-more"${rostersOpen ? " open" : ""}><summary>Rosters, ranks and who's playing what</summary>
         <div class="dx-rosters">${rosterHtml("X")}${rosterHtml("Y")}</div></details>
-      <p class="table-note">Draft Captains Mode for any two teams. The model scores every hero at every step: your chance to win if you pick it, and how much it would give the other team if you leave it. ${esc(MODEL_NOTE)} Rosters with fewer than five known players fill the rest with an average player.</p>`;
+      <p class="table-note">The model scores every hero at every step: your chance to win if you pick it, and how much it gives the other team if you leave it open. ${esc(MODEL_NOTE)} Missing roster spots count as average players.</p>`;
     board.querySelector(".dx-more").addEventListener("toggle", (e) => { rostersOpen = e.target.open; });
     const find = document.getElementById("dx-find"), findRow = board.querySelector(".dx-findrow");
     find.oninput = () => {
