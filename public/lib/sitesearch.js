@@ -2,7 +2,8 @@
 // league pages, corrects near-miss spellings, and returns links. Pure, so the results page
 // (pages/search.js) and the tests share it. Spec: docs/superpowers/specs/2026-10-06-site-search-design.md.
 import { fold, searchIndex } from "./search.js";
-import { TOPICS, PAGES, HERO_SHORT, RATE_WORDS } from "./topics.js";
+import { TOPICS, PAGES, HERO_SHORT, RATE_WORDS, TABLE_WORDS, KIND_WORDS } from "./topics.js";
+import { KINDS } from "./tables.js";
 import { TEAM_TABS, PLAYER_TABS, HERO_TABS, tabList } from "./pagetabs.js";
 
 // Words that carry no meaning in a question. "with", "vs" and "against" do, so they stay.
@@ -47,7 +48,11 @@ export const leagueHref = (root, { path = "", tab, at } = {}) => withAt(root ===
 
 const phraseWords = (p) => p.split(" ").filter((x) => !STOP.has(x));
 const TOPIC_WORDS = new Set([...TOPICS, ...PAGES].flatMap((t) => t.words.flatMap(phraseWords)));
-const SCOPES = ["league", "team", "player", "hero"];
+const TABLE = TABLE_WORDS.map((p) => p.split(" "));
+const TABLE_KINDS = ["team", "player", "hero"];
+// "teams", "players", "heroes": every one of them in a table (topics with `table` columns).
+const SCOPES = ["league", "teams", "players", "heroes", "team", "player", "hero"];
+const ALL_OF = { teams: "team", players: "player", heroes: "hero" };
 const LISTS = { team: TEAM_TABS, player: PLAYER_TABS, hero: HERO_TABS };
 const RECORD = TOPICS.find((t) => t.id === "record");
 
@@ -72,7 +77,7 @@ function prepare(index, heroes) {
     addRun(w.join(" "), e);
     if (w.length > 1) addRun(w.join(""), e);
   }
-  for (const x of [...TOPIC_WORDS, ...RATE]) addWord(x, "*");
+  for (const x of [...TOPIC_WORDS, ...RATE, ...TABLE.flat()]) addWord(x, "*");
   const out = { heroes, byRun, vocab, vocabList: [...vocab.keys()] };
   prepared.set(index, out);
   return out;
@@ -118,13 +123,15 @@ const dedupe = (es) => { const seen = new Set(); return es.filter((e) => !seen.h
 // index: lib/search.js buildSearchIndex output (every league). heroes: hero names. league: the
 // league searched from (index `league` key, "scrim", or null for All). heroHref: hero name → its
 // page in that league. exact: no spelling correction.
-// Returns { corrected, direct, cards, names, pages, empty }:
+// Returns { corrected, direct, cards, names, pages, table, empty }:
 //   direct: [{ entity, topic, href, tab }]  a name's page at a topic's section
 //   cards:  [{ topic, scopes }]             topics with no matching name, and where they live
 //   names:  entities (teams, players, heroes), full-name matches first
 //   pages:  PAGES entries whose words matched
+//   table:  { kind, cols, sort } when the query asks for every team, player or hero (TABLE_WORDS):
+//           the topics' columns for that kind, or its first preset; else null
 export function siteSearch({ index, heroes = [], query, league = null, heroHref = () => null, exact = false }) {
-  const none = { corrected: null, direct: [], cards: [], names: [], pages: [], empty: true };
+  const none = { corrected: null, direct: [], cards: [], names: [], pages: [], table: null, empty: true };
   const raw = words(query ?? "");
   if (!raw.length) return none;
   const prep = prepare(index, heroes);
@@ -151,9 +158,20 @@ export function siteSearch({ index, heroes = [], query, league = null, heroHref 
   }
   const full = dedupe(found).sort((a, b) => (b.league === league) - (a.league === league));
 
-  // Topics and pages from what's left.
-  const rest = [], rate = [];
+  // Topics and pages from what's left, once table words ("compare", "all teams") are set aside;
+  // with one, a kind word ("players") says which rows and is set aside too.
+  let rest = [];
+  const rate = [];
   w.forEach((x, i) => { if (!claimed.has(i) && !STOP.has(x)) (RATE.has(x) ? rate : rest).push(x); });
+  let wantsTable = false, kindAsked = null;
+  for (const p of TABLE) for (let i = 0; i + p.length <= rest.length; i++) {
+    if (!p.every((x, k) => rest[i + k] === x)) continue;
+    kindAsked ??= p.length > 1 ? KIND_WORDS[p.at(-1)] ?? null : null;
+    rest = [...rest.slice(0, i), ...rest.slice(i + p.length)];
+    wantsTable = true;
+    i--;
+  }
+  if (wantsTable) rest = rest.filter((x) => (KIND_WORDS[x] ? ((kindAsked ??= KIND_WORDS[x]), false) : true));
   const used = new Set();
   const rank = (list, keep) => {
     const scored = list.map((t) => ({ t, s: score(t, rest, used) + (t.rate && rate.length ? 0.5 : 0) }))
@@ -187,11 +205,20 @@ export function siteSearch({ index, heroes = [], query, league = null, heroHref 
     covered.add(t.id);
     direct.push({ entity: e, topic: t, href: withAt(e.href, s), tab: tabLabel(e.kind, s.tab, e.league) });
   }
-  const cards = topics.filter((t) => !covered.has(t.id)).map((t) => ({ topic: t, scopes: SCOPES.filter((s) => t[s]) }));
+  const cards = topics.filter((t) => !covered.has(t.id)).map((t) => ({ topic: t, scopes: SCOPES.filter((s) => (ALL_OF[s] ? t.table?.[ALL_OF[s]] : t[s])) }));
+  // A table: the kind asked for, else the first the topics have columns for; their columns in
+  // order, or the kind's first preset.
+  let table = null;
+  if (wantsTable && !full.length) {
+    const kind = kindAsked ?? TABLE_KINDS.find((k) => topics.some((t) => t.table?.[k])) ?? "team";
+    const cols = [...new Set(topics.flatMap((t) => t.table?.[kind] ?? []))];
+    const preset = KINDS[kind].presets[0].cols;
+    table = { kind, cols: cols.length ? cols : preset, sort: cols[0] ?? preset[1] };
+  }
 
   // Empty when nothing came up, or when more than half the meaningful words matched nothing.
   const unmatched = rest.filter((_, i) => !used.has(i)).length;
   const total = meaningful.length;
-  const empty = (!direct.length && !cards.length && !names.length && !pages.length) || unmatched * 2 > total;
-  return empty ? { ...none, corrected } : { corrected, direct, cards, names, pages, empty: false };
+  const empty = !table && ((!direct.length && !cards.length && !names.length && !pages.length) || unmatched * 2 > total);
+  return empty ? { ...none, corrected } : { corrected, direct, cards, names, pages, table, empty: false };
 }

@@ -94,7 +94,8 @@ test("a topic with no name is a card with its scopes", () => {
   const r = run("radiant win rate");
   assert.equal(r.direct.length, 0);
   assert.equal(r.cards[0].topic.id, "sides");
-  assert.deepEqual(r.cards[0].scopes, ["league", "team"]);
+  assert.deepEqual(r.cards[0].scopes, ["league", "teams", "team"]);
+  assert.equal(r.table, null);
   assert.equal(r.corrected, null);
 });
 
@@ -149,4 +150,29 @@ test("nonsense and mostly-unmatched questions are empty", () => {
 test("league pages by name", () => {
   const r = run("standings");
   assert.equal(r.pages[0].id, "page_standings");
+});
+
+import { column } from "../public/lib/tables.js";
+
+test("topic table columns are real columns of their kind", () => {
+  for (const t of TOPICS) for (const [kind, cols] of Object.entries(t.table ?? {})) for (const id of cols) assert.ok(column(kind, id), `${t.id}: no ${kind} column ${id}`);
+});
+
+test("asking for every team, player or hero leads with a table", () => {
+  const r = run("compare first blood and roshan");
+  assert.deepEqual(r.table, { kind: "team", cols: ["fb_taken", "fb_win", "rosh", "first_rosh"], sort: "fb_taken" });
+  assert.equal(r.empty, false);
+  assert.deepEqual(run("radiant win rate all teams").table, { kind: "team", cols: ["radiant_rate", "dire_rate"], sort: "radiant_rate" });
+  assert.deepEqual(run("compare kda").table, { kind: "player", cols: ["kda"], sort: "kda" });
+  assert.deepEqual(run("kda all heroes").table, { kind: "hero", cols: ["avg_kda"], sort: "avg_kda" });
+  assert.deepEqual(run("compare players first blood").table, { kind: "player", cols: ["fb_rate", "fb_death_rate"], sort: "fb_rate" });
+  assert.deepEqual(run("ban rate table").table, { kind: "hero", cols: ["ban_rate", "bans"], sort: "ban_rate" });
+  assert.equal(run("player table").table.kind, "player");
+  assert.equal(run("team table").table.kind, "team");
+  assert.equal(run("radiant win rate").table, null); // a card, with an All teams scope instead
+  assert.equal(run("compare No Immortals radiant").table, null); // one team: the direct link
+});
+
+test("cards offer every kind the topic has a table for", () => {
+  assert.deepEqual(run("kda").cards[0].scopes, ["players", "heroes", "player", "hero"]);
 });
