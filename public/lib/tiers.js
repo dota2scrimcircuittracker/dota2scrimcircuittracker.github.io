@@ -71,27 +71,27 @@ export const SURVIVAL = { deaths: -40, dead: -35, tanked: 25 };
 
 // metric -> short label and definition (the info bubbles and "How it's scored" use these).
 export const METRICS = {
-  farm: { label: "Farm share", def: "Share of the team's gold: the player's GPM over the team's total GPM. A share, so long games don't inflate it." },
-  gpm: { label: "GPM", def: "Gold per minute, compared with what the same position gets in a game that long (GPM climbs as games go on)." },
-  nw: { label: "Net worth", def: "Net worth at the end of the game, compared with what the same position has in a game that long, so a long game doesn't inflate it." },
+  farm: { label: "Farm share", def: "The player's share of the team's gold (their GPM over the team's total)." },
+  gpm: { label: "GPM", def: "Gold per minute, against what the same position gets in a game that long." },
+  nw: { label: "Net worth", def: "Net worth at the end of the game, against what the same position has in a game that long." },
   dmg: { label: "Damage share", def: "Share of the team's hero damage." },
   tower: { label: "Building share", def: "Share of the team's damage to towers, barracks and the Ancient." },
-  xp: { label: "XP share", def: "Share of the team's experience: the player's XPM over the team's total." },
+  xp: { label: "XP share", def: "The player's share of the team's experience." },
   kills: { label: "Kill share", def: "Share of the team's kills the player got the last hit on." },
   assists: { label: "Assist share", def: "Share of the team's kills the player assisted. Kill share + assist share = kill participation." },
-  lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over who they laned against, from the replay's lanes. Cores: against the enemy core(s) in their lane. Supports: their whole lane against the enemy's. Jungling: no lane result." },
-  lane: { label: "Laning", def: "Laning efficiency: gold earned in the first 10 minutes as a % of the most a lane can give (OpenDota's lane efficiency)." },
-  stuns: { label: "Stun time", def: "Seconds of disable dealt to enemy heroes per minute (OpenDota's stun figure)." },
-  vision: { label: "New vision", def: "Share of the map outside their own base that their observer wards were the first on the team to light, averaged over the game. Each ward sees what it really could past trees and cliffs; ground a teammate's ward already showed, or the player's own base, earns nothing. Games from before the patch's map was added have no number." },
+  lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over their lane opponents. Cores: against the enemy core(s) in their lane. Supports: their whole lane against the enemy's. Junglers have none." },
+  lane: { label: "Laning", def: "Gold earned in the first 10 minutes as a % of the most a lane can give." },
+  stuns: { label: "Stun time", def: "Seconds of disable on enemy heroes per minute." },
+  vision: { label: "New vision", def: "Share of the map outside their base that their observer wards lit up first on the team, averaged over the game. Trees and cliffs block wards; ground a teammate already showed doesn't count. Older games have no number." },
   dewards: { label: "Dewards", def: "Enemy wards killed per 10 minutes; a sentry counts half an observer." },
   sentries: { label: "Sentries", def: "Sentry wards placed per 10 minutes." },
   dust: { label: "Dust", def: "Dust of Appearance used per 10 minutes." },
   smokes: { label: "Smokes", def: "Smokes of Deceit used per 10 minutes." },
-  stacks: { label: "Stacks", def: "Neutral camps stacked per game, compared with what the position stacks in a game that long. Stacking is early-game work, so a per-minute rate would punish long games." },
+  stacks: { label: "Stacks", def: "Neutral camps stacked per game, against what the position stacks in a game that long." },
   heal: { label: "Healing", def: "Healing done to allied heroes per minute." },
   deaths: { label: "Deaths", def: "Deaths per 10 minutes. Fewer is better." },
-  dead: { label: "Time dead", def: "Share of the game spent dead. Fewer is better: a dead core isn't farming either." },
-  tanked: { label: "Damage per life", def: "Hero damage taken for each death (damage taken ÷ (deaths + 1)): soaking a lot of damage without dying is good." },
+  dead: { label: "Time dead", def: "Share of the game spent dead. Lower is better." },
+  tanked: { label: "Damage per life", def: "Hero damage taken per death (damage taken ÷ (deaths + 1)). Higher is better." },
 };
 
 // Stats compared with the position's line fit on game length instead of a flat average.
