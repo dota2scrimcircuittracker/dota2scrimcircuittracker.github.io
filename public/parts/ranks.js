@@ -129,7 +129,7 @@ export function statRanksHtml(src, key, rows, overall, opt = PLAYER_RANKS) {
       <div><b class="sr-sum-top">${tops}</b><small>top 3 in ${league}</small></div>
       <div><b class="sr-sum-bottom">${bottoms}</b><small>bottom 3 in ${league}</small></div>
       ${src.ad2l ? `<div><b class="sr-sum-ov">${overall ? ovTops : "…"}</b><small>top 3 across all ${LEAGUE_COUNT} leagues</small></div>` : ""}
-    </div>` : `<p class="table-note wm-intro">Ranks need ${floorOf(src)}+ ${opt.unit}; ${esc(me.name)} has ${me.games}. The numbers so far:</p>`}
+    </div>` : `<p class="table-note keep wm-intro">Ranks need ${floorOf(src)}+ ${opt.unit}; ${esc(me.name)} has ${me.games}. The numbers so far:</p>`}
     <div class="ld-lists">${bands}</div>`;
 }
 
@@ -186,7 +186,7 @@ export function heroPlayersHtml(src, hero, list, lines, overallList) {
   return `<h2 id="hero-players">Players on it${info("hero_rating")}</h2>
     <p class="table-note wm-intro">Hero rating: the tier rating from their games on ${esc(hero)} only. Place: among the ${list.length} player${list.length === 1 ? "" : "s"} in ${league} who played it${src.ad2l ? `, and across all ${LEAGUE_COUNT} leagues` : ""}. One or two games is a small sample.</p>
     <div class="hp-grid reveal">${list.slice(0, HERO_PLAYERS_SHOWN).map(card).join("")}</div>
-    ${more > 0 ? `<p class="table-note">${more} more in the Players table below.</p>` : ""}`;
+    ${more > 0 ? `<p class="table-note keep">${more} more in the Players table below.</p>` : ""}`;
 }
 
 // The last league night (Thursday), per the league's rhythm: predictions count pubs since
@@ -199,7 +199,7 @@ export function pubSection(src, accountId) {
   if (!d?.pubs || !accountId) return "";
   const games = pubsSince(d, accountId, pubStart(d));
   const ps = pubSummary(games);
-  if (!ps) return `<h2>Recent pubs</h2><p class="table-note wm-intro">No public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), or their match history is private.</p>`;
+  if (!ps) return `<h2>Recent pubs</h2><p class="table-note keep wm-intro">No public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), or their match history is private.</p>`;
   const ranked = games.filter((g) => g.ranked).length;
   const good = (wr) => (wr >= 0.5 ? "w" : "l");
   // Form: every game oldest -> newest, the hero with a win/loss bar under it.
@@ -253,7 +253,7 @@ export function heroPubSection(src, hero, known) {
   if (!d?.pubs) return "";
   const roster = d.teams.flatMap((t) => t.players.filter((p) => p.account_id).map((p) => ({ ...p, team: t.name })));
   const who = roster.map((p) => ({ p, games: pubsSince(d, p.account_id, pubStart(d)).filter((g) => g.hero === hero) })).filter((x) => x.games.length);
-  if (!who.length) return `<h2>Recent pubs</h2><p class="table-note wm-intro">Nobody in ${esc(leagueShort(src))} played ${esc(hero)} in public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), among players whose match history is public.</p>`;
+  if (!who.length) return `<h2>Recent pubs</h2><p class="table-note keep wm-intro">Nobody in ${esc(leagueShort(src))} played ${esc(hero)} in public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), among players whose match history is public.</p>`;
   const ps = pubSummary(who.flatMap((x) => x.games));
   const good = (wr) => (wr >= 0.5 ? "w" : "l");
   const rows = who.map((x) => ({ ...x, s: pubSummary(x.games) })).sort((a, b) => b.s.games - a.s.games || b.s.wins - a.s.wins);

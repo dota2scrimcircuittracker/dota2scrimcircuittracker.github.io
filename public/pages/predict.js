@@ -24,7 +24,6 @@ const nameBarHtml = (name) => `
       <div class="pred-name-form"${name ? " hidden" : ""}>
         <label>Your name <input id="pred-name" maxlength="24" value="${esc(name)}" placeholder="Type your name" autocomplete="nickname"></label>
         <button class="primary" id="pred-name-save" type="button">Save</button>
-        <span class="muted">Shown on the leaderboard. Use the same name each week.</span>
       </div>
     </div>`;
 function wireNameBar(rerender) {
@@ -129,7 +128,7 @@ export async function renderPredict(src) {
           <button type="button" data-g="2" aria-pressed="false">G2</button>
         </div>
       </div>
-      <p class="table-note pd-g2note" hidden>Game 2 assumes ${esc(fav.name)}, the favourite, won game 1 with this game 1 draft.</p>
+      <p class="table-note keep pd-g2note" hidden>Game 2 assumes ${esc(fav.name)}, the favourite, won game 1 with this game 1 draft.</p>
       ${drafts.map(([k, st], i) => `<div class="pd" data-for="${k}"${i ? " hidden" : ""}>${draftHtml(st, home, away)}</div>`).join("")}
       <p class="table-note">All 24 steps in S48 Captains Mode order: the first-pick team bans 3, 2 and 2 across the phases, the other team 4, 1 and 2. Bans weigh how often and how recently the team bans each hero in that phase, what the opponent's remaining players have been playing (recent league games most, plus pubs since ${sinceLabel(d)}), and the division's usual bans.</p>
       <div class="dr-sub">Player pools${info("player_pools")}</div>
@@ -220,7 +219,7 @@ export async function renderPredict(src) {
     <h2>Leaderboard</h2>
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks.</p>` : `<div class="panel empty">No picks yet.</div>`}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}
-    <details class="how"><summary>How the model works</summary>
+    <details class="how explain"><summary>How the model works</summary>
       <p>Each team has a strength rating fitted to every series result so far. With only ${playedNights.length} weeks played, results alone are noisy, so each rating is pulled toward a starting point set by the average PlayOn medal of the team's top three players. The pull and the medal weight were tuned by replaying all seven divisions, predicting each week from the weeks before it. So far medals have predicted results far better than past results, so the pull is strong.</p>
       <p>The model's call takes the favourite 2–0, even when 1–1 is the likeliest single result. It only calls 1–1 when per-game odds are within ${TIE_EDGE * 100} points of 50%. The odds are more cautious: past results haven't predicted the next week much better than a coin flip, so most series look close. Replayed over the season, its calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>The two games in a series aren't independent: the better team on the night tends to win both, and only about a third of series have ended 1–1. So an even match is 33% / 33% / 33%, not 25% / 50% / 25%. Current settings: pull ${params.lambda}, medal weight ${params.beta}.</p>
@@ -230,7 +229,7 @@ export async function renderPredict(src) {
     ["bracket", "Bracket", `<section class="po" id="po-bracket"></section>`],
     ["odds", "Seeding", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
   ], { store: "predictTab", label: "Predict sections" });
-  app.innerHTML = `${pageHead(kicker, "Predictions", `Call each series: 2–0 either way or a 1–1 split. One point per correct call. You can change a pick until the series starts.`)}
+  app.innerHTML = `${pageHead(kicker, "Predictions")}
     ${nameBarHtml(name)}
     ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
     <div id="pred-msg"></div>
@@ -428,7 +427,7 @@ export async function renderScrimPredict() {
 
   const start = new Date(now + 864e5);
   start.setMinutes(0, 0, 0);
-  app.innerHTML = `${pageHead(kicker, "Predictions", "Put an upcoming scrim on the schedule, call how it goes, and post the result from its card when it's played. One point per correct call; picks lock when the scrim starts.")}
+  app.innerHTML = `${pageHead(kicker, "Predictions")}
     ${nameBarHtml(name)}
     ${fixtures && preds ? "" : `<div class="notice err">Couldn't load the ${fixtures ? "" : "schedule and "}predictions from the database, so ${fixtures ? "picks and the leaderboard are" : "scheduled scrims, picks and the leaderboard are"} unavailable right now.</div>`}
     <div id="pred-msg"></div>
@@ -451,7 +450,7 @@ export async function renderScrimPredict() {
     <h2>Leaderboard</h2>
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / scrims called.</p>` : `<div class="panel empty">No scrims decided yet.</div>`}
     ${results ? `<h2>Results</h2><div class="table-wrap"><table><thead><tr><th scope="col" class="l">Date</th><th scope="col" class="l">Scrim</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${results}</tbody></table></div>` : ""}
-    <details class="how"><summary>How it works</summary>
+    <details class="how explain"><summary>How it works</summary>
       <p>Each team has a strength rating fitted to every scrim result on the site, private results included, and pulled toward even. In a Bo2 the better team on the night tends to win both, so an even Bo2 is 33% / 33% / 33%. A Bo3 treats each game separately: the card shows the favourite's likeliest score (always 2–0) and the odds of each score. With no games between the teams, the model calls a coin flip: 1–1 in a Bo2, Team A otherwise.</p>
       <p>A scrim is decided once all its games are in (Bo1, Bo2) or a team has two wins (Bo3). Until then it stays under Upcoming with the score so far. If the teams played under different names in game, the upload page offers the scheduled names in one click.</p>
     </details>`;

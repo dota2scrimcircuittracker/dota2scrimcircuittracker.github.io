@@ -68,7 +68,7 @@ export function visionMapHtml(m, { id = "vision-map" } = {}) {
       <span class="vm-phase"></span>
     </div>
     <div class="vm-range" hidden>${end("vm-from", r0, "From")}${end("vm-to", r1, "To")}<div class="vm-track">${cycle}</div></div>
-    <div class="wm-body"><div class="wm-map"></div><div class="wm-side"><p class="wm-note">Loading the map…</p></div></div>
+    <div class="wm-body"><div class="wm-map"></div><div class="wm-side"><p class="wm-note keep">Loading the map…</p></div></div>
   </figure>`;
 }
 
@@ -222,7 +222,7 @@ export function wireVisionMaps(root) {
     wireZoom(fig, { skip: ".ward, .vm-tower" });
     let map;
     try { map = await loadMap(mapDefAt(d.start)); }
-    catch (e) { fig.querySelector(".wm-side").innerHTML = `<p class="wm-note">Couldn't load the map (${attr(e.message)}).</p>`; return; }
+    catch (e) { fig.querySelector(".wm-side").innerHTML = `<p class="wm-note keep">Couldn't load the map (${attr(e.message)}).</p>`; return; }
     const b = gridBox(map.n), lit = fig.querySelector(".vm-lit");
     for (const [k, v] of Object.entries({ x: b.x, y: b.y, width: b.w, height: b.h })) lit.setAttribute(k, v);
     const slider = fig.querySelector(".vm-slider"), play = fig.querySelector(".vm-play");

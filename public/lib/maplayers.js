@@ -151,8 +151,8 @@ export function drawLayers(fig, from, to, base, { fade: fading = false } = {}) {
   const shownLayers = MAP_LAYERS.filter(([k]) => on.has(k) && !(OWN[base] ?? []).includes(k));
   if (!shownLayers.length) { note?.remove(); return; }
   if (!note) {
-    if (wrap) wrap.insertAdjacentHTML("beforeend", `<p class="wm-note ml-note"></p>`);
-    else map.insertAdjacentHTML("afterend", `<p class="wm-note ml-note"></p>`);
+    if (wrap) wrap.insertAdjacentHTML("beforeend", `<p class="wm-note keep ml-note"></p>`);
+    else map.insertAdjacentHTML("afterend", `<p class="wm-note keep ml-note"></p>`);
     note = fig.querySelector(".ml-note");
   }
   // The moment view asks for [t − 120, t + 1) so the slider's own second counts.

@@ -140,7 +140,7 @@ function cardHtml(spec, id) {
       <div class="dm-col"><div class="dm-h dm-h-chart"></div><div class="dt-chart"></div><div class="dt-side"></div></div>
     </div>
     <p class="wm-note dm-note"></p>
-    <details class="dm-how"><summary>Why the map only shows teamfight deaths</summary>
+    <details class="dm-how explain"><summary>Why the map only shows teamfight deaths</summary>
       <p>A Dota replay records where every hero is all game, but this site doesn't read replays itself: it uses
         OpenDota's parse of the replay, and that parse keeps less.</p>
       <ul>

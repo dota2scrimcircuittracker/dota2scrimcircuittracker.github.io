@@ -78,11 +78,10 @@ function matchesHtml(src, d, ratings) {
       ${b.list.map((s) => row(s, night)).join("")}
     </section>`;
   }).join("");
-  return `<p class="table-note mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
+  return `<p class="table-note keep mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
       PlayOn posts pairings about a week ahead.
       ${next ? `<button type="button" class="week-btn mx-jump">Jump to the next week ↓</button>` : ""}</p>
-    <div class="mx-grid${split ? " split" : ""} reveal">${html}</div>
-    <p class="table-note">Hover an upcoming series for its odds, as on ${src.all ? "Predict" : `<a href="${src.root}/predict">Predict</a>`}. G1, G2 open each ticketed game.</p>`;
+    <div class="mx-grid${split ? " split" : ""} reveal">${html}</div>`;
 }
 
 // Crosstable: every team against every other, like a Liquipedia group table. Teams run in

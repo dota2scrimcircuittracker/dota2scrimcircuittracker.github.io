@@ -87,7 +87,7 @@ export function gameCombatHtml(m, src) {
     <div class="table-wrap gm-board bn-board"><table><thead><tr><th scope="col" class="l">Player</th>${BENCH.map((b) => `<th scope="col">${b}<small>percentile</small></th>`).join("")}</tr></thead>
     <tbody>${benchRows("a")}${benchRows("b")}</tbody></table></div>` : "";
   const pz = pausesOf(m);
-  const pauseNote = pz?.n ? `<p class="table-note">Paused ${pz.n} time${pz.n === 1 ? "" : "s"}, ${dur(pz.total)} total.</p>` : "";
+  const pauseNote = pz?.n ? `<p class="table-note keep">Paused ${pz.n} time${pz.n === 1 ? "" : "s"}, ${dur(pz.total)} total.</p>` : "";
   return `${chart ? `<h3 class="gm-h3">Kill streaks${info("streak_chart")}</h3>${chart}` : ""}
     <h3 class="gm-h3">Combat</h3>
     <div class="table-wrap gm-board"><table><thead><tr>${head}</tr></thead><tbody>
