@@ -232,7 +232,8 @@ export async function renderStandings(src) {
 
   const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const tabs = playerTabs(pageTabs(STANDINGS_TABS, src, [
-    ["table", `<div id="t" class="reveal"></div>
+    ["table", `${cards.length ? `<div class="cards reveal st-cards">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>` : ""}
+      <div id="t" class="reveal"></div>
       <p class="table-note">${src.all ? "All divisions in one table, sorted by game wins. Teams only play within their division, so compare across divisions with care. Official standings are on PlayOn."
         : `Sorted by game wins; official standings and tiebreakers live on
         <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.`}</p>`],
@@ -242,7 +243,6 @@ export async function renderStandings(src) {
   ]), { store: "standingsTab", label: "Standings sections" });
   app.innerHTML = `
     ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`)}
-    ${cards.length ? `<div class="cards reveal st-cards">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>` : ""}
     <div class="st-tabs">${tabs.bar}</div>
     ${tabs.panels}`;
 
