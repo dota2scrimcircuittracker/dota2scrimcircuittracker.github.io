@@ -242,6 +242,18 @@ test("possibilities list the week 8 tiebreakers and 1v1 mids that can happen, an
   assert.ok(evs.some((e) => e.kind === "mid"));
 });
 
+test("a 1v1 mid decides 1st or a line; any other seed order level all the way down is a coin flip", () => {
+  // 3–4 and 1–2 both level on everything, 1–2 on more wins: a 1v1 for 1st, a coin flip for 3rd.
+  const ids = [1, 2, 3, 4];
+  const series = [S(1, 3, 2, 0), S(2, 4, 2, 0)];
+  const t = resolveTable(ids, series, rate(ids), []);
+  assert.deepEqual(t.mids.map((m) => [m.purpose, m.places]), [["seed", [1, 2]]]);
+  assert.deepEqual(t.settled.map((x) => [x.place, x.by]), [[1, "1v1 mid"], [3, "coin flip"]]);
+  // A line after 3rd splits 3 and 4: a week 8 tiebreaker, whose SoS order takes the 1v1.
+  const line = resolveTable(ids, series, rate(ids), [{ after: 3, above: "upper", below: "lower" }]);
+  assert.ok(line.mids.some((m) => m.purpose === "week8" && m.places[0] === 3));
+});
+
 test("blank bracket: only week 1 is set until picks fill it in", () => {
   const seeds = [8, 7, 6, 5, 4, 3, 2, 1];
   let b = bracket(seeds, rate(seeds), () => undefined, { blank: true });

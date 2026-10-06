@@ -10,7 +10,8 @@
 //    by the table in tiebreakFormat below, with the tied teams ranked by SoS (strength of
 //    schedule: total wins of the opponents played), then head to head, then record against the
 //    highest common opponent, then a 1v1 solo mid. A tie that only decides seed order isn't
-//    played: SoS, head to head, highest common opponent, then the 1v1 mid for the higher seed.
+//    played: SoS, head to head, highest common opponent, then a 1v1 mid for 1st and a coin flip
+//    for any other seed (the league admins, 2026-10-06).
 // Not in the rules, taken from S47's brackets on PlayOn: lower round 1 is 5 v 8 and 6 v 7; the
 // loser of seed 1's match meets the 6 v 7 winner, the other upper loser the 5 v 8 winner.
 // Smaller divisions (fewer than 8 teams) put everyone in: 4 teams all start upper (1 v 4,
@@ -204,8 +205,8 @@ function comparer(series, wins, sos, ratings) {
 export function resolveTable(ids, series, ratings, lines, choose) {
   const wins = gameWins(series), sos = new Map(strengthOfSchedule(ids, series).map((r) => [r.id, r.sos ?? 0]));
   const tie = comparer(series, wins, sos, ratings);
-  // Teams level on SoS, head to head and the highest common opponent play a 1v1 mid for the
-  // higher seed. `choose` may settle it ("mid:" keys, b null, with the chance as a fifth
+  // Teams level on SoS, head to head and the highest common opponent play a 1v1 mid when it
+  // decides 1st or a side of a line (upper/lower, playoffs/out); other seed order is a coin flip. `choose` may settle it ("mid:" keys, b null, with the chance as a fifth
   // argument: Possibilities counts every order, each the same); left alone, the model's stronger
   // team goes first. One result per group of teams, whether it ranks them for week 8 or seeds them.
   const midOrder = new Map(), midsFound = [];
@@ -273,16 +274,20 @@ export function resolveTable(ids, series, ratings, lines, choose) {
   }
   segs = segs.map(mids);
   const final = segs.flat();
-  // The 1v1s that set seed order, with the places they decide between.
+  // A seed tie level all the way down is a 1v1 mid only for 1st; any other seed order goes to
+  // a coin flip (both counted 50/50 by Possibilities' `choose`). Line ties' 1v1s are above.
   for (const seg of segs) for (const [k, e] of midRuns(seg)) {
     const from = final.indexOf(seg[k]) + 1;
-    midsFound.push({ teams: seg.slice(k, e).sort(byId), purpose: "seed", places: [from, from + e - k - 1], why: tie(seg[k], seg[k + 1]).why });
+    if (from === 1) midsFound.push({ teams: seg.slice(k, e).sort(byId), purpose: "seed", places: [from, from + e - k - 1], why: tie(seg[k], seg[k + 1]).why });
   }
   // Seed-order ties: neighbours on the same wins whose order no tiebreaker match decided.
   const settled = [];
   for (const seg of segs) for (let k = 1; k < seg.length; k++) {
     const c = tie(seg[k - 1], seg[k]);
-    settled.push({ above: seg[k - 1], below: seg[k], place: final.indexOf(seg[k - 1]) + 1, ...c, ...(c.by === "1v1 mid" && choose && { detail: "1v1 mid" }) });
+    const place = final.indexOf(seg[k - 1]) + 1;
+    const last = c.by === "1v1 mid" && place !== 1 ? { by: "coin flip", detail: "coin flip (model: the stronger team)" } : {};
+    const by = last.by ?? c.by;
+    settled.push({ above: seg[k - 1], below: seg[k], place, ...c, ...last, ...((by === "1v1 mid" || by === "coin flip") && choose && { detail: by }) });
   }
   return {
     rows: final.map((id, k) => ({ id, place: k + 1, wins: w(id), sos: sos.get(id) ?? 0, played: series.filter((s) => isPlayed(s) && (s.home === id || s.away === id)).length })),

@@ -105,7 +105,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       }).join("");
       const lastSeed = split ? 8 : Math.min(8, dv.rows.length);
       const seedTies = dv.settled.filter((x) => x.place < lastSeed);
-      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, 1v1 mid):
+      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, then a 1v1 mid for 1st or a coin flip for any other seed):
         ${seedTies.map((x) => `${ord(x.place)}: ${esc(name[x.above])} ahead of ${esc(name[x.below])} on ${esc(x.detail)}`).join(" · ")}.</p>` : "";
 
       // Table on the left, week 8 on the right (stacked on narrow screens).
@@ -196,8 +196,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         ${TB_CASES.map(([, text]) => `<li>${text}.</li>`).join("")}
       </ul>
       <p>A case the rules don't list (say, 1 slot for 5+ teams) uses the nearest one and is flagged on the Bracket tab. A tie in SoS goes to head to head, then record against the highest common opponent, then a 1v1 solo mid between one player nominated by each team.</p>
-      <p>A tie that only decides <b>seed order</b> isn't played off: SoS, then head to head, then record against the highest common opponent, then a 1v1 solo mid for the higher seed.</p>
-      <p><b>On this page.</b> The Bracket tab shows one outcome: the model's winner of each week 8 game, and the stronger team wherever it comes down to a 1v1 mid. The Seeding tab counts every outcome: each week 8 game both ways (evenly, or by the model's odds) and each 1v1 mid as 50/50, since the model rates teams, not mid players. With three or more teams level, every order counts equally.</p>
+      <p>A tie that only decides <b>seed order</b> isn't played off: SoS, then head to head, then record against the highest common opponent. If it's still level, a 1v1 solo mid decides 1st; any other seed is a coin flip.</p>
+      <p><b>On this page.</b> The Bracket tab shows one outcome: the model's winner of each week 8 game, and the stronger team wherever it comes down to a 1v1 mid. The Seeding tab counts every outcome: each week 8 game both ways (evenly, or by the model's odds) and each 1v1 mid and coin flip as 50/50, since the model rates teams, not mid players. With three or more teams level, every order counts equally.</p>
       <p><b>Scores.</b> Each game uses the model's one-game odds, independently. The score shown is the winner's likeliest: always 2–0 in a Bo3, since 2–1 needs the favourite to drop a game, so check the odds below it for a close one. In a Bo5 it's 3–1, or 3–0 if the favourite wins more than 2 games in 3.</p>
     </details>`;
 
@@ -290,7 +290,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     };
 
     return `${weightBar()}${lead}${P.divisions.map(divHtml).join("")}
-      <p class="table-note">Ties on wins: across a dividing line, a week 8 tiebreaker (counted both ways); for seed order, SoS, head to head, record against the highest common opponent, then a 1v1 mid (counted 50/50).</p>
+      <p class="table-note">Ties on wins: across a dividing line, a week 8 tiebreaker (counted both ways); for seed order, SoS, head to head, record against the highest common opponent, then a 1v1 mid for 1st or a coin flip for other seeds (both counted 50/50).</p>
       ${howHtml}`;
   };
 
@@ -318,11 +318,11 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       `<th scope="col" class="l">Line</th><th scope="col" class="l">Teams level</th><th scope="col">Wins</th><th scope="col">Seeds</th><th scope="col" class="l">Format</th>`,
       (e) => `<td class="l">${lineName(e.line)}</td><td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="num">${e.places[0]}–${e.places[1]}</td><td class="l name">${esc(tbCase(e.slots, e.teams.length))}</td>`);
     const mid = section("mid", "Possible 1v1 mids",
-      "Teams level on wins, SoS, head to head and record against the highest common opponent play a 1v1 solo mid, counted here as 50/50.",
+      "A 1v1 solo mid only decides 1st place or a side of a dividing line (upper/lower bracket, in or out of the playoffs). Teams play one when they're level on wins, SoS, head to head and record against the highest common opponent. Counted here as 50/50.",
       "No result left can bring two teams level all the way to a 1v1.",
       `<th scope="col" class="l">Teams</th><th scope="col">Wins</th><th scope="col" class="l">Still level on</th><th scope="col" class="l">Decides</th>`,
       (e) => `<td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="l name po-why">${whyLevel(e)}</td><td class="l name">${e.purpose === "seed"
-        ? (e.teams.length === 2 ? `Which of them is seed ${e.places[0]} and which ${e.places[1]}` : `Their order in seeds ${e.places[0]}–${e.places[1]}`)
+        ? "Who's seed 1"
         : `Their order in the ${lineName(e.line)} tiebreaker for seeds ${e.places[0]}–${e.places[1]}`}</td>`);
     return `<div class="po-events">${tb}${mid}<p class="table-note">A 1v1 needs the teams level at every step: wins, SoS, head to head and record against the highest common opponent. "Still level on" is the likeliest way there; the numbers can differ in other ways.</p>${dv.exact ? "" : `<p class="table-note">These chances are simulated. What leads to each shows once every outcome can be listed.</p>`}</div>`;
   };
