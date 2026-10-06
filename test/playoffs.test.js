@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, bestOfP, bestOfScores, likelyScore } from "../public/lib/playoffs.js";
+import { TBD, tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, possibilities, pathsTo, bestOfP, bestOfScores, likelyScore } from "../public/lib/playoffs.js";
 
 // Higher id = stronger, so the model's winner is always the higher id.
 const rate = (ids) => new Map(ids.map((id) => [id, id / 10]));
@@ -110,12 +110,24 @@ test("projectSeries calls unplayed series and pairs the weeks PlayOn hasn't post
   assert.deepEqual([withBye[0].home_score, withBye[0].away_score], [0, 1]);
 });
 
-test("playoffPicture: split leagues get tables per division and no bracket", () => {
-  const teams = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((id) => ({ id, name: `T${id}`, players: [], division: id % 2 ? "A" : "B" }));
+test("playoffPicture: Heroic/Aegis seeds both divisions into an Aegis and a Heroic bracket", () => {
+  const teams = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, name: `T${i + 1}`, players: [], division: i % 2 ? "B" : "A" }));
   const p = playoffPicture(teams, [], rate(teams.map((t) => t.id)), { split: true });
   assert.deepEqual(p.divisions.map((d) => d.division), ["A", "B"]);
   assert.ok(p.divisions.every((d) => d.bracket === null));
-  assert.equal(p.divisions[0].lines[0].above, "Aegis playoffs");
+  assert.deepEqual(p.divisions[0].lines.map((l) => [l.after, l.above]), [[2, "Aegis upper bracket"], [4, "Aegis lower bracket"], [6, "Heroic upper bracket"], [8, "Heroic lower bracket"]]);
+  const [aegis, heroic] = p.brackets;
+  assert.deepEqual([aegis.name, heroic.name], ["Aegis", "Heroic"]);
+  const row = (div, place) => p.divisions[div].rows[place - 1].id;
+  const m = Object.fromEntries(aegis.bracket.matches.map((x) => [x.id, x]));
+  // Upper: A1 v B2, B1 v A2. Lower: A3 v B4, B3 v A4. No seed-1 choice.
+  assert.deepEqual([m.u1.a, m.u1.b], [row(0, 1), row(1, 2)]); assert.deepEqual([m.u2.a, m.u2.b], [row(1, 1), row(0, 2)]);
+  assert.deepEqual([m.l1.a, m.l1.b], [row(0, 3), row(1, 4)]); assert.deepEqual([m.l2.a, m.l2.b], [row(1, 3), row(0, 4)]);
+  assert.ok(aegis.bracket.fixed);
+  assert.equal(aegis.labels.get(row(1, 2)), "B2");
+  const h = heroic.bracket.matches.find((x) => x.id === "u1");
+  assert.deepEqual([h.a, h.b], [row(0, 5), row(1, 6)]);
+  assert.equal(heroic.labels.get(row(0, 8)), "A8");
 });
 
 test("best-of odds", () => {
@@ -151,4 +163,48 @@ test("bracket matches carry the model's score from the winner's side", () => {
     assert.ok(m.score[0] > m.score[1]);
     assert.equal(m.score[0], m.bestOf === 5 ? 3 : 2);
   }
+});
+
+test("a viewer's picks override the model: group results, tiebreakers, seed 1's choice, bracket", () => {
+  const seeds = [8, 7, 6, 5, 4, 3, 2, 1];
+  const b = bracket(seeds, rate(seeds), (k) => ({ pick: 3, "u1:6-8": 6 })[k]);
+  const m = Object.fromEntries(b.matches.map((x) => [x.id, x]));
+  assert.equal(b.pick, 3); assert.equal(b.modelPick, 4);
+  assert.deepEqual([m.u1.a, m.u1.b, m.u1.winner], [8, 6, 6]); assert.ok(m.u1.mine && !m.u2.mine);
+  // A pick naming a team not in the match is ignored.
+  assert.equal(bracket(seeds, rate(seeds), (k) => (k.startsWith("u2:") ? 99 : undefined)).matches.find((x) => x.id === "u2").winner, 7);
+  const teams = [1, 2].map((id) => ({ id, name: `T${id}`, players: [] }));
+  const out = projectSeries(teams, [{ id: 5, ...S(1, 2, null, null) }], rate([1, 2]), () => "home");
+  assert.deepEqual([out[0].home_score, out[0].away_score, out[0].mine], [2, 0, true]);
+});
+
+test("possibilities: every outcome counted, shares add up, and paths say what it takes", () => {
+  // Four teams level after six weeks of 1–1s; week 7 (1 v 3, 2 v 4) still to play. 9 outcomes.
+  const teams = [1, 2, 3, 4].map((id) => ({ id, name: `T${id}`, players: [] }));
+  const series = [];
+  for (let w = 0; w < 6; w++) series.push({ id: 10 + w * 2, ...S(1, 2, 1, 1) }, { id: 11 + w * 2, ...S(3, 4, 1, 1) });
+  series.push({ id: 3, ...S(1, 3, null, null) }, { id: 4, ...S(2, 4, null, null) });
+  const p = possibilities(teams, series, rate([1, 2, 3, 4]), { maxExact: 9 });
+  assert.ok(p.exact); assert.equal(p.divisions[0].count, 9);
+  const dv = p.divisions[0];
+  for (const arr of dv.dist.values()) assert.ok(Math.abs(arr.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+  for (let k = 0; k < 4; k++) assert.ok(Math.abs([...dv.dist.values()].reduce((a, arr) => a + arr[k], 0) - 1) < 1e-9);
+  // Team 1 can only top the table by not losing to 3; the paths' shares add to its chance.
+  const paths = pathsTo(dv, 1, 1, dv.total);
+  assert.ok(paths.every((c) => (c.masks[0] & 4) === 0));
+  assert.ok(Math.abs(paths.reduce((a, c) => a + c.p, 0) - dv.dist.get(1)[0]) < 1e-9);
+});
+
+test("blank bracket: only week 1 is set until picks fill it in", () => {
+  const seeds = [8, 7, 6, 5, 4, 3, 2, 1];
+  let b = bracket(seeds, rate(seeds), () => undefined, { blank: true });
+  let m = Object.fromEntries(b.matches.map((x) => [x.id, x]));
+  assert.ok(["u1", "u2", "l1", "l2"].every((k) => m[k].open && m[k].winner === TBD && m[k].a !== TBD));
+  assert.ok(m.uf.pending && m.l3.pending && m.gf.pending);
+  assert.equal(b.champion, TBD);
+  // Picking both upper round 1 winners sets the upper final, which is open but not decided.
+  b = bracket(seeds, rate(seeds), (k) => ({ "u1:5-8": 5, "u2:6-7": 7 })[k], { blank: true });
+  m = Object.fromEntries(b.matches.map((x) => [x.id, x]));
+  assert.deepEqual([m.uf.a, m.uf.b, m.uf.winner], [5, 7, TBD]);
+  assert.ok(m.uf.open && m.l3.pending); // l3 still waits on the 6 v 7 lower match
 });

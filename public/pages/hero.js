@@ -14,6 +14,7 @@ import { itemIcon, itemName } from "../lib/items.js";
 import { skillGrid, heroPairs, heroNeutrals } from "../lib/combat.js";
 import { skillGridHtml } from "../lib/combat-charts.js";
 import { app, esc, pageHead, crumbs, pct, fmt, teamLink, portrait, playerTabs, goldCurveSection, mapCard, wardView, wirePlayerTabs, wireMapCards, sortableTable, playerLink, when, heroLink } from "../core.js";
+import { pageTabs, HERO_TABS } from "../lib/pagetabs.js";
 import { gameAnalysisHtml, wireGameAnalysis } from "../parts/analysis.js";
 import { combatTabHtml, detailsFor, loadAbilities, fbOf, fbCell, fbRole } from "../parts/combat.js";
 import { heroPhaseHtml, draftSlotHtml, rateOf } from "../parts/draft.js";
@@ -88,32 +89,32 @@ export async function renderHero(src, slug) {
   ] : [];
   const known = new Set(statRows(detailed).map((r) => r.key));
 
-  const tabs = playerTabs([
-    ["stats", "Stats", `<div class="cards player-cards reveal" style="--cols:${Math.ceil((cards.length + best.length) / 2)}">${cards.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${t}</div></div>`).join("")}${best.join("")}</div>
+  const tabs = playerTabs(pageTabs(HERO_TABS, src, [
+    ["stats", `<div class="cards player-cards reveal" style="--cols:${Math.ceil((cards.length + best.length) / 2)}">${cards.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${t}</div></div>`).join("")}${best.join("")}</div>
       ${hl.length ? `<div class="cards reveal">${hl.map(([k, v, t], i) => `<div class="card hl" style="--i:${i}"><div class="k">${k}</div><div class="v small">${v}</div><div class="s">${t}</div></div>`).join("")}</div>` : ""}
       <div id="hero-ranks-box" data-hero="${esc(hero)}">${statRanksHtml(src, hkey, rows, null, HERO_RANKS)}</div>
       ${goldCurveSection(matches, byHero(hero), hero)}`],
-    ["players", "Players", `<div id="hero-players-box" data-hero="${esc(hero)}">${heroPlayersHtml(src, hero, rated, lines, null)}</div>
+    ["players", `<div id="hero-players-box" data-hero="${esc(hero)}">${heroPlayersHtml(src, hero, rated, lines, null)}</div>
       ${src.ad2l ? heroPubSection(src, hero, known) : ""}
       ${h.players.length ? `<h2>Every player</h2><div id="players"></div>` : ""}
       <h2>Teams</h2>
       <div id="teams"></div>
       <p class="table-note">Win % is that team's record when they picked ${esc(hero)}.${S.drafted ? " Bans come from Captains Mode drafts; “Banned vs them” = opponents banned it against that team." : ""}</p>`],
-    ["draft", "Draft", `${(() => { const da = draftAnalysis(matches); return heroPhaseHtml(da.heroes.find((x) => x.hero === hero), da.games); })()}
+    ["draft", `${(() => { const da = draftAnalysis(matches); return heroPhaseHtml(da.heroes.find((x) => x.hero === hero), da.games); })()}
       ${draftSlotHtml(draftSlotRecord(matches, byHero(hero)), src, hero, rateOf(h.games, gameRated))}`],
-    ["matchups", "Matchups", heroMatchupsHtml(src, matches, hero)],
-    ["combat", "Combat", combatTabHtml(src, matches, byHero(hero), hero, { hero: true })],
-    ["lanes", "Laning", lanesPageHtml(src, matches, byHero(hero), laneCuts_, { name: hero, hero: true })],
-    ["items", "Items", heroItemsHtml(src, h.games, hero) + heroNeutralsHtml(src, matches, hero) + (src.ad2l && h.games.length ? `<div id="sg-box" data-hero="${esc(hero)}"></div>` : "")],
-    ["map", "Map", mapCard([
+    ["matchups", heroMatchupsHtml(src, matches, hero)],
+    ["combat", combatTabHtml(src, matches, byHero(hero), hero, { hero: true })],
+    ["lanes", lanesPageHtml(src, matches, byHero(hero), laneCuts_, { name: hero, hero: true })],
+    ["items", heroItemsHtml(src, h.games, hero) + heroNeutralsHtml(src, matches, hero) + (src.ad2l && h.games.length ? `<div id="sg-box" data-hero="${esc(hero)}"></div>` : "")],
+    ["map", mapCard([
       ["wards", "Wards", "ward_map", wardView(collectWards(matches, byHero(hero)), hero)],
       ["deaths", "Deaths", "hero_deaths", playerDeathsHtml(matches, byHero(hero), { id: "hero-deaths", name: hero })],
       ["towers", "Towers", "hero_towers", towerSummaryHtml(matches, byHero(hero), { id: "hero-towers", name: hero })],
     ])],
-    ["games", "Games", h.games.length ? `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
+    ["games", h.games.length ? `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
       <div id="game-box" data-hero="${esc(hero)}">${gameAnalysisHtml(src, "hero", h.games, 0, gameRated)}</div>
       <h2>Every game</h2><div id="t"></div>` : ""],
-  ], { store: "heroTab", label: "Hero sections" });
+  ]), { store: "heroTab", label: "Hero sections" });
 
   app.innerHTML = `${header(tabs.bar)}${tabs.panels}`;
   wirePlayerTabs();

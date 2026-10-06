@@ -64,6 +64,15 @@ export function teamLink(src, name, id = null, nested = false) {
     ? `<span class="team-link" role="link" tabindex="0" data-href="${href}">${esc(name)}</span>`
     : `<a class="team-link" href="${href}">${esc(name)}</a>`;
 }
+// A player's pages elsewhere: the same /players/<account ID> path on Stratz, OpenDota and
+// Dotabuff, and their PlayOn page when the roster gave its id. "" without a numeric account ID.
+export function profileLinks(accountId, playonId = null, sep = " · ") {
+  if (!/^\d+$/.test(String(accountId ?? ""))) return "";
+  const out = [["Stratz", "https://stratz.com"], ["OpenDota", "https://www.opendota.com"], ["Dotabuff", "https://www.dotabuff.com"]]
+    .map(([name, base]) => [name, `${base}/players/${accountId}`]);
+  if (playonId) out.push(["PlayOn", `https://dota.playon.gg/players/${playonId}`]);
+  return out.map(([name, href]) => `<a href="${href}" target="_blank" rel="noopener">${name} ↗</a>`).join(sep);
+}
 // A player name that opens their page (same nested rule as teamLink).
 export const playerHref = (src, key) => `${src.ad2l ? `${src.root}/player/` : "#/player/"}${encodeURIComponent(key)}`;
 export function playerLink(src, p, nested = false, label = null) {
@@ -208,6 +217,35 @@ export function divLite(key) {
   if (divCache[key]) return Promise.resolve(divCache[key]);
   return liteReady[key] ??= loadDivision(DIVISIONS[key].file.replace(/\.json$/, "-lite.json")).catch(() => divData(key))
     .catch((e) => { delete liteReady[key]; throw e; });
+}
+
+// "My team": the visitor's own AD2L team, set under the settings cog or beside a hero grid, kept
+// in this browser. Hero grids read the draft model against it. A change anywhere fires "myteam"
+// on window (other tabs get it through the storage event, app.js).
+const MY_TEAM_KEY = "my-team";
+export function myTeam() {
+  try { const v = JSON.parse(localStorage.getItem(MY_TEAM_KEY)); return v?.div && v.id != null ? v : null; } catch { return null; }
+}
+export function setMyTeam(t) {
+  const v = t ? { div: t.div, id: t.id, name: t.name } : null;
+  try { if (v) localStorage.setItem(MY_TEAM_KEY, JSON.stringify(v)); else localStorage.removeItem(MY_TEAM_KEY); } catch { /* not remembered */ }
+  dispatchEvent(new CustomEvent("myteam", { detail: v }));
+}
+// <option>s for a "my team" <select>: none, then every division's teams (each division's lite
+// file, loaded once). Option values are "div:id".
+let teamListReady = null;
+export async function myTeamOptions(selected = myTeam()) {
+  teamListReady ??= Promise.all(ALL_DIVS.map(async (k) => [k, await divLite(k).catch(() => null)]))
+    .then((all) => all.filter(([, d]) => d?.teams?.length).map(([k, d]) => ({ k, teams: [...d.teams].sort((a, b) => a.name.localeCompare(b.name)) })));
+  const sel = selected ? `${selected.div}:${selected.id}` : "";
+  return `<option value="">None set</option>${(await teamListReady).map(({ k, teams }) => `<optgroup label="${esc(DIVISIONS[k].name)}">${teams.map((t) => `<option value="${k}:${t.id}"${sel === `${k}:${t.id}` ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</optgroup>`).join("")}`;
+}
+// A "div:id" option value back to a team ({ div, id, name }), or null.
+export async function teamFromOption(v) {
+  if (!v) return null;
+  const [k, id] = v.split(":");
+  const t = (await teamListReady)?.find((x) => x.k === k)?.teams.find((x) => String(x.id) === id);
+  return t ? { div: k, id: t.id, name: t.name } : null;
 }
 
 // Unticketed games uploaded from screenshots (Firestore), per division. If the database

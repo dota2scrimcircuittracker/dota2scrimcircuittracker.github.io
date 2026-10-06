@@ -51,12 +51,16 @@ export function likelyScore(scores, side) {
   const top = won.reduce((x, s) => (s.p > x.p ? s : x));
   return side === "a" ? [top.a, top.b] : [top.b, top.a];
 }
-// One match the model's way: the winner, its chance, the likeliest score and every score's chance.
-function callMatch(ratings, a, b, bestOf) {
+// One match: the winner (`chosen` when it's one of the two, else the model's), its chance by the
+// model, the likeliest score and every score's chance. `mine` marks a chosen winner.
+function callMatch(ratings, a, b, bestOf, chosen) {
   const p = gameP(ratings.get(a) ?? 0, ratings.get(b) ?? 0), pa = bestOfP(p, bestOf ?? 1);
-  const winner = pa >= 0.5 ? a : b, scores = bestOfScores(p, bestOf ?? 1);
-  return { winner, loser: winner === a ? b : a, p: winner === a ? pa : 1 - pa, score: likelyScore(scores, winner === a ? "a" : "b"), scores };
+  const mine = chosen === a || chosen === b;
+  const winner = mine ? chosen : pa >= 0.5 ? a : b, scores = bestOfScores(p, bestOf ?? 1);
+  return { winner, loser: winner === a ? b : a, p: winner === a ? pa : 1 - pa, score: likelyScore(scores, winner === a ? "a" : "b"), scores, mine, model: pa >= 0.5 ? a : b };
 }
+// The key a viewer's pick for a match is stored under: the same two teams, either order.
+export const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
 // ---------- the rest of the group stage ----------
 
@@ -84,23 +88,26 @@ export function pairWeek(order, met) {
   return [];
 }
 
-// A two-game series as the model calls it: favourite 2–0, or 1–1 for a coin flip. A bye is 1–0.
-function callSeries(s, teamOf, ratings) {
+// A two-game series: `call(s)` ("home", "tie" or "away") when it gives one, else the model's
+// call (favourite 2–0, or 1–1 for a coin flip). A bye is 1–0.
+const OUTCOMES = ["home", "tie", "away"];
+function callSeries(s, teamOf, ratings, call) {
   const h = teamOf.get(s.home), a = teamOf.get(s.away);
-  if (isBye(h)) return { ...s, home_score: 0, away_score: 1 };
-  if (isBye(a)) return { ...s, home_score: 1, away_score: 0 };
-  const c = modelCall(seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0));
-  return { ...s, home_score: c === "home" ? 2 : c === "tie" ? 1 : 0, away_score: c === "away" ? 2 : c === "tie" ? 1 : 0 };
+  if (isBye(h)) return { ...s, home_score: 0, away_score: 1, bye: true };
+  if (isBye(a)) return { ...s, home_score: 1, away_score: 0, bye: true };
+  const own = call?.(s), mine = OUTCOMES.includes(own);
+  const c = mine ? own : modelCall(seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0));
+  return { ...s, home_score: c === "home" ? 2 : c === "tie" ? 1 : 0, away_score: c === "away" ? 2 : c === "tie" ? 1 : 0, ...(mine ? { mine: true } : {}) };
 }
 
 // Every series to the end of week 7: played ones as they are, the rest called by the model,
 // and weeks PlayOn hasn't posted paired swiss-style (marked `paired`). Divisions inside one
 // league (Heroic A/B) pair separately. Weeks posted = series ÷ (teams / 2), so a make-up
-// played on another night doesn't count as its own week.
-export function projectSeries(teams, series, ratings) {
+// played on another night doesn't count as its own week. `call`: see callSeries.
+export function projectSeries(teams, series, ratings, call) {
   const teamOf = new Map(teams.map((t) => [t.id, t]));
   const real = series.filter((s) => teamOf.has(s.home) && teamOf.has(s.away));
-  let out = real.map((s) => (isPlayed(s) ? { ...s } : { ...callSeries(s, teamOf, ratings), projected: true }));
+  let out = real.map((s) => (isPlayed(s) ? { ...s } : { ...callSeries(s, teamOf, ratings, call), projected: true }));
   const divs = [...new Set(teams.map((t) => t.division ?? ""))];
   let next = -1;
   for (const div of divs) {
@@ -112,7 +119,7 @@ export function projectSeries(teams, series, ratings) {
       const wins = gameWins(out), met = new Map();
       for (const s of out.filter(mine)) for (const k of [`${s.home}|${s.away}`, `${s.away}|${s.home}`]) met.set(k, (met.get(k) ?? 0) + 1);
       const order = [...ids].sort((a, b) => (wins.get(b) ?? 0) - (wins.get(a) ?? 0) || (ratings.get(b) ?? 0) - (ratings.get(a) ?? 0));
-      for (const [home, away] of pairWeek(order, met)) out.push({ ...callSeries({ id: next--, home, away, week: wk }, teamOf, ratings), projected: true, paired: true });
+      for (const [home, away] of pairWeek(order, met)) out.push({ ...callSeries({ id: next--, home, away, week: wk }, teamOf, ratings, call), projected: true, paired: true });
     }
   }
   return out;
@@ -183,7 +190,9 @@ function comparer(series, wins, sos, ratings) {
 // Final order for one division and the week 8 tiebreakers. `lines`: [{ after, above, below }]
 // — places 1..after are above the line. Returns rows in order, the tiebreakers played across
 // lines (with predicted winners) and the seed-order ties settled without playing.
-export function resolveTable(ids, series, ratings, lines) {
+// `choose(key, a, b, bestOf)` may name a tiebreaker's winner (key "tb:<pairKey>"); otherwise
+// the model's.
+export function resolveTable(ids, series, ratings, lines, choose) {
   const wins = gameWins(series), sos = new Map(strengthOfSchedule(ids, series).map((r) => [r.id, r.sos ?? 0]));
   const cmp = comparer(series, wins, sos, ratings);
   const seedCmp = cmp("coin flip"), lineCmp = cmp("1v1 mid");
@@ -196,7 +205,10 @@ export function resolveTable(ids, series, ratings, lines) {
     if (last && w(last[0]) === w(t)) last.push(t); else segs.push([t]);
   }
   const tiebreakers = [];
-  const play = (pName) => (a, b, bestOf, note) => ({ a, b, bestOf, note, ...callMatch(ratings, a, b, bestOf), for: pName });
+  const play = (pName) => (a, b, bestOf, note) => {
+    const key = `tb:${pairKey(a, b)}`;
+    return { a, b, bestOf, note, key, ...callMatch(ratings, a, b, bestOf, choose?.(key, a, b, bestOf)), for: pName };
+  };
   for (const line of lines) {
     let start = 0;
     const i = segs.findIndex((seg) => { const hit = start < line.after && start + seg.length > line.after; if (!hit) start += seg.length; return hit; });
@@ -226,22 +238,33 @@ export function resolveTable(ids, series, ratings, lines) {
 
 // Double elimination from seeds (team ids, best first; a missing seed is a bye that sends its
 // opponent through). Every match is played the model's way: the higher one-game chance wins.
-// Rounds carry the playoff week they're played in, as S47 ran them.
-export function bracket(seeds, ratings) {
+// Rounds carry the playoff week they're played in, as S47 ran them. `choose(key, a, b)` may
+// name a match's winner (key "<match id>:<pairKey>") and, with key "pick", seed 1's opponent
+// (3 or 4); otherwise the model's, or with `blank` nobody yet: the match's winner and loser
+// are TBD, and so is every slot they feed. `fixed`: no choice, seed 1 plays seed 4 (Heroic/Aegis, where
+// the seeds alternate divisions and 1 v 4 pairs A1 with B2).
+export const TBD = "tbd";
+export function bracket(seeds, ratings, choose, { fixed = false, blank = false } = {}) {
   const n = seeds.length;
   if (n < 4) return null;
   const ms = [];
   const M = (id, side, week, a, b, bestOf, label) => {
     let m;
-    if (a == null || b == null) m = { a, b, winner: a ?? b, loser: null, bye: true };
-    else m = { a, b, ...callMatch(ratings, a, b, bestOf) };
+    if (a === TBD || b === TBD) m = { a, b, winner: TBD, loser: TBD, pending: true };
+    else if (a == null || b == null) m = { a, b, winner: a ?? b, loser: null, bye: true };
+    else {
+      const key = `${id}:${pairKey(a, b)}`;
+      m = { a, b, key, ...callMatch(ratings, a, b, bestOf, choose?.(key, a, b, bestOf)) };
+      if (blank && !m.mine) m = { ...m, winner: TBD, loser: TBD, p: m.winner === m.model ? m.p : 1 - m.p, open: true };
+    }
     ms.push({ id, side, week, bestOf, label, ...m });
     return ms.at(-1);
   };
   const seed = (k) => seeds[k - 1] ?? null;
   // Seed 1 chooses 3 or 4: the model has it take whichever is weaker.
   const r = (id) => ratings.get(id) ?? 0;
-  const pick = n >= 4 && r(seed(4)) > r(seed(3)) ? 3 : 4;
+  const modelPick = fixed ? 4 : r(seed(4)) > r(seed(3)) ? 3 : 4, own = fixed ? null : choose?.("pick");
+  const pick = own === 3 || own === 4 ? own : modelPick;
   const u1 = M("u1", "upper", 1, seed(1), seed(pick), 3, "Upper round 1");
   const u2 = M("u2", "upper", 1, seed(2), seed(pick === 4 ? 3 : 4), 3, "Upper round 1");
   let lbWinner;
@@ -268,30 +291,174 @@ export function bracket(seeds, ratings) {
     const lf = M("lf", "lower", 4, uf.loser, l5.winner, 3, "Lower final");
     M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final");
   }
-  return { matches: ms, pick, champion: ms.at(-1).winner };
+  return { matches: ms, pick, modelPick, fixed, champion: ms.at(-1).winner };
 }
 
 // ---------- the whole picture ----------
 
-// teams/series: a division's data. split: a league played in sub-divisions whose top 4 go to
-// one playoff and 5–8 to another (Heroic/Aegis); those get the table and tiebreakers, but no
-// bracket until AD2L says how the two divisions are seeded against each other.
-export function playoffPicture(teams, series, ratings, { split = false } = {}) {
-  const projected = projectSeries(teams, series, ratings);
+// teams/series: a division's data. split: Heroic/Aegis, one league in divisions A and B (the
+// admin on Discord, 2026-10-05): each division's 1st–2nd start Aegis's upper bracket, 3rd–4th
+// its lower, 5th–6th Heroic's upper, 7th–8th Heroic's lower. Who meets whom across A and B
+// wasn't said: the site alternates the divisions into seeds 1–8 (A1, B1, A2, B2, A3, B3, A4,
+// B4), so with the usual shape upper round 1 is A1 v B2 and B1 v A2, lower round 1 A3 v B4 and
+// B3 v A4. Those brackets come back in `brackets` (named, with each seed's label).
+// `call` picks group-stage results and `choose` tiebreaker and bracket winners (a viewer's own
+// picks); whatever they leave open goes the model's way.
+// `blank`: bracket matches nobody picked stay open (see bracket).
+export function playoffPicture(teams, series, ratings, { split = false, call, choose, blank = false } = {}) {
+  const projected = projectSeries(teams, series, ratings, call);
   const divs = [...new Set(teams.map((t) => t.division ?? ""))].sort();
-  return {
+  const out = {
     series: projected,
     divisions: divs.map((div) => {
       const ids = teams.filter((t) => (t.division ?? "") === div && !isBye(t)).map((t) => t.id);
       const mine = projected.filter((s) => ids.includes(s.home) || ids.includes(s.away));
-      const n = ids.length;
-      const lines = split
-        ? [{ after: 4, above: "Aegis playoffs", below: "Heroic playoffs" }, { after: 8, above: "Heroic playoffs", below: "out" }]
-        : n >= 8 ? [{ after: 4, above: "upper bracket", below: "lower bracket" }, { after: 8, above: "playoffs", below: "out" }]
-        : n > 4 ? [{ after: 4, above: "upper bracket", below: "lower bracket" }] : [];
-      const table = resolveTable(ids, mine, ratings, lines.filter((l) => l.after < n));
+      const lines = linesFor(ids.length, split);
+      const table = resolveTable(ids, mine, ratings, lines.filter((l) => l.after < ids.length), choose);
       const seeds = table.rows.slice(0, 8).map((r) => r.id);
-      return { division: div, lines, ...table, bracket: split ? null : bracket(seeds, ratings) };
+      return { division: div, lines, ...table, bracket: split ? null : bracket(seeds, ratings, choose, { blank }) };
     }),
   };
+  if (split) {
+    const [A, B] = out.divisions;
+    // Seeds alternate A and B: place from+1 of each, then from+2, ... (a missing one is a bye).
+    out.brackets = [["Aegis", 0], ["Heroic", 4]].map(([name, from]) => {
+      const seeds = [], labels = new Map();
+      for (let k = 0; k < 4; k++) for (const dv of [A, B]) {
+        const id = dv?.rows[from + k]?.id ?? null;
+        seeds.push(id);
+        if (id != null) labels.set(id, `${dv.division}${from + k + 1}`);
+      }
+      return { name, labels, bracket: bracket(seeds, ratings, choose, { fixed: true, blank }) };
+    });
+  }
+  return out;
+}
+
+// The dividing lines in a division's table.
+// `col` names the line's column on Possibilities: "this line or better", or with `band` just
+// the places between the line before and this one (Heroic/Aegis's four brackets).
+function linesFor(n, split) {
+  return split
+    ? [{ after: 2, above: "Aegis upper bracket", below: "Aegis lower bracket", col: "Aegis upper", band: true },
+      { after: 4, above: "Aegis lower bracket", below: "Heroic upper bracket", col: "Aegis lower", band: true },
+      { after: 6, above: "Heroic upper bracket", below: "Heroic lower bracket", col: "Heroic upper", band: true },
+      { after: 8, above: "Heroic lower bracket", below: "out", col: "Heroic lower", band: true }]
+    : n >= 8 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Upper bracket" }, { after: 8, above: "playoffs", below: "out", col: "Playoffs" }]
+    : n > 4 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Upper bracket" }] : [];
+}
+
+// ---------- every possible outcome ----------
+
+// Every way the open series can go (2–0 either way or 1–1), and for each, every way the week 8
+// tiebreakers it sets up can go. `weight`: "equal" counts outcomes (each result of a series a
+// third, each tiebreaker winner a half); "model" weighs them by the model's odds. Up to
+// 3^maxExact outcomes are listed exactly; past that, or while weeks aren't posted (their
+// pairings depend on the results), `samples` random outcomes stand in. Seed-only ties settle
+// as on the rest of the page (a coin flip goes to the stronger team).
+// Per division: dist (team id → chance of each place, 1st first), exact / unposted / open /
+// count / total, and when exact, scenarios ({ res: outcome index per open series, w, at: team
+// id → Map "place|its week 8 results" → chance within that outcome }).
+export function possibilities(teams, series, ratings, { split = false, weight = "equal", samples = 4000, rng = Math.random, maxExact = 9 } = {}) {
+  const r = (id) => ratings.get(id) ?? 0;
+  const odds = (s) => (weight === "model" ? seriesOdds(r(s.home), r(s.away)) : { home: 1 / 3, tie: 1 / 3, away: 1 / 3 });
+  // A division's results never move another's table, so each is worked out on its own
+  // (Heroic: 3^6 and 3^5 outcomes rather than 3^11).
+  const divisions = [...new Set(teams.map((t) => t.division ?? ""))].sort().map((div) => {
+    const dTeams = teams.filter((t) => (t.division ?? "") === div), inDiv = new Set(dTeams.map((t) => t.id));
+    const dSeries = series.filter((s) => inDiv.has(s.home) && inDiv.has(s.away));
+    const teamOf = new Map(dTeams.map((t) => [t.id, t]));
+    const open = dSeries.filter((s) => !isPlayed(s) && !isBye(teamOf.get(s.home)) && !isBye(teamOf.get(s.away)));
+    const unposted = projectSeries(dTeams, dSeries, ratings).some((s) => s.paired);
+    const exact = !unposted && open.length <= maxExact;
+    const ids = dTeams.filter((t) => !isBye(t)).map((t) => t.id);
+    const lines = linesFor(ids.length, split);
+    const dv = { division: div, ids, lines, dist: new Map(ids.map((id) => [id, new Array(ids.length).fill(0)])), scenarios: [],
+      exact, unposted, open: exact ? open : null, count: exact ? 3 ** open.length : samples, total: 0 };
+    const run = (call, w, res) => {
+      dv.total += w;
+      const mine = projectSeries(dTeams, dSeries, ratings, call);
+      const at = new Map();
+      // Every branch of the tiebreakers: a tape of choices (0 = first team, 1 = second), stepped
+      // like a binary counter over the choices each run actually made.
+      let tape = [];
+      for (;;) {
+        const used = [];
+        let bw = 1;
+        const choose = (key, a, b, bestOf) => {
+          const c = tape[used.length] ?? 0;
+          used.push(c);
+          const pa = weight === "model" ? bestOfP(gameP(r(a), r(b)), bestOf ?? 1) : 0.5;
+          bw *= c ? 1 - pa : pa;
+          return c ? b : a;
+        };
+        const t = resolveTable(ids, mine, ratings, lines.filter((l) => l.after < ids.length), choose);
+        for (const row of t.rows) {
+          dv.dist.get(row.id)[row.place - 1] += w * bw;
+          if (exact) {
+            // Keyed "place|its own week 8 results" ("w<opp id>" won v, "l<opp id>" lost to).
+            const tb = t.tiebreakers.flatMap((x) => x.matches).filter((m) => m.a === row.id || m.b === row.id)
+              .map((m) => (m.winner === row.id ? `w${m.loser}` : `l${m.winner}`)).join(",");
+            const m = at.get(row.id) ?? new Map(), k = `${row.place}|${tb}`;
+            m.set(k, (m.get(k) ?? 0) + bw);
+            at.set(row.id, m);
+          }
+        }
+        let k = used.length - 1;
+        while (k >= 0 && used[k] === 1) k--;
+        if (k < 0) break;
+        tape = [...used.slice(0, k), 1];
+      }
+      if (exact) dv.scenarios.push({ res, w, at });
+    };
+    if (exact) {
+      const idx = new Map(open.map((s, i) => [s.id, i]));
+      for (let n = 0; n < 3 ** open.length; n++) {
+        const res = open.map((_, i) => Math.floor(n / 3 ** i) % 3);
+        const w = open.reduce((x, s, i) => x * odds(s)[OUTCOMES[res[i]]], 1);
+        if (w > 0) run((s) => OUTCOMES[res[idx.get(s.id)]], w, res);
+      }
+    } else {
+      for (let n = 0; n < samples; n++) run((s) => {
+        const o = odds(s), u = rng();
+        return u < o.home ? "home" : u < o.home + o.tie ? "tie" : "away";
+      }, 1);
+    }
+    for (const arr of dv.dist.values()) for (let i = 0; i < arr.length; i++) arr[i] /= dv.total || 1;
+    return dv;
+  });
+  return { exact: divisions.every((dv) => dv.exact), divisions };
+}
+
+// What it takes for `id` to finish `place` (exact possibilities only): the outcomes where it
+// can, merged into groups. Each group: `masks` (one per open series; bits 1 = home 2–0, 2 = 1–1,
+// 4 = away 2–0, so 7 = any result), `tb` (what week 8 has to do: "" nothing; else its own
+// results, "w<id>" beat / "l<id>" lose to, comma-joined, or "*" when it rests on other teams'
+// tiebreakers) and `p`, the group's share of everything by the same weighting.
+export function pathsTo(dv, id, place, total = 1) {
+  let cubes = [];
+  for (const sc of dv.scenarios) {
+    const here = [...(sc.at.get(id) ?? [])].filter(([k]) => Number(k.split("|")[0]) === place);
+    const q = here.reduce((a, [, x]) => a + x, 0);
+    if (q < 1e-9) continue;
+    const masks = sc.res.map((o) => 1 << o);
+    // Every week 8 branch lands it here: week 8 doesn't matter.
+    if (q > 1 - 1e-9) { cubes.push({ masks, tb: "", p: sc.w / total }); continue; }
+    for (const [k, x] of here) cubes.push({ masks, tb: k.split("|")[1] || "*", p: (sc.w * x) / total });
+  }
+  const n = cubes[0]?.masks.length ?? 0;
+  // Two groups that differ in one series only merge into one; repeat until nothing merges.
+  for (let changed = true; changed;) {
+    changed = false;
+    for (let i = 0; i < n; i++) {
+      const groups = new Map();
+      for (const c of cubes) {
+        const k = `${c.tb}|${c.masks.map((m, j) => (j === i ? "*" : m)).join(",")}`;
+        const g = groups.get(k);
+        if (g) { g.masks[i] |= c.masks[i]; g.p += c.p; changed = true; } else groups.set(k, { ...c, masks: [...c.masks] });
+      }
+      cubes = [...groups.values()];
+    }
+  }
+  return cubes.sort((a, b) => b.p - a.p);
 }

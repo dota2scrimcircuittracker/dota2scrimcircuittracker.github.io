@@ -7,7 +7,8 @@ import { collectWards, wireWardMaps } from "../lib/wardmap.js";
 import { playerDeathsHtml, wireDeathMaps } from "../lib/deathmap.js";
 import { towerSummaryHtml, wireTowerMaps } from "../lib/towermap.js";
 import { info } from "../lib/glossary.js";
-import { app, pageHead, floorOf, teamLink, esc, pct, fmt, dec, portrait, playerTabs, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, when, heroLink } from "../core.js";
+import { app, pageHead, floorOf, teamLink, profileLinks, esc, pct, fmt, dec, portrait, playerTabs, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, when, heroLink } from "../core.js";
+import { pageTabs, PLAYER_TABS } from "../lib/pagetabs.js";
 import { gameAnalysisHtml, wireGameAnalysis } from "../parts/analysis.js";
 import { combatTabHtml, fbCell, fbRole } from "../parts/combat.js";
 import { draftSlotHtml, rateOf } from "../parts/draft.js";
@@ -57,9 +58,7 @@ export async function renderPlayer(src, key) {
     s.team ? `${teamLink(src, s.team, roster?.team.id ?? null)}${s.standin ? " · stand-in" : ""}` : "",
     roster?.captain ? "Captain" : "",
     rank ? esc(rank) : "",
-    // The same /players/<account ID> path on OpenDota, Dotabuff and Stratz.
-    src.ad2l && /^\d+$/.test(key) ? [["OpenDota", "https://www.opendota.com"], ["Dotabuff", "https://www.dotabuff.com"], ["Stratz", "https://stratz.com"]]
-      .map(([name, base]) => `<a href="${base}/players/${key}" target="_blank" rel="noopener">${name} ↗</a>`).join(" · ") : "",
+    src.ad2l ? profileLinks(key, roster?.playon_id) : "",
   ].filter(Boolean).join(" · ");
 
   const cards = [
@@ -89,30 +88,30 @@ export async function renderPlayer(src, key) {
     <div class="k">Best game · ${label}</div><div class="v">${value}</div>
     <div class="s">${esc(g.p.hero)} · vs ${esc(vsOf(g).name)} · ${g.won ? "Won" : "Lost"}</div></a>`;
 
-  const tabs = playerTabs([
-      ["stats", "Stats", `<div class="cards player-cards reveal" style="--cols:${Math.ceil((cards.length + 3) / 2)}">${cards.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${t}</div></div>`).join("")}
+  const tabs = playerTabs(pageTabs(PLAYER_TABS, src, [
+      ["stats", `<div class="cards player-cards reveal" style="--cols:${Math.ceil((cards.length + 3) / 2)}">${cards.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${t}</div></div>`).join("")}
           ${bestCard("Most damage", h.best.damage, fmt(h.best.damage.p.hero_damage), cards.length)}
           ${bestCard("Best KDA", h.best.kda, `${h.best.kda.p.kills}/${h.best.kda.p.deaths}/${h.best.kda.p.assists}`, cards.length + 1)}
           ${bestCard("Top GPM", h.best.gpm, fmt(h.best.gpm.p.gpm), cards.length + 2)}
         </div>
         <div id="stat-ranks-box" data-key="${esc(key)}">${statRanksHtml(src, key, rows, null)}</div>`],
-      ["heroes", "Heroes", `<div id="hero-ranks-box" data-key="${esc(key)}">${heroRanksHtml(src, key, h, ratings, null)}</div>
+      ["heroes", `<div id="hero-ranks-box" data-key="${esc(key)}">${heroRanksHtml(src, key, h, ratings, null)}</div>
         ${draftSlotHtml(draftSlotRecord(matches, byPlayer(key)), src, s.name, rateOf(h.games, gameRated))}
         ${src.ad2l ? pubSection(src, key) + pubPrepHtml(src, key, h.games) : ""}`],
-      ["combat", "Combat", combatTabHtml(src, matches, byPlayer(key), s.name)],
-      ["lanes", "Laning", lanesPageHtml(src, matches, byPlayer(key), laneCuts_, { name: s.name })],
-      ["items", "Items", playerItemsHtml(src, matches, h.games)],
-      ["map", "Map", mapCard([
+      ["combat", combatTabHtml(src, matches, byPlayer(key), s.name)],
+      ["lanes", lanesPageHtml(src, matches, byPlayer(key), laneCuts_, { name: s.name })],
+      ["items", playerItemsHtml(src, matches, h.games)],
+      ["map", mapCard([
         ["wards", "Wards", "ward_map", wardView(collectWards(matches, byPlayer(key)), s.name)],
         ["deaths", "Deaths", "player_deaths", playerDeathsHtml(matches, byPlayer(key), { name: s.name })],
         ["towers", "Towers", "player_towers", towerSummaryHtml(matches, byPlayer(key), { name: s.name })],
       ])],
-      ["games", "Games", `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
+      ["games", `<h2 id="game-analysis">Game analysis${info("game_analysis")}</h2>
         <div id="game-box" data-key="${esc(key)}">${gameAnalysisHtml(src, "player", h.games, 0, gameRated)}</div>
         <h2>Every game</h2>
         <div id="t"></div>
 `],
-  ]);
+  ]));
 
   // One compact header: back link and league on one line, then name, tier, team line and the
   // tabs on a single row (the tabs wrap under it on narrow screens).

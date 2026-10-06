@@ -128,8 +128,11 @@ test("heroPowerList: heroes by padded games-weighted hero rating, on a curve, at
     assert.ok(Math.abs(h.avg - (ps.reduce((s, p) => s + p.rating_exact * p.games, 0) + 50 * K_HERO) / (games + K_HERO)) < 1e-9);
     assert.equal(h.tier, TIERS.find((t) => h.rating_exact >= t.min).tier);
     assert.equal(h.best, ps[0]);
+    assert.equal(h.on, ps); // the breakdown lists these players, best first
   }
   // Same order as the padded averages: the curve only stretches them.
   for (let i = 1; i < heroes.length; i++) assert.ok(heroes[i - 1].avg >= heroes[i].avg - 1e-9);
+  assert.deepEqual(heroes.map((h) => h.place), heroes.map((_, i) => i + 1));
+  assert.ok(heroes.every((h) => h.of === heroes.length));
   assert.equal(heroPowerList(ratings, { minGames: 1 }).tiers.flatMap((t) => t.heroes).length, 11);
 });

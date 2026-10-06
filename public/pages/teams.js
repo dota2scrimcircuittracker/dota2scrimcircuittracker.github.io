@@ -6,15 +6,19 @@ import { wireCharts } from "../lib/charts.js";
 import { collectWards, wireWardMaps } from "../lib/wardmap.js";
 import { teamFightMapHtml, wireFightMaps } from "../lib/fightmap.js";
 import { teamSmokeHtml, wireSmokeMaps } from "../lib/smokemap.js";
-import { teamDraftPhases, PHASES } from "../lib/draft.js";
+import { teamDraftPhases, teamSideSplit, PHASES } from "../lib/draft.js";
 import { teamByName } from "../lib/unticketed.js";
 import { info } from "../lib/glossary.js";
 import { clock } from "../lib/items.js";
 import { teamSplits, playerPairs } from "../lib/combat.js";
 import { lengthHtml } from "../lib/combat-charts.js";
-import { divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt } from "../core.js";
+import { tune, fitRatings } from "../lib/predict.js";
+import { isBye } from "../lib/playoffs.js";
+import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt } from "../core.js";
+import { pageTabs, TEAM_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox, laneCutsOf, teamLanesHtml } from "../parts/lanes.js";
 import { tierRef } from "../parts/tiers.js";
+import { heroGridHtml, wireHeroGrid } from "../parts/herogrid.js";
 
 // ---------- Teams ----------
 
@@ -241,21 +245,42 @@ export async function renderTeams(src, slug) {
       </div>
 `;
   })();
+  // How often they're Radiant and how often they pick first, with the record each way. Scrim
+  // sides are only "left" and "right", so scrims show pick order alone.
+  const sideSplit = (() => {
+    const ss = teamSideSplit(h.games);
+    const rec = (r) => `${r.wins}–${r.n - r.wins}`;
+    const row = (label, x, y, nx, ny, total) => `<div class="td-orow"><small>${label}</small>
+        <span class="td-us">${nx} <b>${pct0(x.n / total)}</b> · ${rec(x)}</span>
+        <span class="td-track"><i style="width:${((x.n / total) * 100).toFixed(1)}%"></i><em></em></span>
+        <span class="td-them">${rec(y)} · <b>${pct0(y.n / total)}</b> ${ny}</span></div>`;
+    const rows = [
+      ad2l && ss.games ? row("Side", ss.a, ss.b, "Radiant", "Dire", ss.games) : "",
+      ss.drafted ? row("Pick order", ss.first, ss.second, "First pick", "Second pick", ss.drafted) : "",
+    ].join("");
+    if (!rows) return "";
+    const c = ss.combo;
+    const mix = ad2l && ss.drafted ? `<p class="table-note">First pick on Radiant ${c.a.first} · first pick on Dire ${c.b.first} · second pick on Radiant ${c.a.second} · second pick on Dire ${c.b.second}.</p>` : "";
+    return `<h2>Side and pick order${info("team_side_pick")}</h2>
+      <p class="table-note">${ad2l ? `${plural(ss.games, "game")}, ${ss.drafted} with a draft` : plural(ss.drafted, "draft")}. Record after each share.</p>
+      <div class="td-odds sp-odds">${rows}</div>${mix}`;
+  })();
   const top = h.heroes[0];
+  const lineups = h.games.filter(({ m }) => hasDetails(m)); // [{ m, side }] for the hero grid
   const goto = (tab, label) => `<p class="table-note"><button type="button" class="link-btn" data-goto-tab="${tab}">${label} →</button></p>`;
 
-  const tabs = playerTabs([
-    ["overview", "Overview", `${cardsHtml(stats)}
+  const tabs = playerTabs(pageTabs(TEAM_TABS, src, [
+    ["overview", `${cardsHtml(stats)}
       <div class="team-cols">
         <section><h2>Recent ${ad2l ? "series" : "games"}</h2>
           <div class="history reveal">${historyRows.slice(0, 5).join("") || noGames}</div>
           ${historyRows.length > 5 ? goto("games", `All ${historyRows.length} ${ad2l ? "series" : "games"}`) : ""}</section>
         <section><h2>Roster</h2>${rosterStrip}${goto("roster", "Full roster")}</section>
       </div>
-      ${h.heroes.length ? `<h2>Most played</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, 8)}` : ""}
+      ${h.heroes.length ? `<h2>Most played</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, 8)}${lineups.some(({ m }) => m.players.some((p) => p.position)) ? `<p class="table-note"><button type="button" class="link-btn" data-goto-tab="heroes" data-goto-anchor="hero-grid">Their heroes by position, as a Dota hero grid →</button></p>` : ""}` : ""}
       ${lengthSection}
       ${opponents}`],
-    ["roster", "Roster", `<h2>${roster ? "Roster" : "Players"}</h2>
+    ["roster", `<h2>${roster ? "Roster" : "Players"}</h2>
       <p class="table-note wm-intro">${rosterNote}</p>
       ${rosterCards ? `<div class="rc-grid reveal">${rosterCards}</div>` : noPlayers}
       ${standinCards ? `<h2>Stand-ins</h2><p class="table-note wm-intro">Played for ${esc(team.name)} without being on the roster.</p><div class="rc-grid reveal">${standinCards}</div>` : ""}
@@ -264,18 +289,22 @@ export async function renderTeams(src, slug) {
         <h2>Lineups</h2><div id="lineups"></div>` : ""}`],
     // Series, then the draft model's read of each drafted one (parts/cmdraft.js), filled when
     // the tab is first shown.
-    ["games", ad2l ? "Series" : "Games", `<div class="history reveal">${historyRows.join("") || noGames}</div>
+    ["games", `<div class="history reveal">${historyRows.join("") || noGames}</div>
       ${ad2l && h.games.some(({ m }) => m.draft?.some((x) => x.pick)) ? `<h2>Drafts</h2><div id="td-box"><div class="panel empty">Reading the drafts…</div></div>` : ""}`],
-    ["heroes", "Heroes", h.heroes.length ? `${cardsHtml([
+    ["heroes", h.heroes.length ? `${cardsHtml([
         ["Hero pool", String(h.heroes.length), `different heroes in ${plural(h.detailed.length, "game")}`],
         ["Most played", esc(top.hero), `${plural(top.picks, "game")} · ${top.wins}–${top.picks - top.wins}`],
         ...(h.bans[0] ? [["Bans most", esc(h.bans[0].hero), `${plural(h.bans[0].n, "ban")} in ${plural(h.drafted, "draft")}`]] : []),
         ...(h.banned_against[0] ? [["Banned against", esc(h.banned_against[0].hero), `${h.banned_against[0].n} time${h.banned_against[0].n === 1 ? "" : "s"} by opponents`]] : []),
       ])}
       <h2>Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
+      ${heroGridHtml(team, lineups, { pubs: ad2l?.pubs ?? null })}
+      ${sideSplit}
       ${phases}` : ""],
-    ["lanes", "Laning", teamLanesHtml(src, h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side), laneCuts_, team)],
-    ["map", "Map", `${teamMapHtml(src, matches, teams, team, h)}
+    // Its chance of each final place (parts/playoffs.js), worked out when the tab is first shown.
+    ["chances", ad2l && !isBye(team) ? `<section class="po" id="tc-box"><div class="panel empty">Working out every outcome…</div></section>` : ""],
+    ["lanes", teamLanesHtml(src, h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side), laneCuts_, team)],
+    ["map", `${teamMapHtml(src, matches, teams, team, h)}
       ${(() => { const gs = h.games.map(({ m }) => m), mine = (p, m) => p.team === sideOf(m, team);
         const fights = teamFightMapHtml(gs, (m) => sideOf(m, team), { name: team.name });
         return mapCard([
@@ -283,7 +312,7 @@ export async function renderTeams(src, slug) {
           ["fights", "Team fights", "team_fights", fights || ""],
           ["smokes", "Smokes", "team_smokes", teamSmokeHtml(gs, (m) => sideOf(m, team), { name: team.name })],
         ]); })()}`],
-  ], { store: "teamTab", label: "Team sections" });
+  ]), { store: "teamTab", label: "Team sections" });
 
   // Same compact header as the player and hero pages: back link, league and team picker,
   // then name, the record line and the tabs.
@@ -326,11 +355,40 @@ export async function renderTeams(src, slug) {
     if (!panel.hidden) fill();
     else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   }
+  // Outcomes tab: the whole league's data (Heroic's views hold one division; its brackets mix
+  // both) and the same ratings as Predict.
+  const tcBox = app.querySelector("#tc-box");
+  if (tcBox) {
+    const panel = tcBox.closest(".pp-panel");
+    const fill = async () => {
+      if (tcBox.dataset.filled) return;
+      tcBox.dataset.filled = "1";
+      try {
+        const [{ mountPlayoffs }, full] = await Promise.all([import("../parts/playoffs.js"), src.view ? SOURCES[src.key].data() : ad2l]);
+        if (document.getElementById("tc-box") !== tcBox) return;
+        const ratings = fitRatings(full.teams, full.series, tune(full.teams, full.series));
+        mountPlayoffs(tcBox, src, full, ratings, new Map(), { view: "team", team: team.id });
+      } catch (e) { tcBox.innerHTML = errorBox(e); }
+    };
+    if (!panel.hidden) fill();
+    else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  // AD2L: the draft model reads them against my team (the cog's), and my heroes fill the right.
+  const adTeam = ad2l?.teams.find((t) => t.id === team.id);
+  wireHeroGrid(app, team, lineups, {
+    pubs: ad2l?.pubs ?? null,
+    model: adTeam ? async (me) => { const cm = await import("../parts/cmdraft.js"); return cm.heroGridModelFor({ div: src.key, five: cm.teamFive(adTeam, ad2l.games), name: team.name }, me); } : null,
+  });
   wireMapCards(app);
   wireWardMaps(app);
   wireFightMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
   wireSmokeMaps(app, { gameHref: (id) => `${src.root}/game/${id}` });
-  app.querySelectorAll("[data-goto-tab]").forEach((b) => (b.onclick = () => document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click()));
+  app.querySelectorAll("[data-goto-tab]").forEach((b) => (b.onclick = () => {
+    document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click();
+    // Then down to the section, just under the sticky header.
+    const to = b.dataset.gotoAnchor && document.getElementById(b.dataset.gotoAnchor);
+    if (to) scrollTo({ top: scrollY + to.getBoundingClientRect().top - (document.querySelector(".top")?.offsetHeight ?? 0) - 12 });
+  }));
   // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
   app.querySelector(".ph-segs")?.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-ph-view]");
