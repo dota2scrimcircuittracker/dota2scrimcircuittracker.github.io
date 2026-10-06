@@ -149,8 +149,9 @@ and change it: [maintaining.md](maintaining.md).
 
 ## Content (was Weekly)
 
-AD2L: **Up next** at the top of the latest week: the series still to play, each with the
-model's odds (as on Predict); it used to be a Teams tab. Then one week at a time: highlights (player of the week, biggest damage, best KDA, top GPM, most
+One week at a time, in this order: the week's series (or games) first, then (AD2L, latest
+week) **Up next**: the series still to play, each with the model's odds as on Predict (it used
+to be a Teams tab), then highlights (player of the week, biggest damage, best KDA, top GPM, most
 kills, fastest core item, best laner, biggest comeback, most wards / stacks / dewards, fastest
 first blood, longest streak, rampages, biggest hit, highest APM, aegis steals, most paused game)
 and every game with lineups and MVP. AD2L games also show the full Captains Mode draft in pick/ban
@@ -158,8 +159,8 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 
 ## Players tab
 
-- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). Filters:
-  Everyone / Cores / Supports, and Pos 1–5: that position's own list, each player's games
+- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
+  position, Pos 1–5 (opens on Pos 1; there's no all-players list): that position's own list, each player's games
   there only, rated against that position's players (its anchors, consistency and curve come
   from pos N games; `lib/tiers.js` tierModel/tierList `pos`), so a 4/5 swapper shows in both with
   each set of games. Each chip says the position played most; its tooltip lists games at each.
