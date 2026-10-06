@@ -83,11 +83,11 @@ export function gameCombatHtml(m, src) {
     : `<td class="bn-cell${v >= 75 ? " hot" : v < 25 ? " cold" : ""}" style="--v:${v / 100}" title="${esc(`${p.name}'s ${label}: better than ${v}% of public games on ${p.hero}`)}"><span>${ordinal(v)}</span></td>`);
   const benchRows = (t) => m.players.filter((p) => p.team === t && p.bench).map((p) => `<tr class="team-${t}">${who(p)}${p.bench.map((v, k) => benchCell(v, BENCH[k], p)).join("")}</tr>`).join("");
   const benchTable = m.players.some((p) => p.bench) ? `<h3 class="gm-h3">Percentile against public games${info("benchmarks")}</h3>
-    <p class="table-note wm-intro">Each number is a percentile: how this game compares with public games on the same hero (OpenDota's benchmarks). 50th = a typical public game; 90th = better than 90% of them. Gold: 75th and up · red: under 25th.</p>
+    <p class="table-note wm-intro">Compared with public games on the same hero: 50th is typical, 90th beats 90% of them. Gold: 75th and up · red: under 25th.</p>
     <div class="table-wrap gm-board bn-board"><table><thead><tr><th scope="col" class="l">Player</th>${BENCH.map((b) => `<th scope="col">${b}<small>percentile</small></th>`).join("")}</tr></thead>
     <tbody>${benchRows("a")}${benchRows("b")}</tbody></table></div>` : "";
   const pz = pausesOf(m);
-  const pauseNote = pz?.n ? `<p class="table-note">Paused ${pz.n} time${pz.n === 1 ? "" : "s"}, ${dur(pz.total)} in all.</p>` : "";
+  const pauseNote = pz?.n ? `<p class="table-note">Paused ${pz.n} time${pz.n === 1 ? "" : "s"}, ${dur(pz.total)} total.</p>` : "";
   return `${chart ? `<h3 class="gm-h3">Kill streaks${info("streak_chart")}</h3>${chart}` : ""}
     <h3 class="gm-h3">Combat</h3>
     <div class="table-wrap gm-board"><table><thead><tr>${head}</tr></thead><tbody>

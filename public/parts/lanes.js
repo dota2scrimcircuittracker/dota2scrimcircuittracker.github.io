@@ -38,7 +38,7 @@ export function gameLanesHtml(m, src, cuts) {
     <h2>First 10 minutes${info("lane_players")}</h2>
     <div class="table-wrap"><table class="ln-table"><thead><tr><th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th><th scope="col" class="l">Lane</th><th scope="col">Result</th><th scope="col">Gold+XP lead</th><th scope="col">LH</th><th scope="col">DN</th><th scope="col">Lane eff.</th><th scope="col">Kills</th><th scope="col">Deaths</th></tr></thead>
     <tbody>${["a", "b"].map((t) => rows.filter((x) => x.p.team === t).map(tr).join("")).join("")}</tbody></table></div>
-    <p class="table-note">${cutNote(cuts)} Lead = the whole lane's gold + XP against the other side of it. LH, DN, kills and deaths are before 10:00.</p>`;
+    <p class="table-note">${cutNote(cuts)} Lead = the whole lane's gold + XP against the other side. LH, DN, kills and deaths are before 10:00.</p>`;
 }
 
 // Player and hero pages, Laning tab: record, averages, by lane, then each game.
@@ -140,7 +140,7 @@ export function lanesSection(src, matches, cuts, weekGames) {
   const html = `<h2 id="laning">Laning${info("lane_rank")}</h2>
     <div class="cards ln-best reveal">${hl("Best laner this week", week, "lane_best_week", 0)}${hl("Best laner this season", season, "lane_best_season", 1)}</div>
     <div id="lane-board"></div>
-    <p class="table-note">${cutNote(cuts)} Ranked within the position played (${floorOf(src)}+ lanes); lane score = average lead ÷ the won cut-off, padded with 2 even lanes, so 1.0 is a player who wins every lane by just enough.</p>`;
+    <p class="table-note">${cutNote(cuts)} Ranked within the position played (${floorOf(src)}+ lanes); lane score = average lead ÷ the won cut-off, padded with 2 even lanes, so 1.0 means winning every lane by exactly the cut-off.</p>`;
   const draw = () => {
     const el = document.getElementById("lane-board");
     const rows = board.filter((r) => r.group === laneGroup && r.lanes >= floorOf(src))

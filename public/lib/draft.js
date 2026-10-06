@@ -94,3 +94,23 @@ export function teamDraftPhases(games) {
   const top = (maps) => maps.map((mp) => [...mp.values()].sort((a, b) => b.n - a.n || b.wins - a.wins || a.hero.localeCompare(b.hero)));
   return drafted ? { drafted, wins, layout, totals, bans: top(bans), against: top(against), picks: top(picks) } : null;
 }
+
+// How often a team is on side "a" (Radiant in AD2L) and how often it has first pick, with its
+// record each way. One team chooses side or first pick, the other gets the other, so a lean shows
+// what the team takes when the choice is theirs (or what opponents leave it). games: [{ m, side }]
+export function teamSideSplit(games) {
+  const rec = () => ({ n: 0, wins: 0 });
+  const out = { games: 0, a: rec(), b: rec(), drafted: 0, first: rec(), second: rec(),
+    combo: { a: { first: 0, second: 0 }, b: { first: 0, second: 0 } } };
+  for (const { m, side } of games) {
+    if (!side || !m.winner) continue;
+    const won = m.winner === side;
+    out.games++; out[side].n++; if (won) out[side].wins++;
+    const fp = [...(m.draft ?? [])].sort((x, y) => x.order - y.order).find((s) => s.pick);
+    if (!fp) continue;
+    const order = fp.side === side ? "first" : "second";
+    out.drafted++; out[order].n++; if (won) out[order].wins++;
+    out.combo[side][order]++;
+  }
+  return out;
+}

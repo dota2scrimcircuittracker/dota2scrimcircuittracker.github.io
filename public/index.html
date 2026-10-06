@@ -59,8 +59,8 @@
     <nav id="nav"></nav>
     <div class="top-tools">
       <div class="search" id="search" role="search">
-        <input id="search-in" type="search" placeholder="Find a player or team" autocomplete="off" spellcheck="false"
-          aria-label="Find a player or team in any league" aria-controls="search-pop" aria-expanded="false" aria-autocomplete="list" role="combobox">
+        <input id="search-in" type="search" placeholder="Teams, players, heroes, stats…" autocomplete="off" spellcheck="false"
+          aria-label="Search teams, players, heroes and stats in any league" aria-controls="search-pop" aria-expanded="false" aria-autocomplete="list" role="combobox">
         <kbd class="search-key" aria-hidden="true">/</kbd>
         <div class="search-pop" id="search-pop" role="listbox" aria-label="Players and teams" hidden></div>
       </div>
@@ -89,6 +89,9 @@
             <label><input type="radio" name="theme" value="light"> Light</label>
           </div>
           <label class="settings-row"><input type="checkbox" id="cb-mode"> Colour-blind mode</label>
+          <a class="settings-row settings-link" id="settings-tables" href="#/search?table=team">Table builder →</a>
+          <label class="settings-team"><span class="menu-label">My team</span><select id="my-team"><option value="">None set</option></select>
+            <small>Hero grids read the draft model against this team. Kept in this browser.</small></label>
           <!-- Time machine: only on pages it applies to (app.js timeBar); its week panel opens in place. -->
           <div class="tm" id="tm" hidden>
             <div class="menu-label">Time machine</div>

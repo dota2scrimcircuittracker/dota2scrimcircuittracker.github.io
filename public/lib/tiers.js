@@ -71,27 +71,27 @@ export const SURVIVAL = { deaths: -40, dead: -35, tanked: 25 };
 
 // metric -> short label and definition (the info bubbles and "How it's scored" use these).
 export const METRICS = {
-  farm: { label: "Farm share", def: "Share of the team's gold: the player's GPM over the team's total GPM. A share, so long games don't inflate it." },
-  gpm: { label: "GPM", def: "Gold per minute, compared with what the same position gets in a game that long (GPM climbs as games go on)." },
-  nw: { label: "Net worth", def: "Net worth at the end of the game, compared with what the same position has in a game that long, so a long game doesn't inflate it." },
+  farm: { label: "Farm share", def: "The player's share of the team's gold (their GPM over the team's total)." },
+  gpm: { label: "GPM", def: "Gold per minute, against what the same position gets in a game that long." },
+  nw: { label: "Net worth", def: "Net worth at the end of the game, against what the same position has in a game that long." },
   dmg: { label: "Damage share", def: "Share of the team's hero damage." },
   tower: { label: "Building share", def: "Share of the team's damage to towers, barracks and the Ancient." },
-  xp: { label: "XP share", def: "Share of the team's experience: the player's XPM over the team's total." },
+  xp: { label: "XP share", def: "The player's share of the team's experience." },
   kills: { label: "Kill share", def: "Share of the team's kills the player got the last hit on." },
   assists: { label: "Assist share", def: "Share of the team's kills the player assisted. Kill share + assist share = kill participation." },
-  lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over who they laned against, from the replay's lanes. Cores: against the enemy core(s) in their lane. Supports: their whole lane against the enemy's. Jungling: no lane result." },
-  lane: { label: "Laning", def: "Laning efficiency: gold earned in the first 10 minutes as a % of the most a lane can give (OpenDota's lane efficiency)." },
-  stuns: { label: "Stun time", def: "Seconds of disable dealt to enemy heroes per minute (OpenDota's stun figure)." },
-  vision: { label: "New vision", def: "Share of the map outside their own base that their observer wards were the first on the team to light, averaged over the game. Each ward sees what it really could past trees and cliffs; ground a teammate's ward already showed, or the player's own base, earns nothing. Games from before the patch's map was added have no number." },
+  lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over their lane opponents. Cores: against the enemy core(s) in their lane. Supports: their whole lane against the enemy's. Junglers have none." },
+  lane: { label: "Laning", def: "Gold earned in the first 10 minutes as a % of the most a lane can give." },
+  stuns: { label: "Stun time", def: "Seconds of disable on enemy heroes per minute." },
+  vision: { label: "New vision", def: "Share of the map outside their base that their observer wards lit up first on the team, averaged over the game. Trees and cliffs block wards; ground a teammate already showed doesn't count. Older games have no number." },
   dewards: { label: "Dewards", def: "Enemy wards killed per 10 minutes; a sentry counts half an observer." },
   sentries: { label: "Sentries", def: "Sentry wards placed per 10 minutes." },
   dust: { label: "Dust", def: "Dust of Appearance used per 10 minutes." },
   smokes: { label: "Smokes", def: "Smokes of Deceit used per 10 minutes." },
-  stacks: { label: "Stacks", def: "Neutral camps stacked per game, compared with what the position stacks in a game that long. Stacking is early-game work, so a per-minute rate would punish long games." },
+  stacks: { label: "Stacks", def: "Neutral camps stacked per game, against what the position stacks in a game that long." },
   heal: { label: "Healing", def: "Healing done to allied heroes per minute." },
   deaths: { label: "Deaths", def: "Deaths per 10 minutes. Fewer is better." },
-  dead: { label: "Time dead", def: "Share of the game spent dead. Fewer is better: a dead core isn't farming either." },
-  tanked: { label: "Damage per life", def: "Hero damage taken for each death (damage taken ÷ (deaths + 1)): soaking a lot of damage without dying is good." },
+  dead: { label: "Time dead", def: "Share of the game spent dead. Lower is better." },
+  tanked: { label: "Damage per life", def: "Hero damage taken per death (damage taken ÷ (deaths + 1)). Higher is better." },
 };
 
 // Stats compared with the position's line fit on game length instead of a flat average.
@@ -297,6 +297,10 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     const roleGames = { core: 0, support: 0 };
     for (const r of a.rows) roleGames[r.role]++;
     const role = roleGames.core >= roleGames.support ? "core" : "support";
+    // Exact positions: games at each (1–5), and the one played most (ties: the lower number).
+    const posGames = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const r of a.rows) if (posGames[r.pos] != null) posGames[r.pos]++;
+    const pos = Number(Object.entries(posGames).sort((x, y) => y[1] - x[1] || x[0] - y[0])[0][0]);
 
     // Stat points and survival, per role, then weighted by games in each role.
     const roles = [];
@@ -379,7 +383,7 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     return {
       key: a.key, name: a.p.name, account_id: a.p.account_id ?? null, rank_tier: a.rank_tier,
       team: teamEntries[0]?.[0] ?? null, standin: teamEntries.length > 0 && teamEntries[0][1] === 0,
-      role, games, wins, role_games: roleGames,
+      role, games, wins, role_games: roleGames, pos, pos_games: posGames,
       roles: roles.sort((x, y) => (x.role === role ? -1 : y.role === role ? 1 : 0)),
       // Per series: stat points, and a score = those × that series' opponent factor × the
       // season's survival, consistency and winning. Both average (weighted by games) to the
@@ -416,12 +420,14 @@ const ends = (xs) => (xs.length >= 2 ? [Math.min(...xs), Math.max(...xs)] : null
 
 // The reference a tier list is scored against. `matches` is the league's games: one AD2L
 // division, or the scrim ledger. `minGames`: the games a player needs to count toward the
-// anchors and the curve (lower when the time machine picks only a week or two).
-export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
-  const rows = matches.flatMap(gameRows);
+// anchors and the curve (lower when the time machine picks only a week or two). `pos` (1–5):
+// a model for one position, whose anchors, consistency and curve come from that position's
+// games and players only, so its tier list rates pos 4s against pos 4s.
+export function tierModel(matches, { minGames = MIN_GAMES, pos = null } = {}) {
+  const all = matches.flatMap(gameRows);
   const positions = {};
   for (const pos of [1, 2, 3, 4, 5]) {
-    const here = rows.filter((r) => r.pos === pos);
+    const here = all.filter((r) => r.pos === pos);
     positions[pos] = {};
     for (const metric of Object.keys(METRICS)) {
       const with_ = here.filter((r) => r.metrics[metric] != null);
@@ -430,8 +436,10 @@ export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
       positions[pos][metric] = LENGTH_FIT.has(metric) ? lineFit(with_.map((r) => r.minutes), vs) : [mean(vs), sdOf(vs)];
     }
   }
-  const model = { games: matches.length, positions, anchors: {}, win_minutes: rows.filter((r) => r.won && r.pos === 1).map((r) => r.minutes).sort((a, b) => a - b) };
-  for (const r of rows) scoreRow(r, model);
+  const model = { games: matches.length, pos, positions, anchors: {}, win_minutes: all.filter((r) => r.won && r.pos === 1).map((r) => r.minutes).sort((a, b) => a - b) };
+  for (const r of all) scoreRow(r, model);
+  // Opponent strength always from every game; everything else from the rows this model rates.
+  const teams = teamGames(all), rows = pos ? all.filter((r) => r.pos === pos) : all;
   // Anchors: every player with minGames+ games in a role, their shrunk average per stat; the
   // best and worst of those set 100 and 0.
   const byPlayerRole = new Map();
@@ -447,7 +455,7 @@ export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
     }
   }
   // Consistency reference: eligible players' series spreads (2+ series).
-  const first = scorePlayers(rows, model, { consistency: false }).filter((p) => p.games >= minGames && p.series_points.length >= 2);
+  const first = scorePlayers(rows, model, { consistency: false, teams }).filter((p) => p.games >= minGames && p.series_points.length >= 2);
   const sds = first.map((p) => sdOf(p.series_points)).sort((a, b) => a - b);
   if (sds.length) {
     const typical = sds[Math.floor(sds.length / 2)];
@@ -456,23 +464,26 @@ export function tierModel(matches, { minGames = MIN_GAMES } = {}) {
     const e = ends(shrunk);
     model.consistency = { typical, best: e ? e[0] : typical * 0.5, worst: e ? e[1] : typical * 1.5 };
   }
-  const scores = scorePlayers(rows, model).filter((p) => p.games >= minGames).map((p) => p.score).sort((a, b) => a - b);
+  const scores = scorePlayers(rows, model, { teams }).filter((p) => p.games >= minGames).map((p) => p.score).sort((a, b) => a - b);
   model.curve = scores.length >= 5 ? [scores[Math.floor(scores.length / 2)], RATING_STRETCH * sdOf(scores)] : DEFAULT_CURVE;
   // One game's score sits closer to the middle than a season's (no averaging luck out, and the
   // shrinking pulls one game hard), so on the season curve almost no game reached S or D.
   // Game ratings get their own curve, fitted the same way to every player-game in the league,
   // so a game rating spreads like the tier list.
-  const teams = teamGames(rows), byGame = new Map();
+  const byGame = new Map();
   for (const r of rows) { const k = r.match.id ?? r.match.match_id; (byGame.get(k) ?? byGame.set(k, []).get(k)).push(r); }
   const games = [...byGame.values()].flatMap((rs) => scorePlayers(rs, model, { teams }).map((p) => p.score)).sort((a, b) => a - b);
   model.game_curve = games.length >= 10 ? [games[Math.floor(games.length / 2)], RATING_STRETCH * sdOf(games)] : model.curve;
   return model;
 }
 
-export function tierList(matches, { minGames = MIN_GAMES, model = null } = {}) {
-  model ??= tierModel(matches, { minGames });
-  const rows = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
-  const players = scorePlayers(rows, model);
+// `pos` (1–5): only games at that position, rated against that position's players (the
+// model must be the same position's; one is built if none is given).
+export function tierList(matches, { minGames = MIN_GAMES, model = null, pos = null } = {}) {
+  model ??= tierModel(matches, { minGames, pos });
+  const all = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
+  const rows = pos ? all.filter((r) => r.pos === pos) : all;
+  const players = scorePlayers(rows, model, { teams: teamGames(all) });
   for (const p of players) { p.rating_exact = ratingOf(p.score, model.curve); p.rating = Math.round(p.rating_exact); p.curve = model.curve; }
 
   const eligible = players.filter((p) => p.games >= minGames).sort((a, b) => b.score - a.score);
@@ -497,7 +508,7 @@ export function heroRatings(matches, { model = null, minGames = MIN_GAMES } = {}
   const teams = teamGames(rows), byHero = new Map();
   for (const r of rows) (byHero.get(r.p.hero) ?? byHero.set(r.p.hero, []).get(r.p.hero)).push(r);
   return new Map([...byHero].map(([hero, rs]) => [hero, scorePlayers(rs, model, { teams })
-    .map((p) => { const rating_exact = ratingOf(p.score, model.curve); return { ...p, hero, rating_exact, rating: Math.round(rating_exact) }; })
+    .map((p) => { const rating_exact = ratingOf(p.score, model.curve); return { ...p, hero, rating_exact, rating: Math.round(rating_exact), curve: model.curve }; })
     .sort((a, b) => b.score - a.score)]));
 }
 
@@ -521,7 +532,7 @@ export function heroPowerList(ratings, { minGames = MIN_GAMES } = {}) {
   const heroes = [...ratings].map(([hero, ps]) => {
     const games = ps.reduce((s, p) => s + p.games, 0);
     const avg = (ps.reduce((s, p) => s + p.rating_exact * p.games, 0) + 50 * K_HERO) / (games + K_HERO);
-    return { hero, games, wins: ps.reduce((s, p) => s + p.wins, 0), players: ps.length, avg, best: ps[0] };
+    return { hero, games, wins: ps.reduce((s, p) => s + p.wins, 0), players: ps.length, avg, best: ps[0], on: ps };
   });
   const fit = heroes.filter((h) => h.games >= HERO_TIER_MIN).length >= 5 ? heroes.filter((h) => h.games >= HERO_TIER_MIN) : heroes;
   const avgs = fit.map((h) => h.avg).sort((a, b) => a - b);
@@ -530,6 +541,7 @@ export function heroPowerList(ratings, { minGames = MIN_GAMES } = {}) {
     const rating_exact = ratingOf(h.avg, curve);
     return { ...h, rating_exact, rating: Math.round(rating_exact), tier: TIERS.find((t) => rating_exact >= t.min).tier };
   }).sort((a, b) => b.rating_exact - a.rating_exact || b.games - a.games);
+  shown.forEach((h, i) => { h.place = i + 1; h.of = shown.length; });
   return { tiers: TIERS.map(({ tier }) => ({ tier, heroes: shown.filter((h) => h.tier === tier) })), curve };
 }
 

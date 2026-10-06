@@ -1,0 +1,42 @@
+// The tabs on the team, player, hero and standings pages, in order: the one list both the page
+// (its tab bar) and the nav dropdown (its side links) read, so the two can't drift apart.
+// Each entry: [id, label or (src) => label, { ad2l: true } if the tab only exists on AD2L].
+// A page may still hide a tab for one team or player when it has nothing to show (core.js
+// playerTabs drops empty panels).
+export const TEAM_TABS = [
+  ["overview", "Overview"], ["roster", "Roster"], ["games", (src) => (src.ad2l ? "Series" : "Games")], ["heroes", "Heroes"],
+  ["chances", "Outcomes", { ad2l: true }], ["lanes", "Laning", { ad2l: true }], ["map", "Map"],
+];
+export const PLAYER_TABS = [
+  ["stats", "Stats"], ["heroes", "Heroes"], ["combat", "Combat"], ["lanes", "Laning", { ad2l: true }],
+  ["items", "Items"], ["map", "Map"], ["games", "Games"],
+];
+export const HERO_TABS = [
+  ["stats", "Stats"], ["players", "Players"], ["draft", "Draft"], ["matchups", "Matchups"], ["combat", "Combat"],
+  ["lanes", "Laning", { ad2l: true }], ["items", "Items"], ["map", "Map"], ["games", "Games"],
+];
+// Race: AD2L divisions only, not All (sixty lines on one chart), once two league nights are in.
+export const STANDINGS_TABS = [
+  ["table", "Table"], ["matches", "Matches"], ["cross", "Crosstable"], ["race", "Race", { div: true }],
+];
+
+const exists = (src, opts = {}) => (!opts.ad2l || !!src.ad2l) && (!opts.div || (!!src.ad2l && !src.all));
+const labelOf = (label, src) => (typeof label === "function" ? label(src) : label);
+
+// The tabs this source can have, as [id, label].
+export const tabList = (list, src) => list.filter(([, , o]) => exists(src, o)).map(([id, label]) => [id, labelOf(label, src)]);
+
+// A page's tabs for core.js playerTabs: the list's order and labels, this page's panels.
+// panels: [[id, html | { html, label }]] (label overrides, e.g. "Up next · 3"). Every tab in
+// the list needs a panel and every panel a tab, so adding one in one place and not the other
+// fails loudly instead of quietly drifting.
+export function pageTabs(list, src, panels) {
+  const byId = new Map(panels), ids = new Set(list.map(([id]) => id));
+  const stray = [...byId.keys()].filter((id) => !ids.has(id));
+  const missing = list.filter(([id, , o]) => exists(src, o) && !byId.has(id)).map(([id]) => id);
+  if (stray.length || missing.length) throw new Error(`Page tabs out of step with lib/pagetabs.js: ${[...stray.map((s) => `+${s}`), ...missing.map((s) => `-${s}`)].join(" ")}`);
+  return tabList(list, src).map(([id, label]) => {
+    const p = byId.get(id) ?? "";
+    return typeof p === "object" ? [id, p.label ?? label, p.html ?? ""] : [id, label, p];
+  });
+}

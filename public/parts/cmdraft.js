@@ -1,7 +1,7 @@
 // The draft model on the page (lib/cmdraft.js, Project Sybil's model): loading each division's
 // draft file, reading a game's ten players, and the game page's Draft tab.
-import { DIVISIONS, esc, pct, portrait, playerLink } from "../core.js";
-import { gameContext, readDraft, buildDraft, draftProbability, CM_STEPS, FIT } from "../lib/cmdraft.js";
+import { DIVISIONS, esc, pct, portrait, playerLink, divLite } from "../core.js";
+import { gameContext, readDraft, buildDraft, draftProbability, scoreHeroes, openRoleFor, CM_STEPS, FIT } from "../lib/cmdraft.js";
 import { heroImg } from "../lib/hero-meta.js";
 
 // <division>-draft.json: hero names and baselines, and every rostered player's games
@@ -14,7 +14,7 @@ export const draftData = (key) => (cache[key] ??= fetch(DIVISIONS[key].file.repl
 export async function draftDataFor(keys) {
   const all = (await Promise.all([...new Set(keys)].filter((k) => DIVISIONS[k]).map(draftData))).filter(Boolean);
   if (!all.length) return null;
-  return { ...all[0], history: Object.assign({}, ...all.map((d) => d.history)) };
+  return { ...all[0], history: Object.assign({}, ...all.map((d) => d.history)), totals: Object.assign({}, ...all.map((d) => d.totals ?? {})) };
 }
 
 // Hero name <-> id from the draft file, and every hero id, A–Z.
@@ -41,7 +41,7 @@ export function readGame(m, data, { alternatives = 3 } = {}) {
 
 const pts = (x) => `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(1)}`;
 const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
-export const MODEL_NOTE = `Sybil's Captains Mode draft model (by ybabts and Fav), fitted on ${FIT.games.toLocaleString()} AD2L games, ${FIT.seasons}. Held out on patch ${FIT.heldOut.split.split(" ")[0]}, its favourite won ${Math.round(FIT.heldOut.accuracy * 100)}% of the time. Each picked hero is read as the player most likely to play it: their record on it (shrunk toward the hero's win rate at this rank), their usual heroes, and the rank gap. It doesn't see counters or synergy yet, or how the teams have done this season.`;
+export const MODEL_NOTE = `Draft model: Sybil's Captains Mode model (by ybabts and Fav), trained on ${FIT.games.toLocaleString()} AD2L games, ${FIT.seasons}. On held-out patch ${FIT.heldOut.split.split(" ")[0]} games its favourite won ${Math.round(FIT.heldOut.accuracy * 100)}%. Each pick is rated for the player most likely to play it: their record on the hero (shrunk toward its win rate at this rank), their usual heroes, and the rank gap. It doesn't account for counters, synergy or this season's results yet.`;
 
 // The game page's Draft tab: the win chance after every step, and what the model would have
 // done at each one.
@@ -100,15 +100,15 @@ export function gameDraftHtml(m, src, data, width = null) {
     ${oddsBars(m.team_a, m.team_b, read.start, end)}
     ${chart}
     <h3 class="gm-h3">Step by step</h3>
-    <p class="table-note cm-legend">Rank: where the model put the actual choice among the heroes left (picks by the team's chance to win with it, bans by how much the hero would have given the other team). Model's top 3: its best options at that step.</p>
+    <p class="table-note cm-legend">Rank: where the model placed the actual choice among the heroes left (picks by win chance, bans by how much the hero would have given the other team). Model's top 3: its best options at that step.</p>
     <div class="table-wrap"><table class="cm-steps">
       <thead><tr><th>#</th><th class="l">Team</th><th class="l"></th><th class="l">Hero</th><th>Rank</th><th>Value</th><th class="l">Model's top 3</th><th>Win after</th><th>Change</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <h3 class="gm-h3">Who plays what</h3>
-    <p class="table-note">The model never sees who played which hero: it guesses from each player's heroes and positions. It got ${right} of ${total} right in this game.</p>
+    <p class="table-note">The model doesn't know who played which hero; it guesses from each player's heroes and positions. It got ${right} of ${total} right here.</p>
     <div class="table-wrap"><table><thead><tr><th class="l">Team</th><th class="l">Hero</th><th class="l">Model's guess</th><th class="l">Played by</th><th></th></tr></thead><tbody>${whoRows}</tbody></table></div>
     <h3 class="gm-h3">Players as read</h3>
-    <p class="table-note">Games before this one in each player's last ${data.history_days} days (pubs and league). Rank from their recent pub lobbies, or their PlayOn medal without them.${unknown ? ` ${unknown} player${unknown === 1 ? " has" : "s have"} no history here (a stand-in, or a private profile), so they read as an average player at this rank.` : ""}</p>
+    <p class="table-note">Pub and league games in the ${data.history_days} days before this game. Rank is from recent pub lobbies, or PlayOn medal if there are none.${unknown ? ` ${unknown} player${unknown === 1 ? " has" : "s have"} no history (a stand-in or private profile) and count${unknown === 1 ? "s" : ""} as an average player at this rank.` : ""}</p>
     <div class="table-wrap"><table><thead><tr><th class="l">Team</th><th class="l">Player</th><th>Games</th><th>Rank</th></tr></thead><tbody>${readRows}</tbody></table></div>
     <p class="table-note">${esc(MODEL_NOTE)}</p>
   </div>`;
@@ -216,7 +216,7 @@ export function teamDraftsHtml(team, series, src, data, width = 1000) {
       ${statTile("Model after the draft", `${t.postRight} of ${t.n}`, "games where its favourite won")}
       ${statTile(`${esc(team.name)}'s drafts`, pts(t.swing / t.n), `points a draft, on average · up in ${t.up}, down in ${t.n - t.up}`, t.swing >= 0 ? "cm-up" : "cm-down")}
     </div>
-    <p class="table-note">Every percentage is ${esc(team.name)}'s chance to win. "Before the draft" is the model's read of the ten players alone; "after the draft" adds the heroes and who plays them. Each chart walks from one to the other, step by step.</p>
+    <p class="table-note">Every percentage is ${esc(team.name)}'s chance to win. "Before the draft" rates the ten players alone; "after the draft" adds the heroes and who plays them. Each chart shows the change step by step.</p>
     ${blocks}
     <p class="table-note">${esc(MODEL_NOTE)}</p>`;
 }
@@ -233,9 +233,9 @@ const resultChip = (won, post) => {
 // Two odds bars, before and after the draft, each one team's share against the other's.
 export const oddsBars = (us, them, pre, post) => `<div class="td-odds">
   ${[["Before the draft", pre], ["After the draft", post]].map(([label, p]) => `<div class="td-orow"><small>${label}</small>
-    <span class="td-us">${esc(us)} <b>${pct(p)}</b></span>
+    <span class="td-us td-fit"><span class="td-nm">${esc(us)}</span> <b>${pct(p)}</b></span>
     <span class="td-track"><i style="width:${(p * 100).toFixed(1)}%"></i><em></em></span>
-    <span class="td-them"><b>${pct(1 - p)}</b> ${esc(them)}</span></div>`).join("")}
+    <span class="td-them td-fit"><b>${pct(1 - p)}</b> <span class="td-nm">${esc(them)}</span></span></div>`).join("")}
   <div class="td-delta">Draft: <b class="${post - pre >= 0.005 ? "cm-up" : post - pre <= -0.005 ? "cm-down" : ""}">${pts(post - pre)}</b> for ${esc(us)}</div>
 </div>`;
 
@@ -247,6 +247,89 @@ export function teamFive(team, games) {
   for (const g of games) if (g.team_a_id === team.id || g.team_b_id === team.id) for (const p of g.players) n.set(p.player_key, (n.get(p.player_key) ?? 0) + 1);
   return team.players.map((p) => ({ key: String(p.account_id), name: p.name, rank_tier: p.rank_tier }))
     .sort((x, y) => (n.get(y.key) ?? 0) - (n.get(x.key) ?? 0)).slice(0, 5);
+}
+
+// For a hero grid (parts/herogrid.js): the model's read of one side of `ctx` before any pick.
+// threats: heroes by their chance to win with it, with the positions it fits them; likely: the
+// heroes they're likeliest to play (the model's propensity: their weighted games on it plus what
+// their positions suggest), with who; banvs: points each hero would add to them if the other
+// side left it. vs: the other side's name, for the notes.
+// Bans against `side` in each Captains Mode ban phase: at the start of the phase, after the
+// model's own draft up to there (both first-pick orders, averaged), points each still-open hero
+// would add to them. Phase 1 is before any pick; 2 after each team's first pick; 3 after eight
+// picks. Best first.
+const BAN_PHASE_STARTS = CM_STEPS.map(([, k], i) => (k === "ban" && (i === 0 || CM_STEPS[i - 1][1] === "pick") ? i : null)).filter((i) => i != null);
+export function phaseBans(ctx, side, heroes) {
+  const ours = side === "radiant" ? "dire" : "radiant";
+  const acc = BAN_PHASE_STARTS.map(() => new Map());
+  for (const themFirst of [true, false]) {
+    const order = CM_STEPS.map(([f, k]) => [(f === "F") === themFirst ? side : ours, k]);
+    const { steps } = buildDraft(ctx, order, heroes.ids);
+    BAN_PHASE_STARTS.forEach((at, p) => {
+      const st = { radiant: [], dire: [], pins: { radiant: [], dire: [] } }, gone = new Set();
+      for (const s of steps.slice(0, at)) { gone.add(s.hero); if (s.pick) { st[s.side].push(s.hero); st.pins[s.side].push(s.player); } }
+      for (const x of scoreHeroes(ctx, st, ours, heroes.ids.filter((h) => !gone.has(h)))) {
+        if (x.ban == null) continue;
+        const a = acc[p].get(x.hero) ?? [0, 0];
+        a[0] += x.ban; a[1]++;
+        acc[p].set(x.hero, a);
+      }
+    });
+  }
+  return acc.map((m) => [...m].map(([h, [sum, n]]) => [h, sum / n]).sort((a, b) => b[1] - a[1]));
+}
+
+export function heroGridModel(ctx, side, heroes, vs = null, { phases = false } = {}) {
+  const other = side === "radiant" ? "dire" : "radiant", empty = { radiant: [], dire: [] };
+  const who = (j) => ctx.info?.[side]?.[j]?.name ?? null;
+  const theirs = scoreHeroes(ctx, empty, side, heroes.ids), ours = scoreHeroes(ctx, empty, other, heroes.ids);
+  const threats = theirs.filter((x) => x.pick != null).sort((a, b) => b.pick - a.pick).map((x) => ({
+    hero: heroes.name(x.hero), pos: [0, 1, 2, 3, 4].filter((r) => openRoleFor(x.hero, [r], ctx[side]) != null),
+    tag: Math.round(x.pick * 100), title: `${heroes.name(x.hero)}: ${pct(x.pick)} to win with it${who(x.player) ? `, played by ${who(x.player)}` : ""}`,
+  }));
+  const likely = heroes.ids.map((h) => {
+    let j = 0, p = -1;
+    ctx[side].forEach((pl, i) => { const v = pl.propensity(h); if (v > p) { p = v; j = i; } });
+    return { h, p, j };
+  }).sort((a, b) => b.p - a.p).map(({ h, p, j }) => ({ hero: heroes.name(h), tag: who(j)?.slice(0, 3) ?? "", title: `${heroes.name(h)}: ${who(j) ?? "a player"} plays it in about ${pct(p)} of their games` }));
+  const banvs = ours.filter((x) => x.ban != null).sort((a, b) => b.ban - a.ban).map((x) => ({
+    hero: heroes.name(x.hero), tag: `${x.ban >= 0 ? "+" : "−"}${Math.abs(x.ban * 100).toFixed(1)}`,
+    title: `${heroes.name(x.hero)}: adds ${(x.ban * 100).toFixed(1)} points to their chance if left open`,
+  }));
+  const banEntry = ([h, v]) => ({ hero: heroes.name(h), tag: `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}`, title: `${heroes.name(h)}: adds ${(v * 100).toFixed(1)} points to their chance if left open` });
+  const banPhases = phases ? phaseBans(ctx, side, heroes).map((list) => list.map(banEntry)) : null;
+  return { threats, likely, banvs, banPhases, vs };
+}
+
+// heroGridModel for `them` ({ div, id, five, name }) against my team (core.js myTeam), or without one
+// (or when it's them) against `fallback` ({ div, five, name }), else five average players:
+// { them, us (null against average players), vs }. null when the draft file hasn't synced.
+// Kept per (them, me, fallback): the reads are many full drafts' work, and the Drafter asks
+// again each time its grid switches team. Only the latest few are kept.
+const gridModels = new Map();
+const fiveKey = (t) => t && [t.div, t.id ?? "", ...(t.five ?? []).map((p) => p?.key ?? "")].join(",");
+export function heroGridModelFor(them, me, fallback = null) {
+  const key = JSON.stringify([fiveKey(them), me ? `${me.div}:${me.id}` : "", fiveKey(fallback)]);
+  if (!gridModels.has(key)) {
+    const run = gridModelRead(them, me, fallback).catch((e) => { gridModels.delete(key); throw e; });
+    gridModels.set(key, run);
+    if (gridModels.size > 8) gridModels.delete(gridModels.keys().next().value);
+  }
+  return gridModels.get(key);
+}
+async function gridModelRead(them, me, fallback) {
+  let vs = fallback;
+  if (me && !(me.div === them.div && String(me.id) === String(them.id))) {
+    const dd = await divLite(me.div).catch(() => null);
+    const t = dd?.teams.find((x) => String(x.id) === String(me.id));
+    if (t) vs = { div: me.div, five: teamFive(t, dd.games), name: t.name };
+  }
+  const data = await draftDataFor([them.div, vs?.div].filter(Boolean));
+  if (!data) return null;
+  const average = Array.from({ length: 5 }, () => ({ key: null, name: "Average player", rank_tier: null }));
+  const ctx = gameContext(data, { radiant: them.five, dire: vs?.five ?? average }, Date.now() / 1000);
+  const heroes = heroIndex(data);
+  return { them: heroGridModel(ctx, "radiant", heroes, vs?.name ?? null, { phases: true }), us: vs ? heroGridModel(ctx, "dire", heroes, them.name) : null, vs: vs?.name ?? null };
 }
 
 // The draft model on one series: `home` and `away` are teams, read as of now. Before the draft
@@ -275,7 +358,7 @@ export function seriesRead(home, away, games, data, now = Date.now() / 1000) {
 
 // The card's line: the draft model's pre-draft chance next to the ratings.
 export const preDraftLine = (home, away, pre) => `<div class="pcm-line"><small>Draft model · one game, before the draft</small>
-  <span class="td-us">${esc(home.name)} <b>${pct(pre)}</b></span><span class="td-track"><i style="width:${(pre * 100).toFixed(1)}%"></i><em></em></span><span class="td-them"><b>${pct(1 - pre)}</b> ${esc(away.name)}</span></div>`;
+  <span class="td-us td-fit"><span class="td-nm">${esc(home.name)}</span> <b>${pct(pre)}</b></span><span class="td-track"><i style="width:${(pre * 100).toFixed(1)}%"></i><em></em></span><span class="td-them td-fit"><b>${pct(1 - pre)}</b> <span class="td-nm">${esc(away.name)}</span></span></div>`;
 
 // The model's draft for a series, from the home team's side.
 export function modelDraftHtml(home, away, d, width) {

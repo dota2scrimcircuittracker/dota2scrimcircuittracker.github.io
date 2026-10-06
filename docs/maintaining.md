@@ -38,14 +38,16 @@ once (see "Firebase key").
   on first visit.
 - `public/lib/` — logic with no page code, most of it tested in `test/`: `stats.js`
   (leaderboards), `tiers.js` (tier list), `store.js` (Firestore), `divisions.js` (the divisions
-  table), `share.js` (shareable paths), `ocr/` (the screenshot reader, shared by the site and the
+  table), `share.js` (shareable paths), `pagetabs.js` (the team, player, hero and standings
+  tabs: the one list both the page's tab bar and the nav dropdown read, so add a tab there),
+  `ocr/` (the screenshot reader, shared by the site and the
   Node tests; only `engine-browser.js` / `lib/ocr-node.js` differ), and the rest.
 - `scripts/` — `sync/` (the AD2L sync and its helpers), `deploy/` (build steps the Pages workflow
   runs), `gen/` (regenerate data files, preview cards, CDN hashes), `backfill/` (refill fields
   from the sync cache), `rules/` (Firestore rules tools), `firebase/` (one-off project setup),
   `ocr/` (OCR dev tools); `feedback.cjs` (feedback tickets) stays at the top.
 
-Where features live in `public/lib/`: search `search.js`; feedback `feedback.js` (review:
+Where features live in `public/lib/`: search `search.js` (pop-up), `sitesearch.js` + `topics.js` (results page), `tables.js` (its tables; UI in `parts/tables.js`); feedback `feedback.js` (review:
 `feedback-review.js`); tour `tour.js`; scrim schedule `fixtures.js`; predictions and the model
 `predict.js`; strength of schedule `schedule.js` (AD2L's definition); the playoff picture
 `playoffs.js` (its page part `parts/playoffs.js`; the AD2L rules it follows are in its header,

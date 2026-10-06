@@ -25,15 +25,41 @@ and change it: [maintaining.md](maintaining.md).
   tab. Forfeits against PlayOn's "Heroic Bye Week" placeholder aren't uploadable games.
 - **All divisions** (`/all/`, under the picker and last in the league menu) — every division's
   files merged: Teams (one table with a Division column; Matches and Crosstable boxed per
-  division, Heroic/Aegis per sub-division; no Race), Weekly, Players (one tier list, everyone
+  division, Heroic/Aegis per sub-division; no Race), Content, Players (one tier list, everyone
   rated against the whole field) and Heroes. Read-only: no Predict or Upload, and a game opens
   in its own division.
 - **League switching** keeps the tab you're on: Players in Champion → Warrior opens Warrior's
   Players. A team, game or player page opens that tab's list.
-- **Search** (top bar, or press `/`) — any player or team in any league: every division's
-  rosters, stand-ins seen in its games (by the team they last played for), and scrim players and
-  teams. Each result shows its league (Heroic/Aegis with its division) and, for players, their
-  team and captain/stand-in status; in-game names find the rostered player.
+- **Search** (top bar, or press `/`) — as you type, any player or team in any league: every
+  division's rosters, stand-ins seen in its games (by the team they last played for), and scrim
+  players and teams, each with its league and, for players, their team and captain/stand-in
+  status; in-game names find the rostered player. Arrow to a suggestion and Enter opens it;
+  Enter on its own (or "See all results") opens the **results page** (`<league>/search?q=…`):
+  a name plus a stat ("No Immortals radiant") links straight to that section, which flashes; a
+  stat with no name ("radiant win rate") gets a card to pick a league, team, player or hero;
+  names list their pages' tabs; league pages match by name. Filters: Teams / Players / Heroes /
+  Pages and one league. Keyword-based with synonyms and hero shorthand ("am", "wk"); typos are
+  corrected (none up to 3 letters, 1 up to 6, 2 beyond) with a "Showing results for…" line and a
+  link to search the exact words. Questions it can't place get an empty page with examples.
+  The words each section answers to are in `lib/topics.js`; a search that comes back empty is
+  fixed by adding words there. Spec: `docs/superpowers/specs/2026-10-06-site-search-design.md`.
+  **Tables:** a search that asks for every team, player or hero ("compare first blood",
+  "radiant win rate all teams", "compare kda", "ban rate table") leads with a table of every one
+  in the league. "Per minute" ("kills per minute", "kills a minute", "kpm") swaps a stat's columns for
+  their per-minute ones (kills, deaths, kill diff and assists over game time, with the team's average
+  game length); a phrase a topic owns ("gold per minute") stays that topic's. Any other stat with no name ("radiant win rate", "kda", "ban rate") opens its
+  card on **All teams / All players / All heroes** with the table already drawn (League and the
+  single Team / Player / Hero pickers stay a click away), with the rest of the results below.
+  Every table search builds has **Edit this table** (it in the builder) and **Build my own
+  table**; the second also sits next to the filters and in the settings cog (**Table builder**,
+  for the league being viewed). The builder (`&table=team|player|hero`) has rows (teams,
+  players, heroes), league (**All AD2L**, a division, Heroic A or B, Scrims), period (whole
+  season or the last 2, 4 or 8 weeks), a player table's team, minimum games (values from fewer
+  games show greyed and sort last), presets, column sets saved in this browser, and columns in
+  groups. Everything is in the address (`&cols=…&sort=…&dir=…&min=…&weeks=…&team=…&league=…`),
+  so a table can be shared. Values come from the team, Players and Heroes pages' own functions
+  (`lib/tables.js`); an AD2L team's win % is PlayOn's record (`lib/teams.js` `seriesRecords`).
+  Spec: `docs/superpowers/specs/2026-10-06-team-tables-design.md`.
 - **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
   pasted into Discord previews as that page (its title, description and a card in the league's
   colours). Pages without a preview (player pages, older weeks, uploaded games) keep `/#/…`
@@ -74,17 +100,54 @@ and change it: [maintaining.md](maintaining.md).
   week in each cell, "vs" for the coming week, empty where two teams haven't met (AD2L isn't a
   round robin); one table per division in Combined Heroic.
 - **Team pages** — record, series and game results, roster, hero pool (W–L per hero), what they
-  ban and what's banned against them, split by draft phase, and player stats for that team. On
+  ban and what's banned against them, split by draft phase, how often they play Radiant and
+  pick first (with the record each way and the side/pick mix; scrims show pick order only), and
+  player stats for that team. On
   the Series tab, every drafted series shows each game's full pick/ban draft under its row.
+  **Hero grid for Dota** (Heroes tab, linked from the overview): three columns, as in a matchup:
+  the enemy (this team) left, bans middle, you right. "You" is **My team**, set beside the grid or
+  under the settings cog (the same setting, `core.js` myTeam, kept in localStorage; either one
+  updates the other and open grids). Templates: by position, by player (the five with the most
+  games), picks and bans (model's likely picks, picks most; bans: the model's ban-against-them,
+  banned against them, what they ban), recent pubs (each player's last 30 days), draft model
+  threats per position. **Depth** (built-ins; remembered): Quick (the enemy's five boxes, top 5
+  heroes each, and one ban-against-them box of 8), Standard (as built), Deep (no caps, plus real
+  drafts' "banned against them" and "they ban" by phase); customising keeps the depth's boxes.
+  Every built-in puts the model's bans in the middle, split by Captains Mode ban
+  phase (phase 1 before any pick, 2 after two picks, 3 after eight: scored at the start of each
+  phase after the model's own draft to there, both first-pick orders averaged, heroes already
+  taken left out; `parts/cmdraft.js` phaseBans). Real drafts split the same way: "banned against
+  them" and "they ban" per phase. Your team gets the same boxes on the right. The draft model's boxes read the team against my team (or, without one,
+  average players; in the Drafter, the other team in the draft): likely picks are the model's
+  propensity (weighted games plus position prior), bans are the points a hero adds to them if left
+  open (`parts/cmdraft.js` heroGridModelFor). Heroes played in pubs in the last 30 days get a green
+  outline and their pub count. **Customise** / **New template…**: drag heroes off a box (or click
+  them) to take them out; drag them in from the grid, the Drafter's heroes and suggestions, or any
+  hero picture or name on the page; drop one on another hero to put it there. **Right-click any hero
+  picture** on the site (Shift + right-click keeps the browser's menu): "Add to a hero grid", step 1
+  the grid (yours, a new one with just that hero, or a built-in, which saves your own copy), step 2
+  the section; open grids switch to it and team pages open on it. The grid is drawn
+  as Dota's canvas (1100 units wide, the export's own x/y/width/height; heroes shrink to fit a box
+  as Dota does). Built-ins lay boxes out in the three columns; customising freezes every box's
+  place so it can be dragged by its name bar and resized from the corner (snaps to 10, Alt for
+  free; arrow keys nudge the selected box, Shift+arrows resize, Delete removes). Click a box to
+  rename it, change its source, side (enemy, bans, you) or cap, add a hero, duplicate, empty or
+  delete it; "Tidy into columns" resets the layout. Edits are kept as add/remove/order lists so
+  a template fits every team. Templates are saved in localStorage only. Saved into the visitor's own `hero_grid_config.json` (every
+  grid already in it is kept; the file stays in the browser) so it shows in Dota's pick-screen
+  Sort menu as "vs <team>", with step-by-step instructions (`parts/herogrid.js`,
+  `lib/herogrid.js`).
   Splits: record as Radiant / Dire, with and without stand-ins, first-blood rate, teamfight win
   %, aegis steals, win % by game length, record when ahead / behind at 10', 20' and 30', every
   pair and five-player lineup, average gold lead curve, comebacks and throws (5k+ leads),
   Roshans and Tormentors taken vs given up, first-Roshan rate, and wards / dewards / stacks per
   game. Team names link to team pages everywhere on the site.
 
-## Weekly recap
+## Content (was Weekly)
 
-One week at a time: highlights (player of the week, biggest damage, best KDA, top GPM, most
+One week at a time, in this order: the week's series (or games) first, then (AD2L, latest
+week) **Up next**: the series still to play, each with the model's odds as on Predict (it used
+to be a Teams tab), then highlights (player of the week, biggest damage, best KDA, top GPM, most
 kills, fastest core item, best laner, biggest comeback, most wards / stacks / dewards, fastest
 first blood, longest streak, rampages, biggest hit, highest APM, aegis steals, most paused game)
 and every game with lineups and MVP. AD2L games also show the full Captains Mode draft in pick/ban
@@ -92,7 +155,13 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 
 ## Players tab
 
-- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below).
+- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
+  position, Pos 1–5 (opens on Pos 1; there's no all-players list): that position's own list, each player's games
+  there only, rated against that position's players (its anchors, consistency and curve come
+  from pos N games; `lib/tiers.js` tierModel/tierList `pos`), so a 4/5 swapper shows in both with
+  each set of games. Each chip says the position played most; its tooltip lists games at each.
+  A breakdown has a × in its top-right corner, and its stat table sorts by Stat, 0–100 or Points
+  (the order holds for every breakdown while the page is open).
 - **Stat leaders** — top and bottom 3 on any stat, with "1st overall" badges across every division.
 - **Laning** — laning ranked by position (safe, mid, off, supports; 3+ lanes), with best-laner
   cards for the latest week and the season.
@@ -171,7 +240,11 @@ The Heroes tab has three sub-tabs (`?tab=tiers|players|table`):
 - **Players on heroes** — every player on every hero, ranked S–D by hero rating (the tier rating
   from just their games on that hero; same cutoffs as the tier list). Filters: Everyone / Cores /
   Supports, one hero, and a games floor (default 2; drops to 1 when nobody has 2).
-- Both boards show 24 cards per tier, then "+N more".
+- Both boards show 24 cards per tier, then "+N more". Click a card for its breakdown. A hero:
+  every player on it with W–L, hero rating and the points their games add (games × hero rating ÷
+  (games + 3)), the padding, the average, the hero-curve step and the rating, with a short
+  plain-language summary; the rows add up to the rating. A player on a hero: the same breakdown
+  as the Players tier list (stats, multipliers, series, curve), from just those games.
 - **All heroes** — the draft cards and the table below:
 - **Heroes** — every hero picked: picks, bans, contest rate (picked or banned per drafted
   game), win rate, Radiant's win rate, the division's "team that drew first blood won X%".
@@ -348,7 +421,8 @@ shrunk-resolution problem above, not a finding problem.
   in how many drafts the model moved the team's chance up, and by how much on average.
 - **Drafter** (AD2L, its own tab) — draft for any two teams. Start from an upcoming series in the
   division, any two teams from any division, or a past game (its draft loads in full; click any
-  step to rewind and branch, and "In the game" shows what was actually picked there). Pick who
+  step to rewind and branch, and "In the game" shows what was actually picked there; links to the
+  game page and, for ticketed games, OpenDota, Dotabuff and Stratz by match id sit above the board). Pick who
   has first pick and who is Radiant, and which five play (default: the five with the most league
   games for the team). On a pick, **Picking for** says which player the pick is for (default: the player with no hero yet) and at which open position (default: the open one they play most); the list then shows heroes for that player at that position, scored with the hero as theirs, and the pick is recorded as theirs. A past game's picks are pinned to who actually played them. Every step lists the model's best 8 (picks: the team's chance to win with
   the hero and who would play it; bans: points the hero would add to the other team and who on
@@ -365,7 +439,17 @@ shrunk-resolution problem above, not a finding problem.
   pick is kept. **Flex** heroes (two or more roles, 4 and 5 counting as one: 20%+ of pub games
   there, or 4+ lane-parsed games there by someone in the game) are marked in the list, the grid
   (gold corner) and the board. A player with no history (a stand-in, a private profile, or a division not yet
-  synced) reads as an average player at the game's rank.
+  synced) reads as an average player at the game's rank. The rosters list each player's Stratz,
+  OpenDota and Dotabuff pages (by account ID) and PlayOn page (by the PlayOn player id the sync
+  reads off the team page; missing until a team is re-synced). The hero picker is the **Hero
+  grid** by default (toggle to **All heroes** for every hero by attribute; the choice is
+  remembered): either team's Hero grid for Dota (the team page's, any template), opening on the
+  team that isn't mine; "you" is my team, or else the other team in the draft. It follows the
+  draft: heroes gone are greyed, ones with no open position faded, and each shows the model's value
+  for the step in play; a click picks or bans it. Find a hero lists matches from every hero, to
+  play or drag in. Customise the grid mid-draft: drag heroes in from the suggestions or the
+  search, or press + on a suggestion to add it to the selected box (else the first of yours);
+  save the template to keep it. Saving into Dota folds away under the grid.
 
 ## Predictions
 
@@ -383,23 +467,73 @@ shrunk-resolution problem above, not a finding problem.
   and the division's usual bans; picks give each player the best hero left in their pool.
   Each card also carries the **draft model** (separate from the ratings, which it doesn't
   change): its chance for one game before the draft, from the ten likely players alone (each
-  team's five with the most league games, averaged over who takes Radiant), and, under "Draft
-  model: its best draft, and the odds after it", a full draft it builds for both teams with the
-  Drafter's rules (first-pick team on Radiant, toggle who picks first), with the chance before
-  and after it, the step chart, and each team's heroes, players and bans. Measured on this
+  team's five with the most league games, averaged over who takes Radiant), and, at the top of
+  the card's one **Model's draft** expander ("Best draft, and the odds after it", above the
+  likely draft; one First pick switch drives both), a full draft it builds for both teams with
+  the Drafter's rules (first-pick team on Radiant), with the chance before and after it, the
+  step chart, and each team's heroes, players and bans. Measured on this
   season's games read before they were played (`scripts/measure/draft-model.js`): before
   the draft it was no better than the ratings, which is why the ratings stay as they are.
-- **Playoff picture** (Predict, below the leaderboard; `lib/playoffs.js`, `parts/playoffs.js`) —
-  the playoffs if every remaining call goes the model's way. Unreported series get the model's
+- **Playoff picture** (`lib/playoffs.js`, `parts/playoffs.js`) — Predict has three tabs, each
+  its own link (`?tab=calls|bracket|odds`, Back works, the last one remembered): **Predictions**
+  (this week's cards, leaderboard, past weeks), **Bracket** (a Your picks / Model's picks toggle)
+  and **Seeding** (worked out the first time its tab opens). The name bar sits above them.
+  - **Your picks** (Bracket's default): unreported series go the way the viewer called them on the cards
+    above (uncalled ones, and unposted weeks, take the model's call and say so). The table and
+    tiebreakers follow from that; the viewer then clicks winners in the tiebreakers and the
+    bracket, and picks seed 1's opponent. An unclicked tiebreaker shows the model's pick
+    (dashed); the bracket has no winners until clicked: week 1 comes from the seeds, and every
+    later slot reads TBD until the match feeding it is picked. Clicking your own pick again
+    clears it. A progress strip counts series, tiebreakers and bracket matches picked. Saved in localStorage per division, keyed by
+    the two teams, so a pick sticks while that pairing exists.
+  - **Model's picks** (Bracket's other side): everything below.
+  - **Seeding**: every way the open series go (3 results each, so 3^n outcomes), and in
+    each every way its week 8 tiebreakers go; a grid of each team's share of each place plus
+    summary columns: upper bracket and playoffs (running totals), or for Heroic/Aegis the four
+    brackets on their own (Aegis upper 1–2, Aegis lower 3–4, Heroic upper 5–6, Heroic lower
+    7–8). Counted equally (a tiebreaker splits its outcome in half) or by the model's odds.
+    Ties on wins follow the rules on each outcome's own final table (SoS from those results):
+    across a line, week 8 both ways; teams are ranked (for the week 8 table and for seed order)
+    by SoS → head to head → highest common opponent → a 1v1 solo mid (only for 1st or a line;
+    any other seed order is a coin flip), both counted 50/50
+    (every order the same for 3+ teams) whatever the weighting, one result per group of teams.
+    "How the tiebreakers work" sits under the grid too. Under it, per division, two tables:
+    **Possible week 8 tiebreakers** (chance, line, teams level, wins, places, the rules' format
+    for that case) and **Possible 1v1 mids** (chance, teams, wins, what they're still level on in
+    the likeliest way there: SoS, head to head, record v the highest common opponent; what it
+    decides: seed order, or their order in a line's tiebreaker). Top 10 each, "Show all" for the rest; "What leads to it"
+    lists the ways there, like a place's (`lib/playoffs.js` `pathsToEvent`). Random runs give the
+    chances only.
+    Click a cell for what it takes to finish there, or a team for every place: the ways, each a
+    collapsible card side by side (share, the team's own result, "+ N more results"; all open) listing
+    every result it needs in full. Any one way gets them there. Each place is its own collapsible
+    box (closed unless it's the place picked), coloured best first: gold, green, teal, sky, blue,
+    indigo, violet, magenta through the playoff places, red for any place out of them; the place
+    bars on the team page match. The team's own series is worded from its side ("beat X 2–0") and
+    in gold; others plainly ("A beats B 2–0", "A wins or 1–1 v B"); week 8 names the games
+    ("Week 8: beat X, then lose to Y"), or "the other week 8 tiebreakers" when it rests on
+    games it isn't in. Over 3^9 outcomes, or while weeks are unposted, it runs
+    4000 random runs instead and lists no paths. Each division is worked out on its own (its
+    results can't move the other's table), so Heroic is 3^6 and 3^5, not 3^11.
+  - **Team page → Outcomes** (AD2L teams): the same for one team, worked out when the tab opens:
+    likeliest place, the summary columns as cards, a bar per place (click one for what it
+    takes; every place shown by default), and a link to Predict's Seeding. A 1v1 mid counts 50/50, as
+    on Seeding; a line under the bars says how ties go.
+
+  The model's picks: the playoffs if every remaining call goes the model's way. Unreported series get the model's
   call; weeks PlayOn hasn't posted (up to 7) are paired swiss-style as a labelled stand-in (table
   order, nearest team not yet met). Then the final table (wins, SoS, where each place goes), the
   week 8 tiebreakers by the rules' table (ties across the 4th/5th and 8th/9th lines are played,
   with the predicted winners; seed-only ties go SoS → head to head → highest common opponent →
-  coin flip) and the double-elim bracket to a champion. Bracket shape from S47 on PlayOn: seed 1
+  1v1 solo mid, the model's stronger team) and the double-elim bracket to a champion. Bracket shape from S47 on PlayOn: seed 1
   takes the weaker of 3 and 4, lower round 1 is 5v8 and 6v7, the loser of seed 1's match meets
   the 6v7 winner. Under 8 teams everyone's in (4: all upper; 5–6: 5v6 lower), the site's
-  assumption. Heroic/Aegis shows A and B (top 4 → Aegis, 5–8 → Heroic) with no bracket until AD2L
-  says how A and B are seeded against each other. Every Bo3/Bo5 (tiebreakers, bracket; the grand
+  assumption. Heroic/Aegis (admin on Discord, 2026-10-05): top 8 of each division make it; 1st–2nd
+  start Aegis's upper bracket, 3rd–4th its lower, 5th–6th Heroic's upper, 7th–8th Heroic's lower,
+  so the tables have lines after 2, 4, 6 and 8 and ties across any of them are played. The
+  crossover isn't stated: the site seeds A1, B1, A2, B2, A3, B3, A4, B4 (Heroic: 5th–8th), giving
+  A1 v B2 and B1 v A2 upper, A3 v B4 and B3 v A4 lower, no seed-1 choice. The A and B views show
+  both divisions and both brackets (the picture loads the whole league). Every Bo3/Bo5 (tiebreakers, bracket; the grand
   final as a Bo5) shows the model's score and the chance of every score (`bestOfScores`, games
   independent). The winner's likeliest Bo3 score is always 2–0, since 2–1 needs a dropped game;
   a Bo5 is 3–1 until the favourite wins over 2 games in 3, then 3–0.

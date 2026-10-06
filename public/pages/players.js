@@ -54,7 +54,7 @@ function leadersSection(src, rows) {
         <div class="ld-plates reveal">${xs.length || sp ? `${xs.map((r, i) => plate(r, i, end)).join("")}${spill(sp, end, xs.length)}` : `<div class="tier-empty">Nobody with ${floorOf(src)}+ games yet</div>`}</div>
       </div>`;
     el.querySelector(".ld-lists").innerHTML = `${band("top", stat.low ? "Top 3 · fewest" : "Top 3", top, top_spill)}${band("bottom", stat.low ? "Bottom 3 · most" : "Bottom 3", bottom, bottom_spill)}`;
-    el.querySelector(".ld-note").textContent = `${ranked.length} players with ${floorOf(src)}+ games${stat.map ? " and parsed replays" : ""}.${src.ad2l ? overall ? ` Badges: top or bottom 3 across all ${LEAGUE_COUNT} AD2L leagues (${pool.length} players).` : " Loading the other leagues…" : ""}`;
+    el.querySelector(".ld-note").textContent = `${ranked.length} players with ${floorOf(src)}+ games${stat.map ? " and replays" : ""}.${src.ad2l ? overall ? ` Badges: top or bottom 3 across all ${LEAGUE_COUNT} AD2L leagues (${pool.length} players).` : " Loading the other leagues…" : ""}`;
   };
   const html = `<h2 id="stat-leaders">Stat leaders${info("stat_leaders")}</h2>
     <div id="leaders">

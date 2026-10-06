@@ -216,3 +216,26 @@ test("rank labels", () => {
   assert.equal(rankLabel(74), "Divine 4");
   assert.equal(rankLabel(null), null);
 });
+
+test("each player's exact positions: games at each and the one played most", () => {
+  const all = tierList(games(MIN_GAMES)).tiers.flatMap((t) => t.players);
+  for (const p of all) {
+    assert.equal(Object.values(p.pos_games).reduce((a, b) => a + b, 0), p.games, p.name);
+    assert.ok(p.pos >= 1 && p.pos <= 5 && p.pos_games[p.pos] === Math.max(...Object.values(p.pos_games)), p.name);
+    assert.equal(p.role, p.pos <= 3 ? "core" : "support");
+  }
+  // One player per position on each side of the fixture.
+  assert.deepEqual([1, 2, 3, 4, 5].map((n) => all.filter((p) => p.pos === n).length), [2, 2, 2, 2, 2]);
+});
+
+test("a position's tier list: only games at that position, rated against that position's players", () => {
+  const gs = games(4, (g, i) => { g.players[3].kills += 4 * i; });
+  const list = tierList(gs, { pos: 4 });
+  const all = list.tiers.flatMap((t) => t.players);
+  assert.equal(list.model.pos, 4);
+  assert.equal(all.length, 2); // one pos 4 a side
+  for (const p of all) assert.deepEqual([p.pos, p.pos_games[4], p.games], [4, 4, 4]);
+  // Its anchors come from pos 4s only, so the two of them span the 0–100.
+  const scores = all.flatMap((p) => p.roles[0].stats.map((s) => s.score));
+  assert.ok(scores.some((v) => v === 100) && scores.some((v) => v === 0));
+});
