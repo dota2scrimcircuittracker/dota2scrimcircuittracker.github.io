@@ -2421,6 +2421,15 @@ button.ga-go:hover:not(:disabled) { background: var(--accent); color: var(--on-a
 }
 .player-cards .best-game { border-color: rgba(var(--accent-rgb), .35); background: linear-gradient(160deg, rgba(var(--accent-rgb), .08), transparent 60%), var(--stone); }
 .player-cards .best-game .k { color: var(--accent); }
+@media (min-width: 1400px) { .player-cards .card .v.pair { font-size: 27px; } }
+/* Team page head cards: two to a row on a phone (fifteen full-width cards is a long scroll). */
+@media (max-width: 600px) {
+  .team-cards { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .team-cards .card { padding: 14px 12px; }
+  .team-cards .card .v { font-size: 28px; margin: 10px 0 6px; }
+  .team-cards .card .v.pair { font-size: 21px; }
+  .team-cards .card .s { font-size: 12px; }
+}
 
 /* Player page tabs (Stats / Heroes / Map / Games): styled like the site nav. */
 /* Compact player header: one kicker line, then name + tier + team line + tabs in one row
