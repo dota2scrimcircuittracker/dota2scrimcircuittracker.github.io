@@ -155,7 +155,7 @@ export function heroGridHtml(team, games, { pubs = null, compact = false } = {})
         <li><b>Find your grid file</b>, <code>${FILE}</code>. It's in your Steam folder:
           <code class="hg-path">${esc(FOLDER)}${SEP}<i>your number</i>${SEP}${esc(TAIL)}</code>
           <button type="button" class="link-btn hg-copy">Copy the userdata folder</button>
-          <small>Paste that into the file picker's address bar. If there's more than one number, yours is your Steam friend code. Steam installed somewhere else? Use that folder's <code>userdata</code> instead.</small></li>
+          <small>Paste that into the file picker's address bar. <i>Your number</i> is your Steam friend code: the same number as your Dota ID on your Dota profile, or in your OpenDota or Dotabuff link. It's the short one (like 75379546), not the 17-digit Steam ID that starts 7656119. If there are several folders, pick the one with that number. Steam installed somewhere else? Use that folder's <code>userdata</code> instead.</small></li>
         <li><b>Add the grid to it.</b> Pick the file here; you get it back with this grid added. Every grid you already have stays; an earlier ${esc(name)} is replaced.
           <div class="row hg-btns">
             <button type="button" class="primary hg-pick">Choose ${FILE}</button>
