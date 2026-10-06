@@ -30,10 +30,19 @@ and change it: [maintaining.md](maintaining.md).
   in its own division.
 - **League switching** keeps the tab you're on: Players in Champion → Warrior opens Warrior's
   Players. A team, game or player page opens that tab's list.
-- **Search** (top bar, or press `/`) — any player or team in any league: every division's
-  rosters, stand-ins seen in its games (by the team they last played for), and scrim players and
-  teams. Each result shows its league (Heroic/Aegis with its division) and, for players, their
-  team and captain/stand-in status; in-game names find the rostered player.
+- **Search** (top bar, or press `/`) — as you type, any player or team in any league: every
+  division's rosters, stand-ins seen in its games (by the team they last played for), and scrim
+  players and teams, each with its league and, for players, their team and captain/stand-in
+  status; in-game names find the rostered player. Arrow to a suggestion and Enter opens it;
+  Enter on its own (or "See all results") opens the **results page** (`<league>/search?q=…`):
+  a name plus a stat ("No Immortals radiant") links straight to that section, which flashes; a
+  stat with no name ("radiant win rate") gets a card to pick a league, team, player or hero;
+  names list their pages' tabs; league pages match by name. Filters: Teams / Players / Heroes /
+  Pages and one league. Keyword-based with synonyms and hero shorthand ("am", "wk"); typos are
+  corrected (none up to 3 letters, 1 up to 6, 2 beyond) with a "Showing results for…" line and a
+  link to search the exact words. Questions it can't place get an empty page with examples.
+  The words each section answers to are in `lib/topics.js`; a search that comes back empty is
+  fixed by adding words there. Spec: `docs/superpowers/specs/2026-10-06-site-search-design.md`.
 - **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
   pasted into Discord previews as that page (its title, description and a card in the league's
   colours). Pages without a preview (player pages, older weeks, uploaded games) keep `/#/…`
