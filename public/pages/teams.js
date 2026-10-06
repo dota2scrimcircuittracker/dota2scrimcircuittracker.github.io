@@ -1,7 +1,7 @@
 // Teams: the scrim team list and every team's page.
 import { hasDetails, playerLeaderboard } from "../lib/stats.js";
 import { tierList, rankLabel } from "../lib/tiers.js";
-import { listTeams, standingsRows, teamHistory, sideOf } from "../lib/teams.js";
+import { listTeams, standingsRows, teamHistory, sideOf, seriesRecords } from "../lib/teams.js";
 import { wireCharts } from "../lib/charts.js";
 import { collectWards, wireWardMaps } from "../lib/wardmap.js";
 import { teamFightMapHtml, wireFightMaps } from "../lib/fightmap.js";
@@ -45,14 +45,8 @@ export async function renderTeams(src, slug) {
   if (ad2l) {
     // AD2L records from PlayOn's series scores (official; complete even when a game's
     // stats couldn't be found).
-    teams = teams.map((t) => {
-      let wins = 0, losses = 0;
-      for (const s of ad2l.series.filter((x) => x.home === t.id || x.away === t.id)) {
-        const [us, them] = s.home === t.id ? [s.home_score, s.away_score] : [s.away_score, s.home_score];
-        wins += us ?? 0; losses += them ?? 0;
-      }
-      return { ...t, wins, losses, games: wins + losses };
-    }).sort((a, b) => b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name));
+    const recs = seriesRecords(ad2l.series);
+    teams = teams.map((t) => ({ ...t, ...(recs.get(t.id) ?? { wins: 0, losses: 0, games: 0 }) })).sort((a, b) => b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name));
   }
   const table = new Map(standingsRows(matches).map((r) => [r.slug, r])); // form and streak, from games
   const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
