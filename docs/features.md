@@ -145,8 +145,9 @@ and change it: [maintaining.md](maintaining.md).
 
 ## Content (was Weekly)
 
-AD2L: **Up next** at the top of the latest week: the series still to play, each with the
-model's odds (as on Predict); it used to be a Teams tab. Then one week at a time: highlights (player of the week, biggest damage, best KDA, top GPM, most
+One week at a time, in this order: the week's series (or games) first, then (AD2L, latest
+week) **Up next**: the series still to play, each with the model's odds as on Predict (it used
+to be a Teams tab), then highlights (player of the week, biggest damage, best KDA, top GPM, most
 kills, fastest core item, best laner, biggest comeback, most wards / stacks / dewards, fastest
 first blood, longest streak, rampages, biggest hit, highest APM, aegis steals, most paused game)
 and every game with lineups and MVP. AD2L games also show the full Captains Mode draft in pick/ban
