@@ -867,19 +867,23 @@ export function scrollToSection(el) {
   scrollTo({ top: scrollY + el.getBoundingClientRect().top - (document.querySelector(".top")?.offsetHeight ?? 0) - 12 });
 }
 // Site search links end in &at=<glossary key or element id>. After a page draws, scroll to that
-// section in the open tab and flash it once; then drop `at` from the address so a copied link
-// doesn't flash again. Sections some pages fill a moment later get one more look.
+// section in the open tab (else anywhere on the page: cards above the tabs, a header badge) and
+// flash it once; then drop `at` from the address so a copied link doesn't flash again. Sections
+// some pages fill a moment later get one more look.
 export function goToSection() {
   const u = new URL(location.href), at = u.searchParams.get("at");
   if (!at) return;
   u.searchParams.delete("at");
   history.replaceState(history.state, "", u.pathname + u.search + u.hash);
   setRoutedAt(location.href);
+  const within = (scope) => {
+    const btn = scope.querySelector(`[data-info="${CSS.escape(at)}"]`);
+    if (btn && !btn.closest("dialog")) return btn.closest(".card, .td-tile") ?? btn.closest("h2, h3") ?? btn.parentElement;
+    return scope.querySelector(`#${CSS.escape(at)}`);
+  };
   const find = () => {
-    const panel = app.querySelector(".pp-panel:not([hidden])") ?? app;
-    const btn = panel.querySelector(`[data-info="${CSS.escape(at)}"]`);
-    if (btn) return btn.closest(".card, .td-tile") ?? btn.closest("h2, h3") ?? btn.parentElement;
-    return panel.querySelector(`#${CSS.escape(at)}`);
+    const panel = app.querySelector(".pp-panel:not([hidden])");
+    return (panel && within(panel)) ?? within(app);
   };
   const flash = (el) => {
     scrollToSection(el);

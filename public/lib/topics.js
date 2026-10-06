@@ -11,7 +11,8 @@
 export const RATE_WORDS = ["win", "wins", "winning", "rate", "rates", "wr", "winrate", "percent", "pct", "ratio"];
 
 // Section headings with an id (no info button to find them by).
-export const ANCHORS = ["head-to-head", "hero-pool"];
+// "tier-open": the tier badge in a player page's header.
+export const ANCHORS = ["head-to-head", "hero-pool", "tier-open"];
 
 export const TOPICS = [
   { id: "record", title: "Record", text: "Wins and losses.", rate: true,
@@ -124,7 +125,7 @@ export const TOPICS = [
     team: { tab: "map", at: "team_smokes" } },
   { id: "laning", title: "Laning", key: "lane_record", rate: true,
     words: ["lane", "lanes", "laning", "offlane", "safelane", "mid", "midlane", "first 10 minutes"],
-    team: { tab: "lanes", at: "lane_record" }, player: { tab: "lanes", at: "lane_record" }, hero: { tab: "lanes", at: "lane_record" } },
+    team: { tab: "lanes" }, player: { tab: "lanes", at: "lane_record" }, hero: { tab: "lanes", at: "lane_record" } },
   { id: "items", title: "Items", key: "core_items",
     words: ["items", "item", "build", "builds", "core items", "item build", "itemization"],
     player: { tab: "items", at: "core_items" }, hero: { tab: "items", at: "core_items" } },
@@ -139,10 +140,10 @@ export const TOPICS = [
     player: { tab: "heroes", at: "recent_pubs" } },
   { id: "tier", title: "Tier list", key: "tier",
     words: ["tier", "tiers", "tier list", "rating", "ratings", "rank", "ranking", "rankings", "grade"],
-    player: { tab: "stats", at: "tier" }, league: { path: "players", at: "tier_list" } },
-  { id: "hero_tiers", title: "Hero tier list", key: "hero_tier_list",
+    player: { tab: "stats", at: "tier-open" }, league: { path: "players", at: "tier_list" } },
+  { id: "hero_tiers", title: "Hero tier list", key: "hero_power_list",
     words: ["hero tier", "hero tiers", "hero tier list", "meta", "strongest heroes", "best heroes"],
-    league: { path: "heroes", tab: "tiers", at: "hero_tier_list" } },
+    league: { path: "heroes", tab: "tiers", at: "hero_power_list" } },
   { id: "stat_leaders", title: "Stat leaders", key: "stat_leaders",
     words: ["leaders", "leader", "leaderboard", "stat leaders", "top", "most"],
     league: { path: "players", at: "stat_leaders" } },
