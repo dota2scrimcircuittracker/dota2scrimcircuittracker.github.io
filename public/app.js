@@ -3,8 +3,9 @@ import { listTeams } from "./lib/teams.js";
 import { info, wireInfo } from "./lib/glossary.js";
 import { countVisit } from "./lib/visits.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
+import { loadSearch } from "./parts/searchindex.js";
 import { DIVISIONS as DIVISION_LIST, slugOf, fullName, divisionCss, SEASON } from "./lib/divisions.js";
-import { esc, DIVISIONS, SOURCES, TM_KEY, timeSel, gameWeeker, seriesWeek, shortDate, divLite, allMatches, addressOf, routedAt, setRoutedAt, showTab, app, tabInUrl, heroHref, portrait, here, bySlug, timeSrc, allLoad, gameLeague, divUploaded, setTitle, myTeam, setMyTeam, myTeamOptions, teamFromOption } from "./core.js";
+import { esc, DIVISIONS, SOURCES, TM_KEY, timeSel, gameWeeker, seriesWeek, shortDate, divLite, allMatches, addressOf, routedAt, setRoutedAt, navigate, goToSection, showTab, app, tabInUrl, heroHref, portrait, here, bySlug, timeSrc, allLoad, gameLeague, divUploaded, setTitle, myTeam, setMyTeam, myTeamOptions, teamFromOption } from "./core.js";
 import { weekOfFn } from "./parts/lanes.js";
 import { tabList, TEAM_TABS, PLAYER_TABS, HERO_TABS, STANDINGS_TABS } from "./lib/pagetabs.js";
 import { renderMatch, renderMatches } from "./pages/games.js";
@@ -20,6 +21,7 @@ import { renderWeek } from "./pages/week.js";
 const uploadPage = () => import("./pages/upload.js");
 const predictPage = () => import("./pages/predict.js");
 const drafterPage = () => import("./pages/drafter.js");
+const searchPage = () => import("./pages/search.js");
 
 // ---------- League switcher + router ----------
 
@@ -57,6 +59,9 @@ const setSettings = (open) => {
 };
 settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(settingsPop.hidden); };
 document.addEventListener("click", (e) => { if (!e.target.closest(".settings")) setSettings(false); });
+// The table builder (pages/search.js &table=), in the league being viewed: closes the menu on the way.
+const settingsTables = document.getElementById("settings-tables");
+settingsTables.addEventListener("click", () => setSettings(false));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSettings(false); });
 // My team (core.js myTeam): the list loads the first time the menu opens.
 const myTeamSel = document.getElementById("my-team");
@@ -185,22 +190,10 @@ tmPop.addEventListener("click", (e) => {
   route();
 });
 
-// Header search: every player and team in every league. The index loads every division's
-// file and the saved scrims on first focus (then the pages reuse them); a division that
-// can't load is left out rather than failing the search.
+// Header search: every player and team in every league (parts/searchindex.js loads it on
+// first focus). Enter opens the full results page; arrowing to a suggestion first opens that.
 const searchEl = document.getElementById("search"), searchIn = document.getElementById("search-in"), searchPop = document.getElementById("search-pop");
-let searchReady = null, searchIdx = null, searchHits = [], searchAt = -1;
-function loadSearch() {
-  searchReady ??= Promise.all([
-    Promise.all(Object.entries(DIVISIONS).map(async ([key, dv]) => {
-      try { return { key, label: dv.short, root: SOURCES[key].root, views: dv.views, data: await divLite(key) }; }
-      catch (e) { console.warn(`search: ${key} unavailable`, e); return null; }
-    })),
-    allMatches().catch((e) => { console.warn("search: scrims unavailable", e); return null; }),
-  ]).then(([leagues, scrims]) => (searchIdx = buildSearchIndex(leagues.filter(Boolean), scrims && { label: "Scrims", matches: scrims })))
-    .catch((e) => { searchReady = null; throw e; });
-  return searchReady;
-}
+let searchIdx = null, searchHits = [], searchAt = -1;
 const setSearch = (open) => {
   searchPop.hidden = !open; searchIn.setAttribute("aria-expanded", String(open));
   // Open toward whichever side has room: the header wraps on narrow screens.
@@ -210,25 +203,28 @@ const mark = (name, q) => {
   const i = name.toLowerCase().indexOf(q.trim().toLowerCase());
   return i < 0 || !q.trim() ? esc(name) : `${esc(name.slice(0, i))}<mark>${esc(name.slice(i, i + q.trim().length))}</mark>${esc(name.slice(i + q.trim().length))}`;
 };
+// The results page for a query, in the league being viewed (scrims and the hub use #/search).
+const resultsHref = (q) => `${navSrc?.ad2l ? navSrc.root : "#"}/search?${new URLSearchParams({ q: q.trim() })}`;
 async function showSearch() {
   const q = searchIn.value;
   if (!q.trim()) { searchHits = []; setSearch(false); return; }
   if (!searchIdx) {
     searchPop.innerHTML = `<div class="search-note">Loading every league…</div>`; setSearch(true);
-    try { await loadSearch(); } catch { searchPop.innerHTML = `<div class="search-note">Search couldn't load. Try again.</div>`; return; }
+    try { searchIdx = await loadSearch(); } catch { searchPop.innerHTML = `<div class="search-note">Search couldn't load. Try again.</div>`; return; }
     if (searchIn.value !== q) return showSearch();
   }
   searchHits = searchIndex(searchIdx, q);
-  searchAt = searchHits.length ? 0 : -1;
+  searchAt = -1;
   const lg = (r) => `<span class="lg-chip" data-lg="${r.league}">${esc(r.leagueLabel)}</span>`;
-  searchPop.innerHTML = searchHits.length ? searchHits.map((r, i) => {
+  const all = `<a class="search-all" href="${resultsHref(q)}">See all results for “${esc(q.trim())}” →</a>`;
+  searchPop.innerHTML = (searchHits.length ? searchHits.map((r, i) => {
     const sub = r.kind === "team"
       ? (r.players.length ? esc(r.players.join(", ")) : "Team")
       : `${r.standin ? "Stand-in for " : ""}${r.team ? `<b>${esc(r.team)}</b>` : "No team"}${r.captain ? " · Captain" : ""}${r.alias ? ` · plays as ${mark(r.alias, q)}` : ""}`;
-    return `<a class="search-hit${i === searchAt ? " on" : ""}" href="${r.href}" role="option" id="sh-${i}" aria-selected="${i === searchAt}">
+    return `<a class="search-hit" href="${r.href}" role="option" id="sh-${i}" aria-selected="false">
       <span class="sh-kind sh-${r.kind}">${r.kind === "team" ? "Team" : "Player"}</span>
       <span class="sh-main"><span class="sh-name">${mark(r.name, q)}</span><span class="sh-sub">${sub}</span></span>${lg(r)}</a>`;
-  }).join("") : `<div class="search-note">No player or team matches “${esc(q.trim())}”.</div>`;
+  }).join("") : `<div class="search-note">No player or team matches “${esc(q.trim())}”.</div>`) + all;
   searchIn.setAttribute("aria-activedescendant", searchAt >= 0 ? `sh-${searchAt}` : "");
   setSearch(true);
 }
@@ -239,34 +235,32 @@ const moveSearch = (d) => {
   searchPop.querySelector(".search-hit.on")?.scrollIntoView({ block: "nearest" });
   searchIn.setAttribute("aria-activedescendant", `sh-${searchAt}`);
 };
-searchIn.addEventListener("focus", () => { loadSearch().catch(() => {}); if (searchIn.value.trim()) showSearch(); });
+searchIn.addEventListener("focus", () => { loadSearch().then((i) => (searchIdx = i)).catch(() => {}); if (searchIn.value.trim()) showSearch(); });
 searchIn.addEventListener("input", showSearch);
 searchIn.addEventListener("keydown", (e) => {
   if (e.key === "ArrowDown") { e.preventDefault(); moveSearch(1); }
   else if (e.key === "ArrowUp") { e.preventDefault(); moveSearch(-1); }
-  else if (e.key === "Enter" && searchAt >= 0) { e.preventDefault(); searchPop.querySelectorAll(".search-hit")[searchAt]?.click(); }
+  else if (e.key === "Enter") {
+    e.preventDefault();
+    if (searchAt >= 0) searchPop.querySelectorAll(".search-hit")[searchAt]?.click();
+    else if (searchIn.value.trim()) { const href = resultsHref(searchIn.value); setSearch(false); searchIn.value = ""; searchIn.blur(); navigate(href); }
+  }
   else if (e.key === "Escape") { setSearch(false); searchIn.blur(); }
 });
 // Picking a result: close and clear (the in-app link handler below does the navigating).
-searchPop.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) { setSearch(false); searchIn.value = ""; searchIn.blur(); } });
+searchPop.addEventListener("click", (e) => { if (e.target.closest(".search-hit, .search-all")) { setSearch(false); searchIn.value = ""; searchIn.blur(); } });
 document.addEventListener("click", (e) => { if (!e.target.closest(".search")) setSearch(false); });
 // "/" focuses the search from anywhere that isn't a text field.
 document.addEventListener("keydown", (e) => {
   if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
   e.preventDefault(); searchIn.focus();
 });
-// In-app links: move the address without a page load, then route as a hash change would.
+// In-app links: move the address without a page load (core.js navigate), then route.
 document.addEventListener("click", (e) => {
   const a = e.target.closest?.('a[href^="#/"]');
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target) return;
   e.preventDefault();
-  // "#/x/teams/5?tab=roster" (the nav dropdowns): open that page on that tab.
-  const [h, q = ""] = a.getAttribute("href").split("?");
-  const tab = new URLSearchParams(q).get("tab");
-  const u = new URL(addressOf(h), location.href);
-  if (tab) u.searchParams.set("tab", tab);
-  history.pushState(tab ? { tab } : null, "", u.pathname + u.search + u.hash);
-  window.dispatchEvent(new HashChangeEvent("hashchange"));
+  navigate(a.getAttribute("href"));
 });
 const samePage = (a, b) => { const x = new URL(a), y = new URL(b); return x.pathname === y.pathname && x.hash === y.hash; };
 const onNav = () => {
@@ -515,6 +509,7 @@ export function route() {
     else if (h.startsWith(`${r}/drafter`)) { section = "drafter"; page = async () => (await drafterPage()).renderDrafter(src); }
     else if (new RegExp(`^${r}/edit/[0-9a-f]{32}$`).test(h)) { section = "week"; page = async () => (await uploadPage()).renderEdit(h.slice(`${r}/edit/`.length), src.key); }
     else if (h.startsWith(`${r}/upload`)) { section = "upload"; page = async () => { const { endEdit, upload, checkDraft, renderUpload } = await uploadPage(); endEdit(); upload.league = src.key; await src.data().catch(() => null); await divUploaded(src.key); if (upload.draft) upload.check = checkDraft(upload.draft); return renderUpload(); }; }
+    else if (h.startsWith(`${r}/search`)) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }
     else { section = "standings"; tm = true; page = () => renderStandings(t); }
   } else {
     const matchId = /^#\/match\/([0-9a-f]{32})$/.exec(h)?.[1];
@@ -539,6 +534,7 @@ export function route() {
     else if (h.startsWith("#/players")) { section = "players"; tm = true; page = () => renderPlayers(t); }
     else if (h.startsWith("#/hero/")) { section = "heroes"; tm = true; page = () => renderHero(t, h.slice("#/hero/".length)); }
     else if (h.startsWith("#/heroes")) { section = "heroes"; tm = true; page = () => renderHeroes(t); }
+    else if (h.startsWith("#/search")) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }
     else { section = "matches"; tm = true; page = () => renderMatches(t); }
   }
   document.getElementById("nav").innerHTML = src.nav.map(([href, key, label, cls]) => {
@@ -546,6 +542,7 @@ export function route() {
     return NAV_MENUS[key] ? `<div class="nav-item" data-menu="${key}">${a}<div class="nav-drop" hidden></div></div>` : a;
   }).join("");
   navSrc = src;
+  settingsTables.href = `${src.ad2l ? src.root : "#"}/search?table=team`;
   // League menu: each league opens on the tab you're on (Players stays Players). A team,
   // game or player page opens that tab's list, since it needn't exist in the other league.
   // Standings, the scrim match list and scrim Teams all land on the other league's standings.
@@ -560,7 +557,7 @@ export function route() {
   // when they draw (crumbs).
   const label = src.nav.find(([, key]) => key === section)?.[2] ?? "";
   setTitle(...(label ? [label] : []), leagueTitle);
-  return Promise.resolve(page()).finally(() => footSync(src));
+  return Promise.resolve(page()).then(goToSection).finally(() => footSync(src));
 }
 // Footer: when the page's division last synced (from its data file), on AD2L pages.
 function footSync(src) {

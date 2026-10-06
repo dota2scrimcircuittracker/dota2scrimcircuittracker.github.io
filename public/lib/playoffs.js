@@ -18,6 +18,7 @@
 
 import { seriesOdds, modelCall, ODDS_SPREAD } from "./predict.js";
 import { isPlayed, gameWins, strengthOfSchedule } from "./schedule.js";
+import { ordinal as ord } from "./ranks.js";
 
 export const REG_WEEKS = 7;
 export const isBye = (t) => /\bbye week\b/i.test(t?.name ?? "");
@@ -159,7 +160,6 @@ export function tiebreakFormat(slots, list, play) {
   const r = tiebreakFormat(s - 1, list.slice(1), play);
   return { above: [list[0], ...r.above], below: r.below, matches: r.matches, stated: stated && r.stated };
 }
-const ord = (n) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
 
 // Compares two tied teams: SoS, head to head (games won between them), then record against
 // the highest common opponent; `last` names what decides it after that ("1v1 mid" across a

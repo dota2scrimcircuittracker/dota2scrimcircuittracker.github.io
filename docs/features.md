@@ -30,10 +30,34 @@ and change it: [maintaining.md](maintaining.md).
   in its own division.
 - **League switching** keeps the tab you're on: Players in Champion → Warrior opens Warrior's
   Players. A team, game or player page opens that tab's list.
-- **Search** (top bar, or press `/`) — any player or team in any league: every division's
-  rosters, stand-ins seen in its games (by the team they last played for), and scrim players and
-  teams. Each result shows its league (Heroic/Aegis with its division) and, for players, their
-  team and captain/stand-in status; in-game names find the rostered player.
+- **Search** (top bar, or press `/`) — as you type, any player or team in any league: every
+  division's rosters, stand-ins seen in its games (by the team they last played for), and scrim
+  players and teams, each with its league and, for players, their team and captain/stand-in
+  status; in-game names find the rostered player. Arrow to a suggestion and Enter opens it;
+  Enter on its own (or "See all results") opens the **results page** (`<league>/search?q=…`):
+  a name plus a stat ("No Immortals radiant") links straight to that section, which flashes; a
+  stat with no name ("radiant win rate") gets a card to pick a league, team, player or hero;
+  names list their pages' tabs; league pages match by name. Filters: Teams / Players / Heroes /
+  Pages and one league. Keyword-based with synonyms and hero shorthand ("am", "wk"); typos are
+  corrected (none up to 3 letters, 1 up to 6, 2 beyond) with a "Showing results for…" line and a
+  link to search the exact words. Questions it can't place get an empty page with examples.
+  The words each section answers to are in `lib/topics.js`; a search that comes back empty is
+  fixed by adding words there. Spec: `docs/superpowers/specs/2026-10-06-site-search-design.md`.
+  **Tables:** a search that asks for every team, player or hero ("compare first blood",
+  "radiant win rate all teams", "compare kda", "ban rate table") leads with a table of every one
+  in the league; any other stat with no name ("radiant win rate", "kda", "ban rate") opens its
+  card on **All teams / All players / All heroes** with the table already drawn (League and the
+  single Team / Player / Hero pickers stay a click away), with the rest of the results below.
+  Every table search builds has **Edit this table** (it in the builder) and **Build my own
+  table**; the second also sits next to the filters and in the settings cog (**Table builder**,
+  for the league being viewed). The builder (`&table=team|player|hero`) has rows (teams,
+  players, heroes), league (**All AD2L**, a division, Heroic A or B, Scrims), period (whole
+  season or the last 2, 4 or 8 weeks), a player table's team, minimum games (values from fewer
+  games show greyed and sort last), presets, column sets saved in this browser, and columns in
+  groups. Everything is in the address (`&cols=…&sort=…&dir=…&min=…&weeks=…&team=…&league=…`),
+  so a table can be shared. Values come from the team, Players and Heroes pages' own functions
+  (`lib/tables.js`); an AD2L team's win % is PlayOn's record (`lib/teams.js` `seriesRecords`).
+  Spec: `docs/superpowers/specs/2026-10-06-team-tables-design.md`.
 - **Shareable addresses** — the address bar shows real paths (`/warrior/players/`), so a link
   pasted into Discord previews as that page (its title, description and a card in the league's
   colours). Pages without a preview (player pages, older weeks, uploaded games) keep `/#/…`
@@ -405,9 +429,15 @@ shrunk-resolution problem above, not a finding problem.
   (gold corner) and the board. A player with no history (a stand-in, a private profile, or a division not yet
   synced) reads as an average player at the game's rank. The rosters list each player's Stratz,
   OpenDota and Dotabuff pages (by account ID) and PlayOn page (by the PlayOn player id the sync
-  reads off the team page; missing until a team is re-synced). Under the board, **Prep a hero
-  grid** shows either team's Hero grid for Dota (the team page's), opening on the team that isn't
-  mine; "you" is my team, or else the other team in the draft.
+  reads off the team page; missing until a team is re-synced). The hero picker is the **Hero
+  grid** by default (toggle to **All heroes** for every hero by attribute; the choice is
+  remembered): either team's Hero grid for Dota (the team page's, any template), opening on the
+  team that isn't mine; "you" is my team, or else the other team in the draft. It follows the
+  draft: heroes gone are greyed, ones with no open position faded, and each shows the model's value
+  for the step in play; a click picks or bans it. Find a hero lists matches from every hero, to
+  play or drag in. Customise the grid mid-draft: drag heroes in from the suggestions or the
+  search, or press + on a suggestion to add it to the selected box (else the first of yours);
+  save the template to keep it. Saving into Dota folds away under the grid.
 
 ## Predictions
 

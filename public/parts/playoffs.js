@@ -9,9 +9,9 @@
 import { playoffPicture, possibilities, pathsTo, TBD } from "../lib/playoffs.js";
 import { info } from "../lib/glossary.js";
 import { esc, pct, teamLink, DIVISIONS } from "../core.js";
+import { ordinal as ord } from "../lib/ranks.js";
 
 const RULES = "https://dota.playon.gg/rules";
-const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 const to = (where) => (where === "out" ? "out" : `to the ${where}`);
 const bo = (n) => (n ? `Bo${n}` : "best-of not set in the rules");
 // The model's score ("2–0") and each score's chance from the first-listed team's side.
