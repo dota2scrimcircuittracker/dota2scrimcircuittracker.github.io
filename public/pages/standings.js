@@ -128,6 +128,33 @@ function crossTableHtml(src, d, order) {
       Rows run in the Table tab's order (game wins). Empty cell: those two haven't met, since AD2L isn't a round robin. Click a score for game 1.</p>`;
 }
 
+// ---------- up next (the Content page shows it) ----------
+
+// The series still to play (from 6 hours ago on), each with the model's odds, as on Predict.
+// "" when there are none.
+export function upNextHtml(src, d) {
+  const played = (s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0;
+  const upcoming = d.series.filter((s) => !played(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).sort((a, b) => a.time - b.time);
+  if (!upcoming.length) return "";
+  const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
+  const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
+  const ratings = fitRatings(d.teams, d.series, tune(d.teams, d.series));
+  const date = (s) => new Date(s * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const oddsBar = (o) => `<div class="st-odds" title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}">${
+    [["home", "2–0", "h"], ["tie", "1–1", "t"], ["away", "0–2", "a"]].map(([k, lbl, c]) => `<span class="${c}" style="flex:${o[k].toFixed(3)}">${o[k] >= 0.14 ? `${lbl} ${pct(o[k])}` : ""}</span>`).join("")}</div>`;
+  return `<div class="fixtures reveal">${upcoming.slice(0, 10).map((s, i) => {
+      const real = name[s.home] && name[s.away] && !bye.has(s.home) && !bye.has(s.away);
+      const o = real && seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0);
+      return `<div class="fixture st-next" style="--i:${i}">
+        <div class="fx-team a">${name[s.home] ? teamLink(src, name[s.home], s.home) : "TBD"}</div>
+        <div class="fx-score"><div class="meta">${date(s.time)}</div>
+          ${real ? `${oddsBar(o)}<div class="meta">Model leans ${esc(name[o.home >= o.away ? s.home : s.away])}${src.all ? "" : ` · <a href="${src.root}/predict">draft read on Predict</a>`}</div>` : `<div class="n" style="font-size:22px">VS</div>`}</div>
+        <div class="fx-team b">${name[s.away] ? teamLink(src, name[s.away], s.away) : "TBD"}</div>
+      </div>`;
+    }).join("")}</div>
+    <p class="table-note">The model's odds, as on Predict. Green = the left team wins 2–0, gold = 1–1, red = the right team wins 2–0.</p>`;
+}
+
 // ---------- AD2L standings ----------
 
 export async function renderStandings(src) {
@@ -137,10 +164,9 @@ export async function renderStandings(src) {
   try { d = await src.data(); } catch (e) { app.innerHTML = `${pageHead(kicker, "Teams")}${errorBox(e)}`; return; }
 
   const played = d.series.filter((s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
-  const upcoming = d.series.filter((s) => !played.includes(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).sort((a, b) => a.time - b.time);
   const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
-  // The model behind Predict, so Rating and the Up next odds match that page.
+  // The model behind Predict, so Rating matches that page.
   const params = tune(d.teams, d.series);
   const ratings = fitRatings(d.teams, d.series, params);
   const rows = d.teams.map((t) => {
@@ -204,21 +230,6 @@ export async function renderStandings(src) {
   // race yet, but the tab stays (the nav menu lists it) and says so.
   const raceHtml = src.all ? "" : nights.length >= 2 ? `<div class="race"></div>` : `<div class="panel empty">The race starts after the second league night.</div>`;
 
-  const date = (s) => new Date(s * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const oddsBar = (o) => `<div class="st-odds" title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}">${
-    [["home", "2–0", "h"], ["tie", "1–1", "t"], ["away", "0–2", "a"]].map(([k, lbl, c]) => `<span class="${c}" style="flex:${o[k].toFixed(3)}">${o[k] >= 0.14 ? `${lbl} ${pct(o[k])}` : ""}</span>`).join("")}</div>`;
-  const nextHtml = upcoming.length ? `<div class="fixtures reveal">${upcoming.slice(0, 10).map((s, i) => {
-      const real = name[s.home] && name[s.away] && !bye.has(s.home) && !bye.has(s.away);
-      const o = real && seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0);
-      return `<div class="fixture st-next" style="--i:${i}">
-        <div class="fx-team a">${name[s.home] ? teamLink(src, name[s.home], s.home) : "TBD"}</div>
-        <div class="fx-score"><div class="meta">${date(s.time)}</div>
-          ${real ? `${oddsBar(o)}<div class="meta">Model leans ${esc(name[o.home >= o.away ? s.home : s.away])}${src.all ? "" : ` · <a href="${src.root}/predict">draft read on Predict</a>`}</div>` : `<div class="n" style="font-size:22px">VS</div>`}</div>
-        <div class="fx-team b">${name[s.away] ? teamLink(src, name[s.away], s.away) : "TBD"}</div>
-      </div>`;
-    }).join("")}</div>
-    <p class="table-note">Odds from the same model as Predict. Green = the left team wins 2–0, gold = 1–1, red = the right team wins 2–0.</p>` : "";
-
   const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const tabs = playerTabs(pageTabs(STANDINGS_TABS, src, [
     ["table", `<div id="t" class="reveal"></div>
@@ -228,7 +239,6 @@ export async function renderStandings(src) {
     ["matches", matchesHtml(src, d, ratings)],
     ["cross", crossTableHtml(src, d, [...rows].sort((a, b) => b.gw - a.gw || a.gl - b.gl).map((r) => r.id))],
     ["race", raceHtml],
-    ["next", { label: `Up next · ${upcoming.length}`, html: nextHtml }],
   ]), { store: "standingsTab", label: "Standings sections" });
   app.innerHTML = `
     ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`)}

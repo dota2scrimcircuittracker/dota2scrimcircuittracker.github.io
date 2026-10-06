@@ -25,7 +25,7 @@ and change it: [maintaining.md](maintaining.md).
   tab. Forfeits against PlayOn's "Heroic Bye Week" placeholder aren't uploadable games.
 - **All divisions** (`/all/`, under the picker and last in the league menu) — every division's
   files merged: Teams (one table with a Division column; Matches and Crosstable boxed per
-  division, Heroic/Aegis per sub-division; no Race), Weekly, Players (one tier list, everyone
+  division, Heroic/Aegis per sub-division; no Race), Content, Players (one tier list, everyone
   rated against the whole field) and Heroes. Read-only: no Predict or Upload, and a game opens
   in its own division.
 - **League switching** keeps the tab you're on: Players in Champion → Warrior opens Warrior's
@@ -143,9 +143,10 @@ and change it: [maintaining.md](maintaining.md).
   Roshans and Tormentors taken vs given up, first-Roshan rate, and wards / dewards / stacks per
   game. Team names link to team pages everywhere on the site.
 
-## Weekly recap
+## Content (was Weekly)
 
-One week at a time: highlights (player of the week, biggest damage, best KDA, top GPM, most
+AD2L: **Up next** at the top of the latest week: the series still to play, each with the
+model's odds (as on Predict); it used to be a Teams tab. Then one week at a time: highlights (player of the week, biggest damage, best KDA, top GPM, most
 kills, fastest core item, best laner, biggest comeback, most wards / stacks / dewards, fastest
 first blood, longest streak, rampages, biggest hit, highest APM, aegis steals, most paused game)
 and every game with lineups and MVP. AD2L games also show the full Captains Mode draft in pick/ban

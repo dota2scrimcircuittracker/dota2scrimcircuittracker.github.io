@@ -1,4 +1,4 @@
-// Weekly recap.
+// Content: each week's games and highlights, and (AD2L) the series up next.
 import { hasDetails, playerKey, hasMapStats } from "../lib/stats.js";
 import { hasTimeline, swings } from "../lib/timeline.js";
 import { info } from "../lib/glossary.js";
@@ -8,6 +8,7 @@ import { hasCombat, bestStreakOf, streakName, pausesOf } from "../lib/combat.js"
 import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg } from "../core.js";
 import { fbTag, fbOf, hitText } from "../parts/combat.js";
 import { bestLaner, loading, errorBox, weekOfFn } from "../parts/lanes.js";
+import { upNextHtml } from "./standings.js";
 
 function weekHighlights(games, src, league = games) {
   const all = games.flatMap((m) => m.players.map((p) => ({ p, m })));
@@ -70,18 +71,21 @@ function gamePanel(m, src, label) {
 }
 
 export async function renderWeek(src, back = 0) {
-  app.innerHTML = loading(src.kicker, "Weekly recap");
+  app.innerHTML = loading(src.kicker, "Content");
   let games, ad2l = null;
   try {
     games = await src.load();
     if (src.ad2l) ad2l = await src.data();
-  } catch (e) { app.innerHTML = `${pageHead(src.kicker, "Weekly recap")}${errorBox(e)}`; return; }
+  } catch (e) { app.innerHTML = `${pageHead(src.kicker, "Content")}${errorBox(e)}`; return; }
   // AD2L games count toward their series' scheduled week, so a series played early or
   // late still lands in the right week. Anything without a scheduled series uses its date.
+  // AD2L: the series still to play, at the top of the latest week.
+  const next = ad2l ? upNextHtml(src, ad2l) : "";
+  const nextBlock = next ? `<h2 id="up-next">Up next</h2>${next}` : "";
   const weekOf = weekOfFn(ad2l);
   const weeks = [...new Set(games.map(weekOf))].sort((a, b) => b - a);
   if (!weeks.length) {
-    app.innerHTML = `${pageHead(src.kicker, "Weekly recap")}<div class="panel empty"><strong>No games yet</strong>${src.empty}</div>`;
+    app.innerHTML = `${pageHead(src.kicker, "Content")}${nextBlock}<div class="panel empty"><strong>No games yet</strong>${src.empty}</div>`;
     return;
   }
   back = Math.min(Math.max(0, back), weeks.length - 1);
@@ -192,10 +196,11 @@ export async function renderWeek(src, back = 0) {
   }
   app.innerHTML = `
     <div class="week-top">
-      ${pageHead(src.kicker, "Weekly recap", `Week of ${shortDate(start)} – ${shortDate(end)} · ${inWeek.length} game${inWeek.length === 1 ? "" : "s"}${src.ad2l ? " · drafts in pick/ban order" : ""}`)}
+      ${pageHead(src.kicker, "Content", `Week of ${shortDate(start)} – ${shortDate(end)} · ${inWeek.length} game${inWeek.length === 1 ? "" : "s"}${src.ad2l ? " · drafts in pick/ban order" : ""}`)}
       ${picker}
     </div>
     <div class="week-nav">${navBtn(back + 1, "← Earlier week", back < weeks.length - 1)}${navBtn(back - 1, "Later week →", back > 0)}</div>
+    ${back === 0 ? nextBlock : ""}
     ${hl.length ? `<h2>Highlights</h2>
     <div class="cards reveal">${hl.map(([k, v, s, hero, tip], i) => `<div class="card hl" style="--i:${i}">${hero ? portrait(hero, "card-hero") : ""}<div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("")}</div>` : ""}
     <h2>${src.ad2l ? "Series" : "Games"} <span class="h-note">${items.length} this week · pick one</span></h2>

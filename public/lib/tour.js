@@ -70,8 +70,8 @@ const CORE = [
   {
     title: "The main tabs",
     text: (ctx) => ctx.ad2l
-      ? "Teams (the standings), a Weekly recap, Players, Heroes, Predict, and Upload for games played without a league ticket."
-      : "Standings, a Weekly recap, Teams, Players, Heroes, Predict, and Upload for adding a scrim from its screenshots.",
+      ? "Teams (the standings), Content (each week, and what's up next), Players, Heroes, Predict, and Upload for games played without a league ticket."
+      : "Standings, Content (each week's games), Teams, Players, Heroes, Predict, and Upload for adding a scrim from its screenshots.",
     enter: async () => document.getElementById("nav"),
   },
   {
@@ -124,7 +124,7 @@ const CORE = [
     enter: async () => { const el = document.getElementById("div-switch"); return visible(el) ? el : null; },
   },
   {
-    title: "Weekly recap",
+    title: "Content",
     text: "One week at a time: player of the week and the other awards, then every game with lineups and MVP.",
     enter: async (t) => { await t.visit(navHref("week")); return t.find("#app > .cards") ?? t.find(".sp-tabs"); },
   },
@@ -259,11 +259,11 @@ const DEEP = [
       text: "Every team against every other. Read across: the row team's score and the week. Empty cells haven't met yet." }),
     part({ page: "standings", tab: "race", sel: "figure.chart", btn: true, when: ad2l, title: "Race",
       text: "Every team's wins, week by week. Hover a line for its week-by-week totals." }),
-    part({ page: "standings", tab: "next", sel: ".fixtures", btn: true, when: ad2l, title: "Up next",
-      text: "The series still to play, with the model's odds for each." }),
   ]),
 
-  ...group("Weekly", [
+  ...group("Content", [
+    part({ page: "week", sel: ".fixtures", when: ad2l, title: "Up next",
+      text: "The series still to play, with the model's odds for each." }),
     {
       title: "Every series has a tab",
       text: (ctx) => ctx.ad2l

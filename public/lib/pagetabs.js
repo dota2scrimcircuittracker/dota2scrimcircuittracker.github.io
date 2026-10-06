@@ -17,7 +17,7 @@ export const HERO_TABS = [
 ];
 // Race: AD2L divisions only, not All (sixty lines on one chart), once two league nights are in.
 export const STANDINGS_TABS = [
-  ["table", "Table"], ["matches", "Matches"], ["cross", "Crosstable"], ["race", "Race", { div: true }], ["next", "Up next"],
+  ["table", "Table"], ["matches", "Matches"], ["cross", "Crosstable"], ["race", "Race", { div: true }],
 ];
 
 const exists = (src, opts = {}) => (!opts.ad2l || !!src.ad2l) && (!opts.div || (!!src.ad2l && !src.all));
