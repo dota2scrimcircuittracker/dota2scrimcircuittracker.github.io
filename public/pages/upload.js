@@ -252,8 +252,8 @@ export function draftHtml(d) {
     ${isDiv(upload.league) ? `<datalist id="ad2l-teams">${(upData()?.teams ?? []).map((t) => `<option value="${esc(t.name)}">`).join("")}</datalist>` : upload.editing ? "" : `
     <label class="private-toggle">
       <input type="checkbox" id="private" ${upload.isPrivate ? "checked" : ""}>
-      <span><b>Private — post the result only.</b> Teams, winner, kill score and duration are saved.
-        Heroes, players and stats never leave this browser, so nothing about your drafts or lineups is shared.</span>
+      <span><b>Private: post the result only.</b> Teams, winner, kill score and duration are saved.
+        Heroes, players and stats stay in this browser.</span>
     </label>`}
     <div class="row" style="margin-top:12px">
       <button class="primary" id="save" ${upload.check?.ok ? "" : "disabled"}>${upload.editing ? "Save changes" : upload.isPrivate ? "Post private result" : isDiv(upload.league) ? "Save to AD2L" : "Save to league"}</button>
@@ -271,7 +271,7 @@ function seriesPickHtml() {
         <option value="" disabled ${upload.seriesId ? "" : "selected"}>Pick the missing game…</option>
         ${seriesOptions(opts, upload.seriesId, upData())}
       </select>
-      <span class="muted">Only games the league is missing can be uploaded: ones missing from earlier weeks, and this week's that haven't been ticketed yet. The game goes in that series and week, and the teams have to match.</span></label>`;
+      <span class="muted">Only missing games can be uploaded: from earlier weeks, or this week's not yet ticketed. The game goes in that series and week, and the teams must match.</span></label>`;
 }
 
 // Private result: pick both teams from the league's list (or add a new one), then the kill
@@ -468,8 +468,8 @@ export function renderUpload() {
            <div class="slot-hint">Paste · drop · click</div></div></div>`;
   };
   const how = `Snip the post-game <b>overview</b> (hero cards) and the <b>Scoreboard</b> tab with <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>,
-       then press <kbd>Ctrl</kbd>+<kbd>V</kbd> here — once for each. On the Scoreboard, scroll the table all the way right so <b>PICK</b> shows
-       (that's the draft order). Don't hover over anything while snipping; tooltips cover numbers.
+       then press <kbd>Ctrl</kbd>+<kbd>V</kbd> here, once for each. On the Scoreboard, scroll the table all the way right so <b>PICK</b> shows
+       (the draft order). Don't hover over anything while snipping; tooltips cover numbers.
        Screenshots are read on your computer; only the stats you save are uploaded.`;
   const examples = `<div class="examples" style="--i:2"><div class="examples-lbl">Example</div>
       ${[["example-overview", "Overview: all ten hero cards, team names and score"], ["example-scoreboard", "Scoreboard, scrolled right to PICK"]].map(([f, cap]) =>
@@ -477,8 +477,8 @@ export function renderUpload() {
     </div>`;
   app.innerHTML = `
     ${isDiv(upload.league)
-      ? pageHead(SOURCES[upload.league].kicker, "Upload an unticketed game", `For ${SOURCES[upload.league].division} games played <b>without a league ticket</b>, which never reach OpenDota's league list, so the site can't find them. ${how}
-         They count on team, player, hero and tier pages, marked “Unticketed”; standings stay PlayOn's. No draft, gold graph or ward data: those need a replay.`)
+      ? pageHead(SOURCES[upload.league].kicker, "Upload an unticketed game", `For ${SOURCES[upload.league].division} games played <b>without a league ticket</b>, which the site can't find on its own. ${how}
+         They count on team, player, hero and tier pages, marked “Unticketed”. Standings still follow PlayOn. No draft, gold graph or ward data without a replay.`)
       : pageHead("Post-game intake", "Upload a scrim", how)}
     <div class="reveal">
       ${upload.images.length || upload.draft ? "" : examples}

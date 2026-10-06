@@ -238,12 +238,12 @@ export function heroGridHtml(team, games, { pubs = null, compact = false } = {})
   const name = configName(team.name);
   const n = games.length, list = `hg-heroes-${++gridCount}`;
   return `${compact ? "" : `<h2 id="hero-grid">Hero grid for Dota${info("hero_grid")}</h2>`}
-    <p class="table-note wm-intro">${esc(team.name)}'s heroes from ${n} game${n === 1 ? "" : "s"}${pubs ? " and their pubs" : ""}, laid out the way Dota's grid will show them. Customise it to move and resize boxes, drag heroes in, out and around, and save it in this browser. In Dota it's <b>${esc(name)}</b>.</p>
+    <p class="table-note wm-intro">${esc(team.name)}'s heroes from ${n} game${n === 1 ? "" : "s"}${pubs ? " and their pubs" : ""}, laid out as Dota's grid will show them. Customise to move and resize boxes or drag heroes in, out and around; it saves in this browser. In Dota it's called <b>${esc(name)}</b>.</p>
     <div class="hg reveal" data-team="${esc(team.name)}" data-list="${list}">
       <div class="hg-main">
         <div class="row hg-tpl">${pickerHtml(sources, t.id, false)}</div>
         <div class="row hg-me"><label>My team <select class="hg-myteam"><option value="">None set</option></select></label>
-          <small class="muted">The model's boxes read ${esc(team.name)} against it, and the green boxes are yours. Same as under the settings cog.</small></div>
+          <small class="muted">The model's boxes read ${esc(team.name)} against your team, and the green boxes are yours. Also set under the settings cog.</small></div>
         <div class="hg-editor" hidden></div>
         <div class="hg-work"><div class="hg-grid">${legendHtml(team.name, null)}${canvasHtml(templateRows(t, sources), t, { noTeam: true })}</div><aside class="hg-side" hidden></aside></div>
         <datalist id="${list}">${HEROES.map((h) => `<option value="${esc(h)}">`).join("")}</datalist>
@@ -253,8 +253,8 @@ export function heroGridHtml(team, games, { pubs = null, compact = false } = {})
         <li><b>Find your grid file</b>, <code>${FILE}</code>. It's in your Steam folder:
           <code class="hg-path">${esc(FOLDER)}${SEP}<i>your number</i>${SEP}${esc(TAIL)}</code>
           <button type="button" class="link-btn hg-copy">Copy the userdata folder</button>
-          <small>Paste that into the file picker's address bar. <i>Your number</i> is your Steam friend code: the same number as your Dota ID on your Dota profile, or in your OpenDota or Dotabuff link. It's the short one (like 75379546), not the 17-digit Steam ID that starts 7656119. If there are several folders, pick the one with that number. Steam installed somewhere else? Use that folder's <code>userdata</code> instead.</small></li>
-        <li><b>Add the grid to it.</b> This adds the grid shown above, as it is now (template: <b class="hg-which">${esc(depthName(t))}</b>; change it at the top first if you want a different one). Pick the file here; you get it back with this grid added. Every grid you already have stays; an earlier ${esc(name)} is replaced.
+          <small>Paste it into the file picker's address bar. <i>Your number</i> is your Steam friend code, the same as your Dota ID (on your Dota profile, or in your OpenDota or Dotabuff link). It's the short one, like 75379546, not the 17-digit Steam ID starting 7656119. With several folders, pick the one with that number. Steam installed elsewhere? Use that folder's <code>userdata</code>.</small></li>
+        <li><b>Add the grid to it.</b> Choose the file below and you get a copy back with the grid above added (template: <b class="hg-which">${esc(depthName(t))}</b>). Your other grids stay; an earlier ${esc(name)} is replaced.
           <div class="row hg-btns">
             <button type="button" class="primary hg-pick">Choose ${FILE}</button>
             <button type="button" class="hg-new">I don't have one</button>
@@ -590,14 +590,14 @@ export function wireHeroGrid(root, team, games, { pubs = null, totals = null, he
       const out = mergeGrid(mine, config());
       const kept = out.configs.length - 1, replaced = mine.configs.length === out.configs.length;
       save(out);
-      say(`Downloaded a new ${FILE} to your downloads: ${kept} of your grid${kept === 1 ? "" : "s"} kept${replaced ? `, your earlier ${name} replaced` : ""}, plus ${name}. Nothing in your cfg folder has changed yet; that's step 4.`, "ok");
+      say(`Downloaded a new ${FILE}: ${kept} of your grid${kept === 1 ? "" : "s"} kept${replaced ? `, your earlier ${name} replaced` : ""}, plus ${name}. Now move it into your cfg folder (step 4).`, "ok");
     } catch (e) {
       say(e instanceof SyntaxError ? "That file isn't readable as a grid file. Pick hero_grid_config.json from the cfg folder." : e.message, "err");
     }
   };
   box.querySelector(".hg-new").onclick = () => {
     if (empty()) return;
-    if (!confirm("This makes a grid file with only this grid in it. If you already have a hero_grid_config.json, replacing it with this deletes your other grids. Use \"Choose hero_grid_config.json\" instead unless you're sure you have none.\n\nDownload a new file?")) return;
+    if (!confirm("This makes a file with only this grid. If you already have a hero_grid_config.json, replacing it deletes your other grids; use \"Choose hero_grid_config.json\" instead.\n\nDownload a new file?")) return;
     save(mergeGrid(null, config()));
     say("Downloaded a new file with just this grid. Now step 4.", "ok");
   };

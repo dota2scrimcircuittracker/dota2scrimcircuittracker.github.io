@@ -66,14 +66,14 @@ function heroBreakdown(src, h, curve) {
     <div class="bd-sum">
       <div class="bd-total"><b>${h.rating}</b><small>rating</small></div>
       <div class="bd-eq">average <b>${avgShown}</b> = (games × hero rating, for each player, + ${K_HERO} × 50) ÷ (${h.games} + ${K_HERO} games)<br>
-        <small>rating ${h.rating} = average ${avgShown} ${signed(curveDelta)} from the hero curve, which places it among this league's heroes${info("hero_power_list")}</small></div>
+        <small>rating ${h.rating} = average ${avgShown} ${signed(curveDelta)} from the hero curve${info("hero_power_list")}</small></div>
     </div>
-    <h4>In short</h4>
+    <h4>Summary</h4>
     <ul class="how-list hbd-why">
       <li><b>${h.players}</b> player${h.players === 1 ? "" : "s"} played ${esc(h.hero)} in <b>${h.games}</b> game${h.games === 1 ? "" : "s"} (${h.wins}–${h.games - h.wins}). Their hero ratings, weighted by games, average <b>${avgShown}</b> after padding.</li>
       <li>The median hero's players average <b>${curve[0].toFixed(1)}</b>, so ${esc(h.hero)} sits <b>${Math.abs(widths).toFixed(2)}</b> width${Math.abs(widths).toFixed(2) === "1.00" ? "" : "s"} ${widths >= 0 ? "above" : "below"} it (a width = ${curve[1].toFixed(1)}): rating <b>${h.rating}</b>, ${ordinal(h.place)} of ${h.of} heroes shown.</li>
       ${h.players > 1 ? `<li>Best on it: ${playerLink(src, best)} (${best.rating} over ${best.games} game${best.games === 1 ? "" : "s"}). Lowest: ${playerLink(src, worst)} (${worst.rating} over ${worst.games}).</li>` : ""}
-      <li>The ${K_HERO} padding games at 50 (the league's median player) pull small samples toward the middle: they're ${Math.round((K_HERO / n) * 100)}% of the weight here.</li>
+      <li>The ${K_HERO} padding games at 50 (the league's median player) pull small samples toward the middle (${Math.round((K_HERO / n) * 100)}% of the weight here).</li>
     </ul>
     </div>
     <div class="bd-right">
@@ -116,13 +116,13 @@ export function heroPowerSection(src, ratings) {
     };
     el.innerHTML = `<div class="row segs hchip-bar"><label class="min-bar">Heroes picked at least ${minSelect("hp-min", steps, min)} times</label></div>
       ${total ? board(bands, chip, hs.open, (h) => hs.cards.has(h.hero)) : `<p class="table-note">No hero has ${min}+ games yet.</p>`}
-      <p class="table-note">${total} hero${total === 1 ? "" : "es"}. Rating = how well players do on the hero: the average hero rating of everyone who played it (weighted by games, padded with ${K_HERO} average games), on a curve fitted to the heroes so they spread S–D. It ranks performance on the hero, not its win rate. Click a hero for every point.</p>`;
+      <p class="table-note">${total} hero${total === 1 ? "" : "es"}. Rating: the average hero rating of everyone who played it (weighted by games, padded with ${K_HERO} average games), on a curve fitted to the heroes. It ranks how well players do on the hero, not its win rate.</p>`;
     el.querySelector("#hp-min").onchange = (e) => { hs.min = min = +e.target.value; draw(); };
     wireMore(el, hs.open, draw);
     wireCards(el, hs.cards, draw);
   };
   const html = ratings.size ? `<h2 id="hero-power-list">Hero tier list${info("hero_power_list")}</h2>
-    <p class="table-note wm-intro">The heroes themselves, ranked S–D by how well the players on them perform. Click a hero for its breakdown.</p>
+    <p class="table-note wm-intro">Heroes ranked S–D by how well their players perform. Click a hero for its breakdown.</p>
     <div id="hero-power" class="reveal"></div>` : "";
   return { html, draw };
 }
@@ -149,7 +149,7 @@ export function heroTierSection(src, ratings) {
           <div class="chip-meta">${heroLink(src, p.hero)}${p.team ? ` · ${teamLink(src, p.team)}` : ""}</div>
           <div class="chip-foot"><span class="role-tag">${p.role === "core" ? "Core" : "Support"}</span><span>${p.wins}–${p.games - p.wins}</span><span>${p.games} game${p.games === 1 ? "" : "s"}</span></div>
         </div>
-        ${caret(open)}${open ? `<p class="table-note hbd-lead">The tier rating worked out from just ${esc(p.name)}'s ${p.games} game${p.games === 1 ? "" : "s"} on ${esc(p.hero)}.</p>${tierBreakdown(src, p)}` : ""}
+        ${caret(open)}${open ? `<p class="table-note hbd-lead">Tier rating from only ${esc(p.name)}'s ${p.games} game${p.games === 1 ? "" : "s"} on ${esc(p.hero)}.</p>${tierBreakdown(src, p)}` : ""}
       </div>`;
     };
     const seg = (k, label) => `<button type="button" class="seg${st.role === k ? " on" : ""}" data-role="${k}">${label}</button>`;
@@ -157,7 +157,7 @@ export function heroTierSection(src, ratings) {
         <label class="min-bar">Hero <select id="ht-hero"><option value="">All heroes</option>${heroes.map((h) => `<option value="${esc(h)}" ${h === st.hero ? "selected" : ""}>${esc(h)}</option>`).join("")}</select></label>
         <label class="min-bar">At least ${minSelect("ht-min", steps, min)} games on the hero</label></div>
       ${total ? board(bands, chip, st.open, (p) => st.cards.has(keyOf(p))) : `<p class="table-note">Nobody has ${min}+ games on ${st.hero ? esc(st.hero) : "a hero"}${st.role === "all" ? "" : ` as a ${st.role}`} yet.</p>`}
-      <p class="table-note">${total} player–hero pair${total === 1 ? "" : "s"}. Rating = the hero rating: the tier rating from just their games on that hero. A couple of games is a small sample. Click a card for every point.</p>`;
+      <p class="table-note">${total} player–hero pair${total === 1 ? "" : "s"}. Rating: the tier rating from their games on that hero only. A couple of games is a small sample.</p>`;
     el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { st.role = b.dataset.role; draw(); }));
     el.querySelector("#ht-hero").onchange = (e) => { st.hero = e.target.value; draw(); };
     el.querySelector("#ht-min").onchange = (e) => { st.min = min = +e.target.value; draw(); };
@@ -165,7 +165,7 @@ export function heroTierSection(src, ratings) {
     wireCards(el, st.cards, draw);
   };
   const html = ratings.size ? `<h2 id="hero-tier-list">Players on heroes${info("hero_tier_list")}</h2>
-    <p class="table-note wm-intro">Every player on every hero they've played, ranked S–D on their games on that hero. Click a card for its breakdown.</p>
+    <p class="table-note wm-intro">Each player on each hero they've played, ranked S–D on their games with it. Click a card for its breakdown.</p>
     <div id="hero-tiers" class="reveal"></div>` : "";
   return { html, draw };
 }

@@ -102,7 +102,7 @@ export async function renderTeams(src, slug) {
   // AD2L record comes from PlayOn's series scores (official, and complete even when a
   // game's stats couldn't be found); scrims use their own games.
   const rec = ad2l
-    ? { w: team.wins, l: team.losses, note: team.games ? `${pct0(team.wins / team.games)} of games · from PlayOn` : "no games yet" }
+    ? { w: team.wins, l: team.losses, note: team.games ? `${pct0(team.wins / team.games)} of games` : "no games yet" }
     : { w: h.wins, l: h.losses, note: h.played ? `${pct0(h.win_rate)} win rate` : "no games yet" };
   const captain = members.find((m) => m.captain);
   const sub = [
@@ -186,7 +186,7 @@ export async function renderTeams(src, slug) {
   const standinCards = others.map((p, i) => playerCard(p, p, members.length + i, { standin: true })).join("");
   const rosterNote = roster
     ? `${src.ad2l ? "The PlayOn roster" : "The Champion roster (scrim teams are the Champion teams)"}${hasPos ? ", in the position each player plays most" : ""}. Record, KDA and heroes are from ${esc(team.name)}'s games with stats${h.private_games ? `; ${plural(h.private_games, "private scrim")} have no lineups` : ""}.`
-    : `No official roster for this team, so this is everyone who has played for it, most games first.`;
+    : `No official roster. Everyone who has played for this team, most games first.`;
 
   // Compact roster for the overview.
   const rosterStrip = roster
@@ -336,7 +336,7 @@ export async function renderTeams(src, slug) {
       tdBox.dataset.filled = "1";
       import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(league)]).then(([cm, data]) => {
         if (document.getElementById("td-box") !== tdBox) return;
-        if (!data) { tdBox.innerHTML = `<p class="muted">The draft model's data for this division hasn't synced yet.</p>`; return; }
+        if (!data) { tdBox.innerHTML = `<p class="muted">Draft analysis isn't available for this division yet.</p>`; return; }
         const tname = Object.fromEntries(ad2l.teams.map((t) => [t.id, t.name]));
         const drafted = ({ m }) => m.draft?.some((x) => x.pick) && m.players?.length === 10;
         const mine = ad2l.series.filter((x) => x.home === team.id || x.away === team.id).sort((x, y) => (y.time ?? 0) - (x.time ?? 0));

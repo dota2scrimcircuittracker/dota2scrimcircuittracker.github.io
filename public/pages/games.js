@@ -89,7 +89,7 @@ export async function renderMatch(id, src) {
         <option value="" disabled ${m.series_id ? "" : "selected"}>Pick the missing game…</option>
         ${seriesOptions(moveOpts, m.series_id ?? null, src.cache())}
       </select>
-      <span class="muted">${moveOpts.length ? "Games between these two teams not on record here, from earlier weeks or this week's not ticketed yet. Picking one moves this game into that series and week." : "No open game between these two teams: PlayOn has every game of their series on record."}</span>
+      <span class="muted">${moveOpts.length ? "Games between these two teams missing from the record, from earlier weeks or not yet ticketed this week. Picking one moves this game into that series and week." : "No open game between these two teams: PlayOn has every game of their series on record."}</span>
       <span class="row"><button type="button" id="move" disabled>Move</button><span class="muted" id="move-msg"></span></span></label>` : "";
   const deleteBtn = !uploaded ? "" : canDelete
     ? `${moveHtml}<div class="row" style="margin-top:18px"><button id="edit">Edit this ${noun}</button>
@@ -150,8 +150,8 @@ export async function renderMatch(id, src) {
       <div class="kicker" style="margin-bottom:16px">${crumbs(src, ["Standings", src.base], `${m.team_a} vs ${m.team_b}`)}</div>
       <section class="banner">${side("a")}${side("b")}
         <div class="banner-meta">${esc(m.game_mode || "Match")} · <b>${dur(m.duration_sec)}</b></div></section>
-      <div class="panel empty"><strong>Private scrim</strong>Only the result was posted. Heroes, players and stats were never uploaded.<br>
-        It counts toward both teams' records; it's left out of the tier list, player and hero tables.</div>
+      <div class="panel empty"><strong>Private scrim</strong>Only the result was posted: no heroes, players or stats.<br>
+        It counts toward both teams' records, but not the tier list, player or hero tables.</div>
       ${CASTS_BOX}
       <p class="table-note">Posted ${when(m.createdAt)}.</p>${deleteBtn}`;
     wireDelete();
@@ -322,7 +322,7 @@ export async function renderMatch(id, src) {
         <span class="rt-r t-${r.tier}"><b>${r.rating}</b><small>${r.tier}</small></span>
       </li>`;
     };
-    ratingsHtml = `<p class="table-note wm-intro">Each player's rating from this game alone${info("game_rating")}, on the tier list's scale. Green tags are what lifted it most, red what held it back. Season = their tier-list rating.</p>
+    ratingsHtml = `<p class="table-note wm-intro">Each player's rating for this game${info("game_rating")}, on the tier list's scale. Green tags lifted it most, red held it back. Season = their tier-list rating.</p>
       <ol class="gm-ratings reveal">${rated.map(line).join("")}</ol>`;
   }
 
@@ -333,7 +333,7 @@ export async function renderMatch(id, src) {
   if (hasTimeline(m)) {
     const winner = nameOf(m.winner), loser = nameOf(s.loser);
     const story = s.thrown >= BIG_LEAD
-      ? `<b>${esc(loser)}</b> led by ${kg(s.thrown)} at ${s.thrown_minute}' and lost — a comeback for ${esc(winner)}.`
+      ? `<b>${esc(loser)}</b> led by ${kg(s.thrown)} at ${s.thrown_minute}' and lost: a comeback for ${esc(winner)}.`
       : s.thrown >= 1000 ? `${esc(loser)}'s best was a ${kg(s.thrown)} lead at ${s.thrown_minute}'.` : `${esc(winner)} led wire to wire.`;
     const hasNw = m.players.some((p) => Array.isArray(p.networth_t));
     let series = "nw";
@@ -346,7 +346,7 @@ export async function renderMatch(id, src) {
         label: `${p.name} (${p.hero})`, end: p.name, img: heroImg(p.hero), values: p[f], cls: `s-c${i + 1}`, dash: t === "b",
       })));
       return lines.length ? lineChart(lines, { endLabels: true, height: 300,
-        caption: `${kind === "nw" ? "Net worth (gold held plus items) at each minute" : "Gold earned by each minute: everything picked up, before spending, so it only rises"}. Solid: ${esc(m.team_a)} · dashed: ${esc(m.team_b)}; richest first within each team. Hover for everyone at that minute.` }) : "";
+        caption: `${kind === "nw" ? "Net worth (gold held plus items) at each minute" : "Gold earned by each minute, before spending"}. Solid: ${esc(m.team_a)} · dashed: ${esc(m.team_b)}; richest first within each team. Hover for everyone at that minute.` }) : "";
     };
     const worthHtml = worthChart(series) && `${hasNw ? `<div class="segs gm-worth-segs" role="group" aria-label="Series">${[["nw", "Net worth"], ["gold", "Gold earned"]]
       .map(([k, label]) => `<button type="button" class="seg${k === series ? " on" : ""}" data-worth="${k}" aria-pressed="${k === series}">${label}</button>`).join("")}</div>` : ""}
@@ -394,12 +394,12 @@ export async function renderMatch(id, src) {
 
   const footer = m.unticketed
     ? `Unticketed AD2L game, uploaded ${when(m.createdAt)} from post-game screenshots, so no draft, gold graph or ward data.
-       Wrong? ${mine ? "You uploaded it, so you can edit or delete it below." : "Anyone with the league password can edit or remove it below."}`
+       Wrong? ${mine ? "You can edit or delete it below." : "Anyone with the league password can edit or remove it below."}`
     : ad2l
     ? `Played ${when(m.createdAt)} · AD2L ${SEASON.name} ticketed game ${m.match_id} ·
        <a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a> ·
        <a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a>`
-    : `Uploaded ${when(m.createdAt)}. Wrong? ${mine ? "You uploaded it, so you can edit or delete it below." : "Anyone with the league password can edit or remove it below."}`;
+    : `Uploaded ${when(m.createdAt)}. Wrong? ${mine ? "You can edit or delete it below." : "Anyone with the league password can edit or remove it below."}`;
 
   const tabs = playerTabs([
     ["board", "Scoreboard", scoreHtml],
@@ -472,7 +472,7 @@ export async function renderMatch(id, src) {
       cmBox.dataset.filled = "1";
       import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(src.key)]).then(([cm, data]) => {
         if (document.getElementById("cm-box") !== cmBox) return;
-        cmBox.innerHTML = data ? cm.gameDraftHtml(m, src, data, cmBox.clientWidth) : `<p class="muted">The draft model's data for this division hasn't synced yet.</p>`;
+        cmBox.innerHTML = data ? cm.gameDraftHtml(m, src, data, cmBox.clientWidth) : `<p class="muted">Draft analysis isn't available for this division yet.</p>`;
         wireCharts(cmBox);
       }).catch((e) => { cmBox.innerHTML = errorBox(e); });
     };
@@ -583,7 +583,7 @@ function visionChart(m) {
     { label: m.team_a, values: m.vision.a, cls: "s-a" },
     { label: m.team_b, values: m.vision.b, cls: "s-b" },
   ], { id: `vision-${m.id}`, step: top > 12 ? 5 : top > 6 ? 2 : 1, dp: 1, unit: "%",
-    caption: `Share of the map each team's observer wards showed at each minute, outside its own base: trees, cliffs and high ground block a ward's sight. Game average: ${esc(m.team_a)} ${avg("a").toFixed(1)}%, ${esc(m.team_b)} ${avg("b").toFixed(1)}%. Hover for values.` });
+    caption: `Share of the map outside its own base that each team's observer wards showed, by minute. Trees, cliffs and high ground block sight. Game average: ${esc(m.team_a)} ${avg("a").toFixed(1)}%, ${esc(m.team_b)} ${avg("b").toFixed(1)}%. Hover for values.` });
 }
 
 function mapTableHtml(m, src) {
