@@ -1,6 +1,6 @@
 # Site search: a results page for the whole site
 
-Status: design approved 2026-10-06. Not built.
+Status: design approved 2026-10-06. Built 2026-10-06 (plan: `docs/superpowers/plans/2026-10-06-site-search.md`).
 
 ## Goal
 

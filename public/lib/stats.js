@@ -161,7 +161,7 @@ export function playerLeaderboard(matches) {
     games: r.games,
     wins: r.wins,
     win_rate: r.wins / r.games,
-    kills: r.kills, deaths: r.deaths, assists: r.assists,
+    kills: r.kills, deaths: r.deaths, assists: r.assists, minutes: r.minutes,
     kda: (r.kills + r.assists) / Math.max(r.deaths, 1),
     avg_gpm: Math.round(r.gold / r.minutes),
     avg_xpm: Math.round(r.xp / r.minutes),

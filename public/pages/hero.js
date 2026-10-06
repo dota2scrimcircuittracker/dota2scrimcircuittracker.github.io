@@ -99,7 +99,7 @@ export async function renderHero(src, slug) {
       ${h.players.length ? `<h2>Every player</h2><div id="players"></div>` : ""}
       <h2>Teams</h2>
       <div id="teams"></div>
-      <p class="table-note">Win % is that team's record when they picked ${esc(hero)}.${S.drafted ? " Bans come from Captains Mode drafts; “Banned vs them” = opponents banned it against that team." : ""}</p>`],
+      <p class="table-note">Win % is that team's record when they picked ${esc(hero)}.${S.drafted ? " Bans are Captains Mode drafts only; “Banned vs them” = opponents banned it against that team." : ""}</p>`],
     ["draft", `${(() => { const da = draftAnalysis(matches); return heroPhaseHtml(da.heroes.find((x) => x.hero === hero), da.games); })()}
       ${draftSlotHtml(draftSlotRecord(matches, byHero(hero)), src, hero, rateOf(h.games, gameRated))}`],
     ["matchups", heroMatchupsHtml(src, matches, hero)],
@@ -179,7 +179,7 @@ function heroMatchupsHtml(src, matches, hero) {
   const { allies, enemies } = heroPairs(matches, hero);
   if (!allies.length) return "";
   const def = Math.max(...allies.map((a) => a.games)) >= 4 ? 2 : 1;
-  return `<p class="table-note wm-intro">${esc(hero)}'s record in games with each hero on its side (With) and on the other side (Against). Few games say little: the floor hides heroes met fewer times.</p>
+  return `<p class="table-note wm-intro">${esc(hero)}'s record with each hero on its side (With) and on the other side (Against). The minimum below hides small samples.</p>
     <div class="min-bar"><label>Show heroes met at least <select id="mu-min">${[1, 2, 3, 5].map((n) => `<option value="${n}" ${n === def ? "selected" : ""}>${n}</option>`).join("")}</select> times</label></div>
     <div class="team-cols"><section><h2>With${info("hero_with")}</h2><div id="mu-with"></div></section>
       <section><h2>Against${info("hero_against")}</h2><div id="mu-against"></div></section></div>`;

@@ -8,7 +8,7 @@ import { kg, playerLink, heroLink, teamLink, esc, pct, portrait, app } from "../
 const itemRow = (keys) => `<span class="item-row">${keys.map((k) => (k ? itemIcon(k) : `<span class="item empty"></span>`)).join("")}</span>`;
 // Average lead swing around an item finish (see itemSwing), with how many games it's from;
 // greyed under 3 games, where one fight decides it.
-const swingCell = (s) => (s.swing == null ? "—" : `<span class="${s.swings < 3 ? "muted" : s.swing > 0 ? "pos" : s.swing < 0 ? "neg" : ""}" title="Over ${s.swings} game${s.swings === 1 ? "" : "s"} with the lead series${s.swings < 3 ? " — too few to read much into" : ""}">${s.swing > 0 ? "+" : s.swing < 0 ? "−" : "±"}${kg(Math.abs(s.swing))}</span>`);
+const swingCell = (s) => (s.swing == null ? "—" : `<span class="${s.swings < 3 ? "muted" : s.swing > 0 ? "pos" : s.swing < 0 ? "neg" : ""}" title="Over ${s.swings} game${s.swings === 1 ? "" : "s"} with the lead series${s.swings < 3 ? " (too few to judge)" : ""}">${s.swing > 0 ? "+" : s.swing < 0 ? "−" : "±"}${kg(Math.abs(s.swing))}</span>`);
 const ago = (d) => (d == null ? "" : `<span class="${d > 0 ? "pos" : d < 0 ? "neg" : ""}">${d > 0 ? "−" : d < 0 ? "+" : "±"}${clock(Math.abs(d))}</span>`);
 
 // Game page: each player's final items and core-item timeline.
@@ -38,7 +38,7 @@ export function heroItemsHtml(src, games, hero) {
         <td>${s.n} · ${pct(s.share)}</td><td>${clock(s.avg)}</td>
         <td class="l">${clock(s.best.sec)} · ${playerLink(src, s.best.p)} · <a href="${src.link(s.best.m)}">game</a></td>
         <td>${pct(s.winRate)}</td><td>${swingCell(s)}</td></tr>`).join("")}</tbody></table></div>
-    <p class="table-note">Over ${parsed} ${esc(hero)} game${parsed === 1 ? "" : "s"} with a parsed replay. Built = games it was finished in and their share. Win % built = ${esc(hero)}'s win rate in those games. Lead swing: how the team's gold lead turned in the 3 minutes after finishing it, against the 3 minutes before — a sign of timing, not proof the item caused it (teams already ahead finish items sooner).</p>`;
+    <p class="table-note">From ${parsed} ${esc(hero)} game${parsed === 1 ? "" : "s"} with a replay. Built = games it was finished in and their share. Win % built = ${esc(hero)}'s win rate in those games. Lead swing = the change in the team's gold lead in the 3 minutes after finishing it, against the 3 minutes before. It shows timing, not that the item caused it: teams already ahead finish items sooner.</p>`;
 }
 
 // Player page: their core items and timings against the league's average for the same item on
@@ -71,8 +71,8 @@ export function playerItemsHtml(src, matches, games) {
     ${views.map(([v, , gs], i) => `<div class="ih-view" data-v="${esc(v)}"${i ? " hidden" : ""}><div class="table-wrap items-table"><table>
       <thead><tr><th scope="col" class="l">Item</th><th scope="col">Built</th><th scope="col">Their avg.</th><th scope="col">League avg. on ${v === "all" ? "their heroes" : "hero"}</th><th scope="col">vs league</th><th scope="col">Lead swing${info("lead_swing")}</th></tr></thead>
       <tbody>${table(gs, v === "all")}</tbody></table></div>
-      ${v === "all" ? (() => { const more = itemStats(gs).filter((s) => s.n < 2).length; return more && more < itemStats(gs).length ? `<button type="button" class="ih-more-btn">Show ${more} item${more === 1 ? "" : "s"} built once</button>` : ""; })() : `<p class="table-note">${heroLink(src, v)}: ${gs.length} game${gs.length === 1 ? "" : "s"} with a parsed replay.</p>`}</div>`).join("")}
-    <p class="table-note">League avg. = every build of that item on the same hero in this league, theirs included (count in brackets); under All heroes, each of their builds is compared with its own hero's average. vs league: − = they finish it faster; shown only when others have built it too.</p>`;
+      ${v === "all" ? (() => { const more = itemStats(gs).filter((s) => s.n < 2).length; return more && more < itemStats(gs).length ? `<button type="button" class="ih-more-btn">Show ${more} item${more === 1 ? "" : "s"} built once</button>` : ""; })() : `<p class="table-note">${heroLink(src, v)}: ${gs.length} game${gs.length === 1 ? "" : "s"} with a replay.</p>`}</div>`).join("")}
+    <p class="table-note">League avg. = every build of that item on the same hero in this league, theirs included (count in brackets). Under All heroes, each build is compared with its own hero's average. vs league: − = faster; shown only when others have built it too.</p>`;
 }
 
 // Hero chips on the player Items tab: show one table.

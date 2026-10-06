@@ -186,3 +186,15 @@ export function teamLeaderboard(matches) {
     building_pg: avg(r.sums.building), roshans_pg: avg(r.sums.roshans), tormentors_pg: avg(r.sums.tormentors),
   }));
 }
+
+// AD2L records from PlayOn's series scores (official; complete even when a game's stats
+// couldn't be found): team id -> { wins, losses, games }, in games.
+export function seriesRecords(series) {
+  const out = new Map();
+  for (const s of series) for (const [id, us, them] of [[s.home, s.home_score, s.away_score], [s.away, s.away_score, s.home_score]]) {
+    if (id == null) continue;
+    const r = out.get(id) ?? out.set(id, { wins: 0, losses: 0, games: 0 }).get(id);
+    r.wins += us ?? 0; r.losses += them ?? 0; r.games = r.wins + r.losses;
+  }
+  return out;
+}

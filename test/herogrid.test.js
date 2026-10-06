@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { heroIdOf, positionPools, gridConfig, mergeGrid, configName, heroSources, templateRows, layoutConfig, columnConfig, boxHeroes, addToBox, dropFromBox, placeHero, placeRows, freezeLayout, placedConfig, fitIcons, freeSpot, TEMPLATES } from "../public/lib/herogrid.js";
+import { heroIdOf, positionPools, gridConfig, mergeGrid, configName, heroSources, templateRows, layoutConfig, columnConfig, boxHeroes, addToBox, dropFromBox, placeHero, placeRows, freezeLayout, placedConfig, fitIcons, freeSpot, TEMPLATES, atDepth } from "../public/lib/herogrid.js";
 import { HEROES } from "../public/lib/heroes.js";
 
 const pl = (team, name, hero, position) => ({ team, name, hero, position });
@@ -184,4 +184,21 @@ test("heroSources: bans split by Captains Mode ban phase, theirs and against the
   assert.deepEqual(src.banned.heroes.map((h) => h.hero).sort(), ["Puck", "Pudge", "Sniper"]);
   const model = heroSources([], { model: { banPhases: [[{ hero: "Axe" }], [], [{ hero: "Lion" }]] } });
   assert.deepEqual([model.banvs1?.heroes[0].hero, model.banvs2, model.banvs3?.heroes[0].hero], ["Axe", undefined, "Lion"]);
+});
+
+test("placedConfig: a box name both sides share says whose it is", () => {
+  const row = (name, col, hero) => ({ name, col, heroes: [{ hero }], x: 0, y: 0, w: 300, h: 100 });
+  const c = placedConfig("vs X", [row("Threats pos 1 Carry", "them", "Axe"), row("Threats pos 1 Carry", "us", "Lion"), row("Ban phase 1", "bans", "Zeus")], { them: "WOT", us: null });
+  assert.deepEqual(c.categories.map((x) => x.category_name), ["WOT: Threats pos 1 Carry", "Us: Threats pos 1 Carry", "Ban phase 1"]);
+});
+
+test("built-ins at each depth: quick is their top heroes and one bans box, deep is every hero and the real bans", () => {
+  const t = TEMPLATES.find((x) => x.id === "position");
+  assert.equal(atDepth(t, "standard"), t);
+  const q = atDepth(t, "quick");
+  assert.deepEqual(q.boxes.map((b) => [b.col, b.source, b.max]), [...[1, 2, 3, 4, 5].map((n) => ["them", `pos${n}`, 5]), ["bans", "banvs", 8]]);
+  const d = atDepth(t, "deep");
+  assert.ok(d.boxes.every((b) => b.max == null));
+  assert.ok(["banned1", "bans3"].every((k) => d.boxes.some((b) => b.source === k && b.col === "bans")));
+  assert.equal(t.boxes.find((b) => b.source === "banvs1").max, 12); // the built-in itself untouched
 });

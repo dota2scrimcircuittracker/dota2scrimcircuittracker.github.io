@@ -47,7 +47,7 @@ once (see "Firebase key").
   from the sync cache), `rules/` (Firestore rules tools), `firebase/` (one-off project setup),
   `ocr/` (OCR dev tools); `feedback.cjs` (feedback tickets) stays at the top.
 
-Where features live in `public/lib/`: search `search.js`; feedback `feedback.js` (review:
+Where features live in `public/lib/`: search `search.js` (pop-up), `sitesearch.js` + `topics.js` (results page), `tables.js` (its tables; UI in `parts/tables.js`); feedback `feedback.js` (review:
 `feedback-review.js`); tour `tour.js`; scrim schedule `fixtures.js`; predictions and the model
 `predict.js`; strength of schedule `schedule.js` (AD2L's definition); the playoff picture
 `playoffs.js` (its page part `parts/playoffs.js`; the AD2L rules it follows are in its header,

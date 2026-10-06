@@ -70,7 +70,7 @@ export async function renderPlayer(src, key) {
     // Building damage: per game, and their share of what their team did to buildings in those games.
     (() => {
       const gs = h.games.filter((g) => g.p.tower_damage != null);
-      if (!gs.length) return ["Building damage", "—", "not in these games' data", "building_dmg"];
+      if (!gs.length) return ["Building damage", "—", "not recorded in these games", "building_dmg"];
       const mine = gs.reduce((a, g) => a + g.p.tower_damage, 0);
       const team = gs.reduce((a, g) => a + g.m.players.filter((q) => q.team === g.p.team).reduce((b, q) => b + (q.tower_damage ?? 0), 0), 0);
       return ["Building damage", fmt(Math.round(mine / gs.length)), `per game · ${team ? pct(mine / team) : "—"} of their team's`, "building_dmg"];

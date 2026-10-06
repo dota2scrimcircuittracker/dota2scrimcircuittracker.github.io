@@ -247,6 +247,21 @@ export const SOURCES = [
 export const COL_NAMES = { them: "Enemy", bans: "Bans", us: "You" };
 export const sourceLabel = (key) => SOURCES.find(([k]) => k === key)?.[1] ?? key;
 
+// How much of a built-in to show: Quick (the enemy's top heroes and one bans box), Standard (as
+// built), Deep (every hero in every box, plus the real drafts' bans by phase).
+export const DEPTHS = [["quick", "Quick"], ["standard", "Standard"], ["deep", "Deep"]];
+export function atDepth(template, depth) {
+  if (depth === "quick") {
+    return { ...template, depth, boxes: [...template.boxes.filter((b) => colOf(b) === "them").map((b) => ({ ...b, max: 5 })), { col: "bans", source: "banvs", max: 8 }] };
+  }
+  if (depth === "deep") {
+    const have = new Set(template.boxes.map((b) => b.source));
+    const extra = [..."123"].flatMap((n) => [`banned${n}`, `bans${n}`]).filter((k) => !have.has(k));
+    return { ...template, depth, boxes: [...template.boxes.map(({ max, ...b }) => b), ...boxes("bans", extra)] };
+  }
+  return template;
+}
+
 // Every built-in: the enemy's heroes left, the model's bans against them in the middle, yours right.
 const boxes = (col, keys) => keys.map((k) => ({ col, ...(typeof k === "string" ? { source: k } : k) }));
 // The middle column: the model's bans against them for each ban phase.
@@ -298,12 +313,17 @@ export function freezeLayout(template, rows) {
 }
 
 // The file's categories from placed rows; empty boxes are left out.
-export function placedConfig(config_name, rows) {
+// A name two boxes share (the same source for them and for your team) says whose it is, since
+// Dota shows only the names. `names`: { them, us } (team names; "Them" / "Us" otherwise).
+export function placedConfig(config_name, rows, names = {}) {
+  const count = new Map();
+  for (const r of rows) count.set(r.name, (count.get(r.name) ?? 0) + 1);
+  const whose = (r) => (count.get(r.name) > 1 && (r.col === "us" || r.col === "them") ? `${String(r.col === "us" ? names.us || "Us" : names.them || "Them").slice(0, 20)}: ` : "");
   return {
     config_name,
     categories: rows.flatMap((r) => {
       const ids = r.heroes.map((h) => heroIdOf(h.hero)).filter((id) => id != null);
-      return ids.length ? [{ category_name: String(r.name).slice(0, 60), x_position: r.x, y_position: r.y, width: r.w, height: r.h, hero_ids: ids }] : [];
+      return ids.length ? [{ category_name: `${whose(r)}${r.name}`.slice(0, 60), x_position: r.x, y_position: r.y, width: r.w, height: r.h, hero_ids: ids }] : [];
     }),
   };
 }
@@ -371,7 +391,7 @@ export const colOf = (b) => (COLS.includes(b.col) ? b.col : "them");
 export function templateRows(template, them, us = null, { all = false } = {}) {
   return template.boxes.flatMap((b, box) => {
     const col = colOf(b), sources = col === "us" ? us : them;
-    const src = !sources ? null : b.source === "custom" ? { name: "My heroes", note: "" } : sources[b.source];
+    const src = b.source === "custom" ? { name: "My heroes", note: "" } : !sources ? null : sources[b.source];
     if (!src && !all) return [];
     return [{ box, col, name: b.label?.trim() || src?.name || sourceLabel(b.source), note: src?.note ?? (sources ? "not available here" : ""), heroes: src || b.add?.length ? boxHeroes(b, sources ?? {}) : [], missing: !src }];
   });

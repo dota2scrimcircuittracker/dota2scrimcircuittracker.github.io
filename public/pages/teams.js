@@ -1,7 +1,7 @@
 // Teams: the scrim team list and every team's page.
 import { hasDetails, playerLeaderboard } from "../lib/stats.js";
 import { tierList, rankLabel } from "../lib/tiers.js";
-import { listTeams, standingsRows, teamHistory, sideOf } from "../lib/teams.js";
+import { listTeams, standingsRows, teamHistory, sideOf, seriesRecords } from "../lib/teams.js";
 import { wireCharts } from "../lib/charts.js";
 import { collectWards, wireWardMaps } from "../lib/wardmap.js";
 import { teamFightMapHtml, wireFightMaps } from "../lib/fightmap.js";
@@ -14,7 +14,7 @@ import { teamSplits, playerPairs } from "../lib/combat.js";
 import { lengthHtml } from "../lib/combat-charts.js";
 import { tune, fitRatings } from "../lib/predict.js";
 import { isBye } from "../lib/playoffs.js";
-import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt } from "../core.js";
+import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt, scrollToSection } from "../core.js";
 import { pageTabs, TEAM_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox, laneCutsOf, teamLanesHtml } from "../parts/lanes.js";
 import { tierRef } from "../parts/tiers.js";
@@ -46,14 +46,8 @@ export async function renderTeams(src, slug) {
   if (ad2l) {
     // AD2L records from PlayOn's series scores (official; complete even when a game's
     // stats couldn't be found).
-    teams = teams.map((t) => {
-      let wins = 0, losses = 0;
-      for (const s of ad2l.series.filter((x) => x.home === t.id || x.away === t.id)) {
-        const [us, them] = s.home === t.id ? [s.home_score, s.away_score] : [s.away_score, s.home_score];
-        wins += us ?? 0; losses += them ?? 0;
-      }
-      return { ...t, wins, losses, games: wins + losses };
-    }).sort((a, b) => b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name));
+    const recs = seriesRecords(ad2l.series);
+    teams = teams.map((t) => ({ ...t, ...(recs.get(t.id) ?? { wins: 0, losses: 0, games: 0 }) })).sort((a, b) => b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name));
   }
   const table = new Map(standingsRows(matches).map((r) => [r.slug, r])); // form and streak, from games
   const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
@@ -109,7 +103,7 @@ export async function renderTeams(src, slug) {
   // AD2L record comes from PlayOn's series scores (official, and complete even when a
   // game's stats couldn't be found); scrims use their own games.
   const rec = ad2l
-    ? { w: team.wins, l: team.losses, note: team.games ? `${pct0(team.wins / team.games)} of games · from PlayOn` : "no games yet" }
+    ? { w: team.wins, l: team.losses, note: team.games ? `${pct0(team.wins / team.games)} of games` : "no games yet" }
     : { w: h.wins, l: h.losses, note: h.played ? `${pct0(h.win_rate)} win rate` : "no games yet" };
   const captain = members.find((m) => m.captain);
   const sub = [
@@ -227,8 +221,8 @@ export async function renderTeams(src, slug) {
     : h.players.map((p, i) => playerCard(p, p, i)).join("");
   const standinCards = others.map((p, i) => playerCard(p, p, members.length + i, { standin: true })).join("");
   const rosterNote = roster
-    ? `${src.ad2l ? "The PlayOn roster" : "The Champion roster (scrim teams are the Champion teams)"}${hasPos ? ", in the position each player plays most" : ""}. Record, KDA and heroes come from ${esc(team.name)}'s games with stats${h.private_games ? `; ${plural(h.private_games, "private scrim")} have no lineups` : ""}.`
-    : `No official roster for this team, so this is everyone who has played for it, most games first.`;
+    ? `${src.ad2l ? "The PlayOn roster" : "The Champion roster (scrim teams are the Champion teams)"}${hasPos ? ", in the position each player plays most" : ""}. Record, KDA and heroes are from ${esc(team.name)}'s games with stats${h.private_games ? `; ${plural(h.private_games, "private scrim")} have no lineups` : ""}.`
+    : `No official roster. Everyone who has played for this team, most games first.`;
 
   // Compact roster for the overview.
   const rosterStrip = roster
@@ -236,7 +230,7 @@ export async function renderTeams(src, slug) {
         ${others.length ? `<li class="rs-more">${plural(others.length, "stand-in")}: ${others.map((p) => playerLink(src, p)).join(", ")}</li>` : ""}</ul>`
     : `<ul class="roster">${h.players.slice(0, 7).map((p) => `<li>${playerLink(src, p)}${tierTag(p.key)}<span class="tag">${plural(p.games, "game")}</span></li>`).join("") || `<li class="muted">No player data${h.private_games ? " (private scrims only)" : ""}.</li>`}</ul>`;
 
-  const opponents = h.opponents.length ? `<h2>Head to head</h2>
+  const opponents = h.opponents.length ? `<h2 id="head-to-head">Head to head</h2>
     <div class="h2h reveal">${h.opponents.map((o, i) => `<div class="h2h-row ${o.wins * 2 > o.games ? "up" : o.wins * 2 < o.games ? "down" : "even"}" style="--i:${Math.min(i, 12)}">
       <span class="h2h-name">${teamLink(src, o.name, o.id)}</span>
       <span class="h2h-bar" aria-hidden="true"><i style="width:${Math.round((o.wins / o.games) * 100)}%"></i></span>
@@ -334,12 +328,13 @@ export async function renderTeams(src, slug) {
         ...(h.bans[0] ? [["Bans most", esc(h.bans[0].hero), `${plural(h.bans[0].n, "ban")} in ${plural(h.drafted, "draft")}`]] : []),
         ...(h.banned_against[0] ? [["Banned against", esc(h.banned_against[0].hero), `${h.banned_against[0].n} time${h.banned_against[0].n === 1 ? "" : "s"} by opponents`]] : []),
       ])}
-      <h2>Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
+      <h2 id="hero-pool">Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
       ${heroGridHtml(team, lineups, { pubs: ad2l?.pubs ?? null })}
       ${sideSplit}
       ${phases}` : ""],
     // Its chance of each final place (parts/playoffs.js), worked out when the tab is first shown.
-    ["chances", ad2l && !isBye(team) ? `<section class="po" id="tc-box"><div class="panel empty">Working out every outcome…</div></section>` : ""],
+    // The nav menu lists Outcomes for every AD2L team, so a bye slot keeps the tab and says why.
+    ["chances", !ad2l ? "" : isBye(team) ? `<div class="panel empty">A bye week isn't a team, so it has no outcomes.</div>` : `<section class="po" id="tc-box"><div class="panel empty">Working out every outcome…</div></section>`],
     ["lanes", teamLanesHtml(src, h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side), laneCuts_, team)],
     ["map", `${teamMapHtml(src, matches, teams, team, h)}
       ${(() => { const gs = h.games.map(({ m }) => m), mine = (p, m) => p.team === sideOf(m, team);
@@ -367,6 +362,8 @@ export async function renderTeams(src, slug) {
     ${tabs.panels}`;
   wirePlayerTabs();
   wireCharts(app);
+  // The team's own division: on the All Divisions view each team carries it as `league`.
+  const adTeam = ad2l?.teams.find((t) => t.id === team.id), league = adTeam?.league ?? src.key;
   // Drafts tab: load the model and the division's draft file the first time the tab is shown.
   const tdBox = app.querySelector("#td-box");
   if (tdBox) {
@@ -374,9 +371,9 @@ export async function renderTeams(src, slug) {
     const fill = () => {
       if (tdBox.dataset.filled) return;
       tdBox.dataset.filled = "1";
-      import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(src.key)]).then(([cm, data]) => {
+      import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(league)]).then(([cm, data]) => {
         if (document.getElementById("td-box") !== tdBox) return;
-        if (!data) { tdBox.innerHTML = `<p class="muted">The draft model's data for this division hasn't synced yet.</p>`; return; }
+        if (!data) { tdBox.innerHTML = `<p class="muted">Draft analysis isn't available for this division yet.</p>`; return; }
         const tname = Object.fromEntries(ad2l.teams.map((t) => [t.id, t.name]));
         const drafted = ({ m }) => m.draft?.some((x) => x.pick) && m.players?.length === 10;
         const mine = ad2l.series.filter((x) => x.home === team.id || x.away === team.id).sort((x, y) => (y.time ?? 0) - (x.time ?? 0));
@@ -401,20 +398,21 @@ export async function renderTeams(src, slug) {
       if (tcBox.dataset.filled) return;
       tcBox.dataset.filled = "1";
       try {
-        const [{ mountPlayoffs }, full] = await Promise.all([import("../parts/playoffs.js"), src.view ? SOURCES[src.key].data() : ad2l]);
+        // On the All Divisions view, the team's own division: its bands and only its teams.
+        const own = src.all ? SOURCES[league] : src;
+        const [{ mountPlayoffs }, full] = await Promise.all([import("../parts/playoffs.js"), src.view || src.all ? SOURCES[league].data() : ad2l]);
         if (document.getElementById("tc-box") !== tcBox) return;
         const ratings = fitRatings(full.teams, full.series, tune(full.teams, full.series));
-        mountPlayoffs(tcBox, src, full, ratings, new Map(), { view: "team", team: team.id });
+        mountPlayoffs(tcBox, own, full, ratings, new Map(), { view: "team", team: team.id });
       } catch (e) { tcBox.innerHTML = errorBox(e); }
     };
     if (!panel.hidden) fill();
     else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   }
   // AD2L: the draft model reads them against my team (the cog's), and my heroes fill the right.
-  const adTeam = ad2l?.teams.find((t) => t.id === team.id);
   wireHeroGrid(app, team, lineups, {
     pubs: ad2l?.pubs ?? null,
-    model: adTeam ? async (me) => { const cm = await import("../parts/cmdraft.js"); return cm.heroGridModelFor({ div: src.key, five: cm.teamFive(adTeam, ad2l.games), name: team.name }, me); } : null,
+    model: adTeam ? async (me) => { const cm = await import("../parts/cmdraft.js"); return cm.heroGridModelFor({ div: league, id: team.id, five: cm.teamFive(adTeam, ad2l.games), name: team.name }, me); } : null,
   });
   wireMapCards(app);
   wireWardMaps(app);
@@ -424,7 +422,7 @@ export async function renderTeams(src, slug) {
     document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click();
     // Then down to the section, just under the sticky header.
     const to = b.dataset.gotoAnchor && document.getElementById(b.dataset.gotoAnchor);
-    if (to) scrollTo({ top: scrollY + to.getBoundingClientRect().top - (document.querySelector(".top")?.offsetHeight ?? 0) - 12 });
+    if (to) scrollToSection(to);
   }));
   // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
   app.querySelector(".ph-segs")?.addEventListener("click", (e) => {

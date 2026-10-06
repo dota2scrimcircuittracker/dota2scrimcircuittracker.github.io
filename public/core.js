@@ -285,7 +285,7 @@ export const SOURCES = {
     key: "scrim", kicker: "The ledger", load: allMatches,
     link: (m) => `#/match/${m.id}`, base: "#/scrims",
     empty: `The ledger is empty. <a href="#/upload">Upload the first scrim</a>.`,
-    nav: [["#/scrims", "matches", "Standings"], ["#/week", "week", "Weekly"], ["#/teams", "teams", "Teams"], ["#/players", "players", "Players"], ["#/heroes", "heroes", "Heroes"], ["#/predict", "predict", "Predict"], ["#/upload", "upload", "Upload", "nav-cta"]],
+    nav: [["#/scrims", "matches", "Standings"], ["#/week", "week", "Content"], ["#/teams", "teams", "Teams"], ["#/players", "players", "Players"], ["#/heroes", "heroes", "Heroes"], ["#/predict", "predict", "Predict"], ["#/upload", "upload", "Upload", "nav-cta"]],
   },
 };
 // AD2L divisions: `ad2l` marks the PlayOn/OpenDota pages, `root` prefixes their routes
@@ -298,7 +298,7 @@ for (const [key, dv] of Object.entries(DIVISIONS)) {
     division: dv.name, kicker: `AD2L · ${dv.name}`, load: () => divGames(SOURCES[key]),
     link: (m) => `${root}/game/${m.id}`, base: `${root}/week`,
     empty: `No ticketed ${dv.short} games found yet.`,
-    nav: [[`${root}/`, "standings", "Teams"], [`${root}/week`, "week", "Weekly"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/drafter`, "drafter", "Drafter"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
+    nav: [[`${root}/`, "standings", "Teams"], [`${root}/week`, "week", "Content"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/drafter`, "drafter", "Drafter"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
   };
   // Sub-division views (#/heroic/a/..., #/heroic/b/...): same pages and league key, data
   // narrowed to that sub-division. Plain #/<key>/... is Combined.
@@ -353,7 +353,7 @@ SOURCES.all = {
   division: `${SEASON.name} All Divisions`, kicker: `AD2L · ${SEASON.name} · Every division`, load: allLoad,
   link: (m) => `${SOURCES[gameLeague.get(m.id)]?.root ?? "#/all"}/game/${m.id}`, base: "#/all/week",
   empty: "No ticketed games found yet.",
-  nav: [["#/all/", "standings", "Teams"], ["#/all/week", "week", "Weekly"], ["#/all/players", "players", "Players"], ["#/all/heroes", "heroes", "Heroes"]],
+  nav: [["#/all/", "standings", "Teams"], ["#/all/week", "week", "Content"], ["#/all/players", "players", "Players"], ["#/all/heroes", "heroes", "Heroes"]],
 };
 bySlug.all = "all";
 
@@ -368,8 +368,10 @@ bySlug.all = "all";
 // density steps); if it still doesn't fit, the columns after the first (the name, which
 // stays put) are split into pages that each fit, with tabs to switch between them. It
 // refits when the table's width changes.
-export function sortableTable(el, columns, rows, sortKey, { toolbar = false } = {}) {
-  let key = sortKey, dir = -1, density = 0, pages = null, page = 0;
+// For the search tables (parts/tables.js): dir ("asc" | "desc") to start with, nullsLast (empty
+// values after every value, in either direction) and onSort(key, dir) after a change.
+export function sortableTable(el, columns, rows, sortKey, { toolbar = false, dir: startDir = "desc", nullsLast = false, onSort = null } = {}) {
+  let key = sortKey, dir = startDir === "asc" ? 1 : -1, density = 0, pages = null, page = 0;
   const max = Object.fromEntries(columns.filter((c) => c[4]).map(([k]) => [k, Math.max(...rows.map((r) => r[k] ?? 0)) || 1]));
   const labelOf = Object.fromEntries(columns.map(([k, l]) => [k, l]));
   const pageOf = (k) => pages?.findIndex((pg) => pg.includes(k)) ?? -1;
@@ -381,6 +383,7 @@ export function sortableTable(el, columns, rows, sortKey, { toolbar = false } = 
   const draw = () => {
     const sorted = [...rows].sort((a, b) => {
       const x = a[key], y = b[key];
+      if (nullsLast && (x == null || y == null)) return x == null ? (y == null ? 0 : 1) : -1;
       if (typeof x === "string") return dir * -x.localeCompare(y);
       return dir * ((x ?? -Infinity) - (y ?? -Infinity));
     });
@@ -404,12 +407,13 @@ export function sortableTable(el, columns, rows, sortKey, { toolbar = false } = 
     </table></div>`;
     el.querySelectorAll("th.sortable").forEach((th) => (th.onclick = () => {
       if (th.dataset.k === key) dir = -dir; else { key = th.dataset.k; dir = -1; }
+      onSort?.(key, dir < 0 ? "desc" : "asc");
       draw();
     }));
     if (toolbar) {
       // Sorting by a column on another page flips to that page.
-      el.querySelector(".sort-key").onchange = (e) => { key = e.target.value; dir = -1; if (pageOf(key) >= 0) page = pageOf(key); draw(); };
-      el.querySelector(".sort-dir").onclick = () => { dir = -dir; draw(); };
+      el.querySelector(".sort-key").onchange = (e) => { key = e.target.value; dir = -1; if (pageOf(key) >= 0) page = pageOf(key); onSort?.(key, "desc"); draw(); };
+      el.querySelector(".sort-dir").onclick = () => { dir = -dir; onSort?.(key, dir < 0 ? "desc" : "asc"); draw(); };
     }
     el.querySelectorAll(".cp-page").forEach((b) => (b.onclick = () => { page = +b.dataset.page; draw(); }));
     el.querySelectorAll(".cp-step").forEach((b) => (b.onclick = () => { page = Math.min(pages.length - 1, Math.max(0, page + +b.dataset.step)); draw(); }));
@@ -852,3 +856,47 @@ export const addressOf = (h) => sharePath(h) ?? `/${h === "#/" ? "" : h}`;
 export let routedAt = null;
 // app.js moves it too (an imported binding is read-only there).
 export const setRoutedAt = (v) => { routedAt = v; };
+// In-app navigation to "#/x?tab=…&at=…": move the address without a page load (every query
+// parameter rides along), then route as a hash change would.
+export function navigate(href) {
+  const [h, q = ""] = href.split("?");
+  const params = new URLSearchParams(q), tab = params.get("tab");
+  const u = new URL(addressOf(h), location.href);
+  for (const [k, v] of params) u.searchParams.set(k, v);
+  history.pushState(tab ? { tab } : null, "", u.pathname + u.search + u.hash);
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+}
+// Scroll an element to just under the sticky header.
+export function scrollToSection(el) {
+  scrollTo({ top: scrollY + el.getBoundingClientRect().top - (document.querySelector(".top")?.offsetHeight ?? 0) - 12 });
+}
+// Site search links end in &at=<glossary key or element id>. After a page draws, scroll to that
+// section in the open tab (else anywhere on the page: cards above the tabs, a header badge) and
+// flash it once; then drop `at` from the address so a copied link doesn't flash again. Sections
+// some pages fill a moment later get one more look.
+export function goToSection() {
+  const u = new URL(location.href), at = u.searchParams.get("at");
+  if (!at) return;
+  u.searchParams.delete("at");
+  history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+  setRoutedAt(location.href);
+  const within = (scope) => {
+    const btn = scope.querySelector(`[data-info="${CSS.escape(at)}"]`);
+    if (btn && !btn.closest("dialog")) return btn.closest(".card, .td-tile") ?? btn.closest("h2, h3") ?? btn.parentElement;
+    return scope.querySelector(`#${CSS.escape(at)}`);
+  };
+  const find = () => {
+    const panel = app.querySelector(".pp-panel:not([hidden])");
+    return (panel && within(panel)) ?? within(app);
+  };
+  const flash = (el) => {
+    scrollToSection(el);
+    el.classList.remove("search-flash");
+    void el.offsetWidth; // restart the animation
+    el.classList.add("search-flash");
+    el.addEventListener("animationend", () => el.classList.remove("search-flash"), { once: true });
+  };
+  const el = find();
+  if (el) return flash(el);
+  setTimeout(() => { const later = find(); if (later) flash(later); }, 600);
+}
