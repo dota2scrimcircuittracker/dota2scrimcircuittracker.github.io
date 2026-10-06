@@ -110,6 +110,7 @@ export const INFO = {
   best_last_pick: "Best record as a team's last pick, among heroes last-picked 3+ times.",
   draft_slot: "Average position of its pick in the draft, counting all 24 steps (bans and picks). Lower = taken earlier.",
   by_draft_pick: "Record by which of the team's five picks this hero came in (1st pick … last pick). A big last-pick gap means it works best as a counter-pick. Under each record: the average game rating (0–100, same curve as the tier list), KDA, GPM, damage per minute and kill participation from that slot, green or red when clearly above or below its average across all slots.",
+  team_side_pick: "How often the team plays Radiant and how often it picks first, with its record each way. In Captains Mode one team chooses either side or first pick and the other team gets the other choice, so a lean shows what this team takes when the choice is theirs, or what opponents leave it. The line under the bars shows which side they were on when they picked first or second.",
   draft_by_phase: "What this team bans, what gets banned against them and what they pick, split by draft phase. Phase 1 = opening 7 bans and first 2 picks; phase 2 = 3 bans and 6 picks; phase 3 = last 4 bans and last 2 picks. Count = times; % of drafts = how often it comes up; Win % = the team's record in those games (for picks, with the hero).",
   hero_phases: "When this hero gets banned or picked in Captains Mode drafts, split by phase.",
 
@@ -191,7 +192,7 @@ export const INFO = {
   model_col: "What the model would have picked, using only results from before it. Where shown, the % is the chance it gave the actual result.",
   crowd_col: "The most-picked call, and how many people picked.",
   you_col: "Your call, matched by the name you pick with.",
-  model_draft: "The model's guess at all 24 draft steps. Hover any step for why it was chosen.",
+  model_draft: "Two drafts for this series, with one First pick switch for both. Best draft: Sybil's draft model drafting both teams, with the chance to win before and after it. Likely draft: the guess at all 24 steps from each team's habits, game 1 or game 2; hover any step for why it was chosen.",
   player_pools: "Each player's likeliest heroes: league games (recent weeks count most) plus pubs since the last league night, discounted by the chance the other team bans it. % = rough chance they play it.",
 
   // Combat (parsed replays)
@@ -221,6 +222,7 @@ export const INFO = {
   team_fight_rate: "Teamfights (OpenDota's: a run of 3+ deaths close together) where they lost fewer heroes than the other team, of the ones that weren't even.",
   aegis_steals: "Roshan's Aegis picked up by the team that didn't kill him.",
   team_length: "Record by how long the game ran.",
+  hero_grid: "Dota's hero grid (the picker in the pick screen) can hold your own layouts. Drawn the way Dota lays it out: every box where it sits in the file, heroes shrunk to fit. Red boxes are the enemy, grey are bans against them, green are your team (set My team here or under the settings cog). Pick a template or customise one: drag a box by its name bar, resize it from the corner, drag heroes in from anywhere on the page, onto another hero to put them there, or off a box to take them out; click a box to rename it, change what it holds or which side it reads. Saved in this browser. Bottom-right number: games (threats: the model's chance to win with it; bans: points it adds to them). Green outline and top-left number: pubs on that hero in the last 30 days. Your file is read and changed in your browser and isn't uploaded.",
   team_pairs: "Every two players who played together for this team, and their record together.",
   lead_conversion: "Record in games where they were ahead (or behind) on gold at that minute. Games that ended before it don't count.",
   medal_rating: "Each player's PlayOn medal against their tier-list rating. The dashed line is what players of each medal usually rate here; the names are the farthest above and below it.",

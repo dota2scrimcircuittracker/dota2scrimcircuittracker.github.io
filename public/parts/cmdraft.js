@@ -1,7 +1,7 @@
 // The draft model on the page (lib/cmdraft.js, Project Sybil's model): loading each division's
 // draft file, reading a game's ten players, and the game page's Draft tab.
-import { DIVISIONS, esc, pct, portrait, playerLink } from "../core.js";
-import { gameContext, readDraft, buildDraft, draftProbability, CM_STEPS, FIT } from "../lib/cmdraft.js";
+import { DIVISIONS, esc, pct, portrait, playerLink, divLite } from "../core.js";
+import { gameContext, readDraft, buildDraft, draftProbability, scoreHeroes, openRoleFor, CM_STEPS, FIT } from "../lib/cmdraft.js";
 import { heroImg } from "../lib/hero-meta.js";
 
 // <division>-draft.json: hero names and baselines, and every rostered player's games
@@ -14,7 +14,7 @@ export const draftData = (key) => (cache[key] ??= fetch(DIVISIONS[key].file.repl
 export async function draftDataFor(keys) {
   const all = (await Promise.all([...new Set(keys)].filter((k) => DIVISIONS[k]).map(draftData))).filter(Boolean);
   if (!all.length) return null;
-  return { ...all[0], history: Object.assign({}, ...all.map((d) => d.history)) };
+  return { ...all[0], history: Object.assign({}, ...all.map((d) => d.history)), totals: Object.assign({}, ...all.map((d) => d.totals ?? {})) };
 }
 
 // Hero name <-> id from the draft file, and every hero id, A–Z.
@@ -233,9 +233,9 @@ const resultChip = (won, post) => {
 // Two odds bars, before and after the draft, each one team's share against the other's.
 export const oddsBars = (us, them, pre, post) => `<div class="td-odds">
   ${[["Before the draft", pre], ["After the draft", post]].map(([label, p]) => `<div class="td-orow"><small>${label}</small>
-    <span class="td-us">${esc(us)} <b>${pct(p)}</b></span>
+    <span class="td-us td-fit"><span class="td-nm">${esc(us)}</span> <b>${pct(p)}</b></span>
     <span class="td-track"><i style="width:${(p * 100).toFixed(1)}%"></i><em></em></span>
-    <span class="td-them"><b>${pct(1 - p)}</b> ${esc(them)}</span></div>`).join("")}
+    <span class="td-them td-fit"><b>${pct(1 - p)}</b> <span class="td-nm">${esc(them)}</span></span></div>`).join("")}
   <div class="td-delta">Draft: <b class="${post - pre >= 0.005 ? "cm-up" : post - pre <= -0.005 ? "cm-down" : ""}">${pts(post - pre)}</b> for ${esc(us)}</div>
 </div>`;
 
@@ -247,6 +247,76 @@ export function teamFive(team, games) {
   for (const g of games) if (g.team_a_id === team.id || g.team_b_id === team.id) for (const p of g.players) n.set(p.player_key, (n.get(p.player_key) ?? 0) + 1);
   return team.players.map((p) => ({ key: String(p.account_id), name: p.name, rank_tier: p.rank_tier }))
     .sort((x, y) => (n.get(y.key) ?? 0) - (n.get(x.key) ?? 0)).slice(0, 5);
+}
+
+// For a hero grid (parts/herogrid.js): the model's read of one side of `ctx` before any pick.
+// threats: heroes by their chance to win with it, with the positions it fits them; likely: the
+// heroes they're likeliest to play (the model's propensity: their weighted games on it plus what
+// their positions suggest), with who; banvs: points each hero would add to them if the other
+// side left it. vs: the other side's name, for the notes.
+// Bans against `side` in each Captains Mode ban phase: at the start of the phase, after the
+// model's own draft up to there (both first-pick orders, averaged), points each still-open hero
+// would add to them. Phase 1 is before any pick; 2 after each team's first pick; 3 after eight
+// picks. Best first.
+const BAN_PHASE_STARTS = CM_STEPS.map(([, k], i) => (k === "ban" && (i === 0 || CM_STEPS[i - 1][1] === "pick") ? i : null)).filter((i) => i != null);
+export function phaseBans(ctx, side, heroes) {
+  const ours = side === "radiant" ? "dire" : "radiant";
+  const acc = BAN_PHASE_STARTS.map(() => new Map());
+  for (const themFirst of [true, false]) {
+    const order = CM_STEPS.map(([f, k]) => [(f === "F") === themFirst ? side : ours, k]);
+    const { steps } = buildDraft(ctx, order, heroes.ids);
+    BAN_PHASE_STARTS.forEach((at, p) => {
+      const st = { radiant: [], dire: [], pins: { radiant: [], dire: [] } }, gone = new Set();
+      for (const s of steps.slice(0, at)) { gone.add(s.hero); if (s.pick) { st[s.side].push(s.hero); st.pins[s.side].push(s.player); } }
+      for (const x of scoreHeroes(ctx, st, ours, heroes.ids.filter((h) => !gone.has(h)))) {
+        if (x.ban == null) continue;
+        const a = acc[p].get(x.hero) ?? [0, 0];
+        a[0] += x.ban; a[1]++;
+        acc[p].set(x.hero, a);
+      }
+    });
+  }
+  return acc.map((m) => [...m].map(([h, [sum, n]]) => [h, sum / n]).sort((a, b) => b[1] - a[1]));
+}
+
+export function heroGridModel(ctx, side, heroes, vs = null, { phases = false } = {}) {
+  const other = side === "radiant" ? "dire" : "radiant", empty = { radiant: [], dire: [] };
+  const who = (j) => ctx.info?.[side]?.[j]?.name ?? null;
+  const theirs = scoreHeroes(ctx, empty, side, heroes.ids), ours = scoreHeroes(ctx, empty, other, heroes.ids);
+  const threats = theirs.filter((x) => x.pick != null).sort((a, b) => b.pick - a.pick).map((x) => ({
+    hero: heroes.name(x.hero), pos: [0, 1, 2, 3, 4].filter((r) => openRoleFor(x.hero, [r], ctx[side]) != null),
+    tag: Math.round(x.pick * 100), title: `${heroes.name(x.hero)}: ${pct(x.pick)} to win with it${who(x.player) ? `, played by ${who(x.player)}` : ""}`,
+  }));
+  const likely = heroes.ids.map((h) => {
+    let j = 0, p = -1;
+    ctx[side].forEach((pl, i) => { const v = pl.propensity(h); if (v > p) { p = v; j = i; } });
+    return { h, p, j };
+  }).sort((a, b) => b.p - a.p).map(({ h, p, j }) => ({ hero: heroes.name(h), tag: who(j)?.slice(0, 3) ?? "", title: `${heroes.name(h)}: ${who(j) ?? "a player"} plays it in about ${pct(p)} of their games` }));
+  const banvs = ours.filter((x) => x.ban != null).sort((a, b) => b.ban - a.ban).map((x) => ({
+    hero: heroes.name(x.hero), tag: `${x.ban >= 0 ? "+" : "−"}${Math.abs(x.ban * 100).toFixed(1)}`,
+    title: `${heroes.name(x.hero)}: adds ${(x.ban * 100).toFixed(1)} points to their chance if left open`,
+  }));
+  const banEntry = ([h, v]) => ({ hero: heroes.name(h), tag: `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}`, title: `${heroes.name(h)}: adds ${(v * 100).toFixed(1)} points to their chance if left open` });
+  const banPhases = phases ? phaseBans(ctx, side, heroes).map((list) => list.map(banEntry)) : null;
+  return { threats, likely, banvs, banPhases, vs };
+}
+
+// heroGridModel for `them` ({ div, five, name }) against my team (core.js myTeam), or without one
+// (or when it's them) against `fallback` ({ div, five, name }), else five average players:
+// { them, us (null against average players), vs }. null when the draft file hasn't synced.
+export async function heroGridModelFor(them, me, fallback = null) {
+  let vs = fallback;
+  if (me && !(me.div === them.div && String(me.id) === String(them.id))) {
+    const dd = await divLite(me.div).catch(() => null);
+    const t = dd?.teams.find((x) => String(x.id) === String(me.id));
+    if (t) vs = { div: me.div, five: teamFive(t, dd.games), name: t.name };
+  }
+  const data = await draftDataFor([them.div, vs?.div].filter(Boolean));
+  if (!data) return null;
+  const average = Array.from({ length: 5 }, () => ({ key: null, name: "Average player", rank_tier: null }));
+  const ctx = gameContext(data, { radiant: them.five, dire: vs?.five ?? average }, Date.now() / 1000);
+  const heroes = heroIndex(data);
+  return { them: heroGridModel(ctx, "radiant", heroes, vs?.name ?? null, { phases: true }), us: vs ? heroGridModel(ctx, "dire", heroes, them.name) : null, vs: vs?.name ?? null };
 }
 
 // The draft model on one series: `home` and `away` are teams, read as of now. Before the draft
@@ -275,7 +345,7 @@ export function seriesRead(home, away, games, data, now = Date.now() / 1000) {
 
 // The card's line: the draft model's pre-draft chance next to the ratings.
 export const preDraftLine = (home, away, pre) => `<div class="pcm-line"><small>Draft model · one game, before the draft</small>
-  <span class="td-us">${esc(home.name)} <b>${pct(pre)}</b></span><span class="td-track"><i style="width:${(pre * 100).toFixed(1)}%"></i><em></em></span><span class="td-them"><b>${pct(1 - pre)}</b> ${esc(away.name)}</span></div>`;
+  <span class="td-us td-fit"><span class="td-nm">${esc(home.name)}</span> <b>${pct(pre)}</b></span><span class="td-track"><i style="width:${(pre * 100).toFixed(1)}%"></i><em></em></span><span class="td-them td-fit"><b>${pct(1 - pre)}</b> <span class="td-nm">${esc(away.name)}</span></span></div>`;
 
 // The model's draft for a series, from the home team's side.
 export function modelDraftHtml(home, away, d, width) {

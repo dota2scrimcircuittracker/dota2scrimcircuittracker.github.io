@@ -4,8 +4,9 @@ import { info, wireInfo } from "./lib/glossary.js";
 import { countVisit } from "./lib/visits.js";
 import { buildSearchIndex, searchIndex } from "./lib/search.js";
 import { DIVISIONS as DIVISION_LIST, slugOf, fullName, divisionCss, SEASON } from "./lib/divisions.js";
-import { esc, DIVISIONS, SOURCES, TM_KEY, timeSel, gameWeeker, seriesWeek, shortDate, divLite, allMatches, addressOf, routedAt, setRoutedAt, showTab, app, tabInUrl, heroHref, portrait, here, bySlug, timeSrc, allLoad, gameLeague, divUploaded, setTitle } from "./core.js";
+import { esc, DIVISIONS, SOURCES, TM_KEY, timeSel, gameWeeker, seriesWeek, shortDate, divLite, allMatches, addressOf, routedAt, setRoutedAt, showTab, app, tabInUrl, heroHref, portrait, here, bySlug, timeSrc, allLoad, gameLeague, divUploaded, setTitle, myTeam, setMyTeam, myTeamOptions, teamFromOption } from "./core.js";
 import { weekOfFn } from "./parts/lanes.js";
+import { tabList, TEAM_TABS, PLAYER_TABS, HERO_TABS, STANDINGS_TABS } from "./lib/pagetabs.js";
 import { renderMatch, renderMatches } from "./pages/games.js";
 import { renderHero } from "./pages/hero.js";
 import { renderHeroes } from "./pages/heroes.js";
@@ -57,6 +58,13 @@ const setSettings = (open) => {
 settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(settingsPop.hidden); };
 document.addEventListener("click", (e) => { if (!e.target.closest(".settings")) setSettings(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSettings(false); });
+// My team (core.js myTeam): the list loads the first time the menu opens.
+const myTeamSel = document.getElementById("my-team");
+const fillMyTeam = async () => { myTeamSel.innerHTML = await myTeamOptions(); };
+settingsBtn.addEventListener("click", () => { if (!settingsPop.hidden && myTeamSel.options.length < 2) fillMyTeam().catch(() => {}); });
+myTeamSel.onchange = async () => setMyTeam(await teamFromOption(myTeamSel.value));
+addEventListener("myteam", (e) => { const t = e.detail; if (myTeamSel.options.length > 1) myTeamSel.value = t ? `${t.div}:${t.id}` : ""; });
+addEventListener("storage", (e) => { if (e.key === "my-team") dispatchEvent(new CustomEvent("myteam", { detail: myTeam() })); });
 const cbBox = document.getElementById("cb-mode");
 cbBox.checked = document.documentElement.classList.contains("cb");
 cbBox.onchange = () => {
@@ -288,14 +296,12 @@ function focusPage() {
 // players or heroes; hovering one of those shows its page's tabs on the right (a week shows
 // its games). Built from the league's data the first time a tab opens. Mouse hover where
 // the device has one; from the keyboard, Arrow Down on a tab opens it.
-const tabsOf = (list) => (href) => list.map(([id, label]) => [label, `${href}?tab=${id}`]);
-const TEAM_TABS = (src) => tabsOf([["overview", "Overview"], ["roster", "Roster"], ["games", src.ad2l ? "Series" : "Games"], ["heroes", "Heroes"], ["map", "Map"]]);
-const PLAYER_TABS = tabsOf([["stats", "Stats"], ["heroes", "Heroes"], ["combat", "Combat"], ["lanes", "Laning"], ["items", "Items"], ["map", "Map"], ["games", "Games"]]);
-const HERO_TABS = tabsOf([["stats", "Stats"], ["players", "Players"], ["draft", "Draft"], ["matchups", "Matchups"], ["combat", "Combat"], ["lanes", "Laning"], ["items", "Items"], ["map", "Map"], ["games", "Games"]]);
+// The side links come from lib/pagetabs.js, the same list the pages' tab bars use.
+const tabsOf = (list, src) => (href) => tabList(list, src).map(([id, label]) => [label, `${href}?tab=${id}`]);
 const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 // Each returns { head: [[label, href]], items: [{ name, sub, href, group, side: [[label, href]] }] }.
 async function teamMenu(src) {
-  const tabs = TEAM_TABS(src);
+  const tabs = tabsOf(TEAM_TABS, src);
   if (!src.ad2l) {
     const items = listTeams(await allMatches()).map((t) => ({ name: t.name, href: `#/teams/${t.slug}` })).sort(byName);
     return { items: items.map((t) => ({ ...t, side: tabs(t.href) })) };
@@ -304,7 +310,7 @@ async function teamMenu(src) {
   const items = d.teams.map((t) => ({ name: t.name, href: `${src.root}/teams/${t.id}`, group: src.all ? t.division : null,
     sub: t.players.slice(0, 5).map((p) => p.name).join(", ") }))
     .sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || byName(a, b));
-  const head = [["table", "Table"], ["matches", "Matches"], ["cross", "Crosstable"], ["next", "Up next"]].map(([id, label]) => [label, `${src.root}/?tab=${id}`]);
+  const head = tabsOf(STANDINGS_TABS, src)(`${src.root}/`);
   return { head, items: items.map((t) => ({ ...t, side: tabs(t.href) })) };
 }
 async function playerMenu(src) {
@@ -313,7 +319,7 @@ async function playerMenu(src) {
     ? buildSearchIndex([{ key: src.key, label: "", root: src.root, data: await src.data() }])
     : buildSearchIndex([], { label: "", matches: await allMatches() });
   const items = idx.filter((e) => e.kind === "player")
-    .map((p) => ({ name: p.name, href: p.href, group: p.team ?? "No team", sub: p.standin ? "Stand-in" : p.captain ? "Captain" : "", side: PLAYER_TABS(p.href) }))
+    .map((p) => ({ name: p.name, href: p.href, group: p.team ?? "No team", sub: p.standin ? "Stand-in" : p.captain ? "Captain" : "", side: tabsOf(PLAYER_TABS, src)(p.href) }))
     .sort((a, b) => a.group.localeCompare(b.group, undefined, { sensitivity: "base" }) || byName(a, b));
   return { items };
 }
@@ -321,7 +327,7 @@ async function heroMenu(src) {
   const games = new Map();
   for (const m of await src.load()) for (const h of new Set((m.players ?? []).map((p) => p.hero).filter(Boolean))) games.set(h, (games.get(h) ?? 0) + 1);
   const items = [...games].map(([hero, n]) => ({ name: hero, hero, href: heroHref(src, hero), sub: `${n} game${n === 1 ? "" : "s"}` })).sort(byName);
-  return { items: items.map((h) => ({ ...h, side: HERO_TABS(h.href) })) };
+  return { items: items.map((h) => ({ ...h, side: tabsOf(HERO_TABS, src)(h.href) })) };
 }
 async function weekMenu(src) {
   const games = await src.load(), weekOf = weekOfFn(src.ad2l ? await src.data() : null);

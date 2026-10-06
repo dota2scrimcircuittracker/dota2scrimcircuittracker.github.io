@@ -153,10 +153,12 @@ function parseRoster(html) {
     const main = altAt >= 0 ? block.slice(0, altAt) : block;
     const acct = main.match(/dotabuff\.com\/players\/(\d+)/);
     if (!acct) continue;
-    const name = decode(main.match(/\/players\/\d+"[^>]*>([^<]+)<\/a>/)?.[1] ?? `account ${acct[1]}`);
+    // PlayOn's own player page (/players/<PlayOn id>) is the link around the name.
+    const own = main.match(/href="\/players\/(\d+)"[^>]*>([^<]+)<\/a>/);
+    const name = decode(own?.[2] ?? `account ${acct[1]}`);
     const alts = altAt >= 0 ? [...block.slice(altAt).matchAll(/dotabuff\.com\/players\/(\d+)/g)].map((m) => Number(m[1])) : [];
     const rank = main.match(/data-rank="(\d+)"/); // same 0-80 scale as OpenDota rank_tier
-    players.push({ name, account_ids: [Number(acct[1]), ...new Set(alts)], captain: main.includes("(Captain)"), rank_tier: rank ? Number(rank[1]) : null });
+    players.push({ name, account_ids: [Number(acct[1]), ...new Set(alts)], playon_id: own ? Number(own[1]) : null, captain: main.includes("(Captain)"), rank_tier: rank ? Number(rank[1]) : null });
   }
   return players;
 }
@@ -237,6 +239,38 @@ for (const [acct, o] of owner) {
   }
 }
 console.log(`  ${candidates.size} candidate practice-lobby games; pubs for ${pubRows.size} players`);
+
+// All-time hero totals per player (main account, smurfs merged): games and wins on each hero in
+// pubs (lobby types 0 and 7) and in practice lobbies (1: every amateur league game, AD2L or
+// not, plus scrims and inhouses; OpenDota can't tell those apart per player). Three calls per
+// account, cached TOTALS_DAYS; at most TOTALS_PER_RUN accounts are refreshed a run (missing
+// first, then oldest) so a run stays about a minute longer, and the rest use their cached copy.
+const TOTALS_DAYS = 7, TOTALS_PER_RUN = 18, TOTAL_LOBBIES = [0, 7, 1];
+const totalsFile = (acct, lobby) => path.join(CACHE, "opendota", `heroes_${acct}_${lobby}.json`);
+const ageOf = async (file) => (existsSync(file) ? Date.now() - (await import("node:fs").then((fs) => fs.statSync(file))).mtimeMs : Infinity);
+const totalsAge = new Map();
+for (const acct of owner.keys()) totalsAge.set(acct, Math.max(...await Promise.all(TOTAL_LOBBIES.map((l) => ageOf(totalsFile(acct, l))))));
+const refresh = [...totalsAge].filter(([, age]) => age > TOTALS_DAYS * 86400e3).sort((a, b) => b[1] - a[1]).slice(0, TOTALS_PER_RUN).map(([a]) => a);
+for (const acct of refresh) {
+  for (const lobby of TOTAL_LOBBIES) {
+    const rows = await opendota(`/players/${acct}/heroes?lobby_type=${lobby}`).catch((e) => (console.log(`  hero totals ${acct}/${lobby}: ${e.message}`), null));
+    if (!rows) continue;
+    await mkdir(path.dirname(totalsFile(acct, lobby)), { recursive: true });
+    await writeFile(totalsFile(acct, lobby), JSON.stringify(rows.filter((r) => r.games > 0).map((r) => [Number(r.hero_id), r.games, r.win])));
+  }
+}
+const totals = new Map(); // main account -> { p: Map(hero id -> [games, wins]), l: Map }
+for (const [acct, o] of owner) {
+  const t = totals.get(o.main) ?? totals.set(o.main, { p: new Map(), l: new Map() }).get(o.main);
+  for (const lobby of TOTAL_LOBBIES) {
+    const file = totalsFile(acct, lobby);
+    if (!existsSync(file)) continue;
+    const into = lobby === 1 ? t.l : t.p;
+    for (const [id, g, w] of JSON.parse(await readFile(file, "utf8"))) { const x = into.get(id) ?? [0, 0]; into.set(id, [x[0] + g, x[1] + w]); }
+  }
+}
+const haveTotals = [...totals.values()].filter((t) => t.p.size || t.l.size).length;
+console.log(`  all-time hero totals: ${refresh.length} accounts refreshed, ${haveTotals} of ${totals.size} players have them`);
 
 const heroList = await opendota("/heroes");
 const heroes = Object.fromEntries(heroList.map((h) => [h.id, h.localized_name === "Ring Master" ? "Ringmaster" : h.localized_name]));
@@ -375,7 +409,7 @@ const out = {
   playon_season_id: SEASON_ID,
   league_id: LEAGUE_ID,
   updated: new Date().toISOString(),
-  teams: teams.map((t) => ({ id: t.id, name: t.name, ...(t.division && { division: t.division }), players: t.players.map((p) => ({ name: p.name, captain: p.captain, account_id: p.account_ids[0], rank_tier: p.rank_tier })) })),
+  teams: teams.map((t) => ({ id: t.id, name: t.name, ...(t.division && { division: t.division }), players: t.players.map((p) => ({ name: p.name, captain: p.captain, account_id: p.account_ids[0], ...(p.playon_id && { playon_id: p.playon_id }), rank_tier: p.rank_tier })) })),
   series,
   games,
   // Recent pubs per player (main account; smurf games merged), last PUB_DAYS days, newest
@@ -399,6 +433,9 @@ const draftOut = {
   history_days: HISTORY_DAYS,
   heroes,
   baselines: Object.fromEntries(heroStats.map((h) => [h.id, [1, 2, 3, 4, 5, 6, 7, 8].map((b) => h[`${b}_pick`] ?? 0).concat([1, 2, 3, 4, 5, 6, 7, 8].map((b) => h[`${b}_win`] ?? 0))])),
+  // All-time hero totals: per main account, `p` (pubs) and `l` (practice lobbies), each flat
+  // groups of 3: hero id, games, wins. Most games first.
+  totals: Object.fromEntries([...totals].filter(([, t]) => t.p.size || t.l.size).map(([acct, t]) => [acct, Object.fromEntries(["p", "l"].map((k) => [k, [...t[k]].sort((a, b) => b[1][0] - a[1][0]).flatMap(([id, [g, w]]) => [id, g, w])]))])),
   history: Object.fromEntries([...historyRows].map(([acct, rows]) => [acct, [...new Map(rows.map((r) => [r.match_id, r])).values()]
     .sort((a, b) => a.start_time - b.start_time)
     .flatMap((r) => [r.start_time, r.hero_id, (r.player_slot < 128) === r.radiant_win ? 1 : 0, r.lobby_type ?? 0, r.duration ?? 0, num(r.last_hits), num(r.gold_per_min), num(r.hero_healing), r.lane_role ?? 0, r.average_rank ?? 0])])),
@@ -406,8 +443,8 @@ const draftOut = {
 // One line per key and per player, so the auto sync's "only the timestamp changed" check (it
 // drops a file whose every changed line holds "updated":) sees real changes, and diffs stay small.
 const line = ([k, v]) => `${JSON.stringify(k)}:${JSON.stringify(v)}`;
-const { history, ...head } = draftOut;
+const { history, totals: allTime, ...head } = draftOut;
 await writeFile(OUT.replace(/\.json$/, "-draft.json"),
-  `{${Object.entries(head).map(line).join(",\n")},\n"history":{\n${Object.entries(history).map(line).join(",\n")}\n}}\n`);
+  `{${Object.entries(head).map(line).join(",\n")},\n"totals":{\n${Object.entries(allTime).map(line).join(",\n")}\n},\n"history":{\n${Object.entries(history).map(line).join(",\n")}\n}}\n`);
 console.log(`  ${games.length} division games from league ${LEAGUE_ID}; ${odCalls} OpenDota calls this run`);
 console.log(`wrote ${path.relative(ROOT, OUT)}`);

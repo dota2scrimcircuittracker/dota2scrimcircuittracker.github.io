@@ -497,7 +497,7 @@ export function heroRatings(matches, { model = null, minGames = MIN_GAMES } = {}
   const teams = teamGames(rows), byHero = new Map();
   for (const r of rows) (byHero.get(r.p.hero) ?? byHero.set(r.p.hero, []).get(r.p.hero)).push(r);
   return new Map([...byHero].map(([hero, rs]) => [hero, scorePlayers(rs, model, { teams })
-    .map((p) => { const rating_exact = ratingOf(p.score, model.curve); return { ...p, hero, rating_exact, rating: Math.round(rating_exact) }; })
+    .map((p) => { const rating_exact = ratingOf(p.score, model.curve); return { ...p, hero, rating_exact, rating: Math.round(rating_exact), curve: model.curve }; })
     .sort((a, b) => b.score - a.score)]));
 }
 
@@ -521,7 +521,7 @@ export function heroPowerList(ratings, { minGames = MIN_GAMES } = {}) {
   const heroes = [...ratings].map(([hero, ps]) => {
     const games = ps.reduce((s, p) => s + p.games, 0);
     const avg = (ps.reduce((s, p) => s + p.rating_exact * p.games, 0) + 50 * K_HERO) / (games + K_HERO);
-    return { hero, games, wins: ps.reduce((s, p) => s + p.wins, 0), players: ps.length, avg, best: ps[0] };
+    return { hero, games, wins: ps.reduce((s, p) => s + p.wins, 0), players: ps.length, avg, best: ps[0], on: ps };
   });
   const fit = heroes.filter((h) => h.games >= HERO_TIER_MIN).length >= 5 ? heroes.filter((h) => h.games >= HERO_TIER_MIN) : heroes;
   const avgs = fit.map((h) => h.avg).sort((a, b) => a - b);
@@ -530,6 +530,7 @@ export function heroPowerList(ratings, { minGames = MIN_GAMES } = {}) {
     const rating_exact = ratingOf(h.avg, curve);
     return { ...h, rating_exact, rating: Math.round(rating_exact), tier: TIERS.find((t) => rating_exact >= t.min).tier };
   }).sort((a, b) => b.rating_exact - a.rating_exact || b.games - a.games);
+  shown.forEach((h, i) => { h.place = i + 1; h.of = shown.length; });
   return { tiers: TIERS.map(({ tier }) => ({ tier, heroes: shown.filter((h) => h.tier === tier) })), curve };
 }
 

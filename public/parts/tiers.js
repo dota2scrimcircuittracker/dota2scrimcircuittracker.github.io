@@ -39,7 +39,7 @@ const RAW_FMT = {
 };
 // Round a list of point values to tenths so the shown numbers add up to the shown total
 // (largest remainder: the tenths lost to rounding down go to the biggest fractions).
-function tenths(values, total) {
+export function tenths(values, total) {
   const raw = values.map((v) => v * 10), out = raw.map(Math.floor);
   let left = Math.round(total * 10) - out.reduce((a, b) => a + b, 0);
   const order = raw.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]);

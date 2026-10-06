@@ -5,11 +5,11 @@ import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOd
 import { listPredictions, currentUid, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
-import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, allMatches, editUnlocked, when, unlockEdit } from "../core.js";
+import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
 import { loading, errorBox } from "../parts/lanes.js";
 import { lastNight, sinceLabel } from "../parts/ranks.js";
 import { draftHtml, upload } from "./upload.js";
-import { playoffsHtml } from "../parts/playoffs.js";
+import { mountPlayoffs } from "../parts/playoffs.js";
 
 // ---------- Predictions (AD2L) ----------
 
@@ -106,17 +106,27 @@ export async function renderPredict(src) {
       const g1 = predictDraft(d, x, y, since);
       drafts.push([`${fp}-1`, g1], [`${fp}-2`, predictDraft(d, x, y, since, undefined, { steps: g1, winner: fav.id })]);
     }
+    // One expander, two drafts, one First pick toggle for both: the draft model's best draft
+    // with its odds (filled by the cmdraft wiring below), then the habit-based likely draft.
     return `<details class="dr"><summary>Model's draft${info("model_draft")}</summary>
+      <div class="pd-toggles">
+        <div class="pd-toggle" role="group" aria-label="First pick">
+          <span class="pd-lbl">First pick</span>
+          <button type="button" data-fp="home" aria-pressed="true">${esc(home.name)}</button>
+          <button type="button" data-fp="away" aria-pressed="false">${esc(away.name)}</button>
+        </div>
+      </div>
+      <div class="pcm-sec">
+        <div class="dr-sub">Best draft, and the odds after it</div>
+        <div class="pcm-body"><div class="panel empty">Building the draft…</div></div>
+        <p class="table-note">Sybil's draft model drafting both teams the way the Drafter's suggestions do: every pick for a player who has no hero yet, at the open position they play most, the best hero for them there; every ban the hero worth most to the other team among those that fit a position it still needs. The first-pick team is on Radiant. Before the draft is the ten players alone; after it adds these heroes. The ratings above don't use any of this.</p>
+      </div>
+      <div class="dr-sub">Likely draft, from each team's habits</div>
       <div class="pd-toggles">
         <div class="pd-toggle" role="group" aria-label="Game">
           <span class="pd-lbl">Game</span>
           <button type="button" data-g="1" aria-pressed="true">G1</button>
           <button type="button" data-g="2" aria-pressed="false">G2</button>
-        </div>
-        <div class="pd-toggle" role="group" aria-label="First pick">
-          <span class="pd-lbl">First pick</span>
-          <button type="button" data-fp="home" aria-pressed="true">${esc(home.name)}</button>
-          <button type="button" data-fp="away" aria-pressed="false">${esc(away.name)}</button>
         </div>
       </div>
       <p class="table-note pd-g2note" hidden>Game 2 assumes ${esc(fav.name)} (the model's favourite) won game 1 with the model's game 1 draft.</p>
@@ -147,13 +157,6 @@ export async function renderPredict(src) {
         </button>`;
       }).join("")}</div>
       <div class="pcm" data-home="${s.home}" data-away="${s.away}"></div>
-      <details class="pcm-dr"><summary>Draft model: its best draft, and the odds after it</summary>
-        <div class="pd-toggle" role="group" aria-label="First pick"><span class="pd-lbl">First pick</span>
-          <button type="button" data-cmfp="home" aria-pressed="true">${esc(teamName[s.home])}</button>
-          <button type="button" data-cmfp="away" aria-pressed="false">${esc(teamName[s.away])}</button></div>
-        <div class="pcm-body"><div class="panel empty">Building the draft…</div></div>
-        <p class="table-note">Sybil's draft model drafting both teams the way the Drafter's suggestions do: every pick for a player who has no hero yet, at the open position they play most, the best hero for them there; every ban the hero worth most to the other team among those that fit a position it still needs. The first-pick team is on Radiant. Before the draft is the ten players alone; after it adds these heroes. The ratings above don't use any of this.</p>
-      </details>
       ${read(s)}
     </article>`;
   };
@@ -207,24 +210,32 @@ export async function renderPredict(src) {
   const called = bt.filter((x) => x.correct).length;
   const ties = bt.filter((x) => x.actual === "tie").length;
   const decisive = bt.filter((x) => x.actual !== "tie");
-  app.innerHTML = `${pageHead(kicker, "Predictions", `Call each series: 2–0 either way or a 1–1 split. One point per correct call. You can change a pick until the series starts.`)}
-    ${nameBarHtml(name)}
-    ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
-    <div id="pred-msg"></div>
+  // Three tabs, each its own link (?tab=): this week's calls with the leaderboard, the
+  // bracket they lead to, and every way the rest of the season can go.
+  const callsHtml = `
     <h2>${night ? new Date(night * 1000).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) : "No upcoming series"}${night ? ` <span class="pred-time">${new Date(night * 1000).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>` : ""}</h2>
     ${week.length ? `<div class="pred-grid reveal">${week.map(card).join("")}</div>
 `
       : `<div class="panel empty">PlayOn hasn't posted the next week's schedule yet. It shows up here after the next sync.</div>`}
     <h2>Leaderboard</h2>
     ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks.</p>` : `<div class="panel empty">No picks yet.</div>`}
-    <h2>Playoff picture</h2>
-    <section class="po reveal">${playoffsHtml(src, d, ratings)}</section>
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model = what it would have picked that week from earlier results only. Crowd = most-picked call (count after it). Picks saved after a series started don't count.</p></details>` : ""}
     <details class="how"><summary>How the model works</summary>
       <p>Each team has a strength rating fitted to every game result so far (PlayOn's series scores, so games OpenDota never saw still count). With only ${playedNights.length} weeks played, results alone jump around, so each rating is pulled toward a starting point from the average PlayOn medal of the team's top three players. How hard to pull, and how much medals matter, were chosen by replaying all seven divisions together: predicting each week from only the weeks before it and keeping what did best. So far medals have predicted results far better than past results have, so the pull is strong.</p>
       <p>The model's call is bold: it takes the favourite to win 2–0, even when a 1–1 split is the single likeliest result, and only calls 1–1 when the teams are a true coin flip (per-game odds within ${TIE_EDGE * 100} points of 50%). The odds bar stays honest: results so far haven't predicted the next week much better than a coin flip, so the settings lean on medals and most series look close. Replayed over the season, the bold calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>The two games in a series aren't independent: whoever is better on the night tends to win both, and only about a third of series so far have ended 1–1. So an even match is 33% / 33% / 33%, not the 25% / 50% / 25% that two coin flips would give. Settings in use: pull ${params.lambda}, medal weight ${params.beta}.</p>
     </details>`;
+  const tabs = playerTabs([
+    ["calls", "Predictions", callsHtml],
+    ["bracket", "Bracket", `<section class="po" id="po-bracket"></section>`],
+    ["odds", "Possibilities", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
+  ], { store: "predictTab", label: "Predict sections" });
+  app.innerHTML = `${pageHead(kicker, "Predictions", `Call each series: 2–0 either way or a 1–1 split. One point per correct call. You can change a pick until the series starts.`)}
+    ${nameBarHtml(name)}
+    ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
+    <div id="pred-msg"></div>
+    ${tabs.bar}${tabs.panels}`;
+  wirePlayerTabs();
 
   const input = wireNameBar(() => renderPredict(src));
 
@@ -234,22 +245,28 @@ export async function renderPredict(src) {
   const cards = [...app.querySelectorAll(".pcm[data-home]")];
   if (cards.length) import("../parts/cmdraft.js").then(async (cm) => {
     const data = await cm.draftData(src.key);
-    if (!data || !document.body.contains(cards[0])) return;
+    if (!document.body.contains(cards[0])) return;
+    if (!data) { app.querySelectorAll(".pcm-sec").forEach((x) => x.remove()); return; }
     for (const box of cards) {
       const home = d.teams.find((t) => t.id === Number(box.dataset.home)), away = d.teams.find((t) => t.id === Number(box.dataset.away));
       if (!home || !away) continue;
       const r = cm.seriesRead(home, away, d.games, data);
       box.innerHTML = cm.preDraftLine(home, away, r.pre);
-      const dr = box.nextElementSibling, body = dr.querySelector(".pcm-body"), built = {};
+      const dr = box.parentElement.querySelector("details.dr"), body = dr?.querySelector(".pcm-body"), built = {};
+      if (!body) continue;
+      // Drawn for the First pick the expander's toggle has on (the likely draft's wiring below
+      // flips the buttons; this redraws the best draft alongside).
+      const fpNow = () => dr.querySelector("[data-fp][aria-pressed=true]")?.dataset.fp ?? "home";
       const show = (fp) => {
         built[fp] ??= r.draft(fp === "home");
         body.innerHTML = cm.modelDraftHtml(home, away, built[fp], body.clientWidth || 900);
-        dr.querySelectorAll("[data-cmfp]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.cmfp === fp)));
       };
-      dr.addEventListener("toggle", () => { if (dr.open && !body.dataset.done) { body.dataset.done = "1"; show("home"); } });
-      dr.querySelectorAll("[data-cmfp]").forEach((b) => (b.onclick = () => show(b.dataset.cmfp)));
+      dr.addEventListener("toggle", () => { if (dr.open && !body.dataset.done) { body.dataset.done = "1"; show(fpNow()); } });
+      dr.querySelectorAll("[data-fp]").forEach((b) => b.addEventListener("click", () => { if (body.dataset.done) show(b.dataset.fp); }));
     }
   }).catch((e) => console.warn("draft model unavailable", e));
+  // No draft model file for this division: the expander keeps just the likely draft.
+  if (!cards.length) app.querySelectorAll(".pcm-sec").forEach((x) => x.remove());
 
   app.querySelectorAll("details.dr").forEach((dr) => {
     const sel = { fp: "home", g: "1" };
@@ -275,6 +292,25 @@ export async function renderPredict(src) {
       c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = false));
     }
   }));
+
+  // The playoff picture: the viewer's own calls for series still to be reported feed its
+  // "Your picks" tab. Heroic's A and B views hold one division each, but its brackets mix
+  // both, so the picture gets the whole league (and ratings fitted to it, as on Combined).
+  const poBracket = document.getElementById("po-bracket"), poOdds = document.getElementById("po-odds");
+  const full = src.view ? await SOURCES[src.key].data() : d;
+  if (!document.body.contains(poBracket)) return;
+  const fullRatings = full === d ? ratings : fitRatings(full.teams, full.series, tune(full.teams, full.series));
+  const myCalls = new Map(full.series.filter((s) => !isPlayed(s)).map((s) => [s.id, mine(s.id)?.pick]).filter(([, k]) => k));
+  mountPlayoffs(poBracket, src, full, fullRatings, myCalls);
+  // Possibilities runs every outcome, so it waits until its tab is first shown.
+  const oddsPanel = poOdds.closest("[role=tabpanel]");
+  const mountOdds = () => {
+    if (oddsPanel.hidden || poOdds.dataset.done) return;
+    poOdds.dataset.done = "1";
+    setTimeout(() => mountPlayoffs(poOdds, src, full, fullRatings, myCalls, { view: "odds" }), 0);
+  };
+  new MutationObserver(mountOdds).observe(oddsPanel, { attributes: true, attributeFilter: ["hidden"] });
+  mountOdds();
 }
 
 // ---------- Predictions (scrims) ----------

@@ -4,6 +4,7 @@ import { isPlayed, seriesOdds, tune, fitRatings } from "../lib/predict.js";
 import { strengthOfSchedule, gameWins } from "../lib/schedule.js";
 import { info } from "../lib/glossary.js";
 import { weekStart, DIVISIONS, teamLink, pct, esc, app, pageHead, playerTabs, sortableTable, SOURCES, wirePlayerTabs } from "../core.js";
+import { pageTabs, STANDINGS_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox } from "../parts/lanes.js";
 
 // ---------- AD2L matches and crosstable (tabs on the Teams page) ----------
@@ -218,16 +219,16 @@ export async function renderStandings(src) {
     <p class="table-note">Odds from the same model as Predict. Green = the left team wins 2–0, gold = 1–1, red = the right team wins 2–0.</p>` : "";
 
   const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const tabs = playerTabs([
-    ["table", "Table", `<div id="t" class="reveal"></div>
+  const tabs = playerTabs(pageTabs(STANDINGS_TABS, src, [
+    ["table", `<div id="t" class="reveal"></div>
       <p class="table-note">${src.all ? "Every division's teams in one table, sorted by game wins. Teams only play inside their division, so compare across divisions with care; each division's official standings are on PlayOn."
         : `Sorted by game wins; official standings and tiebreakers live on
         <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.`}</p>`],
-    ["matches", "Matches", matchesHtml(src, d, ratings)],
-    ["cross", "Crosstable", crossTableHtml(src, d, [...rows].sort((a, b) => b.gw - a.gw || a.gl - b.gl).map((r) => r.id))],
-    ...(raceHtml ? [["race", "Race", raceHtml]] : []),
-    ["next", `Up next · ${upcoming.length}`, nextHtml],
-  ], { store: "standingsTab", label: "Standings sections" });
+    ["matches", matchesHtml(src, d, ratings)],
+    ["cross", crossTableHtml(src, d, [...rows].sort((a, b) => b.gw - a.gw || a.gl - b.gl).map((r) => r.id))],
+    ["race", raceHtml],
+    ["next", { label: `Up next · ${upcoming.length}`, html: nextHtml }],
+  ]), { store: "standingsTab", label: "Standings sections" });
   app.innerHTML = `
     ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`)}
     ${cards.length ? `<div class="cards reveal st-cards">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>` : ""}
