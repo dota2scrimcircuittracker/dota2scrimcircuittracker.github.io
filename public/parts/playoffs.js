@@ -318,12 +318,27 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     const mid = section("mid", "Possible 1v1 mids",
       "Teams level on wins, SoS, head to head and record against the highest common opponent play a 1v1 solo mid. Each is counted 50/50 here.",
       "No result left can bring two teams level all the way to a 1v1.",
-      `<th scope="col" class="l">Teams</th><th scope="col">Wins</th><th scope="col" class="l">Decides</th>`,
-      (e) => `<td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="l name">${e.purpose === "seed"
+      `<th scope="col" class="l">Teams</th><th scope="col">Wins</th><th scope="col" class="l">Still level on</th><th scope="col" class="l">Decides</th>`,
+      (e) => `<td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="l name po-why">${whyLevel(e)}</td><td class="l name">${e.purpose === "seed"
         ? (e.teams.length === 2 ? `Who's ${ord(e.places[0])} and who's ${ord(e.places[1])}` : `The order of ${ord(e.places[0])}–${ord(e.places[1])}`)
         : `Their order in the ${lineName(e.line)} tiebreaker for ${ord(e.places[0])}–${ord(e.places[1])} (which games they play, or a slot straight in)`}</td>`);
-    return `<div class="po-events">${tb}${mid}${dv.exact ? "" : `<p class="table-note">Chances here are from the random runs; what leads to each shows once every outcome can be listed.</p>`}</div>`;
+    return `<div class="po-events">${tb}${mid}<p class="table-note">A 1v1 needs every step to come out level: the same wins, the same SoS to the win, a level head to head, and the same record against the highest common opponent. "Still level on" is the likeliest way there; SoS and records can differ in the others.</p>${dv.exact ? "" : `<p class="table-note">Chances here are from the random runs; what leads to each shows once every outcome can be listed.</p>`}</div>`;
   };
+  // Each tiebreaker step a 1v1's teams came out level on.
+  const whyLevel = (e) => {
+    const w = e.why;
+    if (!w) return "";
+    const g = ([a, b]) => `${a}–${b}`;
+    const many = e.teams.length > 2;
+    const h2h = many ? "head to head" : w.h2h ? `head to head (${g(w.h2h)})` : "head to head (never played)";
+    const opps = w.hco.map((o) => esc(name[o.opp])).join(" and ");
+    const hco = !w.hco.length ? "no common opponent"
+      : many ? `record v ${opps}`
+      : w.hco.every((o) => o.a[0] === o.b[0] && o.a[1] === o.b[1]) ? `both ${w.hco.map((o) => g(o.a)).join(", ")} v ${opps} (${w.hco[0].wins} wins)`
+      : `the same record v ${opps} (${w.hco[0].wins} wins)`;
+    return `<ul class="po-why-list"><li>SoS ${w.sos} each</li><li>${h2h}</li><li>${hco}</li></ul>`;
+  };
+
   // The results that lead to one tiebreaker or 1v1: each way, every result it needs.
   const eventWays = (dv, e) => {
     const paths = pathsToEvent(dv, e.key, dv.total);

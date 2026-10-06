@@ -484,8 +484,9 @@ shrunk-resolution problem above, not a finding problem.
     (every order the same for 3+ teams) whatever the weighting, one result per group of teams.
     "How the tiebreakers work" sits under the grid too. Under it, per division, two tables:
     **Possible week 8 tiebreakers** (chance, line, teams level, wins, places, the rules' format
-    for that case) and **Possible 1v1 mids** (chance, teams, wins, what it decides: seed order, or
-    their order in a line's tiebreaker). Top 10 each, "Show all" for the rest; "What leads to it"
+    for that case) and **Possible 1v1 mids** (chance, teams, wins, what they're still level on in
+    the likeliest way there: SoS, head to head, record v the highest common opponent; what it
+    decides: seed order, or their order in a line's tiebreaker). Top 10 each, "Show all" for the rest; "What leads to it"
     lists the ways there, like a place's (`lib/playoffs.js` `pathsToEvent`). Random runs give the
     chances only.
     Click a cell for what it takes to finish there, or a team for every place: the ways, each a

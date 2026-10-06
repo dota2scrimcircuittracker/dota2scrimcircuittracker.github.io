@@ -3518,6 +3518,8 @@ button.po-slot.on.me { border-style: solid; border-color: var(--jade); }
 .po-ev-h { margin-top: 26px; }
 .po-ev th.l, .po-ev td.l { text-align: left; }
 .po-ev td.name { white-space: normal; min-width: 120px; max-width: 320px; font-family: var(--body); font-size: 14px; color: var(--bone); }
+.po-why-list { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--dust); }
+.po-why-list li::before { content: "= "; color: var(--accent); font-family: var(--mono); }
 .po-ev tr.sel td { background: var(--stone-2); }
 .po-ev td .linkish { white-space: nowrap; }
 .po-need { background: var(--stone); border: 1px solid var(--seam); border-left: 3px solid var(--accent); padding: 10px 14px; margin: 10px 0 16px; font-size: 14px; color: var(--dust); }
