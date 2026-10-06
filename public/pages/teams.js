@@ -19,6 +19,7 @@ import { pageTabs, TEAM_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox, laneCutsOf, teamLanesHtml } from "../parts/lanes.js";
 import { tierRef } from "../parts/tiers.js";
 import { heroGridHtml, wireHeroGrid } from "../parts/herogrid.js";
+import { teamRows, overallTeamRows, statRanksHtml, TEAM_RANKS } from "../parts/ranks.js";
 
 // ---------- Teams ----------
 
@@ -126,6 +127,14 @@ export async function renderTeams(src, slug) {
     ["Avg game", h.avg_minutes ? `${Math.round(h.avg_minutes)} min` : "—", `${plural(h.played, "game")}${ad2l ? " with stats" : ""}${h.private_games ? ` · ${h.private_games} private` : ""}`],
     ["Avg kills", h.avg_kills_for != null ? h.avg_kills_for.toFixed(1) : "—", diff != null ? `${h.avg_kills_against.toFixed(1)} against · ${diff >= 0 ? "+" : ""}${diff.toFixed(1)} a game` : "", "avg_kills"],
   ];
+  // Team totals a game (the five players added up), from the same line the Team ranks use.
+  const trows = teamRows(matches), tline = trows.find((r) => r.key === team.key);
+  if (tline) stats.push(
+    ["Team GPM", fmt(Math.round(tline.team_gpm)), `${fmt(Math.round(tline.team_xpm))} XPM${tline.lead10 != null ? ` · ${tline.lead10 >= 0 ? "+" : ""}${fmt(Math.round(tline.lead10))} gold at 10 min` : ""}`],
+    ["Damage / min", fmt(Math.round(tline.dmg_per_min)), `hero damage · KDA ${tline.kda.toFixed(2)}`],
+    ...(tline.obs_pg != null ? [["Vision", `${tline.obs_pg.toFixed(1)} / ${tline.sen_pg.toFixed(1)}`, `observers / sentries a game · ${tline.dewards_pg.toFixed(1)} dewards`, "vision"]] : []),
+    ...(tline.roshans_pg != null ? [["Objectives", `${tline.roshans_pg.toFixed(1)} / ${tline.tormentors_pg.toFixed(1)}`, "Roshans / Tormentors a game"]] : []),
+  );
   // Splits from the team's own games: side, stand-ins, first blood, fights, aegis steals.
   const sideMap = new Map(h.games.map(({ m, side }) => [m, side]));
   const sp = teamSplits(h.games.map(({ m }) => m), (m) => sideMap.get(m));
@@ -134,10 +143,37 @@ export async function renderTeams(src, slug) {
   stats.push(
     ["Sides", `${wl(sp.sides.a)} <small class="v-sep">/</small> ${wl(sp.sides.b)}`, `as ${sideName("a")} / as ${sideName("b")}`, "team_sides"],
     ...(sp.standin.with.games ? [["With stand-ins", wl(sp.standin.with), `${pct0(sp.standin.with.wins / sp.standin.with.games)} · ${wl(sp.standin.without)} with the roster only`, "team_standins"]] : []),
-    ...(sp.first_blood.games ? [["First blood", pct0(sp.first_blood.taken / sp.first_blood.games), `drew it in ${sp.first_blood.taken} of ${plural(sp.first_blood.games, "game")} · ${sp.first_blood.wins_taken}–${sp.first_blood.taken - sp.first_blood.wins_taken} when they did, ${sp.first_blood.wins_given}–${sp.first_blood.games - sp.first_blood.taken - sp.first_blood.wins_given} when they didn't${sp.first_blood.times.length ? ` · usually at ${clock(Math.round([...sp.first_blood.times].sort((a, b) => a - b)[Math.floor(sp.first_blood.times.length / 2)]))}` : ""}`, "team_first_blood"]] : []),
+    ...(sp.first_blood.games ? [["First blood", pct0(sp.first_blood.taken / sp.first_blood.games), `${sp.first_blood.taken} of ${sp.first_blood.games} · ${sp.first_blood.wins_taken}–${sp.first_blood.taken - sp.first_blood.wins_taken} when they drew it, ${sp.first_blood.wins_given}–${sp.first_blood.games - sp.first_blood.taken - sp.first_blood.wins_given} when not${sp.first_blood.times.length ? ` · usually at ${clock(Math.round([...sp.first_blood.times].sort((a, b) => a - b)[Math.floor(sp.first_blood.times.length / 2)]))}` : ""}`, "team_first_blood"]] : []),
     ...(sp.fights.won + sp.fights.lost ? [["Teamfights", pct0(sp.fights.win_rate), `${sp.fights.won} won, ${sp.fights.lost} lost${sp.fights.even ? `, ${sp.fights.even} even` : ""} in ${plural(sp.fights.games, "game")}`, "team_fight_rate"]] : []),
     ...(sp.aegis.stole + sp.aegis.lost ? [["Aegis steals", String(sp.aegis.stole), `stolen from them: ${sp.aegis.lost}`, "aegis_steals"]] : []),
   );
+  // Best games, like the player page's: the biggest win, the fastest and the biggest comeback
+  // (gold behind, from parsed replays; else the most kills). Each shows the hero of their top
+  // damage dealer that game.
+  const wonGames = h.games.filter(({ m, side }) => hasDetails(m) && m.winner === side);
+  const killsOf = ({ m, side }) => (side === "a" ? [m.score_a, m.score_b] : [m.score_b, m.score_a]);
+  const behindOf = ({ m, side }) => (Array.isArray(m.gold_adv) && m.gold_adv.length ? Math.max(0, ...m.gold_adv.map((v) => (side === "a" ? -v : v))) : 0);
+  const bestOf = (f) => wonGames.reduce((a, b) => (f(b) > f(a) ? b : a));
+  const bestCard = (label, g, value, i) => {
+    const [us, them] = killsOf(g), star = g.m.players.filter((p) => p.team === g.side).reduce((a, b) => ((b.hero_damage ?? 0) > (a.hero_damage ?? 0) ? b : a));
+    const opp = g.side === "a" ? { name: g.m.team_b, id: g.m.team_b_id } : { name: g.m.team_a, id: g.m.team_a_id };
+    return `<a class="card hl best-game" style="--i:${i}" href="${src.link(g.m)}" title="Open the game">${portrait(star.hero, "card-hero")}
+      <div class="k">Best game · ${label}</div><div class="v">${value}</div>
+      <div class="s">${label === "Comeback" ? "gold behind · " : ""}${us}–${them} vs ${esc(opp.name)} · ${dur(g.m.duration_sec)}</div></a>`;
+  };
+  const bestCards = (() => {
+    if (!wonGames.length) return [];
+    const margin = (g) => killsOf(g)[0] - killsOf(g)[1];
+    const big = bestOf(margin), fast = bestOf(({ m }) => -m.duration_sec), back = bestOf(behindOf), most = bestOf((g) => killsOf(g)[0]);
+    const n = stats.length;
+    return [
+      bestCard("Biggest win", big, `+${margin(big)}`, n),
+      bestCard("Fastest win", fast, dur(fast.m.duration_sec), n + 1),
+      behindOf(back) >= 1000 ? bestCard("Comeback", back, `−${(behindOf(back) / 1000).toFixed(1)}k`, n + 2) : bestCard("Most kills", most, String(killsOf(most)[0]), n + 2),
+    ];
+  })();
+  const nCards = stats.length + bestCards.length;
+  const headCards = `<div class="cards player-cards team-cards reveal" style="--cols:${Math.ceil(nCards / 2)}">${stats.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v${/ \/ |v-sep/.test(v) ? " pair" : ""}">${v}</div><div class="s">${t}</div></div>`).join("")}${bestCards.join("")}</div>`;
   const lengthSection = h.games.length ? `<h2>Game length${info("team_length")}</h2>${lengthHtml(sp.length)}` : "";
   const pairs = playerPairs(h.games.map(({ m }) => m), (m) => sideMap.get(m));
 
@@ -270,7 +306,8 @@ export async function renderTeams(src, slug) {
   const goto = (tab, label) => `<p class="table-note"><button type="button" class="link-btn" data-goto-tab="${tab}">${label} →</button></p>`;
 
   const tabs = playerTabs(pageTabs(TEAM_TABS, src, [
-    ["overview", `${cardsHtml(stats)}
+    ["overview", `${headCards}
+      ${tline ? `<div id="team-ranks-box" data-key="${esc(team.key)}">${statRanksHtml(src, team.key, trows, null, TEAM_RANKS)}</div>` : ""}
       <div class="team-cols">
         <section><h2>Recent ${ad2l ? "series" : "games"}</h2>
           <div class="history reveal">${historyRows.slice(0, 5).join("") || noGames}</div>
@@ -402,6 +439,11 @@ export async function renderTeams(src, slug) {
     b.textContent = open ? "Show less" : `+${b.dataset.more} more`;
   }));
 
+  // All-leagues places on the Team ranks fill in once every league has loaded (still this team?).
+  if (src.ad2l && tline) overallTeamRows(src).then((all) => {
+    const el = document.getElementById("team-ranks-box");
+    if (el?.dataset.key === team.key) el.innerHTML = statRanksHtml(src, team.key, trows, all ?? [], TEAM_RANKS);
+  });
   document.getElementById("team-select").onchange = (e) => { location.hash = `${base}/${e.target.value}`; };
   if (h.detailed.length) {
     // Only this team's side of each game.
