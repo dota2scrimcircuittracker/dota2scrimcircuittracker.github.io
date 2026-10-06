@@ -1327,7 +1327,7 @@ button.seg.on { background: var(--accent); border-color: var(--accent); color: v
 .chip-rating { font: 900 22px/1 var(--display); color: var(--tc); }
 .chip-meta { font-size: 11px; color: var(--dust); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 3px 0 7px; min-height: 14px; }
 .chip-foot { display: flex; gap: 8px; font: 400 10px/1 var(--mono); color: var(--dust); letter-spacing: .04em; }
-.role-tag { text-transform: uppercase; letter-spacing: .1em; color: var(--bone); }
+.role-tag { text-transform: uppercase; letter-spacing: .1em; color: var(--bone); white-space: nowrap; }
 .chip.support .role-tag { color: var(--jade); }
 .chip.core .role-tag { color: var(--accent); }
 /* Heroes tab: sub-tabs and the hero tier lists */

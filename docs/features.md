@@ -153,7 +153,11 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 
 ## Players tab
 
-- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below).
+- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). Filters:
+  Everyone / Cores / Supports, and Pos 1–5 (everyone who played that position in at least a
+  third of their games, so a 4/5 swapper shows under both; their overall rating, since every game
+  is already scored against its own position). Each chip says the position played most; its
+  tooltip lists games at each.
 - **Stat leaders** — top and bottom 3 on any stat, with "1st overall" badges across every division.
 - **Laning** — laning ranked by position (safe, mid, off, supports; 3+ lanes), with best-laner
   cards for the latest week and the season.

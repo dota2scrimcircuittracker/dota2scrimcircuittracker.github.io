@@ -216,3 +216,14 @@ test("rank labels", () => {
   assert.equal(rankLabel(74), "Divine 4");
   assert.equal(rankLabel(null), null);
 });
+
+test("each player's exact positions: games at each and the one played most", () => {
+  const all = tierList(games(MIN_GAMES)).tiers.flatMap((t) => t.players);
+  for (const p of all) {
+    assert.equal(Object.values(p.pos_games).reduce((a, b) => a + b, 0), p.games, p.name);
+    assert.ok(p.pos >= 1 && p.pos <= 5 && p.pos_games[p.pos] === Math.max(...Object.values(p.pos_games)), p.name);
+    assert.equal(p.role, p.pos <= 3 ? "core" : "support");
+  }
+  // One player per position on each side of the fixture.
+  assert.deepEqual([1, 2, 3, 4, 5].map((n) => all.filter((p) => p.pos === n).length), [2, 2, 2, 2, 2]);
+});

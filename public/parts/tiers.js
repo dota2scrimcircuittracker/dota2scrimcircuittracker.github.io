@@ -136,6 +136,9 @@ export function tierBreakdown(src, p) {
   </div>`;
 }
 
+// Games at each position, for the role tag's tooltip: "Pos 4: 9 games · Pos 5: 3 games".
+const posTitle = (p) => `${p.role === "core" ? "Core" : "Support"}. ` + Object.entries(p.pos_games ?? {}).filter(([, n]) => n).map(([k, n]) => `Pos ${k}: ${n} game${n === 1 ? "" : "s"}`).join(" · ");
+
 // The tier list, shown at the top of the Players page: returns its HTML and a function
 // that fills it in once it's on the page.
 export function tierSection(src, matches, model) {
@@ -143,14 +146,18 @@ export function tierSection(src, matches, model) {
   const draw = () => {
     const el = document.getElementById("tiers");
     if (!el) return;
-    const show = (p) => tierRole === "all" || p.role === tierRole;
+    // A position filter shows everyone who played it in at least a third of their games (always
+    // their most played), so a pos 4/5 swapper shows under both.
+    const posOf = (k) => (k.startsWith("pos") ? Number(k.slice(3)) : null);
+    const playsAt = (p, n) => p.pos === n || (p.pos_games?.[n] ?? 0) * 3 >= p.games;
+    const show = (p) => tierRole === "all" || (posOf(tierRole) ? playsAt(p, posOf(tierRole)) : p.role === tierRole);
     const chip = (p, i) => {
       const rank = rankLabel(p.rank_tier);
       const open = tierOpen.has(p.key);
       return `<div class="chip ${p.role}${open ? " open" : ""}" style="--i:${i}" data-key="${esc(p.key)}" tabindex="0" role="button" aria-expanded="${open}" title="${open ? "Click to close" : "Click for the breakdown"}">
         <div class="chip-top"><span class="chip-name">${playerLink(src, p)}</span><span class="chip-rating">${p.rating}</span></div>
         <div class="chip-meta">${p.team ? teamLink(src, p.team) : ""}${p.standin ? " · stand-in" : ""}</div>
-        <div class="chip-foot"><span class="role-tag">${p.role === "core" ? "Core" : "Support"}</span><span>${p.wins}–${p.games - p.wins}</span>${rank ? `<span>${esc(rank)}</span>` : ""}</div>
+        <div class="chip-foot"><span class="role-tag" title="${esc(posTitle(p))}">Pos ${posOf(tierRole) ?? p.pos}</span><span>${p.wins}–${p.games - p.wins}</span>${rank ? `<span>${esc(rank)}</span>` : ""}</div>
         <div class="chip-caret" aria-hidden="true">${open ? "Close <b>▴</b>" : "Breakdown <b>▾</b>"}</div>
         ${open ? tierBreakdown(src, p) : ""}
       </div>`;
@@ -165,6 +172,8 @@ export function tierSection(src, matches, model) {
     const tab = (k, label) => `<button type="button" class="seg${tierRole === k ? " on" : ""}" data-role="${k}">${label}</button>`;
     el.innerHTML = `
       <div class="row segs">${tab("all", "Everyone")}${tab("core", "Cores")}${tab("support", "Supports")}</div>
+      <div class="row segs tier-pos">${[1, 2, 3, 4, 5].map((n) => tab(`pos${n}`, `Pos ${n}`)).join("")}</div>
+      ${posOf(tierRole) ? `<p class="table-note">Everyone who played pos ${posOf(tierRole)} in at least a third of their games. Ratings are each player's overall rating: every game is already scored against its own position.</p>` : ""}
       <div class="tier-board">${bands}</div>
       ${list.unranked.length ? `<p class="table-note">Not ranked yet (needs ${floorOf(src)}+ games): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
     el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { tierRole = b.dataset.role; draw(); }));
