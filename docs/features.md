@@ -110,7 +110,10 @@ and change it: [maintaining.md](maintaining.md).
   updates the other and open grids). Templates: by position, by player (the five with the most
   games), picks and bans (model's likely picks, picks most; bans: the model's ban-against-them,
   banned against them, what they ban), recent pubs (each player's last 30 days), draft model
-  threats per position. Every built-in puts the model's bans in the middle, split by Captains Mode ban
+  threats per position. **Depth** (built-ins; remembered): Quick (the enemy's five boxes, top 5
+  heroes each, and one ban-against-them box of 8), Standard (as built), Deep (no caps, plus real
+  drafts' "banned against them" and "they ban" by phase); customising keeps the depth's boxes.
+  Every built-in puts the model's bans in the middle, split by Captains Mode ban
   phase (phase 1 before any pick, 2 after two picks, 3 after eight: scored at the start of each
   phase after the model's own draft to there, both first-pick orders averaged, heroes already
   taken left out; `parts/cmdraft.js` phaseBans). Real drafts split the same way: "banned against

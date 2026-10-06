@@ -15,7 +15,7 @@
 // hero outside editing plays it.
 import {
   heroSources, templateRows, placeRows, placedConfig, freezeLayout, freeSpot, fitIcons, snap, configName, mergeGrid,
-  addToBox, dropFromBox, placeHero, colOf, sourceLabel, TEMPLATES, SOURCES, COLS, CANVAS_W, MIN_W, MIN_H, LABEL_H,
+  addToBox, dropFromBox, placeHero, colOf, sourceLabel, atDepth, DEPTHS, TEMPLATES, SOURCES, COLS, CANVAS_W, MIN_W, MIN_H, LABEL_H,
 } from "../lib/herogrid.js";
 import { sideOf } from "../lib/teams.js";
 import { hasDetails } from "../lib/stats.js";
@@ -29,12 +29,18 @@ const FILE = "hero_grid_config.json";
 const SEP = "\\";
 const SIDES = { them: "Enemy", bans: "Bans (enemy's heroes)", us: "You" };
 
-const SAVED_KEY = "herogrid-templates", PICK_KEY = "herogrid-template";
+const SAVED_KEY = "herogrid-templates", PICK_KEY = "herogrid-template", DEPTH_KEY = "herogrid-depth";
+const depthName = (t) => `${t.name}${t.depth ? ` (${t.depth})` : ""}`;
+const depthNow = () => { try { const v = localStorage.getItem(DEPTH_KEY); return DEPTHS.some(([k]) => k === v) ? v : "standard"; } catch { return "standard"; } };
 const readSaved = () => { try { const v = JSON.parse(localStorage.getItem(SAVED_KEY)); return Array.isArray(v) ? v.filter((t) => t?.id && Array.isArray(t.boxes)) : []; } catch { return []; } };
 const writeSaved = (list) => { try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); return true; } catch { return false; } };
 // Built-ins that need a source (pubs, the model) show once the team has it.
 const builtIns = (sources) => TEMPLATES.filter((t) => !t.needs || sources[t.needs]);
-const findTemplate = (id, sources) => TEMPLATES.find((t) => t.id === id) ?? readSaved().find((t) => t.id === id) ?? builtIns(sources)[0];
+// A built-in comes at the chosen depth; your own templates as you saved them.
+const findTemplate = (id, sources) => {
+  const t = TEMPLATES.find((x) => x.id === id) ?? readSaved().find((x) => x.id === id) ?? builtIns(sources)[0];
+  return TEMPLATES.includes(t) ? atDepth(t, depthNow()) : t;
+};
 const lastPick = () => { try { return localStorage.getItem(PICK_KEY); } catch { return null; } };
 
 // ---------- dragging heroes in from anywhere on the page ----------
@@ -70,13 +76,13 @@ function openMenu(hero, x, y) {
   menu = Object.assign(document.createElement("div"), { className: "hgm", role: "menu" });
   menu.setAttribute("aria-label", `Add ${hero} to a hero grid`);
   // Step 1: which grid. Step 2: which section of it.
-  const gridBtn = (t, own) => `<button type="button" role="menuitem" class="hgm-grid" data-t="${esc(t.id)}" data-own="${own ? 1 : 0}">${esc(t.name)}<small>${t.boxes.length} section${t.boxes.length === 1 ? "" : "s"}</small></button>`;
+  const gridBtn = (t, own) => `<button type="button" role="menuitem" class="hgm-grid" data-t="${esc(t.id)}" data-own="${own ? 1 : 0}">${esc(depthName(t))}<small>${t.boxes.length} section${t.boxes.length === 1 ? "" : "s"}</small></button>`;
   const step1 = () => `<div class="hgm-t">1. Pick a grid</div>
       ${saved.length ? `<div class="hgm-g"><div class="hgm-sub">Yours</div>${saved.map((t) => gridBtn(t, true)).join("")}</div>` : '<p class="hgm-none">No grids of your own yet.</p>'}
       <button type="button" class="hgm-new" role="menuitem">+ New grid with just ${esc(hero)}</button>
-      <div class="hgm-g"><div class="hgm-sub">Built-in (saves your own copy)</div>${TEMPLATES.map((t) => gridBtn(t, false)).join("")}</div>`;
+      <div class="hgm-g"><div class="hgm-sub">Built-in (saves your own copy)</div>${TEMPLATES.map((t) => gridBtn(atDepth(t, depthNow()), false)).join("")}</div>`;
   const step2 = (t, own) => `<button type="button" class="hgm-back" role="menuitem">← Grids</button>
-      <div class="hgm-t">2. Pick a section of ${esc(t.name)}</div>
+      <div class="hgm-t">2. Pick a section of ${esc(depthName(t))}</div>
       ${t.boxes.map((b, i) => {
         const has = (b.add ?? []).includes(hero);
         return `<button type="button" role="menuitem" class="hgm-box" data-t="${esc(t.id)}" data-b="${i}" data-own="${own ? 1 : 0}"${has ? ' disabled title="Already in it"' : ""}>${esc(boxName(b))}${has ? " ✓" : ""}</button>`;
@@ -111,9 +117,10 @@ function openMenu(hero, x, y) {
     }
     const own = btn.dataset.own === "1";
     let t = own ? all.find((x) => x.id === btn.dataset.t) : TEMPLATES.find((x) => x.id === btn.dataset.t);
+    if (t && !own) t = atDepth(t, depthNow());
     if (!t) return;
     if (btn.matches(".hgm-grid")) return show(step2(t, own));
-    if (!own) t = { ...JSON.parse(JSON.stringify(t)), id: `t${Date.now().toString(36)}`, name: `My ${t.name.toLowerCase()}` };
+    if (!own) t = { ...JSON.parse(JSON.stringify(t)), id: `t${Date.now().toString(36)}`, name: `My ${depthName(t).toLowerCase()}`, depth: undefined };
     const b = t.boxes[Number(btn.dataset.b)];
     addToBox(b, hero);
     const at = all.findIndex((x) => x.id === t.id);
@@ -214,6 +221,7 @@ function pickerHtml(sources, id, editing) {
   return `<label>Template <select class="hg-tsel"${editing ? " disabled" : ""}>${builtIns(sources).map((t) => `<option value="${t.id}"${t.id === id ? " selected" : ""}>${esc(t.name)}</option>`).join("")}
       ${saved.length ? `<optgroup label="Saved in this browser">${saved.map((t) => `<option value="${esc(t.id)}"${t.id === id ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</optgroup>` : ""}
       <option value="new">New template…</option></select></label>
+    ${editing || saved.some((t) => t.id === id) ? "" : `<label>Depth <select class="hg-depth" title="Quick: their top heroes and one bans box. Standard: as built. Deep: every hero, plus their real bans by phase.">${DEPTHS.map(([k, label]) => `<option value="${k}"${k === depthNow() ? " selected" : ""}>${label}</option>`).join("")}</select></label>`}
     ${editing ? "" : `<button type="button" class="link-btn hg-edit">${saved.some((t) => t.id === id) ? "Edit" : "Customise"}</button>`}`;
 }
 
@@ -246,7 +254,7 @@ export function heroGridHtml(team, games, { pubs = null, compact = false } = {})
           <code class="hg-path">${esc(FOLDER)}${SEP}<i>your number</i>${SEP}${esc(TAIL)}</code>
           <button type="button" class="link-btn hg-copy">Copy the userdata folder</button>
           <small>Paste that into the file picker's address bar. <i>Your number</i> is your Steam friend code: the same number as your Dota ID on your Dota profile, or in your OpenDota or Dotabuff link. It's the short one (like 75379546), not the 17-digit Steam ID that starts 7656119. If there are several folders, pick the one with that number. Steam installed somewhere else? Use that folder's <code>userdata</code> instead.</small></li>
-        <li><b>Add the grid to it.</b> This adds the grid shown above, as it is now (template: <b class="hg-which">${esc(t.name)}</b>; change it at the top first if you want a different one). Pick the file here; you get it back with this grid added. Every grid you already have stays; an earlier ${esc(name)} is replaced.
+        <li><b>Add the grid to it.</b> This adds the grid shown above, as it is now (template: <b class="hg-which">${esc(depthName(t))}</b>; change it at the top first if you want a different one). Pick the file here; you get it back with this grid added. Every grid you already have stays; an earlier ${esc(name)} is replaced.
           <div class="row hg-btns">
             <button type="button" class="primary hg-pick">Choose ${FILE}</button>
             <button type="button" class="hg-new">I don't have one</button>
@@ -300,7 +308,7 @@ export function wireHeroGrid(root, team, games, { pubs = null, totals = null, he
 
   const drawGrid = () => {
     const which = box.querySelector(".hg-which");
-    if (which) which.textContent = shown().name ?? "Custom";
+    if (which) which.textContent = depthName(shown()) ?? "Custom";
     grid.innerHTML = `${legendHtml(team.name, usName)}${canvasHtml(rowsNow(), shown(), { editing: !!draft, selected, noTeam: !usSources, play })}`;
     side.hidden = !draft;
     side.innerHTML = draft ? inspectorHtml(draft, selected, { them: sources, us: usSources, list }) : "";
@@ -326,7 +334,7 @@ export function wireHeroGrid(root, team, games, { pubs = null, totals = null, he
   const startEditing = () => {
     if (draft) return;
     const own = readSaved().some((t) => t.id === current.id);
-    draft = JSON.parse(JSON.stringify(own ? current : { ...current, id: `t${Date.now().toString(36)}`, name: `My ${current.name.toLowerCase()}` }));
+    draft = JSON.parse(JSON.stringify(own ? current : { ...current, id: `t${Date.now().toString(36)}`, name: `My ${depthName(current).toLowerCase()}`, depth: undefined }));
     freezeLayout(draft, templateRows(draft, sources, usSources, { all: true }));
     selected = null;
     redraw();
@@ -335,11 +343,16 @@ export function wireHeroGrid(root, team, games, { pubs = null, totals = null, he
 
   // ---------- template picker and my team ----------
   tpl.addEventListener("change", (e) => {
-    if (!e.target.matches(".hg-tsel")) return;
+    if (!e.target.matches(".hg-tsel, .hg-depth")) return;
     if (e.target.value === "new") {
       draft = { id: `t${Date.now().toString(36)}`, name: `My grid ${readSaved().length + 1}`, boxes: COLS.map((col) => ({ col, source: "custom", label: col === "bans" ? "Bans" : col === "us" ? "Mine" : "Theirs" })) };
       freezeLayout(draft, templateRows(draft, sources, usSources, { all: true }));
       selected = 0;
+      return redraw();
+    }
+    if (e.target.matches(".hg-depth")) {
+      try { localStorage.setItem(DEPTH_KEY, e.target.value); } catch {}
+      current = findTemplate(current.id, sources);
       return redraw();
     }
     choose(e.target.value); redraw();

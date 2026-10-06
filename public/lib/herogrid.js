@@ -247,6 +247,21 @@ export const SOURCES = [
 export const COL_NAMES = { them: "Enemy", bans: "Bans", us: "You" };
 export const sourceLabel = (key) => SOURCES.find(([k]) => k === key)?.[1] ?? key;
 
+// How much of a built-in to show: Quick (the enemy's top heroes and one bans box), Standard (as
+// built), Deep (every hero in every box, plus the real drafts' bans by phase).
+export const DEPTHS = [["quick", "Quick"], ["standard", "Standard"], ["deep", "Deep"]];
+export function atDepth(template, depth) {
+  if (depth === "quick") {
+    return { ...template, depth, boxes: [...template.boxes.filter((b) => colOf(b) === "them").map((b) => ({ ...b, max: 5 })), { col: "bans", source: "banvs", max: 8 }] };
+  }
+  if (depth === "deep") {
+    const have = new Set(template.boxes.map((b) => b.source));
+    const extra = [..."123"].flatMap((n) => [`banned${n}`, `bans${n}`]).filter((k) => !have.has(k));
+    return { ...template, depth, boxes: [...template.boxes.map(({ max, ...b }) => b), ...boxes("bans", extra)] };
+  }
+  return template;
+}
+
 // Every built-in: the enemy's heroes left, the model's bans against them in the middle, yours right.
 const boxes = (col, keys) => keys.map((k) => ({ col, ...(typeof k === "string" ? { source: k } : k) }));
 // The middle column: the model's bans against them for each ban phase.
