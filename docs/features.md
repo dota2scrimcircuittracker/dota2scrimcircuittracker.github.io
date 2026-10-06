@@ -475,7 +475,7 @@ shrunk-resolution problem above, not a finding problem.
 - **Playoff picture** (`lib/playoffs.js`, `parts/playoffs.js`) — Predict has three tabs, each
   its own link (`?tab=calls|bracket|odds`, Back works, the last one remembered): **Predictions**
   (this week's cards, leaderboard, past weeks), **Bracket** (a Your picks / Model's picks toggle)
-  and **Possibilities** (worked out the first time its tab opens). The name bar sits above them.
+  and **Seeding** (worked out the first time its tab opens). The name bar sits above them.
   - **Your picks** (Bracket's default): unreported series go the way the viewer called them on the cards
     above (uncalled ones, and unposted weeks, take the model's call and say so). The table and
     tiebreakers follow from that; the viewer then clicks winners in the tiebreakers and the
@@ -485,7 +485,7 @@ shrunk-resolution problem above, not a finding problem.
     clears it. A progress strip counts series, tiebreakers and bracket matches picked. Saved in localStorage per division, keyed by
     the two teams, so a pick sticks while that pairing exists.
   - **Model's picks** (Bracket's other side): everything below.
-  - **Possibilities**: every way the open series go (3 results each, so 3^n outcomes), and in
+  - **Seeding**: every way the open series go (3 results each, so 3^n outcomes), and in
     each every way its week 8 tiebreakers go; a grid of each team's share of each place plus
     summary columns: upper bracket and playoffs (running totals), or for Heroic/Aegis the four
     brackets on their own (Aegis upper 1–2, Aegis lower 3–4, Heroic upper 5–6, Heroic lower
@@ -514,7 +514,7 @@ shrunk-resolution problem above, not a finding problem.
     results can't move the other's table), so Heroic is 3^6 and 3^5, not 3^11.
   - **Team page → Outcomes** (AD2L teams): the same for one team, worked out when the tab opens:
     likeliest place, the summary columns as cards, a bar per place (click one for what it
-    takes; every place shown by default), and a link to Predict's Possibilities. A 1v1 mid counts 50/50, as
+    takes; every place shown by default), and a link to Predict's Seeding. A 1v1 mid counts 50/50, as
     on Possibilities; a line under the bars says how ties go.
 
   The model's picks: the playoffs if every remaining call goes the model's way. Unreported series get the model's

@@ -228,7 +228,7 @@ export async function renderPredict(src) {
   const tabs = playerTabs([
     ["calls", "Predictions", callsHtml],
     ["bracket", "Bracket", `<section class="po" id="po-bracket"></section>`],
-    ["odds", "Possibilities", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
+    ["odds", "Seeding", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
   ], { store: "predictTab", label: "Predict sections" });
   app.innerHTML = `${pageHead(kicker, "Predictions", `Call each series: 2–0 either way or a 1–1 split. One point per correct call. You can change a pick until the series starts.`)}
     ${nameBarHtml(name)}

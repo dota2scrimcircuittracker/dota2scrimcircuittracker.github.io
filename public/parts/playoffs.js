@@ -197,7 +197,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       </ul>
       <p>A case the rules don't list (1 slot for 5+ teams, say) follows the nearest one and is marked on the Bracket tab. A tie in SoS is broken by head to head, then record against the highest common opponent, then a single 1v1 solo mid between a player nominated by each team.</p>
       <p>A tie that only decides <b>seed order</b> isn't played off: SoS, then head to head, then record against the highest common opponent. If none of those break it, the 1v1 solo mid decides the higher seed.</p>
-      <p><b>On this page.</b> The Bracket tab shows one way it goes: the model's winner of each week 8 game, and the model's stronger team where it comes down to a 1v1 mid. Possibilities counts every way: each week 8 game both ways (half each, or by the model's odds) and each 1v1 mid 50/50 (the model rates teams, not mid players; three or more teams level take every order equally).</p>
+      <p><b>On this page.</b> The Bracket tab shows one way it goes: the model's winner of each week 8 game, and the model's stronger team where it comes down to a 1v1 mid. The Seeding tab counts every way: each week 8 game both ways (half each, or by the model's odds) and each 1v1 mid 50/50 (the model rates teams, not mid players; three or more teams level take every order equally).</p>
       <p><b>Scores.</b> Each game is the model's one-game chance, played independently. The score shown is the winner's likeliest: in a Bo3 that's always 2–0, because 2–1 needs the favourite to drop a game. A close Bo3 shows up in the odds below it (2–1 either way adds up). In a Bo5 the favourite's likeliest score is 3–1 unless it wins over 2 games in 3, then 3–0.</p>
     </details>`;
 
@@ -235,7 +235,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     const dist = dv.dist.get(team), N = dv.ids.length;
     const best = dist.reduce((b, p, i) => (p > dist[b] ? i : b), 0);
     const sel = state.sel?.team === team ? state.sel : { team, place: null };
-    const cards = [{ label: "Likeliest place", value: `${ord(best + 1)}`, note: pctFine(dist[best]) }, ...summary(dv).map((c) => ({ label: c.label, value: pctFine(c.of(team)) }))];
+    const cards = [{ label: "Likeliest seed", value: `${ord(best + 1)}`, note: pctFine(dist[best]) }, ...summary(dv).map((c) => ({ label: c.label, value: pctFine(c.of(team)) }))];
     const bars = Array.from({ length: N }, (_, i) => {
       const p = dist[i], on = sel.place === i + 1;
       const inner = `<span class="po-tb-k">${ord(i + 1)}</span><span class="po-tb-bar"><i style="width:${(Math.min(1, p) * 100).toFixed(1)}%"></i></span><span class="po-tb-v">${p < 5e-4 ? "·" : pctFine(p)}</span>`;
@@ -244,11 +244,11 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     }).join("");
     const n = dv.open?.length;
     return `${weightBar()}
-      <p class="po-lead">${dv.exact ? (n ? `Every way the last ${n} group-stage series in the division can go (${dv.count} outcomes), and every way the week 8 tiebreakers they set up can go.` : "Every group-stage series is in; only week 8 is left.") : `${dv.count} random runs of the rest of the season (too many outcomes to list one by one).`} ${state.weight === "equal" ? "Each outcome counts the same." : "Weighted by the model's odds."} <b>Click a place</b> for what it takes.</p>
+      <p class="po-lead">Where this team could finish the group stage (its seed, after week 8 tiebreakers), not where it finishes in the playoffs. ${dv.exact ? (n ? `${n} series left, ${dv.count} ways they can go.` : "Only week 8 tiebreakers are left.") : `From ${dv.count} random seasons.`} ${state.weight === "equal" ? "Every result counts the same." : "Weighted by the model's odds."} <b>Click a seed</b> to see what it takes.</p>
       <div class="po-tcards">${cards.map((c) => `<div class="po-stat"><span>${esc(c.label)}</span><b>${c.value}${c.note ? ` <i>${c.note}</i>` : ""}</b></div>`).join("")}</div>
       <div class="po-tbars">${bars}</div>
       ${detailHtml(P, dv, sel)}
-      <p class="table-note">Ties on wins go by AD2L's tiebreakers: SoS first, then head to head and highest common opponent, a week 8 playoff across a dividing line, and a 1v1 mid (counted 50/50) if nothing else splits them. <button type="button" class="linkish" data-goodds>Every team's chances on Predict →</button></p>`;
+      <p class="table-note">Ties on wins go by AD2L's tiebreakers: SoS first, then head to head and highest common opponent, a week 8 playoff across a dividing line, and a 1v1 mid (counted 50/50) if nothing else splits them. <button type="button" class="linkish" data-goodds>Every team's seeding on Predict →</button></p>`;
   };
 
   const weightBar = () => `<div class="pd-toggle po-weightbar" role="group" aria-label="How outcomes count"><span class="pd-lbl">Count</span>
@@ -258,12 +258,14 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   const possHtml = () => {
     const P = possNow();
     const n = P.divisions.reduce((a, dv) => a + (dv.open?.length ?? 0), 0);
-    const counts = P.divisions.length > 1 ? P.divisions.map((dv) => `${dv.count} in Division ${esc(dv.division)}`).join(", ") : `${P.divisions[0]?.count} in all`;
+    const counts = P.divisions.length > 1 ? P.divisions.map((dv) => `${dv.count} in Division ${esc(dv.division)}`).join(", ") : `${P.divisions[0]?.count}`;
     const unposted = P.divisions.some((dv) => dv.unposted), sampled = P.divisions.find((dv) => !dv.exact);
-    const lead = P.exact
-      ? (n ? `<p class="po-lead">Every way the last ${n} group-stage series can go: 2–0 either way or 1–1 each, ${counts} outcomes, and for each one every way the week 8 tiebreakers it sets up can go. ${state.weight === "equal" ? "Each outcome counts the same (a tiebreaker splits its outcome in half)." : "Each outcome counts by how likely the model makes it."} A cell is the share where the team finishes in that place. <b>Click a cell</b> for what it takes to finish there, or <b>a team</b> for every place it can reach.</p>`
-        : `<p class="po-lead">Every group-stage series is in, so the table is set; only the week 8 tiebreakers are left to play. A cell is the share of tiebreaker outcomes where the team finishes there.</p>`)
-      : `<p class="po-lead">Too many ways the rest can go to list one by one${unposted ? " (PlayOn hasn't posted every week, and the pairings depend on the results)" : ""}, so this plays out ${sampled?.count} random runs instead: each series 2–0 either way or 1–1${state.weight === "equal" ? " with equal chances" : " by the model's odds"}, unposted weeks paired as on the other tabs, then the week 8 tiebreakers. A cell is the share of runs where the team finishes there. Once the last week is posted, this lists every outcome and what each team needs.</p>`;
+    const weighting = state.weight === "equal" ? "Every result counts the same." : "Results are weighted by the model's odds.";
+    const lead = `<p class="po-lead"><b>Seeding</b> is where each team finishes the group stage, after any week 8 tiebreakers. It sets who starts in the upper or lower bracket. It is not where teams finish in the playoffs.</p>
+      <p class="po-lead">${P.exact
+        ? (n ? `${n} group-stage series are left (${counts}${P.divisions.length > 1 ? "" : " ways they can go"}). ${weighting} Each cell is a team's chance of that seed. <b>Click a cell</b> to see what a team needs for it.`
+          : "The group stage is over. Only week 8 tiebreakers can still change the seeds; each cell is a team's chance of that seed.")
+        : `There are too many ways the rest can go to list${unposted ? " while PlayOn hasn't posted every week" : ""}, so this plays out ${sampled?.count} random seasons. ${weighting} Each cell is a team's chance of that seed. Once every week is posted, this lists every way and what each team needs.`}</p>`;
 
     const divHtml = (dv) => {
       const N = dv.ids.length;
@@ -278,7 +280,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         return `<td class="${cls}"><button type="button" data-team="${id}" data-place="${i + 1}" class="${on ? "on" : ""}" style="--p:${Math.min(1, p).toFixed(3)}" title="${esc(name[id])}: ${ord(i + 1)} in ${pctFine(p)}">${pctFine(p)}</button></td>`;
       };
       const table = `<div class="table-wrap"><table class="po-poss">
-        <thead><tr><th scope="col" class="l">Team</th>${Array.from({ length: N }, (_, i) => `<th scope="col"${lines.some((l) => l.after === i + 1) ? ' class="po-line"' : ""}>${ord(i + 1)}</th>`).join("")}
+        <thead><tr><th scope="col" class="l">Team</th>${Array.from({ length: N }, (_, i) => `<th scope="col"${lines.some((l) => l.after === i + 1) ? ' class="po-line"' : ""} title="Seed ${i + 1}">${i ? i + 1 : "Seed 1"}</th>`).join("")}
           ${cols.map((l) => `<th scope="col" class="po-sum">${esc(l.col)}</th>`).join("")}</tr></thead>
         <tbody>${rows.map((id) => `<tr class="${state.sel?.team === id ? "sel" : ""}"><th scope="row" class="l"><button type="button" class="linkish" data-team="${id}" title="${esc(name[id])}">${esc(name[id])}</button></th>
           ${Array.from({ length: N }, (_, i) => cell(id, i)).join("")}
@@ -311,17 +313,17 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
           ${open ? eventWays(dv, open) : ""}` : `<p class="muted">${none}</p>`}`;
     };
     const tb = section("tb", "Possible week 8 tiebreakers",
-      `Every tie across a dividing line the rest of the season can leave, and how often (${state.weight === "equal" ? "share of outcomes" : "by the model's odds"}). The format is the rules' case for that many teams and places.`,
+      `Teams tied on wins across the upper/lower bracket or playoff line play it off in week 8. These are the ties that can still happen, with the chance of each and the format the rules set.`,
       "No result left can leave a tie across a dividing line.",
-      `<th scope="col" class="l">Line</th><th scope="col" class="l">Teams level</th><th scope="col">Wins</th><th scope="col">Places</th><th scope="col" class="l">Format</th>`,
-      (e) => `<td class="l">${lineName(e.line)}</td><td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="num">${ord(e.places[0])}–${ord(e.places[1])}</td><td class="l name">${esc(tbCase(e.slots, e.teams.length))}</td>`);
+      `<th scope="col" class="l">Line</th><th scope="col" class="l">Teams level</th><th scope="col">Wins</th><th scope="col">Seeds</th><th scope="col" class="l">Format</th>`,
+      (e) => `<td class="l">${lineName(e.line)}</td><td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="num">${e.places[0]}–${e.places[1]}</td><td class="l name">${esc(tbCase(e.slots, e.teams.length))}</td>`);
     const mid = section("mid", "Possible 1v1 mids",
       "Teams level on wins, SoS, head to head and record against the highest common opponent play a 1v1 solo mid. Each is counted 50/50 here.",
       "No result left can bring two teams level all the way to a 1v1.",
       `<th scope="col" class="l">Teams</th><th scope="col">Wins</th><th scope="col" class="l">Still level on</th><th scope="col" class="l">Decides</th>`,
       (e) => `<td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="l name po-why">${whyLevel(e)}</td><td class="l name">${e.purpose === "seed"
-        ? (e.teams.length === 2 ? `Who's ${ord(e.places[0])} and who's ${ord(e.places[1])}` : `The order of ${ord(e.places[0])}–${ord(e.places[1])}`)
-        : `Their order in the ${lineName(e.line)} tiebreaker for ${ord(e.places[0])}–${ord(e.places[1])} (which games they play, or a slot straight in)`}</td>`);
+        ? (e.teams.length === 2 ? `Which of them is seed ${e.places[0]} and which ${e.places[1]}` : `Their order in seeds ${e.places[0]}–${e.places[1]}`)
+        : `Their order in the ${lineName(e.line)} tiebreaker for seeds ${e.places[0]}–${e.places[1]} (which games they play, or a slot straight in)`}</td>`);
     return `<div class="po-events">${tb}${mid}<p class="table-note">A 1v1 needs every step to come out level: the same wins, the same SoS to the win, a level head to head, and the same record against the highest common opponent. "Still level on" is the likeliest way there; SoS and records can differ in the others.</p>${dv.exact ? "" : `<p class="table-note">Chances here are from the random runs; what leads to each shows once every outcome can be listed.</p>`}</div>`;
   };
   // Each tiebreaker step a 1v1's teams came out level on.
@@ -360,8 +362,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     const id = sel.team, dist = dv.dist.get(id);
     const places = sel.place ? [sel.place] : dist.map((p, i) => [p, i + 1]).filter(([p]) => p >= 5e-4).map(([, k]) => k);
     // On the team page the name is the page itself: the row only shows once a place is picked.
-    const head = view === "team" && !sel.place ? "" : `<div class="po-need-h"><b>${esc(name[id])}</b>${sel.place ? ` in ${ord(sel.place)}: ${pctFine(dist[sel.place - 1])}` : ""}
-      ${sel.place ? `<button type="button" class="linkish" data-team="${id}">Show every place</button>` : ""}
+    const head = view === "team" && !sel.place ? "" : `<div class="po-need-h"><b>${esc(name[id])}</b>${sel.place ? ` as seed ${sel.place}: ${pctFine(dist[sel.place - 1])}` : ""}
+      ${sel.place ? `<button type="button" class="linkish" data-team="${id}">Show every seed</button>` : ""}
       ${view === "team" ? "" : `<button type="button" class="linkish" data-close>Close</button>`}</div>`;
     if (!dv.exact) return `<div class="po-need">${head}<p class="muted">Listing what it takes needs every outcome, and there are too many ${dv.unposted ? "while weeks are unposted" : "with more than 9 series left"}. Shares above are from random runs.</p></div>`;
     const MAX = 8;
@@ -371,7 +373,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const hue = `style="--ph:${placeHue(place, playoffCut(dv))}"`;
       // Each place collapsible, closed to start unless it's the one picked.
       const open = sel.place === place ? " open" : "";
-      if (!paths.length) return `<details class="po-need-p" ${hue}${open}><summary><h5>${ord(place)} · 0%</h5></summary><p class="muted">Can't happen.</p></details>`;
+      if (!paths.length) return `<details class="po-need-p" ${hue}${open}><summary><h5>Seed ${place} · 0%</h5></summary><p class="muted">Can't happen.</p></details>`;
       // Each way in full, collapsible: its share and the team's own result up top, every result
       // it needs inside, side by side in a grid, all open to start.
       const n = dv.open.length, order = [...Array(n).keys()].sort((x, y) => own(y) - own(x));
@@ -388,7 +390,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
           <ul class="po-way-list">${list.length ? list.map((x) => `<li class="${x.own ? "own" : x.tb ? "tb" : ""}">${x.text}</li>`).join("") : '<li class="any">Any results get them here</li>'}</ul>
         </details>`;
       };
-      return `<details class="po-need-p" ${hue}${open}><summary><h5>${ord(place)} · ${pctFine(dist[place - 1])} of outcomes · ${paths.length} way${paths.length === 1 ? "" : "s"}</h5></summary>
+      return `<details class="po-need-p" ${hue}${open}><summary><h5>Seed ${place} · ${pctFine(dist[place - 1])} · ${paths.length} way${paths.length === 1 ? "" : "s"}</h5></summary>
         <div class="po-ways-grid">${paths.slice(0, MAX).map(way).join("")}</div>
         ${paths.length > MAX ? `<p class="muted">…and ${paths.length - MAX} more ways, ${pctFine(paths.slice(MAX).reduce((a, c) => a + c.p, 0))} between them.</p>` : ""}
       </details>`;

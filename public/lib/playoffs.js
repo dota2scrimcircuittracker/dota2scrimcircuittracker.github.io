@@ -400,8 +400,8 @@ function linesFor(n, split) {
       { after: 4, above: "Aegis lower bracket", below: "Heroic upper bracket", col: "Aegis lower", band: true },
       { after: 6, above: "Heroic upper bracket", below: "Heroic lower bracket", col: "Heroic upper", band: true },
       { after: 8, above: "Heroic lower bracket", below: "out", col: "Heroic lower", band: true }]
-    : n >= 8 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Upper bracket" }, { after: 8, above: "playoffs", below: "out", col: "Playoffs" }]
-    : n > 4 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Upper bracket" }] : [];
+    : n >= 8 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Starts upper" }, { after: 8, above: "playoffs", below: "out", col: "Makes playoffs" }]
+    : n > 4 ? [{ after: 4, above: "upper bracket", below: "lower bracket", col: "Starts upper" }] : [];
 }
 
 // ---------- every possible outcome ----------
