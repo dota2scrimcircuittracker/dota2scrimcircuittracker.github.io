@@ -29,7 +29,13 @@ export const pct = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
 export const dur = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 export const when = (d) => (d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "");
 
-export const pageHead = (kicker, title, sub = "") => `
+// With `bar` (a playerTabs bar), the page's tabs sit on the title's line, to the right, as on
+// the team, player and hero pages.
+export const pageHead = (kicker, title, sub = "", bar = "") => bar ? `
+  <header class="page-head pp-head reveal">
+    <div class="kicker" style="--i:0">${kicker}</div>
+    <div class="pp-row" style="--i:1"><h1>${title}</h1>${sub ? `<p class="pp-sub">${sub}</p>` : ""}${bar}</div>
+  </header>` : `
   <header class="page-head reveal">
     <div class="kicker" style="--i:0">${kicker}</div>
     <h1 style="--i:1">${title}</h1>

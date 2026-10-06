@@ -288,13 +288,12 @@ nav a.nav-cta {
 }
 nav a.nav-cta.active::after { display: none; }
 nav a.nav-cta:hover { background: #f5c862; color: var(--on-accent); }
-/* Tab dropdowns: the tab's list on the left (teams, weeks, players, heroes), the hovered
-   entry's page tabs on the right. */
+/* Tab dropdowns: one narrow list (teams, weeks, or a page's own tabs). */
 .nav-item { position: relative; display: flex; }
 .nav-item.open > a { color: var(--bone); }
 .nav-drop {
   position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px;
-  width: min(560px, calc(100vw - 16px)); padding: 6px;
+  width: min(320px, calc(100vw - 16px)); padding: 6px;
   background: var(--stone-2); border: 1px solid var(--seam-2); box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
   animation: rise .14s cubic-bezier(.2, .8, .2, 1);
 }
@@ -307,29 +306,19 @@ nav a.nav-cta:hover { background: #f5c862; color: var(--on-accent); }
 }
 .nav-drop a:hover { text-decoration: none; }
 .nd-note { padding: 12px; font-size: 13px; color: var(--dust); }
-.nd-head { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 2px 8px; margin-bottom: 6px; border-bottom: 1px solid var(--seam); }
-.nd-head a { font: 600 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dust); padding: 7px 9px; border: 1px solid var(--seam-2); }
-.nd-head a:hover, .nd-head a:focus-visible { color: var(--bone); border-color: var(--accent); }
-.nd-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 6px; }
 .nd-list { max-height: min(60vh, 440px); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
 .nd-group {
   position: sticky; top: 0; z-index: 1; background: var(--stone-2);
   font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); padding: 10px 10px 6px;
 }
 .nav-drop .nd-item {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px;
+  display: grid; grid-template-columns: minmax(0, 1fr); align-items: center;
   padding: 7px 10px; border-left: 2px solid transparent;
 }
-.nd-item .nd-name, .nd-item .nd-sub { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nd-item .nd-name, .nd-item .nd-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nd-item .nd-sub { font-size: 11px; color: var(--dust); margin-top: 2px; }
-.nd-item .nd-face { grid-row: span 2; width: 34px; height: auto; }
 .nav-drop .nd-item.on { background: rgba(var(--accent-rgb), .1); border-left-color: var(--accent); }
 .nav-drop .nd-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
-.nd-side { display: flex; flex-direction: column; gap: 1px; padding: 4px 4px 4px 10px; border-left: 1px solid var(--seam); align-self: start; }
-.nav-drop .nd-title { font: 800 18px/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--accent); padding: 6px 8px 10px; }
-.nav-drop .nd-tab { padding: 7px 8px; color: var(--dust); }
-.nav-drop .nd-tab:hover, .nav-drop .nd-tab:focus-visible { color: var(--bone); background: rgba(var(--accent-rgb), .1); }
-@media (max-width: 520px) { .nd-body { grid-template-columns: 1fr; } .nd-side { border-left: 0; border-top: 1px solid var(--seam); padding: 8px 0 0; } }
 /* Header search: players and teams in every league. Each result wears its league's colour. */
 .search { position: relative; }
 .search input {
@@ -591,6 +580,10 @@ td.bar.gold { --bar: rgba(232, 182, 76, .55); }
 td.bar.jade { --bar: rgba(var(--jade-rgb), .55); }
 td.bar.ember { --bar: rgba(var(--ember-rgb), .55); }
 .table-note { font: 400 11px/1.6 var(--mono); color: var(--dim); margin: 12px 0 0; }
+/* The small grey explainer lines are off site-wide (asked for Oct 2026). The first-blood
+   line on a game's Laning tab stays: it's a fact about the game, not an explanation. Delete
+   this rule to bring them all back. */
+.table-note:not(.fb-note) { display: none !important; }
 
 /* ---------- match list: fixtures ---------- */
 .fixtures { display: grid; gap: 10px; }
@@ -802,7 +795,6 @@ a.team-link:hover, span.team-link:hover, span.team-link:focus-visible { color: v
 
 /* standings: highlight cards, tabs, model rating, up-next odds */
 .st-cards { margin-bottom: 26px; }
-.st-tabs { border-bottom: 1px solid var(--seam-2); margin-bottom: 18px; }
 .st-rating { display: inline-flex; align-items: center; gap: 8px; }
 .st-track { width: 48px; height: 6px; background: var(--seam); position: relative; }
 .st-track i { position: absolute; top: 0; bottom: 0; }
@@ -965,14 +957,16 @@ h2 .h-note { font: 400 11px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .td-orow b { font-weight: 700; }
 /* Draft model rows: only the team name shortens, so the % always shows. */
 .td-orow:has(.td-fit) { grid-template-columns: 136px minmax(0, 1fr) minmax(60px, 1fr) minmax(0, 1fr); }
-.td-fit { display: flex; gap: .6ch; min-width: 0; }
+.td-fit { display: flex; align-items: baseline; gap: .6ch; min-width: 0; white-space: normal; }
 .td-them.td-fit { justify-content: flex-end; }
 .td-fit b { flex: none; }
-.td-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.td-nm { min-width: 0; overflow-wrap: anywhere; }
 .td-track { position: relative; height: 10px; background: var(--ember-deep); }
 .td-track i { position: absolute; inset: 0 auto 0 0; background: var(--jade); }
 .td-track em { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--bone); opacity: .5; }
-.pcm-line { display: grid; grid-template-columns: minmax(0, 1fr) minmax(60px, 1fr) minmax(0, 1fr); align-items: center; gap: 4px 10px; font: 400 12px/1.2 var(--mono); color: var(--dust); }
+.pcm-line { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 4px 10px; font: 400 12px/1.2 var(--mono); color: var(--dust); }
+.pcm-line .td-track { grid-column: 1 / -1; order: 3; }
+.pcm-line .td-us, .pcm-line .td-them { align-self: end; }
 .pcm-line small { grid-column: 1 / -1; font: 600 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
 .pcm-dr summary { cursor: pointer; font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); padding: 4px 0; }
 .pcm-dr .pd-toggle { margin: 8px 0; }
@@ -1331,7 +1325,6 @@ button.seg.on { background: var(--accent); border-color: var(--accent); color: v
 .chip.support .role-tag { color: var(--jade); }
 .chip.core .role-tag { color: var(--accent); }
 /* Heroes tab: sub-tabs and the hero tier lists */
-.heroes-tabs { margin: 0 0 22px; border-bottom: 1px solid var(--seam); }
 .hpow .chip-name a { color: var(--bone); }
 .hchip-bar { flex-wrap: wrap; align-items: center; gap: 8px 0; }
 .hchip-bar .min-bar { margin: 0 0 0 18px; }
@@ -1698,7 +1691,8 @@ button.linkish:hover { text-decoration: underline; }
 .pred-board th.pb-series .a { color: var(--jade); }
 .pred-board th.pb-series .b { color: var(--ember); }
 .pred-board th.pb-series .b::before { content: "vs "; color: var(--dim); }
-.pk-chip { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 13px; padding-left: 7px; border-left: 3px solid var(--seam-2); }
+.pred-board td:has(> .pk-chip) { white-space: normal; }
+.pk-chip { display: inline-block; max-width: 170px; overflow-wrap: anywhere; vertical-align: middle; font-size: 13px; line-height: 1.3; padding-left: 7px; border-left: 3px solid var(--seam-2); }
 .pk-chip.home { border-left-color: var(--jade); }
 .pk-chip.tie { border-left-color: var(--gold); }
 .pk-chip.away { border-left-color: var(--ember); }
@@ -3509,9 +3503,9 @@ button.po-slot.on.me { border-style: solid; border-color: var(--jade); }
 .po-poss th, .po-poss td { padding: 3px 4px; }
 .po-poss thead th { font: 600 10px var(--mono); letter-spacing: .08em; color: var(--dim); text-align: center; }
 .po-poss thead th.l { text-align: left; }
-.po-poss tbody th { font-weight: 400; white-space: nowrap; max-width: 26ch; overflow: hidden; text-overflow: ellipsis; }
+.po-poss tbody th { font-weight: 400; min-width: 16ch; max-width: 26ch; }
 .po-poss tbody th button { color: var(--bone); text-align: left; font: inherit; font-size: 14px; line-height: 1.4; text-transform: none; letter-spacing: 0;
-  clip-path: none; display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  clip-path: none; display: block; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .po-poss tr.sel th button { color: var(--accent); }
 /* Team names open a drop-down of every place the team can reach: a caret and a hover box say so. */
 .po-poss tbody th button.po-team { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 8px 4px 6px; border: 1px solid transparent; }
@@ -3721,7 +3715,7 @@ button.po-tbar:hover { border-color: var(--seam); }
 .po-way-list li.any { color: var(--jade); }
 .po-need-p ul.po-way-list { padding: 8px 12px 10px 34px; gap: 4px; }
 /* Ways side by side: as many columns as fit. */
-.po-ways-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 8px; align-items: start; }
+.po-ways-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); grid-auto-rows: 1fr; gap: 8px; }
 .po-ways-grid .po-way { margin: 0; }
 .po-way-sum { flex: 1 1 100%; }
 /* Each final place in its own box, in its own colour (--ph, a hue, set per place). */

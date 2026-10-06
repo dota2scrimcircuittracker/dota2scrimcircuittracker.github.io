@@ -241,9 +241,8 @@ export async function renderStandings(src) {
     ["race", raceHtml],
   ]), { store: "standingsTab", label: "Standings sections" });
   app.innerHTML = `
-    ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`)}
+    ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`, tabs.bar)}
     ${cards.length ? `<div class="cards reveal st-cards">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>` : ""}
-    <div class="st-tabs">${tabs.bar}</div>
     ${tabs.panels}`;
 
   // A bye is a forfeit win with no games behind it: its own muted square, not a real W.
@@ -270,9 +269,9 @@ export async function renderStandings(src) {
 
   wirePlayerTabs();
   wireCharts(app);
-  // The race panel may be hidden, so measure the tab bar (same width); the figure's padding and
-  // border take 30px of it.
-  const raceBox = app.querySelector(".race"), bar = app.querySelector(".st-tabs");
+  // The race panel may be hidden, so measure the page header (same width); the figure's padding
+  // and border take 30px of it.
+  const raceBox = app.querySelector(".race"), bar = app.querySelector(".page-head");
   if (raceBox && bar) {
     let drawn = 0;
     const draw = () => {
