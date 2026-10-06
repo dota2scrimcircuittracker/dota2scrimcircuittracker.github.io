@@ -155,8 +155,8 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 
 ## Players tab
 
-- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). Filters:
-  Everyone / Cores / Supports, and Pos 1–5: that position's own list, each player's games
+- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
+  position, Pos 1–5 (opens on Pos 1; there's no all-players list): that position's own list, each player's games
   there only, rated against that position's players (its anchors, consistency and curve come
   from pos N games; `lib/tiers.js` tierModel/tierList `pos`), so a 4/5 swapper shows in both with
   each set of games. Each chip says the position played most; its tooltip lists games at each.

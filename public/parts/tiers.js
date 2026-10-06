@@ -6,7 +6,7 @@ import { leagueSrc, floorOf, pct, esc, teamLink, playerLink } from "../core.js";
 
 // ---------- Tier list ----------
 
-let tierRole = "all";
+let tierRole = "pos1"; // the position shown: pos1 … pos5
 const tierOpen = new Set(); // player keys whose card is expanded
 // Each league (AD2L division, or the scrim ledger) is scored against its own games. The
 // Heroic A/B views use the whole division's reference, so a player's stats are judged against
@@ -184,7 +184,6 @@ export function tierSection(src, matches, model) {
     const list = n ? posLists[n] : full;
     const el = document.getElementById("tiers");
     if (!el) return;
-    const show = (p) => tierRole === "all" || n || p.role === tierRole;
     const chip = (p, i) => {
       const rank = rankLabel(p.rank_tier);
       const open = tierOpen.has(p.key);
@@ -197,7 +196,7 @@ export function tierSection(src, matches, model) {
       </div>`;
     };
     const bands = list.tiers.map(({ tier, players }) => {
-      const shown = players.filter(show);
+      const shown = players;
       return `<div class="tier-band t-${tier}">
         <div class="tier-letter">${tier}</div>
         <div class="tier-chips reveal">${shown.length ? shown.map(chip).join("") : `<div class="tier-empty">—</div>`}</div>
@@ -205,7 +204,6 @@ export function tierSection(src, matches, model) {
     }).join("");
     const tab = (k, label) => `<button type="button" class="seg${tierRole === k ? " on" : ""}" data-role="${k}">${label}</button>`;
     el.innerHTML = `
-      <div class="row segs">${tab("all", "Everyone")}${tab("core", "Cores")}${tab("support", "Supports")}</div>
       <div class="row segs tier-pos">${[1, 2, 3, 4, 5].map((n) => tab(`pos${n}`, `Pos ${n}`)).join("")}</div>
       ${n ? `<p class="table-note">Games at pos ${n} only, rated against the other pos ${n} players. Players who also play other positions are rated on their pos ${n} games alone.</p>` : ""}
       <div class="tier-board">${bands}</div>
