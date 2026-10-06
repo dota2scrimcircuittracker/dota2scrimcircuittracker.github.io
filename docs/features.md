@@ -401,9 +401,15 @@ shrunk-resolution problem above, not a finding problem.
   (gold corner) and the board. A player with no history (a stand-in, a private profile, or a division not yet
   synced) reads as an average player at the game's rank. The rosters list each player's Stratz,
   OpenDota and Dotabuff pages (by account ID) and PlayOn page (by the PlayOn player id the sync
-  reads off the team page; missing until a team is re-synced). Under the board, **Prep a hero
-  grid** shows either team's Hero grid for Dota (the team page's), opening on the team that isn't
-  mine; "you" is my team, or else the other team in the draft.
+  reads off the team page; missing until a team is re-synced). The hero picker is the **Hero
+  grid** by default (toggle to **All heroes** for every hero by attribute; the choice is
+  remembered): either team's Hero grid for Dota (the team page's, any template), opening on the
+  team that isn't mine; "you" is my team, or else the other team in the draft. It follows the
+  draft: heroes gone are greyed, ones with no open position faded, and each shows the model's value
+  for the step in play; a click picks or bans it. Find a hero lists matches from every hero, to
+  play or drag in. Customise the grid mid-draft: drag heroes in from the suggestions or the
+  search, or press + on a suggestion to add it to the selected box (else the first of yours);
+  save the template to keep it. Saving into Dota folds away under the grid.
 
 ## Predictions
 

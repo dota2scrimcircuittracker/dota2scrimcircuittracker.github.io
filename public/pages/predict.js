@@ -243,13 +243,16 @@ export async function renderPredict(src) {
   // draft file loads, and its own draft when a card's "Draft model's draft" is opened. Separate
   // from the ratings: the odds, the model's call and the standings don't change.
   const cards = [...app.querySelectorAll(".pcm[data-home]")];
+  // Without the model's read (no file, a failed load, a team not found) the expander keeps just
+  // the likely draft.
+  const dropBest = (scope) => scope.querySelectorAll(".pcm-sec").forEach((x) => x.remove());
   if (cards.length) import("../parts/cmdraft.js").then(async (cm) => {
     const data = await cm.draftData(src.key);
     if (!document.body.contains(cards[0])) return;
-    if (!data) { app.querySelectorAll(".pcm-sec").forEach((x) => x.remove()); return; }
+    if (!data) return dropBest(app);
     for (const box of cards) {
       const home = d.teams.find((t) => t.id === Number(box.dataset.home)), away = d.teams.find((t) => t.id === Number(box.dataset.away));
-      if (!home || !away) continue;
+      if (!home || !away) { dropBest(box.parentElement); continue; }
       const r = cm.seriesRead(home, away, d.games, data);
       box.innerHTML = cm.preDraftLine(home, away, r.pre);
       const dr = box.parentElement.querySelector("details.dr"), body = dr?.querySelector(".pcm-body"), built = {};
@@ -264,9 +267,8 @@ export async function renderPredict(src) {
       dr.addEventListener("toggle", () => { if (dr.open && !body.dataset.done) { body.dataset.done = "1"; show(fpNow()); } });
       dr.querySelectorAll("[data-fp]").forEach((b) => b.addEventListener("click", () => { if (body.dataset.done) show(b.dataset.fp); }));
     }
-  }).catch((e) => console.warn("draft model unavailable", e));
-  // No draft model file for this division: the expander keeps just the likely draft.
-  if (!cards.length) app.querySelectorAll(".pcm-sec").forEach((x) => x.remove());
+  }).catch((e) => { console.warn("draft model unavailable", e); if (document.body.contains(cards[0])) dropBest(app); });
+  if (!cards.length) dropBest(app);
 
   app.querySelectorAll("details.dr").forEach((dr) => {
     const sel = { fp: "home", g: "1" };

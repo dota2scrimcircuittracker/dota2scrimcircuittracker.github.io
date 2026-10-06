@@ -17,8 +17,8 @@
 //        npm run sync:all                (every division; scripts/sync/sync-all.js)
 // The PlayOn season id, Dota league id and output file come from public/lib/divisions.js;
 // --season, --league and --out override them.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildingsFrom } from "../../public/lib/towermap.js";
@@ -245,16 +245,27 @@ console.log(`  ${candidates.size} candidate practice-lobby games; pubs for ${pub
 // not, plus scrims and inhouses; OpenDota can't tell those apart per player). Three calls per
 // account, cached TOTALS_DAYS; at most TOTALS_PER_RUN accounts are refreshed a run (missing
 // first, then oldest) so a run stays about a minute longer, and the rest use their cached copy.
-const TOTALS_DAYS = 7, TOTALS_PER_RUN = 18, TOTAL_LOBBIES = [0, 7, 1];
+// A failed call leaves a .tried stamp, and that account waits TOTALS_RETRY_DAYS before trying
+// again, so accounts OpenDota keeps refusing can't take every slot on every run.
+const TOTALS_DAYS = 7, TOTALS_RETRY_DAYS = 1, TOTALS_PER_RUN = 18, TOTAL_LOBBIES = [0, 7, 1];
 const totalsFile = (acct, lobby) => path.join(CACHE, "opendota", `heroes_${acct}_${lobby}.json`);
-const ageOf = async (file) => (existsSync(file) ? Date.now() - (await import("node:fs").then((fs) => fs.statSync(file))).mtimeMs : Infinity);
+const triedFile = (acct, lobby) => `${totalsFile(acct, lobby)}.tried`;
+const ageOf = (file) => (existsSync(file) ? Date.now() - statSync(file).mtimeMs : Infinity);
 const totalsAge = new Map();
-for (const acct of owner.keys()) totalsAge.set(acct, Math.max(...await Promise.all(TOTAL_LOBBIES.map((l) => ageOf(totalsFile(acct, l))))));
+for (const acct of owner.keys()) {
+  if (TOTAL_LOBBIES.some((l) => ageOf(triedFile(acct, l)) < TOTALS_RETRY_DAYS * 86400e3)) continue;
+  totalsAge.set(acct, Math.max(...TOTAL_LOBBIES.map((l) => ageOf(totalsFile(acct, l)))));
+}
 const refresh = [...totalsAge].filter(([, age]) => age > TOTALS_DAYS * 86400e3).sort((a, b) => b[1] - a[1]).slice(0, TOTALS_PER_RUN).map(([a]) => a);
 for (const acct of refresh) {
   for (const lobby of TOTAL_LOBBIES) {
     const rows = await opendota(`/players/${acct}/heroes?lobby_type=${lobby}`).catch((e) => (console.log(`  hero totals ${acct}/${lobby}: ${e.message}`), null));
-    if (!rows) continue;
+    if (!rows) {
+      await mkdir(path.dirname(triedFile(acct, lobby)), { recursive: true });
+      await writeFile(triedFile(acct, lobby), "");
+      continue;
+    }
+    if (existsSync(triedFile(acct, lobby))) await rm(triedFile(acct, lobby));
     await mkdir(path.dirname(totalsFile(acct, lobby)), { recursive: true });
     await writeFile(totalsFile(acct, lobby), JSON.stringify(rows.filter((r) => r.games > 0).map((r) => [Number(r.hero_id), r.games, r.win])));
   }

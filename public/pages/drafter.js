@@ -1,11 +1,12 @@
 // Drafter: draft Captains Mode for any two AD2L teams with the draft model (lib/cmdraft.js,
 // Project Sybil's model) scoring every hero at every step. Start from an upcoming series, any
 // two teams, or a past game's draft (rewind to any step and branch). Loaded on first visit.
-import { esc, app, pageHead, portrait, pct, profileLinks, myTeam, DIVISIONS, ALL_DIVS, divLite, gameWeeker } from "../core.js";
+import { esc, app, pageHead, portrait, pct, profileLinks, myTeam, DIVISIONS, ALL_DIVS, divLite, divData, gameWeeker } from "../core.js";
 import { sideOf as teamSide } from "../lib/teams.js";
 import { hasDetails } from "../lib/stats.js";
 import { heroGridHtml, wireHeroGrid, myTeamGames } from "../parts/herogrid.js";
 import { heroAttr } from "../lib/hero-meta.js";
+import { canonicalHero } from "../lib/heroes.js";
 import { loading, errorBox } from "../parts/lanes.js";
 import { isPlayed } from "../lib/predict.js";
 import { gameContext, scoreHeroes, draftProbability, stateFeatures, sideComposition, openRoleFor, fitsRole, poolShares, flexPositions, CM_STEPS } from "../lib/cmdraft.js";
@@ -13,6 +14,9 @@ import { draftDataFor, heroIndex, MODEL_NOTE, rankName, draftChart, heroGridMode
 
 const MODES = [["upcoming", "Upcoming series"], ["teams", "Any two teams"], ["game", "Past game"]];
 const MODE_KEY = "drafter-mode";
+// The hero picker: the hero grid (parts/herogrid.js, the default) or every hero by attribute.
+const VIEWS = [["grid", "Hero grid"], ["all", "All heroes"]];
+const VIEW_KEY = "drafter-view";
 const SHOWN = 8; // suggestions listed
 // The hero grid in Dota's own order: by primary attribute, A–Z inside each.
 const ATTRS = [["str", "Strength"], ["agi", "Agility"], ["int", "Intelligence"], ["all", "Universal"]];
@@ -61,7 +65,7 @@ export async function renderDrafter(src) {
       <div class="dx-opts" id="dx-opts"></div>
     </section>
     <div id="dx-board"><div class="panel empty">Loading the draft model…</div></div>
-    <div id="dx-hg"></div></div>`;
+    <div id="dx-hg" class="dx-hg" hidden></div></div>`;
 
   // ---------- the draft in play ----------
   // X and Y: the two teams. `first` and `radiant` say which is which; `done` holds hero ids
@@ -82,35 +86,68 @@ export async function renderDrafter(src) {
   async function load(X, Y, { first = "X", radiant = "X", done = [], order = CM_STEPS, original = null, time = now, gameId = null } = {}) {
     Object.assign(s, { X, Y, first, radiant, done, order, original, time, gameId, pins: {}, posAt: {}, pickFor: null, pickPos: null });
     board.innerHTML = `<div class="panel empty">Loading the draft model…</div>`;
-    gridBox.innerHTML = "";
+    gridBox.innerHTML = ""; gridCtl = null; play = null;
     data = await draftDataFor([X.div, Y.div]);
     if (!data) { board.innerHTML = `<p class="muted">The draft model's data hasn't synced for ${esc(DIVISIONS[X.div].short)}${X.div !== Y.div ? ` or ${esc(DIVISIONS[Y.div].short)}` : ""} yet.</p>`; opts.innerHTML = ""; return; }
     heroes = heroIndex(data);
+    // Grid heroes come by name, in the site's spelling or the draft file's.
+    idOf = new Map(heroes.ids.flatMap((h) => [[heroes.name(h), h], [canonicalHero(heroes.name(h)), h]]));
     ctxKey = "";
-    draw();
     // The grid opens on the team that isn't mine.
+    gridFor = "Y";
     const me = myTeam();
     if (me) for (const w of ["X", "Y"]) if (s[w].div === me.div && String(s[w].id) === String(me.id)) gridFor = other(w);
+    draw();
     drawGrid();
   }
 
-  // Either team's heroes by position as a Dota hero grid (parts/herogrid.js), to prep against
-  // them. Outside the board, so a pick doesn't redraw it.
-  let gridOpen = false, gridFor = "Y";
-  function drawGrid() {
-    const t = s[gridFor], o = s[other(gridFor)], html = heroGridHtml(t, t.lineups, { pubs: d.pubs });
-    gridBox.innerHTML = `<details class="dx-more dx-hgrid"${gridOpen ? " open" : ""}><summary>Prep a hero grid: them, bans, you</summary>
-      <div class="segs" role="group" aria-label="Whose heroes">${["X", "Y"].map((w) => `<button type="button" class="seg${w === gridFor ? " on" : ""}" data-grid="${w}" aria-pressed="${w === gridFor}">${esc(s[w].name)}</button>`).join("")}</div>
-      ${html || `<p class="muted">No ${esc(t.name)} games say who played which position yet.</p>`}</details>`;
-    gridBox.querySelector("details").addEventListener("toggle", (e) => { gridOpen = e.target.open; });
-    gridBox.querySelector(".segs").onclick = (e) => { const b = e.target.closest("[data-grid]"); if (b) { gridFor = b.dataset.grid; gridOpen = true; drawGrid(); } };
+  // The hero grid (parts/herogrid.js): either team's heroes laid out by a template, as the hero
+  // picker. It's its own element, moved into the board's hero column on every draw, so a pick
+  // doesn't redraw it (or lose an edit in progress); `play` gives it the draft's state.
+  let gridFor = "Y", gridCtl = null, gridRun = 0, idOf = new Map(), play = null;
+  const heroIdOf = (name) => idOf.get(name) ?? idOf.get(canonicalHero(name));
+  let view = "grid";
+  try { view = VIEWS.some(([k]) => k === localStorage.getItem(VIEW_KEY)) ? localStorage.getItem(VIEW_KEY) : view; } catch {}
+  // Each team's division file, for its pubs: in "Any two teams" either can be from another one.
+  const pubsOf = async (t) => (t.div === src.key ? d.pubs : (await divData(t.div).catch(() => null))?.pubs ?? null);
+  async function drawGrid() {
+    const run = ++gridRun, t = s[gridFor], o = s[other(gridFor)];
+    const [pubs, oPubs] = await Promise.all([pubsOf(t), pubsOf(o)]);
+    if (run !== gridRun) return;
+    const html = heroGridHtml(t, t.lineups, { pubs, compact: true });
+    gridBox.innerHTML = `<div class="segs dx-gridfor" role="group" aria-label="Whose heroes">${["X", "Y"].map((w) => `<button type="button" class="seg${w === gridFor ? " on" : ""}" data-grid="${w}" aria-pressed="${w === gridFor}">${esc(s[w].name)}</button>`).join("")}</div>
+      ${html || `<p class="muted">No ${esc(t.name)} games say who played which position yet. Switch team, or pick from All heroes.</p>`}`;
+    gridBox.querySelector(".dx-gridfor").onclick = (e) => { const b = e.target.closest("[data-grid]"); if (b && b.dataset.grid !== gridFor) { gridFor = b.dataset.grid; drawGrid(); } };
     // The model reads them against my team, or else the other team in this draft.
     // "You" (the right-hand column) is my team, or else the other team in this draft.
-    wireHeroGrid(gridBox, t, t.lineups, {
-      pubs: d.pubs, totals: data.totals, heroNames: data.heroes,
-      model: (me) => heroGridModelFor({ div: t.div, five: fiveOf(t), name: t.name }, me, { div: o.div, five: fiveOf(o), name: o.name }),
-      us: async (me) => (me ? myTeamGames(me) : { name: o.name, games: o.lineups, pubs: o.div === src.key ? d.pubs : null, totals: data.totals, heroNames: data.heroes }),
+    gridCtl = wireHeroGrid(gridBox, t, t.lineups, {
+      pubs, totals: data.totals, heroNames: data.heroes,
+      model: (me) => heroGridModelFor({ div: t.div, id: t.id, five: fiveOf(t), name: t.name }, me, { div: o.div, id: o.id, five: fiveOf(o), name: o.name }),
+      us: async (me) => (me ? myTeamGames(me) : { name: o.name, games: o.lineups, pubs: oPubs, totals: data.totals, heroNames: data.heroes }),
     });
+    gridCtl?.setPlay(play);
+    draw();
+  }
+  // Put the grid where the board wants it: in the hero column for the grid view, else away.
+  const placeGrid = () => {
+    const slot = board.querySelector(".dx-gridslot");
+    if (slot) slot.append(gridBox); else board.after(gridBox);
+    gridBox.hidden = !slot;
+  };
+  // A hero played from the board, the grid or the search: the step in play takes it.
+  function playHero(h) {
+    const n = s.done.length;
+    if (h == null || n >= s.order.length || s.done.includes(h)) return;
+    if (s.order[n][1] === "pick" && pickingFor != null) {
+      s.pins[n] = pickingFor;
+      if (pickingPos != null) {
+        // Taking a position an earlier pick was made for moves that pick: it's refitted.
+        for (const [i, r] of Object.entries(s.posAt)) if (r === pickingPos && teamAt(s.order[i][0]) === teamAt(s.order[n][0])) delete s.posAt[i];
+        s.posAt[n] = pickingPos;
+      }
+    }
+    s.done = [...s.done, h];
+    s.pickFor = s.pickPos = null;
   }
 
   function context() {
@@ -216,11 +253,22 @@ export async function renderDrafter(src) {
     const flexTag = (h) => { const f = flexOf(h); return f ? `<i class="dx-flex" title="Flex: plays pos ${f.map((r) => r + 1).join(", ")}">flex ${f.map((r) => r + 1).join("·")}</i>` : ""; };
 
 
-    const sugg = over ? `<p class="muted">Draft complete.</p>` : `<ol class="dx-list">${list.map((x) => {
+    const tile = (h) => `<button type="button" class="dx-tile${gone.has(h) ? " gone" : ""}${flexOf(h) ? " flex" : ""}${!gone.has(h) && !over && filtering && roleOf.get(h) == null ? " off" : ""}" data-hero="${h}" data-name="${esc(heroes.name(h).toLowerCase())}" draggable="true" data-hero-name="${esc(heroes.name(h))}"${gone.has(h) || over ? " disabled" : ""} title="${esc(heroes.name(h))}${values.has(h) ? `: ${val(values.get(h))}` : ""}${flexOf(h) ? ` · flex: pos ${flexOf(h).map((r) => r + 1).join(", ")}` : ""}">${portrait(heroes.name(h))}${values.has(h) ? `<small>${val(values.get(h))}</small>` : ""}</button>`;
+    // The grid's view of the same: by name, in both spellings.
+    const byName = (ids, f) => new Map(ids.flatMap((h) => { const v = f(h), n = heroes.name(h); return [[n, v], [canonicalHero(n) ?? n, v]]; }));
+    const names = (ids) => new Set(byName(ids, () => 1).keys());
+    play = {
+      gone: over ? names(heroes.ids) : names(s.done),
+      off: names(available.filter((h) => filtering && roleOf.get(h) == null)),
+      value: byName([...values.keys()], (h) => val(values.get(h))),
+      onPick: (name) => { playHero(heroIdOf(name)); draw(); },
+    };
+    const toGrid = gridCtl && view === "grid";
+    const sugg = over ? `<p class="muted">Draft complete.</p>` : `<ol class="dx-list${toGrid ? " with-grid" : ""}">${list.map((x) => {
       const pl = kind === "pick" ? playersOf(who)[pickingFor ?? x.player] : x.them && playersOf(other(who))[x.them.player];
       const share = kind === "pick" ? null : x.them?.playerShare;
       return `<li><button type="button" class="dx-pickbtn" data-hero="${x.hero}" draggable="true" data-hero-name="${esc(heroes.name(x.hero))}">${portrait(heroes.name(x.hero))}<span class="dx-hn">${esc(heroes.name(x.hero))}</span>
-        <b>${val(x[kind])}</b><small>${roleOf.get(x.hero) != null ? `<i class="dx-pos">pos ${roleOf.get(x.hero) + 1}</i> ` : ""}${flexTag(x.hero)} ${pl ? `${kind === "pick" ? "" : "theirs: "}${esc(pl.name)}${share != null ? ` ${pct(share)}` : ""}` : ""}</small></button></li>`;
+        <b>${val(x[kind])}</b><small>${roleOf.get(x.hero) != null ? `<i class="dx-pos">pos ${roleOf.get(x.hero) + 1}</i> ` : ""}${flexTag(x.hero)} ${pl ? `${kind === "pick" ? "" : "theirs: "}${esc(pl.name)}${share != null ? ` ${pct(share)}` : ""}` : ""}</small></button>${toGrid ? `<button type="button" class="dx-togrid" data-togrid="${esc(heroes.name(x.hero))}" title="Add ${esc(heroes.name(x.hero))} to the hero grid's selected box" aria-label="Add ${esc(heroes.name(x.hero))} to the hero grid">+</button>` : ""}</li>`;
     }).join("")}</ol>`;
 
     const rosterHtml = (w) => {
@@ -294,22 +342,34 @@ export async function renderDrafter(src) {
           <p class="table-note">${over ? "" : kind === "pick" ? `${esc(team(who).name)}'s chance to win with each hero, and who would play it.` : `How many points each hero would add to ${esc(team(other(who)).name)}'s chance if they got it, and who'd play it.`}</p>
           ${sugg}</section>
         <section class="dx-heroes"><div class="dx-hhead"><h3 class="dx-h">Heroes</h3>
+          <div class="segs dx-views" role="group" aria-label="Pick from">${VIEWS.map(([k, l]) => `<button type="button" class="seg${k === view ? " on" : ""}" data-view="${k}" aria-pressed="${k === view}">${l}</button>`).join("")}</div>
           <input type="search" id="dx-find" placeholder="Find a hero" autocomplete="off" aria-label="Find a hero"></div>
-          <div class="dx-attrs">${ATTRS.map(([a, label]) => { const ids = heroes.ids.filter((h) => (heroAttr(heroes.name(h)) ?? "all") === a), left = ids.filter((h) => !gone.has(h)).length; return `<div class="dx-attr attr-${a}" data-attr="${a}">
+          ${view === "grid" ? `<div class="dx-findrow" hidden></div>
+          <p class="table-note dx-gridnote">Click a hero in the grid to ${over ? "play it" : kind === "pick" ? "pick it" : "ban it"}. Faded: gone, or no open position. Customise the grid to move heroes around, drag them in from the suggestions or the search, or use + on a suggestion.</p>
+          <div class="dx-gridslot"></div>` : `<div class="dx-attrs">${ATTRS.map(([a, label]) => { const ids = heroes.ids.filter((h) => (heroAttr(heroes.name(h)) ?? "all") === a), left = ids.filter((h) => !gone.has(h)).length; return `<div class="dx-attr attr-${a}" data-attr="${a}">
             <div class="dx-attr-h"><i></i>${label}<small>${left} of ${ids.length} left</small></div>
-          <div class="dx-grid">${ids.map((h) => `<button type="button" class="dx-tile${gone.has(h) ? " gone" : ""}${flexOf(h) ? " flex" : ""}${!gone.has(h) && !over && filtering && roleOf.get(h) == null ? " off" : ""}" data-hero="${h}" data-name="${esc(heroes.name(h).toLowerCase())}" draggable="true" data-hero-name="${esc(heroes.name(h))}"${gone.has(h) || over ? " disabled" : ""} title="${esc(heroes.name(h))}${values.has(h) ? `: ${val(values.get(h))}` : ""}${flexOf(h) ? ` · flex: pos ${flexOf(h).map((r) => r + 1).join(", ")}` : ""}">${portrait(heroes.name(h))}${values.has(h) ? `<small>${val(values.get(h))}</small>` : ""}</button>`).join("")}</div></div>`; }).join("")}</div>
+          <div class="dx-grid">${ids.map(tile).join("")}</div></div>`; }).join("")}</div>`}
         </section>
       </div>
       <details class="dx-more"${rostersOpen ? " open" : ""}><summary>Rosters, ranks and who's playing what</summary>
         <div class="dx-rosters">${rosterHtml("X")}${rosterHtml("Y")}</div></details>
       <p class="table-note">Draft Captains Mode for any two teams. The model scores every hero at every step: your chance to win if you pick it, and how much it would give the other team if you leave it. ${esc(MODEL_NOTE)} Rosters with fewer than five known players fill the rest with an average player.</p>`;
     board.querySelector(".dx-more").addEventListener("toggle", (e) => { rostersOpen = e.target.open; });
-    const find = document.getElementById("dx-find");
+    const find = document.getElementById("dx-find"), findRow = board.querySelector(".dx-findrow");
     find.oninput = () => {
       const q = find.value.trim().toLowerCase();
+      // The grid view: the heroes matching, any of them, to play or drag into the grid.
+      if (findRow) {
+        const hits = q ? heroes.ids.filter((h) => heroes.name(h).toLowerCase().includes(q)).slice(0, 16) : [];
+        findRow.hidden = !q;
+        findRow.innerHTML = hits.length ? hits.map(tile).join("") : `<span class="muted">No hero matches "${esc(find.value.trim())}".</span>`;
+        return;
+      }
       board.querySelectorAll(".dx-tile").forEach((b) => { b.hidden = q && !b.dataset.name.includes(q); });
       board.querySelectorAll(".dx-attr").forEach((g) => { g.hidden = !g.querySelector(".dx-tile:not([hidden])"); });
     };
+    placeGrid();
+    gridCtl?.setPlay(play);
   }
 
   // The chart is drawn at the board's width: redraw when the window changes size.
@@ -322,30 +382,26 @@ export async function renderDrafter(src) {
   addEventListener("resize", onResize);
 
   // One handler for the board: play a hero, rewind, undo, reset, change the five.
+  // The hero grid sits in the board but handles its own events.
   board.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-hero], [data-rewind], [data-for], #dx-undo, #dx-reset");
+    if (gridBox.contains(e.target)) return;
+    const t = e.target.closest("[data-hero], [data-rewind], [data-for], [data-view], [data-togrid], #dx-undo, #dx-reset");
     if (!t || t.disabled) return;
-    if (t.dataset.for != null) { s.pickFor = Number(t.dataset.for); s.pickPos = null; }
-    else if (t.dataset.hero != null) {
-      const n = s.done.length;
-      if (n >= s.order.length) return;
-      if (s.order[n][1] === "pick" && pickingFor != null) {
-        s.pins[n] = pickingFor;
-        if (pickingPos != null) {
-          // Taking a position an earlier pick was made for moves that pick: it's refitted.
-          for (const [i, r] of Object.entries(s.posAt)) if (r === pickingPos && teamAt(s.order[i][0]) === teamAt(s.order[n][0])) delete s.posAt[i];
-          s.posAt[n] = pickingPos;
-        }
-      }
-      s.done = [...s.done, Number(t.dataset.hero)];
-      s.pickFor = s.pickPos = null;
+    if (t.dataset.togrid != null) { gridCtl?.add(t.dataset.togrid); return; }
+    if (t.dataset.view != null) {
+      if (t.dataset.view === view) return;
+      view = t.dataset.view;
+      try { localStorage.setItem(VIEW_KEY, view); } catch {}
     }
+    else if (t.dataset.for != null) { s.pickFor = Number(t.dataset.for); s.pickPos = null; }
+    else if (t.dataset.hero != null) playHero(Number(t.dataset.hero));
     else if (t.dataset.rewind != null) cut(Number(t.dataset.rewind));
     else if (t.id === "dx-undo") cut(s.done.length - 1);
     else if (t.id === "dx-reset") cut(0);
     draw();
   });
   board.addEventListener("change", (e) => {
+    if (gridBox.contains(e.target)) return;
     const c = e.target.closest("[data-team]");
     if (!c) return;
     const t = s[c.dataset.team], i = Number(c.dataset.i);
@@ -357,6 +413,7 @@ export async function renderDrafter(src) {
     draw();
   });
   board.addEventListener("change", (e) => {
+    if (gridBox.contains(e.target)) return;
     if (e.target.id === "dx-rolefilter") { s.roleFilter = e.target.checked; draw(); }
     if (e.target.id === "dx-banpos") { s.banPos = e.target.value === "" ? null : Number(e.target.value); draw(); }
     if (e.target.id === "dx-forpos") { s.pickFor = pickingFor; s.pickPos = Number(e.target.value); draw(); }

@@ -302,7 +302,8 @@ export async function renderTeams(src, slug) {
       ${sideSplit}
       ${phases}` : ""],
     // Its chance of each final place (parts/playoffs.js), worked out when the tab is first shown.
-    ["chances", ad2l && !isBye(team) ? `<section class="po" id="tc-box"><div class="panel empty">Working out every outcome…</div></section>` : ""],
+    // The nav menu lists Outcomes for every AD2L team, so a bye slot keeps the tab and says why.
+    ["chances", !ad2l ? "" : isBye(team) ? `<div class="panel empty">A bye week isn't a team, so it has no outcomes.</div>` : `<section class="po" id="tc-box"><div class="panel empty">Working out every outcome…</div></section>`],
     ["lanes", teamLanesHtml(src, h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side), laneCuts_, team)],
     ["map", `${teamMapHtml(src, matches, teams, team, h)}
       ${(() => { const gs = h.games.map(({ m }) => m), mine = (p, m) => p.team === sideOf(m, team);
@@ -330,6 +331,8 @@ export async function renderTeams(src, slug) {
     ${tabs.panels}`;
   wirePlayerTabs();
   wireCharts(app);
+  // The team's own division: on the All Divisions view each team carries it as `league`.
+  const adTeam = ad2l?.teams.find((t) => t.id === team.id), league = adTeam?.league ?? src.key;
   // Drafts tab: load the model and the division's draft file the first time the tab is shown.
   const tdBox = app.querySelector("#td-box");
   if (tdBox) {
@@ -337,7 +340,7 @@ export async function renderTeams(src, slug) {
     const fill = () => {
       if (tdBox.dataset.filled) return;
       tdBox.dataset.filled = "1";
-      import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(src.key)]).then(([cm, data]) => {
+      import("../parts/cmdraft.js").then(async (cm) => [cm, await cm.draftData(league)]).then(([cm, data]) => {
         if (document.getElementById("td-box") !== tdBox) return;
         if (!data) { tdBox.innerHTML = `<p class="muted">The draft model's data for this division hasn't synced yet.</p>`; return; }
         const tname = Object.fromEntries(ad2l.teams.map((t) => [t.id, t.name]));
@@ -364,20 +367,21 @@ export async function renderTeams(src, slug) {
       if (tcBox.dataset.filled) return;
       tcBox.dataset.filled = "1";
       try {
-        const [{ mountPlayoffs }, full] = await Promise.all([import("../parts/playoffs.js"), src.view ? SOURCES[src.key].data() : ad2l]);
+        // On the All Divisions view, the team's own division: its bands and only its teams.
+        const own = src.all ? SOURCES[league] : src;
+        const [{ mountPlayoffs }, full] = await Promise.all([import("../parts/playoffs.js"), src.view || src.all ? SOURCES[league].data() : ad2l]);
         if (document.getElementById("tc-box") !== tcBox) return;
         const ratings = fitRatings(full.teams, full.series, tune(full.teams, full.series));
-        mountPlayoffs(tcBox, src, full, ratings, new Map(), { view: "team", team: team.id });
+        mountPlayoffs(tcBox, own, full, ratings, new Map(), { view: "team", team: team.id });
       } catch (e) { tcBox.innerHTML = errorBox(e); }
     };
     if (!panel.hidden) fill();
     else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   }
   // AD2L: the draft model reads them against my team (the cog's), and my heroes fill the right.
-  const adTeam = ad2l?.teams.find((t) => t.id === team.id);
   wireHeroGrid(app, team, lineups, {
     pubs: ad2l?.pubs ?? null,
-    model: adTeam ? async (me) => { const cm = await import("../parts/cmdraft.js"); return cm.heroGridModelFor({ div: src.key, five: cm.teamFive(adTeam, ad2l.games), name: team.name }, me); } : null,
+    model: adTeam ? async (me) => { const cm = await import("../parts/cmdraft.js"); return cm.heroGridModelFor({ div: league, id: team.id, five: cm.teamFive(adTeam, ad2l.games), name: team.name }, me); } : null,
   });
   wireMapCards(app);
   wireWardMaps(app);

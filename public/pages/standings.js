@@ -200,8 +200,9 @@ export async function renderStandings(src) {
       { endLabels: true, width, gap, height: Math.max(280, 16 + 28 + 18 + (race.length - 1) * gap), xLabels: nights.map((_, i) => `Wk ${i + 1}`), step: top > 12 ? 4 : 2,
         caption: "Game wins after each league night. Hover for every team's total that week; hover a name to pick out one team." });
   };
-  // Not in All: sixty lines on one chart is noise.
-  const raceHtml = nights.length >= 2 && !src.all ? `<div class="race"></div>` : "";
+  // Not in All: sixty lines on one chart is noise. Before the second league night there's no
+  // race yet, but the tab stays (the nav menu lists it) and says so.
+  const raceHtml = src.all ? "" : nights.length >= 2 ? `<div class="race"></div>` : `<div class="panel empty">The race starts after the second league night.</div>`;
 
   const date = (s) => new Date(s * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const oddsBar = (o) => `<div class="st-odds" title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}">${

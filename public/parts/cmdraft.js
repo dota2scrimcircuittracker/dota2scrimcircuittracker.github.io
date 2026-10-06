@@ -301,10 +301,23 @@ export function heroGridModel(ctx, side, heroes, vs = null, { phases = false } =
   return { threats, likely, banvs, banPhases, vs };
 }
 
-// heroGridModel for `them` ({ div, five, name }) against my team (core.js myTeam), or without one
+// heroGridModel for `them` ({ div, id, five, name }) against my team (core.js myTeam), or without one
 // (or when it's them) against `fallback` ({ div, five, name }), else five average players:
 // { them, us (null against average players), vs }. null when the draft file hasn't synced.
-export async function heroGridModelFor(them, me, fallback = null) {
+// Kept per (them, me, fallback): the reads are many full drafts' work, and the Drafter asks
+// again each time its grid switches team. Only the latest few are kept.
+const gridModels = new Map();
+const fiveKey = (t) => t && [t.div, t.id ?? "", ...(t.five ?? []).map((p) => p?.key ?? "")].join(",");
+export function heroGridModelFor(them, me, fallback = null) {
+  const key = JSON.stringify([fiveKey(them), me ? `${me.div}:${me.id}` : "", fiveKey(fallback)]);
+  if (!gridModels.has(key)) {
+    const run = gridModelRead(them, me, fallback).catch((e) => { gridModels.delete(key); throw e; });
+    gridModels.set(key, run);
+    if (gridModels.size > 8) gridModels.delete(gridModels.keys().next().value);
+  }
+  return gridModels.get(key);
+}
+async function gridModelRead(them, me, fallback) {
   let vs = fallback;
   if (me && !(me.div === them.div && String(me.id) === String(them.id))) {
     const dd = await divLite(me.div).catch(() => null);
