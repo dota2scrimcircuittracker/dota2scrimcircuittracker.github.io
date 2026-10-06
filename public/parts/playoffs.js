@@ -105,7 +105,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       }).join("");
       const lastSeed = split ? 8 : Math.min(8, dv.rows.length);
       const seedTies = dv.settled.filter((x) => x.place < lastSeed);
-      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, coin flip):
+      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, 1v1 mid):
         ${seedTies.map((x) => `${ord(x.place)}: ${esc(name[x.above])} ahead of ${esc(name[x.below])} on ${esc(x.detail)}`).join(" · ")}.</p>` : "";
 
       // Table on the left, week 8 on the right (stacked on narrow screens).
@@ -190,9 +190,23 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   };
 
   const howHtml = `<details class="how"><summary>How the tiebreakers work</summary>
-      <p>The table counts game wins (a bye is 1–0). <b>SoS</b> (strength of schedule) is the total wins of every opponent a team has played; a team met twice counts twice.</p>
-      <p>A tie <b>across a dividing line</b> (upper/lower bracket, playoffs/out${split ? ", Aegis/Heroic" : ""}) is played off in week 8. The tied teams are ranked by SoS (then head to head, record against the highest common opponent, and a 1v1 mid), and the rules' table sets the games: 1 place for 2 teams is a Bo3; 1 place for 3 is 2nd v 3rd then the winner v 1st (Bo1s); 1 place for 4 is 1v4 and 2v3, winners meet; 2 places for 3 puts the best SoS through and 2nd v 3rd plays a Bo3; 2 places for 4 or more is 1v4 and 2v3 (Bo3s), 5th and below out; with more places the best SoS teams go through until it's one of those.</p>
-      <p>A tie that only decides <b>seed order</b> isn't played: SoS, then head to head, then record against the highest common opponent, then a coin flip. Where it comes down to a 1v1 or a coin flip, the page shows the model's stronger team.</p>
+      <p>The table counts game wins (a bye is 1–0). <b>SoS</b> (strength of schedule) is the total wins of every opponent a team has played; a team met twice counts twice. It's worked out on the final table, so a result still to come moves the SoS of everyone who played those two teams.</p>
+      <p>A tie <b>across a dividing line</b> (upper/lower bracket, lower bracket/out${split ? ", Aegis/Heroic" : ""}) is played off in week 8. The tied teams are ranked by SoS, and the rules' table sets the games ("1 SoS" is the best SoS of the tied teams):</p>
+      <ul class="how-list">
+        <li>1 slot, 2 teams: Bo3.</li>
+        <li>1 slot, 3 teams: 2 SoS v 3 (Bo1), the winner plays 1 (Bo1).</li>
+        <li>1 slot, 4 teams: 1 SoS v 4, 2 v 3, the winners play for the slot.</li>
+        <li>2 slots, 3 teams: 1 SoS in, 2 v 3 (Bo3).</li>
+        <li>2 slots, 4+ teams: 1 SoS v 4 (Bo3), 2 v 3 (Bo3), 5+ SoS out.</li>
+        <li>3 slots, 4 teams: 1 and 2 SoS in, 3 v 4 (Bo3).</li>
+        <li>3 slots, 5 teams: 1 SoS in, then as 2 slots, 4 teams.</li>
+        <li>3 slots, 6+ teams: 1 SoS in, 6+ out, then as 2 slots, 4 teams.</li>
+        <li>4 slots, 5 teams: 1, 2 and 3 SoS in, 4 v 5 (Bo3).</li>
+        <li>4 slots, 6 teams: 1 and 2 SoS in, then as 2 slots, 4 teams.</li>
+      </ul>
+      <p>A case the rules don't list (1 slot for 5+ teams, say) follows the nearest one and is marked on the Bracket tab. A tie in SoS is broken by head to head, then record against the highest common opponent, then a single 1v1 solo mid between a player nominated by each team.</p>
+      <p>A tie that only decides <b>seed order</b> isn't played off: SoS, then head to head, then record against the highest common opponent. If none of those break it, the 1v1 solo mid decides the higher seed.</p>
+      <p><b>On this page.</b> The Bracket tab shows one way it goes: the model's winner of each week 8 game, and the model's stronger team where it comes down to a 1v1 mid. Possibilities counts every way: each week 8 game both ways (half each, or by the model's odds) and each 1v1 mid 50/50 (the model rates teams, not mid players; three or more teams level take every order equally).</p>
       <p><b>Scores.</b> Each game is the model's one-game chance, played independently. The score shown is the winner's likeliest: in a Bo3 that's always 2–0, because 2–1 needs the favourite to drop a game. A close Bo3 shows up in the odds below it (2–1 either way adds up). In a Bo5 the favourite's likeliest score is 3–1 unless it wins over 2 games in 3, then 3–0.</p>
     </details>`;
 
@@ -243,7 +257,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       <div class="po-tcards">${cards.map((c) => `<div class="po-stat"><span>${esc(c.label)}</span><b>${c.value}${c.note ? ` <i>${c.note}</i>` : ""}</b></div>`).join("")}</div>
       <div class="po-tbars">${bars}</div>
       ${detailHtml(P, dv, sel)}
-      <p class="table-note"><button type="button" class="linkish" data-goodds>Every team's chances on Predict →</button></p>`;
+      <p class="table-note">Ties on wins go by AD2L's tiebreakers: SoS first, then head to head and highest common opponent, a week 8 playoff across a dividing line, and a 1v1 mid (counted 50/50) if nothing else splits them. <button type="button" class="linkish" data-goodds>Every team's chances on Predict →</button></p>`;
   };
 
   const weightBar = () => `<div class="pd-toggle po-weightbar" role="group" aria-label="How outcomes count"><span class="pd-lbl">Count</span>
@@ -283,7 +297,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     };
 
     return `${weightBar()}${lead}${P.divisions.map(divHtml).join("")}
-      <p class="table-note">Seed-order ties that come down to a coin flip go to the model's stronger team, as on the other tabs, so a share here can read 0% where a coin flip could still do it.</p>`;
+      <p class="table-note">Ties on wins are broken as AD2L's rules say: across a dividing line, a week 8 tiebreaker (counted both ways); for seed order, SoS, head to head, record against the highest common opponent, then a 1v1 mid (counted 50/50).</p>
+      ${howHtml}`;
   };
 
   const detailHtml = (P, dv, sel) => {
