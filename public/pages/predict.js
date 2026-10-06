@@ -10,6 +10,7 @@ import { loading, errorBox } from "../parts/lanes.js";
 import { lastNight, sinceLabel } from "../parts/ranks.js";
 import { draftHtml, upload } from "./upload.js";
 import { mountPlayoffs } from "../parts/playoffs.js";
+import { pageTabs, PREDICT_TABS } from "../lib/pagetabs.js";
 
 // ---------- Predictions (AD2L) ----------
 
@@ -225,16 +226,16 @@ export async function renderPredict(src) {
       <p>The model's call is bold: it takes the favourite to win 2–0, even when a 1–1 split is the single likeliest result, and only calls 1–1 when the teams are a true coin flip (per-game odds within ${TIE_EDGE * 100} points of 50%). The odds bar stays honest: results so far haven't predicted the next week much better than a coin flip, so the settings lean on medals and most series look close. Replayed over the season, the bold calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>The two games in a series aren't independent: whoever is better on the night tends to win both, and only about a third of series so far have ended 1–1. So an even match is 33% / 33% / 33%, not the 25% / 50% / 25% that two coin flips would give. Settings in use: pull ${params.lambda}, medal weight ${params.beta}.</p>
     </details>`;
-  const tabs = playerTabs([
-    ["calls", "Predictions", callsHtml],
-    ["bracket", "Bracket", `<section class="po" id="po-bracket"></section>`],
-    ["odds", "Possibilities", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
-  ], { store: "predictTab", label: "Predict sections" });
-  app.innerHTML = `${pageHead(kicker, "Predictions", `Call each series: 2–0 either way or a 1–1 split. One point per correct call. You can change a pick until the series starts.`)}
+  const tabs = playerTabs(pageTabs(PREDICT_TABS, src, [
+    ["calls", callsHtml],
+    ["bracket", `<section class="po" id="po-bracket"></section>`],
+    ["odds", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
+  ]), { store: "predictTab", label: "Predict sections" });
+  app.innerHTML = `${pageHead(kicker, "Predictions", `Call each series: 2–0 either way or a 1–1 split. One point per correct call. You can change a pick until the series starts.`, tabs.bar)}
     ${nameBarHtml(name)}
     ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
     <div id="pred-msg"></div>
-    ${tabs.bar}${tabs.panels}`;
+    ${tabs.panels}`;
   wirePlayerTabs();
 
   const input = wireNameBar(() => renderPredict(src));

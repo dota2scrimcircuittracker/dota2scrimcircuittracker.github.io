@@ -414,7 +414,7 @@ export async function renderMatch(id, src) {
   ], { store: "gameTab", label: "Game sections" });
 
   app.innerHTML = `
-    <div class="kicker gm-back">${crumbs(src, ad2l ? ["Weekly", src.base] : ["Standings", src.base], `${m.team_a} vs ${m.team_b}`)}${ad2l && !m.unticketed ? `<span class="gm-ext"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a></span>` : ""}</div>
+    <div class="kicker gm-back">${crumbs(src, ad2l ? ["Content", src.base] : ["Standings", src.base], `${m.team_a} vs ${m.team_b}`)}${ad2l && !m.unticketed ? `<span class="gm-ext"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a></span>` : ""}</div>
     <section class="banner compact">
       ${plate("a")}${plate("b")}
       <div class="banner-meta">${esc(m.game_mode || "Match")} · <b>${dur(m.duration_sec)}</b>${m.createdAt ? ` · ${shortDate(m.createdAt)}` : ""}</div>

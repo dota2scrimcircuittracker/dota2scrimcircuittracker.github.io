@@ -154,16 +154,16 @@ export const TOPICS = [
     player: { tab: "heroes", at: "recent_pubs" } },
   { id: "tier", title: "Tier list", key: "tier",
     words: ["tier", "tiers", "tier list", "rating", "ratings", "rank", "ranking", "rankings", "grade"],
-    player: { tab: "stats", at: "tier-open" }, league: { path: "players", at: "tier_list" } },
+    player: { tab: "stats", at: "tier-open" }, league: { path: "players", tab: "tiers", at: "tier_list" } },
   { id: "hero_tiers", title: "Hero tier list", key: "hero_power_list",
     words: ["hero tier", "hero tiers", "hero tier list", "meta", "strongest heroes", "best heroes"],
     league: { path: "heroes", tab: "tiers", at: "hero_power_list" } },
   { id: "stat_leaders", title: "Stat leaders", key: "stat_leaders",
     words: ["leaders", "leader", "leaderboard", "stat leaders", "top", "most"],
-    league: { path: "players", at: "stat_leaders" } },
+    league: { path: "players", tab: "leaders", at: "stat_leaders" } },
   { id: "medal", title: "Medal vs rating", key: "medal_rating",
     words: ["medal", "medals", "mmr"],
-    league: { path: "players", at: "medal_rating" } },
+    league: { path: "players", tab: "medal", at: "medal_rating" } },
   { id: "sos", title: "Strength of schedule", key: "sos",
     words: ["strength of schedule", "sos", "schedule strength", "difficulty"],
     league: { path: "", tab: "table", at: "sos", ad2l: true } },
@@ -184,14 +184,15 @@ export const TOPICS = [
     league: { path: "week" } },
 ];
 
-// League pages, matched by name. `tabs`: "standings" = lib/pagetabs.js STANDINGS_TABS.
+// League pages, matched by name. `tabs`: a name ("standings", "players", "predict", "drafter")
+// is that page's list in lib/pagetabs.js.
 export const PAGES = [
   { id: "page_standings", title: "Standings", words: ["standings", "table", "ladder", "teams"], path: "", tabs: "standings" },
-  { id: "page_weekly", title: "Weekly", words: ["weekly", "week", "weeks", "games", "matches", "results"], path: "week" },
-  { id: "page_players", title: "Players", words: ["players", "player list"], path: "players" },
+  { id: "page_weekly", title: "Content", words: ["content", "weekly", "week", "weeks", "games", "matches", "results"], path: "week" },
+  { id: "page_players", title: "Players", words: ["players", "player list"], path: "players", tabs: "players" },
   { id: "page_heroes", title: "Heroes", words: ["heroes", "hero list"], path: "heroes", tabs: [["tiers", "Hero tiers"], ["players", "Players on heroes"], ["table", "All heroes"]] },
-  { id: "page_predict", title: "Predict", words: ["predict", "prediction", "predictions", "odds"], path: "predict" },
-  { id: "page_drafter", title: "Drafter", words: ["drafter", "draft tool", "simulator", "practice draft"], path: "drafter", ad2l: true },
+  { id: "page_predict", title: "Predict", words: ["predict", "prediction", "predictions", "odds"], path: "predict", tabs: "predict" },
+  { id: "page_drafter", title: "Drafter", words: ["drafter", "draft tool", "simulator", "practice draft"], path: "drafter", tabs: "drafter", ad2l: true },
   { id: "page_upload", title: "Upload", words: ["upload", "replay", "replays", "submit"], path: "upload" },
 ];
 

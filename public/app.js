@@ -2,12 +2,12 @@ import { HEROES } from "./lib/heroes.js";
 import { listTeams } from "./lib/teams.js";
 import { info, wireInfo } from "./lib/glossary.js";
 import { countVisit } from "./lib/visits.js";
-import { buildSearchIndex, searchIndex } from "./lib/search.js";
+import { searchIndex } from "./lib/search.js";
 import { loadSearch } from "./parts/searchindex.js";
 import { DIVISIONS as DIVISION_LIST, slugOf, fullName, divisionCss, SEASON } from "./lib/divisions.js";
 import { esc, DIVISIONS, SOURCES, TM_KEY, timeSel, gameWeeker, seriesWeek, shortDate, divLite, allMatches, addressOf, routedAt, setRoutedAt, navigate, goToSection, showTab, app, tabInUrl, heroHref, portrait, here, bySlug, timeSrc, allLoad, gameLeague, divUploaded, setTitle, myTeam, setMyTeam, myTeamOptions, teamFromOption } from "./core.js";
 import { weekOfFn } from "./parts/lanes.js";
-import { tabList, TEAM_TABS, PLAYER_TABS, HERO_TABS, STANDINGS_TABS } from "./lib/pagetabs.js";
+import { tabList, HERO_TABS, PLAYERS_PAGE_TABS, PREDICT_TABS, DRAFTER_MODES } from "./lib/pagetabs.js";
 import { renderMatch, renderMatches } from "./pages/games.js";
 import { renderHero } from "./pages/hero.js";
 import { renderHeroes } from "./pages/heroes.js";
@@ -286,37 +286,25 @@ function focusPage() {
   h.focus({ preventScroll: true });
 }
 
-// Nav dropdowns: hovering Teams, Weekly, Players or Heroes lists that tab's teams, weeks,
-// players or heroes; hovering one of those shows its page's tabs on the right (a week shows
-// its games). Built from the league's data the first time a tab opens. Mouse hover where
-// the device has one; from the keyboard, Arrow Down on a tab opens it.
-// The side links come from lib/pagetabs.js, the same list the pages' tab bars use.
+// Nav dropdowns: Teams lists the teams, Content the weeks, Heroes the heroes (hovering one shows
+// its page's tabs on the right), and Players, Predict and Drafter their page's own tabs. Built
+// from the league's data the first time a tab opens. Mouse hover where the device has one; from
+// the keyboard, Arrow Down on a tab opens it. Tab lists come from lib/pagetabs.js, the same
+// lists the pages' tab bars use.
 const tabsOf = (list, src) => (href) => tabList(list, src).map(([id, label]) => [label, `${href}?tab=${id}`]);
 const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-// Each returns { head: [[label, href]], items: [{ name, sub, href, group, side: [[label, href]] }] }.
+// Each returns { items: [{ name, sub, href, group, side: [[label, href]] }] }; a menu whose
+// items have no `side` is a plain list.
 async function teamMenu(src) {
-  const tabs = tabsOf(TEAM_TABS, src);
-  if (!src.ad2l) {
-    const items = listTeams(await allMatches()).map((t) => ({ name: t.name, href: `#/teams/${t.slug}` })).sort(byName);
-    return { items: items.map((t) => ({ ...t, side: tabs(t.href) })) };
-  }
+  if (!src.ad2l) return { items: listTeams(await allMatches()).map((t) => ({ name: t.name, href: `#/teams/${t.slug}` })).sort(byName) };
   const d = await src.data();
-  const items = d.teams.map((t) => ({ name: t.name, href: `${src.root}/teams/${t.id}`, group: src.all ? t.division : null,
-    sub: t.players.slice(0, 5).map((p) => p.name).join(", ") }))
+  const items = d.teams.map((t) => ({ name: t.name, href: `${src.root}/teams/${t.id}`, group: src.all ? t.division : null }))
     .sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || byName(a, b));
-  const head = tabsOf(STANDINGS_TABS, src)(`${src.root}/`);
-  return { head, items: items.map((t) => ({ ...t, side: tabs(t.href) })) };
-}
-async function playerMenu(src) {
-  // The header search's index, built for this league only: rostered players, then stand-ins.
-  const idx = src.ad2l
-    ? buildSearchIndex([{ key: src.key, label: "", root: src.root, data: await src.data() }])
-    : buildSearchIndex([], { label: "", matches: await allMatches() });
-  const items = idx.filter((e) => e.kind === "player")
-    .map((p) => ({ name: p.name, href: p.href, group: p.team ?? "No team", sub: p.standin ? "Stand-in" : p.captain ? "Captain" : "", side: tabsOf(PLAYER_TABS, src)(p.href) }))
-    .sort((a, b) => a.group.localeCompare(b.group, undefined, { sensitivity: "base" }) || byName(a, b));
   return { items };
 }
+// A page's own tabs as a plain list (Players, Predict, Drafter).
+const pageMenu = (list, path) => async (src) => ({ items: tabList(list, src).map(([id, label]) => ({ name: label, href: `${src.ad2l ? src.root : "#"}/${path}?tab=${id}` })) });
+const playerMenu = pageMenu(PLAYERS_PAGE_TABS, "players");
 async function heroMenu(src) {
   const games = new Map();
   for (const m of await src.load()) for (const h of new Set((m.players ?? []).map((p) => p.hero).filter(Boolean))) games.set(h, (games.get(h) ?? 0) + 1);
@@ -328,20 +316,15 @@ async function weekMenu(src) {
   const weeks = [...new Set(games.map(weekOf))].sort((a, b) => b - a);
   const first = weeks.at(-1), base = src.ad2l ? `${src.root}/week` : "#/week";
   const items = weeks.map((w, i) => {
-    const gs = games.filter((m) => weekOf(m) === w).sort((a, b) => a.createdAt - b.createdAt);
-    // A series' games share a matchup: number them ("· Game 2").
-    const seen = new Map();
-    const label = (m) => {
-      const pair = [m.team_a, m.team_b].sort().join("\n"), n = (seen.get(pair) ?? 0) + 1;
-      seen.set(pair, n);
-      return `${m.team_a ?? "?"} vs ${m.team_b ?? "?"}${n > 1 ? ` · Game ${n}` : ""}`;
-    };
-    return { name: `Week ${Math.round((w - first) / (7 * 864e5)) + 1}`, href: `${base}/${i}`, sub: `${shortDate(new Date(w))} · ${gs.length} game${gs.length === 1 ? "" : "s"}`,
-      side: [["Whole week", `${base}/${i}`], ...gs.map((m) => [label(m), src.link(m)])] };
+    const n = games.filter((m) => weekOf(m) === w).length;
+    return { name: `Week ${Math.round((w - first) / (7 * 864e5)) + 1}`, href: `${base}/${i}`, sub: `${shortDate(new Date(w))} · ${n} game${n === 1 ? "" : "s"}` };
   });
   return { items };
 }
-const NAV_MENUS = { standings: teamMenu, teams: teamMenu, players: playerMenu, heroes: heroMenu, week: weekMenu };
+const NAV_MENUS = { standings: teamMenu, teams: teamMenu, players: playerMenu, heroes: heroMenu, week: weekMenu,
+  predict: pageMenu(PREDICT_TABS, "predict"), drafter: pageMenu(DRAFTER_MODES, "drafter") };
+// Scrim Predict has no tabs, so no dropdown.
+const hasMenu = (key, src) => !!NAV_MENUS[key] && !(key === "predict" && !src.ad2l);
 let navSrc = null;
 const canHover = matchMedia("(hover: hover) and (pointer: fine)");
 const navItemOf = (el) => el?.closest?.(".nav-item");
@@ -375,8 +358,8 @@ async function openNavMenu(it) {
     group = x.group ?? group;
     return `${g}<a class="nd-item" href="${x.href}" data-i="${i}">${x.hero ? portrait(x.hero, "nd-face") : ""}<span class="nd-name">${esc(x.name)}</span>${x.sub ? `<span class="nd-sub">${esc(x.sub)}</span>` : ""}</a>`;
   }).join("");
-  drop.innerHTML = `${menu.head ? `<div class="nd-head">${menu.head.map(([label, href]) => `<a href="${href}">${esc(label)}</a>`).join("")}</div>` : ""}
-    <div class="nd-body"><div class="nd-list">${list}</div><div class="nd-side" aria-live="polite"></div></div>`;
+  const sided = menu.items.some((x) => x.side);
+  drop.innerHTML = `<div class="nd-body${sided ? "" : " solo"}"><div class="nd-list">${list}</div>${sided ? `<div class="nd-side" aria-live="polite"></div>` : ""}</div>`;
   drop._items = menu.items;
   // Start on the page you're on (a team's page opens its team), else the first entry.
   const at = here().split("?")[0], cur = menu.items.findIndex((x) => x.href === at);
@@ -388,7 +371,9 @@ function pickNavItem(drop, i, scroll = false) {
   if (!x) return;
   drop.querySelectorAll(".nd-item").forEach((a) => a.classList.toggle("on", a.dataset.i === String(i)));
   if (scroll) drop.querySelector(`.nd-item[data-i="${i}"]`)?.scrollIntoView({ block: "nearest" });
-  drop.querySelector(".nd-side").innerHTML = `<a class="nd-title" href="${x.href}">${esc(x.name)}</a>
+  const side = drop.querySelector(".nd-side");
+  if (!side || !x.side) return;
+  side.innerHTML = `<a class="nd-title" href="${x.href}">${esc(x.name)}</a>
     ${x.side.map(([label, href]) => `<a class="nd-tab" href="${href}">${esc(label)}</a>`).join("")}`;
 }
 // Keep the dropdown on screen: shift it left when it would run off the right edge.
@@ -538,8 +523,8 @@ export function route() {
     else { section = "matches"; tm = true; page = () => renderMatches(t); }
   }
   document.getElementById("nav").innerHTML = src.nav.map(([href, key, label, cls]) => {
-    const a = `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}"${key === section ? ' aria-current="page"' : ""}${NAV_MENUS[key] ? ' aria-haspopup="true" aria-expanded="false"' : ""}>${label}</a>`;
-    return NAV_MENUS[key] ? `<div class="nav-item" data-menu="${key}">${a}<div class="nav-drop" hidden></div></div>` : a;
+    const a = `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}"${key === section ? ' aria-current="page"' : ""}${hasMenu(key, src) ? ' aria-haspopup="true" aria-expanded="false"' : ""}>${label}</a>`;
+    return hasMenu(key, src) ? `<div class="nav-item" data-menu="${key}">${a}<div class="nav-drop" hidden></div></div>` : a;
   }).join("");
   navSrc = src;
   settingsTables.href = `${src.ad2l ? src.root : "#"}/search?table=team`;

@@ -29,7 +29,13 @@ export const pct = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
 export const dur = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 export const when = (d) => (d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "");
 
-export const pageHead = (kicker, title, sub = "") => `
+// With `bar` (a playerTabs bar), the page's tabs sit on the title's line, to the right, as on
+// the team, player and hero pages.
+export const pageHead = (kicker, title, sub = "", bar = "") => bar ? `
+  <header class="page-head pp-head reveal">
+    <div class="kicker" style="--i:0">${kicker}</div>
+    <div class="pp-row" style="--i:1"><h1>${title}</h1>${sub ? `<p class="pp-sub">${sub}</p>` : ""}${bar}</div>
+  </header>` : `
   <header class="page-head reveal">
     <div class="kicker" style="--i:0">${kicker}</div>
     <h1 style="--i:1">${title}</h1>
@@ -285,7 +291,7 @@ export const SOURCES = {
     key: "scrim", kicker: "The ledger", load: allMatches,
     link: (m) => `#/match/${m.id}`, base: "#/scrims",
     empty: `The ledger is empty. <a href="#/upload">Upload the first scrim</a>.`,
-    nav: [["#/scrims", "matches", "Standings"], ["#/week", "week", "Weekly"], ["#/teams", "teams", "Teams"], ["#/players", "players", "Players"], ["#/heroes", "heroes", "Heroes"], ["#/predict", "predict", "Predict"], ["#/upload", "upload", "Upload", "nav-cta"]],
+    nav: [["#/scrims", "matches", "Standings"], ["#/week", "week", "Content"], ["#/teams", "teams", "Teams"], ["#/players", "players", "Players"], ["#/heroes", "heroes", "Heroes"], ["#/predict", "predict", "Predict"], ["#/upload", "upload", "Upload", "nav-cta"]],
   },
 };
 // AD2L divisions: `ad2l` marks the PlayOn/OpenDota pages, `root` prefixes their routes
@@ -298,7 +304,7 @@ for (const [key, dv] of Object.entries(DIVISIONS)) {
     division: dv.name, kicker: `AD2L · ${dv.name}`, load: () => divGames(SOURCES[key]),
     link: (m) => `${root}/game/${m.id}`, base: `${root}/week`,
     empty: `No ticketed ${dv.short} games found yet.`,
-    nav: [[`${root}/`, "standings", "Teams"], [`${root}/week`, "week", "Weekly"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/drafter`, "drafter", "Drafter"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
+    nav: [[`${root}/`, "standings", "Teams"], [`${root}/week`, "week", "Content"], [`${root}/players`, "players", "Players"], [`${root}/heroes`, "heroes", "Heroes"], [`${root}/predict`, "predict", "Predict"], [`${root}/drafter`, "drafter", "Drafter"], [`${root}/upload`, "upload", "Upload", "nav-cta"]],
   };
   // Sub-division views (#/heroic/a/..., #/heroic/b/...): same pages and league key, data
   // narrowed to that sub-division. Plain #/<key>/... is Combined.
@@ -353,7 +359,7 @@ SOURCES.all = {
   division: `${SEASON.name} All Divisions`, kicker: `AD2L · ${SEASON.name} · Every division`, load: allLoad,
   link: (m) => `${SOURCES[gameLeague.get(m.id)]?.root ?? "#/all"}/game/${m.id}`, base: "#/all/week",
   empty: "No ticketed games found yet.",
-  nav: [["#/all/", "standings", "Teams"], ["#/all/week", "week", "Weekly"], ["#/all/players", "players", "Players"], ["#/all/heroes", "heroes", "Heroes"]],
+  nav: [["#/all/", "standings", "Teams"], ["#/all/week", "week", "Content"], ["#/all/players", "players", "Players"], ["#/all/heroes", "heroes", "Heroes"]],
 };
 bySlug.all = "all";
 

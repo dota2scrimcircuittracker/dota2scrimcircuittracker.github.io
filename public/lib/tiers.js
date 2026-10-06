@@ -297,6 +297,10 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     const roleGames = { core: 0, support: 0 };
     for (const r of a.rows) roleGames[r.role]++;
     const role = roleGames.core >= roleGames.support ? "core" : "support";
+    // The exact position played most (ties go to the lower number).
+    const posGames = [0, 0, 0, 0, 0, 0];
+    for (const r of a.rows) posGames[r.pos]++;
+    const pos = posGames.indexOf(Math.max(...posGames.slice(1)), 1);
 
     // Stat points and survival, per role, then weighted by games in each role.
     const roles = [];
@@ -379,7 +383,7 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     return {
       key: a.key, name: a.p.name, account_id: a.p.account_id ?? null, rank_tier: a.rank_tier,
       team: teamEntries[0]?.[0] ?? null, standin: teamEntries.length > 0 && teamEntries[0][1] === 0,
-      role, games, wins, role_games: roleGames,
+      role, pos, games, wins, role_games: roleGames,
       roles: roles.sort((x, y) => (x.role === role ? -1 : y.role === role ? 1 : 0)),
       // Per series: stat points, and a score = those × that series' opponent factor × the
       // season's survival, consistency and winning. Both average (weighted by games) to the
