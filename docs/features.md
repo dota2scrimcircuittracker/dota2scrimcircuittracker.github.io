@@ -494,7 +494,8 @@ shrunk-resolution problem above, not a finding problem.
     7–8). Counted equally (a tiebreaker splits its outcome in half) or by the model's odds.
     Ties on wins follow the rules on each outcome's own final table (SoS from those results):
     across a line, week 8 both ways; teams are ranked (for the week 8 table and for seed order)
-    by SoS → head to head → highest common opponent → a 1v1 solo mid, the 1v1 counted 50/50
+    by SoS → head to head → highest common opponent → a 1v1 solo mid (only for 1st or a line;
+    any other seed order is a coin flip), both counted 50/50
     (every order the same for 3+ teams) whatever the weighting, one result per group of teams.
     "How the tiebreakers work" sits under the grid too. Under it, per division, two tables:
     **Possible week 8 tiebreakers** (chance, line, teams level, wins, places, the rules' format
