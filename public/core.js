@@ -852,3 +852,43 @@ export const addressOf = (h) => sharePath(h) ?? `/${h === "#/" ? "" : h}`;
 export let routedAt = null;
 // app.js moves it too (an imported binding is read-only there).
 export const setRoutedAt = (v) => { routedAt = v; };
+// In-app navigation to "#/x?tab=…&at=…": move the address without a page load (every query
+// parameter rides along), then route as a hash change would.
+export function navigate(href) {
+  const [h, q = ""] = href.split("?");
+  const params = new URLSearchParams(q), tab = params.get("tab");
+  const u = new URL(addressOf(h), location.href);
+  for (const [k, v] of params) u.searchParams.set(k, v);
+  history.pushState(tab ? { tab } : null, "", u.pathname + u.search + u.hash);
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+}
+// Scroll an element to just under the sticky header.
+export function scrollToSection(el) {
+  scrollTo({ top: scrollY + el.getBoundingClientRect().top - (document.querySelector(".top")?.offsetHeight ?? 0) - 12 });
+}
+// Site search links end in &at=<glossary key or element id>. After a page draws, scroll to that
+// section in the open tab and flash it once; then drop `at` from the address so a copied link
+// doesn't flash again. Sections some pages fill a moment later get one more look.
+export function goToSection() {
+  const u = new URL(location.href), at = u.searchParams.get("at");
+  if (!at) return;
+  u.searchParams.delete("at");
+  history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+  setRoutedAt(location.href);
+  const find = () => {
+    const panel = app.querySelector(".pp-panel:not([hidden])") ?? app;
+    const btn = panel.querySelector(`[data-info="${CSS.escape(at)}"]`);
+    if (btn) return btn.closest(".card, .td-tile") ?? btn.closest("h2, h3") ?? btn.parentElement;
+    return panel.querySelector(`#${CSS.escape(at)}`);
+  };
+  const flash = (el) => {
+    scrollToSection(el);
+    el.classList.remove("search-flash");
+    void el.offsetWidth; // restart the animation
+    el.classList.add("search-flash");
+    el.addEventListener("animationend", () => el.classList.remove("search-flash"), { once: true });
+  };
+  const el = find();
+  if (el) return flash(el);
+  setTimeout(() => { const later = find(); if (later) flash(later); }, 600);
+}

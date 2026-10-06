@@ -14,7 +14,7 @@ import { teamSplits, playerPairs } from "../lib/combat.js";
 import { lengthHtml } from "../lib/combat-charts.js";
 import { tune, fitRatings } from "../lib/predict.js";
 import { isBye } from "../lib/playoffs.js";
-import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt } from "../core.js";
+import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt, scrollToSection } from "../core.js";
 import { pageTabs, TEAM_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox, laneCutsOf, teamLanesHtml } from "../parts/lanes.js";
 import { tierRef } from "../parts/tiers.js";
@@ -200,7 +200,7 @@ export async function renderTeams(src, slug) {
         ${others.length ? `<li class="rs-more">${plural(others.length, "stand-in")}: ${others.map((p) => playerLink(src, p)).join(", ")}</li>` : ""}</ul>`
     : `<ul class="roster">${h.players.slice(0, 7).map((p) => `<li>${playerLink(src, p)}${tierTag(p.key)}<span class="tag">${plural(p.games, "game")}</span></li>`).join("") || `<li class="muted">No player data${h.private_games ? " (private scrims only)" : ""}.</li>`}</ul>`;
 
-  const opponents = h.opponents.length ? `<h2>Head to head</h2>
+  const opponents = h.opponents.length ? `<h2 id="head-to-head">Head to head</h2>
     <div class="h2h reveal">${h.opponents.map((o, i) => `<div class="h2h-row ${o.wins * 2 > o.games ? "up" : o.wins * 2 < o.games ? "down" : "even"}" style="--i:${Math.min(i, 12)}">
       <span class="h2h-name">${teamLink(src, o.name, o.id)}</span>
       <span class="h2h-bar" aria-hidden="true"><i style="width:${Math.round((o.wins / o.games) * 100)}%"></i></span>
@@ -297,7 +297,7 @@ export async function renderTeams(src, slug) {
         ...(h.bans[0] ? [["Bans most", esc(h.bans[0].hero), `${plural(h.bans[0].n, "ban")} in ${plural(h.drafted, "draft")}`]] : []),
         ...(h.banned_against[0] ? [["Banned against", esc(h.banned_against[0].hero), `${h.banned_against[0].n} time${h.banned_against[0].n === 1 ? "" : "s"} by opponents`]] : []),
       ])}
-      <h2>Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
+      <h2 id="hero-pool">Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
       ${heroGridHtml(team, lineups, { pubs: ad2l?.pubs ?? null })}
       ${sideSplit}
       ${phases}` : ""],
@@ -391,7 +391,7 @@ export async function renderTeams(src, slug) {
     document.getElementById(`pp-tab-${b.dataset.gotoTab}`)?.click();
     // Then down to the section, just under the sticky header.
     const to = b.dataset.gotoAnchor && document.getElementById(b.dataset.gotoAnchor);
-    if (to) scrollTo({ top: scrollY + to.getBoundingClientRect().top - (document.querySelector(".top")?.offsetHeight ?? 0) - 12 });
+    if (to) scrollToSection(to);
   }));
   // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
   app.querySelector(".ph-segs")?.addEventListener("click", (e) => {
