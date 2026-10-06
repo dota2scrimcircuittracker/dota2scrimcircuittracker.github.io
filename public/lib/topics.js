@@ -16,6 +16,12 @@ export const TABLE_WORDS = ["table", "tables", "compare", "comparison", "all tea
   "all players", "every player", "each player", "all heroes", "every hero", "each hero", "rank", "ranked", "ranking", "rankings", "league wide"];
 export const KIND_WORDS = { team: "team", teams: "team", player: "player", players: "player", hero: "hero", heroes: "hero" };
 
+// Asks for a rate over game time ("kills per minute", "kpm"): a topic's table swaps each column
+// for its per-minute one (lib/tables.js `pm`) where there is one. "a" is a stop word, so "a minute"
+// reads as "minute" alone ("minutes" stays game length). A shorthand also names its topic.
+export const PER_MINUTE_WORDS = ["per minute", "per min", "each minute", "every minute", "a minute", "a min"];
+export const PER_MINUTE_SHORT = { kpm: "kills" };
+
 export const RATE_WORDS = ["win", "wins", "winning", "rate", "rates", "wr", "winrate", "percent", "pct", "ratio"];
 
 // Section headings with an id (no info button to find them by).

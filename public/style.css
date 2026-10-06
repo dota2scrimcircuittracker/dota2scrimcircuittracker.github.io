@@ -333,7 +333,7 @@ nav a.nav-cta:hover { background: #f5c862; color: var(--on-accent); }
 /* Header search: players and teams in every league. Each result wears its league's colour. */
 .search { position: relative; }
 .search input {
-  width: 220px; font: 400 13px/1 var(--body); color: var(--bone); background: var(--stone);
+  width: 250px; font: 400 13px/1 var(--body); color: var(--bone); background: var(--stone);
   border: 1px solid var(--seam); border-radius: 2px; padding: 8px 30px 8px 10px;
 }
 .search input::placeholder { color: var(--dim); }

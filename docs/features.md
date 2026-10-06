@@ -45,7 +45,9 @@ and change it: [maintaining.md](maintaining.md).
   fixed by adding words there. Spec: `docs/superpowers/specs/2026-10-06-site-search-design.md`.
   **Tables:** a search that asks for every team, player or hero ("compare first blood",
   "radiant win rate all teams", "compare kda", "ban rate table") leads with a table of every one
-  in the league; any other stat with no name ("radiant win rate", "kda", "ban rate") opens its
+  in the league. "Per minute" ("kills per minute", "kills a minute", "kpm") swaps a stat's columns for
+  their per-minute ones (kills, deaths, kill diff and assists over game time, with the team's average
+  game length); a phrase a topic owns ("gold per minute") stays that topic's. Any other stat with no name ("radiant win rate", "kda", "ban rate") opens its
   card on **All teams / All players / All heroes** with the table already drawn (League and the
   single Team / Player / Hero pickers stay a click away), with the rest of the results below.
   Every table search builds has **Edit this table** (it in the builder) and **Build my own
