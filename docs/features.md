@@ -515,7 +515,7 @@ shrunk-resolution problem above, not a finding problem.
   - **Team page → Outcomes** (AD2L teams): the same for one team, worked out when the tab opens:
     likeliest place, the summary columns as cards, a bar per place (click one for what it
     takes; every place shown by default), and a link to Predict's Seeding. A 1v1 mid counts 50/50, as
-    on Possibilities; a line under the bars says how ties go.
+    on Seeding; a line under the bars says how ties go.
 
   The model's picks: the playoffs if every remaining call goes the model's way. Unreported series get the model's
   call; weeks PlayOn hasn't posted (up to 7) are paired swiss-style as a labelled stand-in (table
