@@ -3514,6 +3514,12 @@ button.po-slot.on.me { border-style: solid; border-color: var(--jade); }
 .po-c button.on { border-color: var(--accent); outline: 1px solid var(--accent); }
 .po-sum { font: 600 12px var(--mono); color: var(--accent); text-align: center; white-space: nowrap; }
 .po-poss thead th.po-sum { color: var(--accent); }
+.po-events { margin-top: 18px; }
+.po-ev-h { margin-top: 26px; }
+.po-ev th.l, .po-ev td.l { text-align: left; }
+.po-ev td.name { white-space: normal; min-width: 120px; max-width: 320px; font-family: var(--body); font-size: 14px; color: var(--bone); }
+.po-ev tr.sel td { background: var(--stone-2); }
+.po-ev td .linkish { white-space: nowrap; }
 .po-need { background: var(--stone); border: 1px solid var(--seam); border-left: 3px solid var(--accent); padding: 10px 14px; margin: 10px 0 16px; font-size: 14px; color: var(--dust); }
 .po-need-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 8px; color: var(--bone); }
 .po-need-p h5 { margin: 12px 0 6px; font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }

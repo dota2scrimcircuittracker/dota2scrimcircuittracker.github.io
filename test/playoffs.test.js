@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TBD, tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, possibilities, pathsTo, bestOfP, bestOfScores, likelyScore } from "../public/lib/playoffs.js";
+import { TBD, tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, possibilities, pathsTo, pathsToEvent, bestOfP, bestOfScores, likelyScore } from "../public/lib/playoffs.js";
 
 // Higher id = stronger, so the model's winner is always the higher id.
 const rate = (ids) => new Map(ids.map((id) => [id, id / 10]));
@@ -221,6 +221,25 @@ test("a seed tie down to a 1v1 mid: the model's team on the Bracket, every order
     assert.ok(p.exact);
     for (const arr of p.divisions[0].dist.values()) for (const x of arr) assert.ok(Math.abs(x - 1 / 4) < 1e-9, weight);
   }
+});
+
+test("possibilities list the week 8 tiebreakers and 1v1 mids that can happen, and what leads to each", () => {
+  // Six teams level after six weeks of 1–1s; week 7 (1 v 3, 2 v 5, 4 v 6) to play. Line after 4th.
+  const ids = [1, 2, 3, 4, 5, 6], series = [];
+  for (let w = 0; w < 6; w++) series.push({ id: 100 + w * 3, ...S(1, 2, 1, 1) }, { id: 101 + w * 3, ...S(3, 4, 1, 1) }, { id: 102 + w * 3, ...S(5, 6, 1, 1) });
+  series.push({ id: 1, ...S(1, 3, null, null) }, { id: 2, ...S(2, 5, null, null) }, { id: 3, ...S(4, 6, null, null) });
+  const dv = possibilities(ids.map((id) => ({ id, name: `T${id}`, players: [] })), series, rate(ids)).divisions[0];
+  assert.ok(dv.exact);
+  const evs = [...dv.events.values()];
+  // All 1–1s: six teams level for 4 places, a tiebreaker in that one outcome of 27.
+  const all = dv.events.get("tb|4|1-2-3-4-5-6");
+  assert.ok(Math.abs(all.p - 1 / 27) < 1e-9);
+  assert.deepEqual([all.slots, all.places], [4, [1, 6]]);
+  const ways = pathsToEvent(dv, all.key, dv.total);
+  assert.equal(ways.length, 1); assert.ok(ways[0].masks.every((m) => m === 2) && ways[0].tb === "");
+  // Every event's ways add up to its chance; some come down to a 1v1 mid.
+  for (const e of evs) assert.ok(Math.abs(pathsToEvent(dv, e.key, dv.total).reduce((a, c) => a + c.p, 0) - e.p) < 1e-9, e.key);
+  assert.ok(evs.some((e) => e.kind === "mid"));
 });
 
 test("blank bracket: only week 1 is set until picks fill it in", () => {

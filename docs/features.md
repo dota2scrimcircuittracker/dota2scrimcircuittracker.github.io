@@ -482,7 +482,12 @@ shrunk-resolution problem above, not a finding problem.
     across a line, week 8 both ways; teams are ranked (for the week 8 table and for seed order)
     by SoS → head to head → highest common opponent → a 1v1 solo mid, the 1v1 counted 50/50
     (every order the same for 3+ teams) whatever the weighting, one result per group of teams.
-    "How the tiebreakers work" sits under the grid too.
+    "How the tiebreakers work" sits under the grid too. Under it, per division, two tables:
+    **Possible week 8 tiebreakers** (chance, line, teams level, wins, places, the rules' format
+    for that case) and **Possible 1v1 mids** (chance, teams, wins, what it decides: seed order, or
+    their order in a line's tiebreaker). Top 10 each, "Show all" for the rest; "What leads to it"
+    lists the ways there, like a place's (`lib/playoffs.js` `pathsToEvent`). Random runs give the
+    chances only.
     Click a cell for what it takes to finish there, or a team for every place: the ways, each a
     collapsible card side by side (share, the team's own result, "+ N more results"; all open) listing
     every result it needs in full. Any one way gets them there. Each place is its own collapsible
