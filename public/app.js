@@ -59,6 +59,9 @@ const setSettings = (open) => {
 };
 settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(settingsPop.hidden); };
 document.addEventListener("click", (e) => { if (!e.target.closest(".settings")) setSettings(false); });
+// The table builder (pages/search.js &table=), in the league being viewed: closes the menu on the way.
+const settingsTables = document.getElementById("settings-tables");
+settingsTables.addEventListener("click", () => setSettings(false));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSettings(false); });
 // My team (core.js myTeam): the list loads the first time the menu opens.
 const myTeamSel = document.getElementById("my-team");
@@ -539,6 +542,7 @@ export function route() {
     return NAV_MENUS[key] ? `<div class="nav-item" data-menu="${key}">${a}<div class="nav-drop" hidden></div></div>` : a;
   }).join("");
   navSrc = src;
+  settingsTables.href = `${src.ad2l ? src.root : "#"}/search?table=team`;
   // League menu: each league opens on the tab you're on (Players stays Players). A team,
   // game or player page opens that tab's list, since it needn't exist in the other league.
   // Standings, the scrim match list and scrim Teams all land on the other league's standings.

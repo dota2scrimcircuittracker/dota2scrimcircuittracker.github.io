@@ -36,6 +36,9 @@ export async function renderSearch(src) {
   const homeLeague = src.all ? "all" : src.ad2l ? (src.view ? `${src.key}_${src.view}` : src.key) : "scrim";
   let tleague = TABLE_LEAGUES.includes(p.get("league")) && SOURCES[p.get("league")] ? p.get("league") : homeLeague;
   const tableLink = (kind, cols, sort = null) => link({ ...(q && { q }), ...Object.fromEntries(tableParams({ kind, cols, sort })), ...(tleague !== homeLeague && { league: tleague }) });
+  // Under every table search builds: open it in the builder, or start a fresh one of that kind.
+  const tableActs = (kind, cols, sort) => `<div class="tt-acts"><a class="sr-go" href="${tableLink(kind, cols, sort)}">Edit this table →</a>
+    <a href="${link({ table: kind, ...(tleague !== homeLeague && { league: tleague }) })}">Build my own table →</a></div>`;
   const keepTable = () => {
     const u = new URL(location.href);
     for (const k of ["table", "cols", "sort", "dir", "min", "weeks", "team", "league"]) u.searchParams.delete(k);
@@ -85,8 +88,8 @@ export async function renderSearch(src) {
     if (ALL_OF[scope]) {
       const kind = ALL_OF[scope], first = kind === "hero" ? "picks" : "games";
       const cols = [...new Set([first, ...(kind === "hero" ? [] : ["win_rate"]), ...t.table[kind]])];
-      return `${leagueSelect()}<a class="sr-go" href="${tableLink(kind, cols, t.table[kind][0])}">Edit columns →</a>
-        <div class="tt-table" data-kind="${kind}" data-cols="${cols.join(",")}" data-sort="${t.table[kind][0]}"></div>`;
+      return `${leagueSelect()}
+        <div class="tt-table" data-kind="${kind}" data-cols="${cols.join(",")}" data-sort="${t.table[kind][0]}"></div>${tableActs(kind, cols, t.table[kind][0])}`;
     }
     if (scope === "league") {
       const opts = LEAGUES.filter((k) => !(t.league.ad2l && k === "scrim"));
@@ -109,13 +112,20 @@ export async function renderSearch(src) {
     if (!list.length) return `<span class="muted">${v.trim() ? "No match." : `Type a ${kind} name.`}</span>`;
     return list.map((e) => `<a class="sr-opt" href="${withAt(e.href, t[kind])}">${esc(e.name)}${e.leagueLabel ? ` <small>${esc(e.leagueLabel)}</small>` : ""}</a>`).join("");
   };
-  const defaultScope = (scopes) => (scopes.includes(st.type) ? st.type : ["team", "player", "hero", "league"].find((s) => scopes.includes(s)) ?? scopes[0]);
+  // A stat with no name opens on its table (every team, player or hero; the one the type filter
+  // names first), unless the page already leads with a table; else on a picker.
+  const defaultScope = (scopes) => {
+    const all = Object.keys(ALL_OF).filter((s) => scopes.includes(s));
+    if (all.length && !res.table) return all.find((s) => ALL_OF[s] === st.type) ?? all[0];
+    return scopes.includes(st.type) ? st.type : ["team", "player", "hero", "league"].find((s) => scopes.includes(s)) ?? scopes[0];
+  };
 
   const draw = () => {
     const builder = tst ? `<section class="sr-card tt-card">${q ? `<h2 class="sr-title">Table builder</h2>` : ""}${builderHtml(tst, tleague)}</section>` : "";
     const firstCard = res.cards.find((c) => c.topic.table);
+    // "Build my own table": the kind the results are about, else teams.
     const buildKind = res.table?.kind ?? (firstCard && Object.keys(firstCard.topic.table)[0]) ?? "team";
-    const buildLink = tst ? "" : `<a class="sr-build" href="${tableLink(buildKind, res.table?.cols ?? firstCard?.topic.table[buildKind] ?? KINDS[buildKind].presets[0].cols)}">Build a table →</a>`;
+    const buildLink = tst ? "" : `<a class="sr-build" href="${link({ table: buildKind, ...(tleague !== homeLeague && { league: tleague }) })}">Build my own table →</a>`;
     const after = () => {
       if (tst) wireBuilder(body.querySelector(".tt-builder"), tst, tleague, (next, lg) => { tst = next; tleague = lg; keepTable(); });
       mount(body);
@@ -139,7 +149,7 @@ export async function renderSearch(src) {
     const titles = T ? res.cards.filter((c) => c.topic.table?.[T.kind]).map((c) => c.topic.title).join(", ") || KINDS[T.kind].presets[0].name : "";
     const tableFirst = T && !tst ? `<section class="sr-card sr-tablefirst"><h2 class="sr-title">Every ${KINDS[T.kind].one}: ${esc(titles)}</h2>
         ${leagueSelect()}<div class="tt-table" data-kind="${T.kind}" data-cols="${T.cols.join(",")}" data-sort="${T.sort}"></div>
-        <p class="table-note"><a href="${tableLink(T.kind, T.cols, T.sort)}">Edit columns, period and scope →</a></p></section>` : "";
+        ${tableActs(T.kind, T.cols, T.sort)}</section>` : "";
     const directHtml = direct.map((d) => `<a class="sr-hit sr-direct" href="${d.href}">
         <span class="sr-crumb">${esc(d.entity.name)} › ${esc(d.tab ?? "")} › <b>${esc(d.topic.title)}</b></span>${lgChip(d.entity)}
         <span class="sr-snip">${esc(snippet(d.topic))}</span></a>`).join("");

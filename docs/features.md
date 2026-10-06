@@ -45,8 +45,12 @@ and change it: [maintaining.md](maintaining.md).
   fixed by adding words there. Spec: `docs/superpowers/specs/2026-10-06-site-search-design.md`.
   **Tables:** a search that asks for every team, player or hero ("compare first blood",
   "radiant win rate all teams", "compare kda", "ban rate table") leads with a table of every one
-  in the league; a stat's card has **All teams / All players / All heroes** scopes; and **Build a
-  table →** (under the filters, or `&table=team|player|hero`) opens the builder: rows (teams,
+  in the league; any other stat with no name ("radiant win rate", "kda", "ban rate") opens its
+  card on **All teams / All players / All heroes** with the table already drawn (League and the
+  single Team / Player / Hero pickers stay a click away), with the rest of the results below.
+  Every table search builds has **Edit this table** (it in the builder) and **Build my own
+  table**; the second also sits next to the filters and in the settings cog (**Table builder**,
+  for the league being viewed). The builder (`&table=team|player|hero`) has rows (teams,
   players, heroes), league (**All AD2L**, a division, Heroic A or B, Scrims), period (whole
   season or the last 2, 4 or 8 weeks), a player table's team, minimum games (values from fewer
   games show greyed and sort last), presets, column sets saved in this browser, and columns in
