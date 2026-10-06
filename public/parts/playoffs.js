@@ -6,7 +6,7 @@
 //    - Model's picks: the same with every call the model's.
 //  - Possibilities: every way the remaining series (and the tiebreakers they set up) can go,
 //    as each team's chance of each place; click a cell or team for what it takes.
-import { playoffPicture, possibilities, pathsTo, TBD } from "../lib/playoffs.js";
+import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD } from "../lib/playoffs.js";
 import { info } from "../lib/glossary.js";
 import { esc, pct, teamLink, DIVISIONS } from "../core.js";
 import { ordinal as ord } from "../lib/ranks.js";
@@ -105,7 +105,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       }).join("");
       const lastSeed = split ? 8 : Math.min(8, dv.rows.length);
       const seedTies = dv.settled.filter((x) => x.place < lastSeed);
-      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, coin flip):
+      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, 1v1 mid):
         ${seedTies.map((x) => `${ord(x.place)}: ${esc(name[x.above])} ahead of ${esc(name[x.below])} on ${esc(x.detail)}`).join(" · ")}.</p>` : "";
 
       // Table on the left, week 8 on the right (stacked on narrow screens).
@@ -190,9 +190,14 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   };
 
   const howHtml = `<details class="how"><summary>How the tiebreakers work</summary>
-      <p>The table counts game wins (a bye is 1–0). <b>SoS</b> (strength of schedule) is the total wins of every opponent a team has played; a team met twice counts twice.</p>
-      <p>A tie <b>across a dividing line</b> (upper/lower bracket, playoffs/out${split ? ", Aegis/Heroic" : ""}) is played off in week 8. The tied teams are ranked by SoS (then head to head, record against the highest common opponent, and a 1v1 mid), and the rules' table sets the games: 1 place for 2 teams is a Bo3; 1 place for 3 is 2nd v 3rd then the winner v 1st (Bo1s); 1 place for 4 is 1v4 and 2v3, winners meet; 2 places for 3 puts the best SoS through and 2nd v 3rd plays a Bo3; 2 places for 4 or more is 1v4 and 2v3 (Bo3s), 5th and below out; with more places the best SoS teams go through until it's one of those.</p>
-      <p>A tie that only decides <b>seed order</b> isn't played: SoS, then head to head, then record against the highest common opponent, then a coin flip. Where it comes down to a 1v1 or a coin flip, the page shows the model's stronger team.</p>
+      <p>The table counts game wins (a bye is 1–0). <b>SoS</b> (strength of schedule) is the total wins of every opponent a team has played; a team met twice counts twice. It's worked out on the final table, so a result still to come moves the SoS of everyone who played those two teams.</p>
+      <p>A tie <b>across a dividing line</b> (upper/lower bracket, lower bracket/out${split ? ", Aegis/Heroic" : ""}) is played off in week 8. The tied teams are ranked by SoS, and the rules' table sets the games ("1 SoS" is the best SoS of the tied teams):</p>
+      <ul class="how-list">
+        ${TB_CASES.map(([, text]) => `<li>${text}.</li>`).join("")}
+      </ul>
+      <p>A case the rules don't list (1 slot for 5+ teams, say) follows the nearest one and is marked on the Bracket tab. A tie in SoS is broken by head to head, then record against the highest common opponent, then a single 1v1 solo mid between a player nominated by each team.</p>
+      <p>A tie that only decides <b>seed order</b> isn't played off: SoS, then head to head, then record against the highest common opponent. If none of those break it, the 1v1 solo mid decides the higher seed.</p>
+      <p><b>On this page.</b> The Bracket tab shows one way it goes: the model's winner of each week 8 game, and the model's stronger team where it comes down to a 1v1 mid. Possibilities counts every way: each week 8 game both ways (half each, or by the model's odds) and each 1v1 mid 50/50 (the model rates teams, not mid players; three or more teams level take every order equally).</p>
       <p><b>Scores.</b> Each game is the model's one-game chance, played independently. The score shown is the winner's likeliest: in a Bo3 that's always 2–0, because 2–1 needs the favourite to drop a game. A close Bo3 shows up in the odds below it (2–1 either way adds up). In a Bo5 the favourite's likeliest score is 3–1 unless it wins over 2 games in 3, then 3–0.</p>
     </details>`;
 
@@ -243,7 +248,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       <div class="po-tcards">${cards.map((c) => `<div class="po-stat"><span>${esc(c.label)}</span><b>${c.value}${c.note ? ` <i>${c.note}</i>` : ""}</b></div>`).join("")}</div>
       <div class="po-tbars">${bars}</div>
       ${detailHtml(P, dv, sel)}
-      <p class="table-note"><button type="button" class="linkish" data-goodds>Every team's chances on Predict →</button></p>`;
+      <p class="table-note">Ties on wins go by AD2L's tiebreakers: SoS first, then head to head and highest common opponent, a week 8 playoff across a dividing line, and a 1v1 mid (counted 50/50) if nothing else splits them. <button type="button" class="linkish" data-goodds>Every team's chances on Predict →</button></p>`;
   };
 
   const weightBar = () => `<div class="pd-toggle po-weightbar" role="group" aria-label="How outcomes count"><span class="pd-lbl">Count</span>
@@ -279,11 +284,61 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
           ${Array.from({ length: N }, (_, i) => cell(id, i)).join("")}
           ${cols.map((l) => `<td class="po-sum num">${pctFine(sum(id, l.after) - (l.band ? sum(id, lines[lines.indexOf(l) - 1]?.after ?? 0) : 0))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
       const pick = state.sel && dv.ids.includes(state.sel.team) ? detailHtml(P, dv, state.sel) : "";
-      return `${dv.division ? `<h3 class="po-div">Division ${esc(dv.division)}</h3>` : ""}${table}${pick}`;
+      return `${dv.division ? `<h3 class="po-div">Division ${esc(dv.division)}</h3>` : ""}${table}${pick}${eventsHtml(dv)}`;
     };
 
     return `${weightBar()}${lead}${P.divisions.map(divHtml).join("")}
-      <p class="table-note">Seed-order ties that come down to a coin flip go to the model's stronger team, as on the other tabs, so a share here can read 0% where a coin flip could still do it.</p>`;
+      <p class="table-note">Ties on wins are broken as AD2L's rules say: across a dividing line, a week 8 tiebreaker (counted both ways); for seed order, SoS, head to head, record against the highest common opponent, then a 1v1 mid (counted 50/50).</p>
+      ${howHtml}`;
+  };
+
+  // Every week 8 tiebreaker and every 1v1 mid that can happen, each with its chance and (click)
+  // the results that lead to it.
+  const EV_MAX = 10;
+  const eventsHtml = (dv) => {
+    const all = [...dv.events.values()].filter((e) => e.p >= 5e-4).sort((a, b) => b.p - a.p);
+    const teams = (e) => e.teams.map((t) => esc(name[t])).join(", ");
+    const lineName = (l) => `${esc(l.above)} / ${esc(l.below)}`;
+    const why = (e) => (dv.exact ? `<button type="button" class="linkish${state.ev === e.key ? " on" : ""}" data-ev="${esc(e.key)}">${state.ev === e.key ? "Hide" : "What leads to it"}</button>` : "");
+    const section = (kind, title, lead, none, head, row) => {
+      const list = all.filter((e) => e.kind === kind), showAll = state.evAll?.[`${dv.division}|${kind}`];
+      const shown = showAll ? list : list.slice(0, EV_MAX);
+      const open = list.find((e) => e.key === state.ev);
+      return `<h4 class="po-h po-ev-h">${title}</h4><p class="po-lead">${lead}</p>
+        ${list.length ? `<div class="table-wrap"><table class="po-ev"><thead><tr><th scope="col">Chance</th>${head}<th scope="col"></th></tr></thead>
+          <tbody>${shown.map((e) => `<tr class="${state.ev === e.key ? "sel" : ""}"><td class="num">${pctFine(e.p)}</td>${row(e)}<td>${why(e)}</td></tr>`).join("")}</tbody></table></div>
+          ${list.length > EV_MAX ? `<button type="button" class="linkish" data-evall="${esc(`${dv.division}|${kind}`)}">${showAll ? "Show fewer" : `Show all ${list.length}`}</button>` : ""}
+          ${open ? eventWays(dv, open) : ""}` : `<p class="muted">${none}</p>`}`;
+    };
+    const tb = section("tb", "Possible week 8 tiebreakers",
+      `Every tie across a dividing line the rest of the season can leave, and how often (${state.weight === "equal" ? "share of outcomes" : "by the model's odds"}). The format is the rules' case for that many teams and places.`,
+      "No result left can leave a tie across a dividing line.",
+      `<th scope="col" class="l">Line</th><th scope="col" class="l">Teams level</th><th scope="col">Wins</th><th scope="col">Places</th><th scope="col" class="l">Format</th>`,
+      (e) => `<td class="l">${lineName(e.line)}</td><td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="num">${ord(e.places[0])}–${ord(e.places[1])}</td><td class="l name">${esc(tbCase(e.slots, e.teams.length))}</td>`);
+    const mid = section("mid", "Possible 1v1 mids",
+      "Teams level on wins, SoS, head to head and record against the highest common opponent play a 1v1 solo mid. Each is counted 50/50 here.",
+      "No result left can bring two teams level all the way to a 1v1.",
+      `<th scope="col" class="l">Teams</th><th scope="col">Wins</th><th scope="col" class="l">Decides</th>`,
+      (e) => `<td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="l name">${e.purpose === "seed"
+        ? (e.teams.length === 2 ? `Who's ${ord(e.places[0])} and who's ${ord(e.places[1])}` : `The order of ${ord(e.places[0])}–${ord(e.places[1])}`)
+        : `Their order in the ${lineName(e.line)} tiebreaker for ${ord(e.places[0])}–${ord(e.places[1])} (which games they play, or a slot straight in)`}</td>`);
+    return `<div class="po-events">${tb}${mid}${dv.exact ? "" : `<p class="table-note">Chances here are from the random runs; what leads to each shows once every outcome can be listed.</p>`}</div>`;
+  };
+  // The results that lead to one tiebreaker or 1v1: each way, every result it needs.
+  const eventWays = (dv, e) => {
+    const paths = pathsToEvent(dv, e.key, dv.total);
+    const way = (c, k) => {
+      const list = [...c.masks.map((m, i) => (m === 7 ? null : cond(dv.open[i], m, null))).filter(Boolean), ...(c.tb ? [week8(c.tb)] : [])];
+      return `<details class="po-way" open><summary><span class="po-way-n">Way ${k + 1}</span><span class="po-need-share">${pctFine(c.p)}</span>
+          <span class="po-way-sum">${list.length ? `${list.length} result${list.length === 1 ? "" : "s"}` : "any results"}</span></summary>
+        <ul class="po-way-list">${list.length ? list.map((x) => `<li${x.startsWith("and the other") ? ' class="tb"' : ""}>${x}</li>`).join("") : '<li class="any">Any results lead here</li>'}</ul></details>`;
+    };
+    const MAX = 8;
+    return `<div class="po-need"><div class="po-need-h"><b>${e.kind === "tb" ? "Week 8 tiebreaker" : "1v1 mid"}: ${e.teams.map((t) => esc(name[t])).join(", ")}</b> ${pctFine(e.p)}
+        <button type="button" class="linkish" data-ev="${esc(e.key)}">Close</button></div>
+      <div class="po-ways-grid">${paths.slice(0, MAX).map(way).join("")}</div>
+      ${paths.length > MAX ? `<p class="muted">…and ${paths.length - MAX} more ways, ${pctFine(paths.slice(MAX).reduce((a, c) => a + c.p, 0))} between them.</p>` : ""}
+      <p class="table-note">Any one way leads here; every result inside it has to happen. Series not listed can go any way.</p></div>`;
   };
 
   const detailHtml = (P, dv, sel) => {
@@ -351,6 +406,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       return;
     }
     if (t.hasAttribute("data-close")) { state.sel = null; return keep(render); }
+    if (t.dataset.ev) { state.ev = state.ev === t.dataset.ev ? null : t.dataset.ev; return keep(render); }
+    if (t.dataset.evall) { state.evAll = { ...state.evAll, [t.dataset.evall]: !state.evAll?.[t.dataset.evall] }; return keep(render); }
     if (t.dataset.team) {
       const team = Number(t.dataset.team), place = t.dataset.place ? Number(t.dataset.place) : null;
       state.sel = state.sel?.team === team && state.sel?.place === place ? null : { team, place };
@@ -366,6 +423,22 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   };
   render();
 }
+
+// The rules' week 8 table (AD2L S48 rules): [slots, teams (a number, or "n+"), the format].
+const TB_CASES = [
+  [[1, 2], "1 slot, 2 teams: Bo3"],
+  [[1, 3], "1 slot, 3 teams: 2 SoS v 3 (Bo1), the winner plays 1 (Bo1)"],
+  [[1, 4], "1 slot, 4 teams: 1 SoS v 4, 2 v 3, the winners play for the slot"],
+  [[2, 3], "2 slots, 3 teams: 1 SoS in, 2 v 3 (Bo3)"],
+  [[2, "4+"], "2 slots, 4+ teams: 1 SoS v 4 (Bo3), 2 v 3 (Bo3), 5+ SoS out"],
+  [[3, 4], "3 slots, 4 teams: 1 and 2 SoS in, 3 v 4 (Bo3)"],
+  [[3, 5], "3 slots, 5 teams: 1 SoS in, then as 2 slots, 4 teams"],
+  [[3, "6+"], "3 slots, 6+ teams: 1 SoS in, 6+ out, then as 2 slots, 4 teams"],
+  [[4, 5], "4 slots, 5 teams: 1, 2 and 3 SoS in, 4 v 5 (Bo3)"],
+  [[4, 6], "4 slots, 6 teams: 1 and 2 SoS in, then as 2 slots, 4 teams"],
+];
+const tbCase = (slots, n) => TB_CASES.find(([[s, t]]) => s === slots && (t === n || (typeof t === "string" && n >= parseInt(t, 10))))?.[1]
+  ?? `${slots} slot${slots === 1 ? "" : "s"}, ${n} teams: not in the rules' table, so its nearest case`;
 
 // A share with a decimal under 1% so a long shot doesn't read as 0%.
 // Each final place's colour, best first: gold, green, teal, sky, blue, indigo, violet, magenta

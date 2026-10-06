@@ -28,9 +28,10 @@ test("column catalogs: unique ids, real groups, glossary headers, presets of rea
     for (const c of K.columns) {
       assert.ok(groups.has(c.group), `${kind} ${c.id}: group ${c.group}`);
       assert.ok(c.key === false || INFO[c.key], `${kind} ${c.id}: no glossary entry "${c.key}"`);
-      assert.ok(["pct", "dec", "dec2", "int", "signed", "gold"].includes(c.fmt), `${kind} ${c.id}: fmt ${c.fmt}`);
+      assert.ok(["pct", "dec", "dec2", "int", "signed", "signed2", "gold"].includes(c.fmt), `${kind} ${c.id}: fmt ${c.fmt}`);
     }
     for (const p of K.presets) for (const id of p.cols) assert.ok(column(kind, id), `${kind} preset ${p.id}: ${id}`);
+    for (const c of K.columns) if (c.pm) assert.ok(column(kind, c.pm), `${kind} ${c.id}: pm ${c.pm}`);
   }
 });
 
@@ -41,6 +42,8 @@ test("team values come from each team's own games", () => {
   assert.equal(a.kills_for.v, (30 + 28 + 22) / 3);
   assert.equal(a.kill_diff.v, ((30 - 10) + (28 - 12) + (22 - 25)) / 3);
   assert.equal(a.avg_min.v, (25 + 40 + 35) / 3);
+  assert.equal(a.kills_pm.v, (30 + 28 + 22) / (25 + 40 + 35)); // over game time, not per game
+  assert.equal(a.kill_diff_pm.v, ((30 - 10) + (28 - 12) + (22 - 25)) / 100);
   assert.deepEqual([a.fp_rate.v, a.fp_rate.n], [1, 1]);
   assert.equal(a.sp_rate, null); // no drafted game where A picked second
   assert.deepEqual([team(T.B).sp_rate.v, team(T.B).sp_rate.n], [0, 1]);
@@ -59,6 +62,7 @@ test("player rows: the Players page's numbers, per game", () => {
   assert.deepEqual([p.cells.games.v, p.cells.win_rate.v], [3, 2 / 3]);
   assert.equal(p.cells.kills_pg.v, (6 + 2 + 2) / 3); // 6 kills a game as team A (g1), 2 as team B (g2, g4)
   assert.equal(p.cells.kda.v, (10 + 9) / 6);
+  assert.equal(p.cells.kills_pm.v, (6 + 2 + 2) / (25 + 40 + 35));
   assert.equal(p.cells.hero_count.v, 1);
   assert.equal(p.cells.avg_gpm.v, 400);
   assert.equal(p.cells.obs_pg, null); // no replay stats in the fixture
@@ -84,8 +88,8 @@ test("seriesRecords sums each team's series scores", () => {
 });
 
 test("cell text", () => {
-  assert.deepEqual([cellText("pct", 0.623), cellText("dec", 21.44), cellText("dec2", 3.256), cellText("int", 1234.4), cellText("signed", 4.25), cellText("signed", -1), cellText("gold", 1320), cellText("gold", -640), cellText("pct", null)],
-    ["62%", "21.4", "3.26", "1,234", "+4.3", "−1.0", "+1.3k", "−640", "—"]);
+  assert.deepEqual([cellText("pct", 0.623), cellText("dec", 21.44), cellText("dec2", 3.256), cellText("int", 1234.4), cellText("signed", 4.25), cellText("signed", -1), cellText("signed2", 0.153), cellText("gold", 1320), cellText("gold", -640), cellText("pct", null)],
+    ["62%", "21.4", "3.26", "1,234", "+4.3", "−1.0", "+0.15", "+1.3k", "−640", "—"]);
 });
 
 test("the address round-trips per kind; unknown columns drop; lower-is-better sorts low first", () => {

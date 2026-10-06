@@ -14,14 +14,17 @@ const cell = (v, n = null, of = null) => (v == null || !Number.isFinite(v) ? nul
 const winRate = (games, wins) => (games ? cell(wins / games, games, `${wins}–${games - wins}`) : null);
 const share = (a, b, n) => (a + b ? cell(a / (a + b), n, `${a}–${b}`) : null);
 const perGame = (sum, games) => (games ? cell(sum / games, games) : null);
+// Per minute of game time, over the same games.
+const perMin = (sum, minutes, games) => (minutes ? cell(sum / minutes, games) : null);
 
 // ---------- teams ----------
 const TEAM_GROUPS = [["results", "Results"], ["sides", "Sides and draft"], ["early", "Early game"], ["fights", "Fights and kills"],
   ["objectives", "Objectives"], ["vision", "Vision and jungle"], ["length", "Game length"], ["roster", "Roster"]];
 
-// Every column: id (the address and topics use it), label, group, fmt (pct, dec, int, signed,
-// gold), the glossary key for its header (false: none), low: true when lower is better (sorted
-// low → high first), and get(a) from one row's aggregates.
+// Every column: id (the address and topics use it), label, group, fmt (pct, dec, dec2, int,
+// signed, signed2, gold), the glossary key for its header (false: none), low: true when lower is
+// better (sorted low → high first), pm: its per-minute column (search reads "kills per minute"
+// with it), and get(a) from one row's aggregates.
 const TEAM_COLUMNS = [
   { id: "games", label: "Games", group: "results", fmt: "int", key: false, get: (a) => cell(a.games) },
   { id: "win_rate", label: "Win %", group: "results", fmt: "pct", key: "game_rate", get: (a) => winRate(a.rec.games, a.rec.wins) },
@@ -35,9 +38,12 @@ const TEAM_COLUMNS = [
   { id: "lead20", label: "Gold at 20'", group: "early", fmt: "gold", key: "lead20", get: (a) => cell(a.tl?.lead20, a.tl?.games) },
   { id: "comebacks", label: "Comebacks", group: "early", fmt: "int", key: "comebacks", get: (a) => cell(a.tl?.comebacks) },
   { id: "fight_rate", label: "Teamfight win %", group: "fights", fmt: "pct", key: "team_fight_rate", get: (a) => share(a.sp.fights.won, a.sp.fights.lost, a.sp.fights.games) },
-  { id: "kills_for", label: "Kills / game", group: "fights", fmt: "dec", key: "avg_kills", get: (a) => perGame(a.kills, a.games) },
-  { id: "kills_against", label: "Deaths / game", group: "fights", fmt: "dec", key: "avg_kills", low: true, get: (a) => perGame(a.deaths, a.games) },
-  { id: "kill_diff", label: "Kill diff / game", group: "fights", fmt: "signed", key: "avg_kills", get: (a) => perGame(a.kills - a.deaths, a.games) },
+  { id: "kills_for", label: "Kills / game", group: "fights", fmt: "dec", key: "avg_kills", pm: "kills_pm", get: (a) => perGame(a.kills, a.games) },
+  { id: "kills_against", label: "Deaths / game", group: "fights", fmt: "dec", key: "avg_kills", low: true, pm: "deaths_pm", get: (a) => perGame(a.deaths, a.games) },
+  { id: "kill_diff", label: "Kill diff / game", group: "fights", fmt: "signed", key: "avg_kills", pm: "kill_diff_pm", get: (a) => perGame(a.kills - a.deaths, a.games) },
+  { id: "kills_pm", label: "Kills / min", group: "fights", fmt: "dec2", key: "avg_kills", get: (a) => perMin(a.kills, a.minutes, a.games) },
+  { id: "deaths_pm", label: "Deaths / min", group: "fights", fmt: "dec2", key: "avg_kills", low: true, get: (a) => perMin(a.deaths, a.minutes, a.games) },
+  { id: "kill_diff_pm", label: "Kill diff / min", group: "fights", fmt: "signed2", key: "avg_kills", get: (a) => perMin(a.kills - a.deaths, a.minutes, a.games) },
   { id: "rosh", label: "Roshan control", group: "objectives", fmt: "pct", key: "team_roshans", get: (a) => a.o && share(a.o.roshans, a.o.roshans_against, a.o.games) },
   { id: "first_rosh", label: "First Roshan %", group: "objectives", fmt: "pct", key: "first_roshan", get: (a) => a.o && winRate(a.o.first_rosh.games, a.o.first_rosh.taken) },
   { id: "aegis_steals", label: "Aegis steals", group: "objectives", fmt: "int", key: "aegis_steals", get: (a) => cell(a.sp.aegis.stole) },
@@ -80,9 +86,12 @@ const avg = (k, n = "games") => (a) => cell(a[k], a[n]);
 const PLAYER_COLUMNS = [
   { id: "games", label: "Games", group: "results", fmt: "int", key: false, get: (a) => cell(a.games) },
   { id: "win_rate", label: "Win %", group: "results", fmt: "pct", key: false, get: (a) => winRate(a.games, a.wins) },
-  { id: "kills_pg", label: "Kills / game", group: "fighting", fmt: "dec", key: false, get: pg("kills") },
-  { id: "deaths_pg", label: "Deaths / game", group: "fighting", fmt: "dec", key: false, low: true, get: pg("deaths") },
-  { id: "assists_pg", label: "Assists / game", group: "fighting", fmt: "dec", key: false, get: pg("assists") },
+  { id: "kills_pg", label: "Kills / game", group: "fighting", fmt: "dec", key: false, pm: "kills_pm", get: pg("kills") },
+  { id: "deaths_pg", label: "Deaths / game", group: "fighting", fmt: "dec", key: false, low: true, pm: "deaths_pm", get: pg("deaths") },
+  { id: "assists_pg", label: "Assists / game", group: "fighting", fmt: "dec", key: false, pm: "assists_pm", get: pg("assists") },
+  { id: "kills_pm", label: "Kills / min", group: "fighting", fmt: "dec2", key: false, get: (a) => perMin(a.kills, a.minutes, a.games) },
+  { id: "deaths_pm", label: "Deaths / min", group: "fighting", fmt: "dec2", key: false, low: true, get: (a) => perMin(a.deaths, a.minutes, a.games) },
+  { id: "assists_pm", label: "Assists / min", group: "fighting", fmt: "dec2", key: false, get: (a) => perMin(a.assists, a.minutes, a.games) },
   { id: "kda", label: "KDA", group: "fighting", fmt: "dec2", key: "kda", get: avg("kda") },
   { id: "avg_kp", label: "Kill participation", group: "fighting", fmt: "pct", key: "avg_kp", get: avg("avg_kp") },
   { id: "tf_part", label: "Teamfights joined", group: "fighting", fmt: "pct", key: "tf_part", get: avg("tf_part", "combat_games") },
@@ -194,7 +203,7 @@ export function inPeriod(matches, weeks, now = Date.now()) {
   return matches.filter((m) => +new Date(m.createdAt ?? (m.start_time ?? 0) * 1000) >= from);
 }
 
-// A cell's text: 62%, 21.4, 3.25, 3, +4.2, +1.3k.
+// A cell's text: 62%, 21.4, 3.25, 3, +4.2, +0.15, +1.3k.
 export function cellText(fmt, v) {
   if (v == null) return "—";
   const sign = v > 0 ? "+" : v < 0 ? "−" : "±";
@@ -203,6 +212,7 @@ export function cellText(fmt, v) {
   if (fmt === "dec2") return v.toFixed(2);
   if (fmt === "int") return Math.round(v).toLocaleString("en-US");
   if (fmt === "signed") return `${sign}${Math.abs(v).toFixed(1)}`;
+  if (fmt === "signed2") return `${sign}${Math.abs(v).toFixed(2)}`;
   if (fmt === "gold") return `${sign}${Math.abs(v) >= 1000 ? `${(Math.abs(v) / 1000).toFixed(1)}k` : Math.round(Math.abs(v))}`;
   return String(v);
 }

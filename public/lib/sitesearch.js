@@ -2,8 +2,8 @@
 // league pages, corrects near-miss spellings, and returns links. Pure, so the results page
 // (pages/search.js) and the tests share it. Spec: docs/superpowers/specs/2026-10-06-site-search-design.md.
 import { fold, searchIndex } from "./search.js";
-import { TOPICS, PAGES, HERO_SHORT, RATE_WORDS, TABLE_WORDS, KIND_WORDS } from "./topics.js";
-import { KINDS } from "./tables.js";
+import { TOPICS, PAGES, HERO_SHORT, RATE_WORDS, TABLE_WORDS, KIND_WORDS, PER_MINUTE_WORDS, PER_MINUTE_SHORT } from "./topics.js";
+import { KINDS, column } from "./tables.js";
 import { TEAM_TABS, PLAYER_TABS, HERO_TABS, tabList } from "./pagetabs.js";
 
 // Words that carry no meaning in a question. "with", "vs" and "against" do, so they stay.
@@ -49,6 +49,25 @@ export const leagueHref = (root, { path = "", tab, at } = {}) => withAt(root ===
 const phraseWords = (p) => p.split(" ").filter((x) => !STOP.has(x));
 const TOPIC_WORDS = new Set([...TOPICS, ...PAGES].flatMap((t) => t.words.flatMap(phraseWords)));
 const TABLE = TABLE_WORDS.map((p) => p.split(" "));
+const PER_MIN = PER_MINUTE_WORDS.map(phraseWords);
+// Topic phrases with a per-minute phrase inside ("gold per minute"): those words stay theirs.
+const TIME_PHRASES = [...TOPICS, ...PAGES].flatMap((t) => t.words.map((p) => phraseWords(p).join(" ")))
+  .filter((p) => p.includes(" ") && PER_MIN.some((m) => ` ${p} `.includes(` ${m.join(" ")} `)));
+
+// A topic read per minute: its table's columns swapped for their per-minute ones (lib/tables.js
+// `pm`); null when it has none (the topic stays as it is).
+function perMinute(t) {
+  if (!t.table) return null;
+  let swapped = false;
+  const table = Object.fromEntries(Object.entries(t.table).map(([kind, cols]) => [kind, cols.map((id) => {
+    const pm = column(kind, id)?.pm;
+    if (pm) swapped = true;
+    return pm ?? id;
+  })]));
+  // Teams also show their average game length, which the rate divides by.
+  if (swapped && table.team) table.team = [...new Set([...table.team, "avg_min"])];
+  return swapped ? { ...t, title: `${t.title} per minute`, table } : null;
+}
 const TABLE_KINDS = ["team", "player", "hero"];
 // "teams", "players", "heroes": every one of them in a table (topics with `table` columns).
 const SCOPES = ["league", "teams", "players", "heroes", "team", "player", "hero"];
@@ -77,7 +96,7 @@ function prepare(index, heroes) {
     addRun(w.join(" "), e);
     if (w.length > 1) addRun(w.join(""), e);
   }
-  for (const x of [...TOPIC_WORDS, ...RATE, ...TABLE.flat()]) addWord(x, "*");
+  for (const x of [...TOPIC_WORDS, ...RATE, ...TABLE.flat(), ...PER_MIN.flat(), ...Object.keys(PER_MINUTE_SHORT)]) addWord(x, "*");
   const out = { heroes, byRun, vocab, vocabList: [...vocab.keys()] };
   prepared.set(index, out);
   return out;
@@ -163,6 +182,17 @@ export function siteSearch({ index, heroes = [], query, league = null, heroHref 
   let rest = [];
   const rate = [];
   w.forEach((x, i) => { if (!claimed.has(i) && !STOP.has(x)) (RATE.has(x) ? rate : rest).push(x); });
+  // "per minute" (or "kpm"): the words are set aside unless a topic owns the phrase ("gold per minute").
+  let perMin = false;
+  rest = rest.flatMap((x) => (PER_MINUTE_SHORT[x] ? ((perMin = true), [PER_MINUTE_SHORT[x]]) : [x]));
+  const owned = TIME_PHRASES.some((p) => rest.join(" ").includes(p));
+  for (const p of PER_MIN) for (let i = 0; i + p.length <= rest.length; i++) {
+    if (!p.every((x, k) => rest[i + k] === x)) continue;
+    perMin = true;
+    if (owned) break;
+    rest = [...rest.slice(0, i), ...rest.slice(i + p.length)];
+    i--;
+  }
   let wantsTable = false, kindAsked = null;
   for (const p of TABLE) for (let i = 0; i + p.length <= rest.length; i++) {
     if (!p.every((x, k) => rest[i + k] === x)) continue;
@@ -179,6 +209,7 @@ export function siteSearch({ index, heroes = [], query, league = null, heroHref 
     return scored.filter((x) => x.s >= scored[0]?.s / 2).slice(0, keep).map((x) => x.t);
   };
   let topics = rank(TOPICS, 5);
+  if (perMin) topics = topics.map((t) => perMinute(t) ?? t);
   if (!topics.length && rate.length) topics = [RECORD];
   const pages = rank(PAGES, 3);
 

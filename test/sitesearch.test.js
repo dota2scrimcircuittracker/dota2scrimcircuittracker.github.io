@@ -99,6 +99,18 @@ test("a topic with no name is a card with its scopes", () => {
   assert.equal(r.corrected, null);
 });
 
+test("per minute swaps a topic's columns for their per-minute ones", () => {
+  for (const q of ["kills per minute", "kills a minute", "kpm"]) {
+    const t = run(q).cards[0].topic;
+    assert.equal(t.id, "kills", q);
+    assert.deepEqual(t.table, { team: ["kills_pm", "deaths_pm", "kill_diff_pm", "avg_min"], player: ["kills_pm", "deaths_pm", "assists_pm"] }, q);
+  }
+  assert.deepEqual(run("compare players kills per min").table, { kind: "player", cols: ["kills_pm", "deaths_pm", "assists_pm"], sort: "kills_pm" });
+  // A topic that owns the phrase keeps it; "minutes" stays game length.
+  assert.equal(run("gold per minute").cards[0].topic.id, "gpm");
+  assert.equal(run("game minutes").cards[0].topic.id, "length");
+});
+
 test("typos are corrected and reported", () => {
   const r = run("radaint win rate");
   assert.equal(r.corrected, "radiant win rate");
