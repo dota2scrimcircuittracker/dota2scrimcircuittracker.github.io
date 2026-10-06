@@ -79,10 +79,10 @@ function matchesHtml(src, d, ratings) {
     </section>`;
   }).join("");
   return `<p class="table-note mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
-      PlayOn posts each week's pairings about a week ahead, so the last box is as far as the schedule goes.
+      PlayOn posts pairings about a week ahead.
       ${next ? `<button type="button" class="week-btn mx-jump">Jump to the next week ↓</button>` : ""}</p>
     <div class="mx-grid${split ? " split" : ""} reveal">${html}</div>
-    <p class="table-note">Hover an upcoming series for the model's odds (same model as ${src.all ? "Predict" : `<a href="${src.root}/predict">Predict</a>`}). G1, G2 open each ticketed game.</p>`;
+    <p class="table-note">Hover an upcoming series for its odds, as on ${src.all ? "Predict" : `<a href="${src.root}/predict">Predict</a>`}. G1, G2 open each ticketed game.</p>`;
 }
 
 // Crosstable: every team against every other, like a Liquipedia group table. Teams run in
@@ -124,8 +124,8 @@ function crossTableHtml(src, d, order) {
     ? [...new Set((src.all ? d.teams.map((t) => t.id).filter((id) => ids.includes(id)) : ids).map((id) => team[id].division ?? ""))].sort(src.all ? () => 0 : undefined).map((div) => [ids.filter((id) => (team[id].division ?? "") === div), div])
     : [[ids, ""]];
   return `${groups.map(([g, div]) => table(g, div)).join("")}
-    <p class="table-note">Read across: each cell is the row team's series score against the column team, with the week. Green won, red lost, gold tied; "vs" is coming up.
-      Rows run in the Table tab's order (game wins). Empty cell: those two haven't met, since AD2L isn't a round robin. Click a score for game 1.</p>`;
+    <p class="table-note">Each cell is the row team's series score against the column team, with the week. Green won, red lost, gold tied; "vs" is upcoming.
+      Rows follow the Table tab (game wins). Empty cells: those teams haven't met (AD2L isn't a round robin). Click a score for game 1.</p>`;
 }
 
 // ---------- up next (the Content page shows it) ----------
@@ -233,7 +233,7 @@ export async function renderStandings(src) {
   const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const tabs = playerTabs(pageTabs(STANDINGS_TABS, src, [
     ["table", `<div id="t" class="reveal"></div>
-      <p class="table-note">${src.all ? "Every division's teams in one table, sorted by game wins. Teams only play inside their division, so compare across divisions with care; each division's official standings are on PlayOn."
+      <p class="table-note">${src.all ? "All divisions in one table, sorted by game wins. Teams only play within their division, so compare across divisions with care. Official standings are on PlayOn."
         : `Sorted by game wins; official standings and tiebreakers live on
         <a href="https://dota.playon.gg/seasons/${d.playon_season_id}" target="_blank" rel="noopener">PlayOn</a>.`}</p>`],
     ["matches", matchesHtml(src, d, ratings)],
