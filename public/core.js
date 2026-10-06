@@ -368,8 +368,10 @@ bySlug.all = "all";
 // density steps); if it still doesn't fit, the columns after the first (the name, which
 // stays put) are split into pages that each fit, with tabs to switch between them. It
 // refits when the table's width changes.
-export function sortableTable(el, columns, rows, sortKey, { toolbar = false } = {}) {
-  let key = sortKey, dir = -1, density = 0, pages = null, page = 0;
+// For the search tables (parts/tables.js): dir ("asc" | "desc") to start with, nullsLast (empty
+// values after every value, in either direction) and onSort(key, dir) after a change.
+export function sortableTable(el, columns, rows, sortKey, { toolbar = false, dir: startDir = "desc", nullsLast = false, onSort = null } = {}) {
+  let key = sortKey, dir = startDir === "asc" ? 1 : -1, density = 0, pages = null, page = 0;
   const max = Object.fromEntries(columns.filter((c) => c[4]).map(([k]) => [k, Math.max(...rows.map((r) => r[k] ?? 0)) || 1]));
   const labelOf = Object.fromEntries(columns.map(([k, l]) => [k, l]));
   const pageOf = (k) => pages?.findIndex((pg) => pg.includes(k)) ?? -1;
@@ -381,6 +383,7 @@ export function sortableTable(el, columns, rows, sortKey, { toolbar = false } = 
   const draw = () => {
     const sorted = [...rows].sort((a, b) => {
       const x = a[key], y = b[key];
+      if (nullsLast && (x == null || y == null)) return x == null ? (y == null ? 0 : 1) : -1;
       if (typeof x === "string") return dir * -x.localeCompare(y);
       return dir * ((x ?? -Infinity) - (y ?? -Infinity));
     });
@@ -404,12 +407,13 @@ export function sortableTable(el, columns, rows, sortKey, { toolbar = false } = 
     </table></div>`;
     el.querySelectorAll("th.sortable").forEach((th) => (th.onclick = () => {
       if (th.dataset.k === key) dir = -dir; else { key = th.dataset.k; dir = -1; }
+      onSort?.(key, dir < 0 ? "desc" : "asc");
       draw();
     }));
     if (toolbar) {
       // Sorting by a column on another page flips to that page.
-      el.querySelector(".sort-key").onchange = (e) => { key = e.target.value; dir = -1; if (pageOf(key) >= 0) page = pageOf(key); draw(); };
-      el.querySelector(".sort-dir").onclick = () => { dir = -dir; draw(); };
+      el.querySelector(".sort-key").onchange = (e) => { key = e.target.value; dir = -1; if (pageOf(key) >= 0) page = pageOf(key); onSort?.(key, "desc"); draw(); };
+      el.querySelector(".sort-dir").onclick = () => { dir = -dir; onSort?.(key, dir < 0 ? "desc" : "asc"); draw(); };
     }
     el.querySelectorAll(".cp-page").forEach((b) => (b.onclick = () => { page = +b.dataset.page; draw(); }));
     el.querySelectorAll(".cp-step").forEach((b) => (b.onclick = () => { page = Math.min(pages.length - 1, Math.max(0, page + +b.dataset.step)); draw(); }));
