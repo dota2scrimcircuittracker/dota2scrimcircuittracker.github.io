@@ -159,6 +159,7 @@ export function lineChart(series, { caption = "Hover for values at any minute.",
 }
 
 // Hover crosshair + readout for every chart under root.
+const exact = (v) => Math.round(v).toLocaleString("en-US");
 export function wireCharts(root) {
   root.querySelectorAll("figure.chart[data-chart]").forEach((fig) => {
     const d = JSON.parse(fig.dataset.chart);
@@ -180,8 +181,17 @@ export function wireCharts(root) {
           const v = s.values[i];
           if (v == null) return "";
           const who = v > 0 ? d.nameA : v < 0 ? d.nameB : "even";
-          return `<span>${s.label}: <b class="${v > 0 ? "s-a" : v < 0 ? "s-b" : ""}">${sign(v)}${k(Math.abs(v))}</b> ${v ? attr(who) : ""}</span>`;
+          return `<span>${s.label}: <b class="${v > 0 ? "s-a" : v < 0 ? "s-b" : ""}">${sign(v)}${d.tip ? exact(Math.abs(v)) : k(Math.abs(v))}</b> ${v ? attr(who) : ""}</span>`;
         }).join(" · ")}${d.counts?.[i] != null ? ` · <span>${d.counts[i]} game${d.counts[i] === 1 ? "" : "s"} this long</span>` : ""}`;
+        if (d.tip && tags) {
+          // On the chart itself: a dot on each line and a small box with the exact numbers.
+          const [t0, plot, top, bot] = d.ys, yv = (v) => t0 + ((top - v) / (top + bot)) * plot;
+          const rows = d.series.map((s, j) => ({ s, j, v: s.values[i] })).filter((r) => r.v != null);
+          const w = 128, h = 8 + rows.length * 15 + 12, left = cx > (d.x[0] + d.x[1]) / 2, bx = left ? cx - 10 - w : cx + 10, by = t0 + 22;
+          tags.innerHTML = rows.map((r) => `<circle class="hover-dot lead-dot${r.j ? " xp" : ""}" cx="${cx}" cy="${yv(r.v).toFixed(1)}" r="3"/>`).join("")
+            + `<g class="lead-tip"><rect x="${bx}" y="${by}" width="${w}" height="${h}" rx="2"/><text class="lt-min" x="${bx + 8}" y="${by + 13}">${i}'</text>`
+            + rows.map((r, q) => `<text class="${r.v > 0 ? "s-a" : r.v < 0 ? "s-b" : ""}" x="${bx + 8}" y="${by + 13 + (q + 1) * 15}">${r.s.label} ${sign(r.v)}${exact(Math.abs(r.v))}</text>`).join("") + "</g>";
+        }
       } else {
         const rows = d.series.map((s) => [s.label, s.values[i]]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
         read.innerHTML = `<b>${d.xl ? attr(d.xl[i]) : `${i}'`}</b> ${rows.map(([l, v]) => `<span>${attr(l)} <b>${d.dp ? v.toFixed(d.dp) : k(v)}${d.unit ?? ""}</b></span>`).join(" · ")}`;

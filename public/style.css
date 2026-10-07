@@ -3858,3 +3858,25 @@ html.light .po-need-p, html.light .po-tbar { --pc: hsl(var(--ph, 40) 60% 34%); }
 .bd-sort:hover:not(:disabled) { background: none; color: var(--bone); }
 .bd-sort i { font-style: normal; margin-left: 3px; color: var(--dim); }
 .bd-sort.on, .bd-sort.on i { color: var(--accent); }
+
+/* Content page: each team's whole draft on one small line (bans, then picks), so the panel fits a screen. */
+.game-panel .draft-rows { gap: 4px; }
+.game-panel .draft { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.game-panel .draft-bans, .game-panel .draft-picks { gap: 5px; }
+.game-panel .draft-bans .draft-step { flex: 0 0 60px; }
+.game-panel .draft-picks .draft-step { flex: 0 0 77px; }
+.game-panel .draft-gap { flex: 0 0 10px; }
+.game-panel .draft-tag { padding: 2px 0; font-size: 11px; }
+.game-panel .draft-legend { margin: 6px 0 8px; }
+.game-panel .draft-rows.draft-bottom { margin-top: 8px; }
+.game-panel .gp-head { margin-bottom: 8px; }
+
+/* Lead chart hover: dots on the lines and a box with the exact gold and XP lead. */
+figure.chart .lead-tip rect { fill: var(--stone); stroke: var(--seam-2); }
+figure.chart .lead-tip text { font: 600 11px var(--mono); fill: var(--dust); }
+figure.chart .lead-tip text.lt-min { fill: var(--bone); }
+figure.chart .lead-tip text.s-a { fill: var(--jade); }
+figure.chart .lead-tip text.s-b { fill: var(--ember); }
+figure.chart .lead-dot { fill: var(--bone); stroke: var(--stone); }
+figure.chart .lead-dot.xp { fill: var(--dust); }
+figure.chart.item-lead .xp-line { stroke: var(--gold); stroke-width: 1.5; opacity: .85; }

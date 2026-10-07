@@ -50,10 +50,10 @@ const OBJ = { roshan: ["aegis", "Roshan"], tormentor: ["aghanims_shard", "Tormen
 const bIcon = (b) => (/^t\d/.test(b) ? "tower" : b === "fort" ? "ancient" : "barracks");
 const bName = (b) => (b === "fort" ? "Ancient" : /^t\d_/.test(b) ? `T${b[1]} ${b.slice(3)}` : b === "t4" ? "T4" : `${b[0].toUpperCase()}${b.slice(1).replace("_", " rax ")}`);
 // Layers the chart can show; all on unless `show` turns one off.
-export const LAYERS = [["items", "Items"], ["fights", "Teamfights"], ["deaths", "Hero deaths"], ["objectives", "Roshan & Tormentor"], ["towers", "Towers"], ["buybacks", "Buybacks"], ["firstblood", "First blood"]];
+export const LAYERS = [["items", "Items"], ["fights", "Teamfights"], ["xp", "XP lead"], ["deaths", "Hero deaths"], ["objectives", "Roshan & Tormentor"], ["towers", "Towers"], ["buybacks", "Buybacks"], ["firstblood", "First blood"]];
 
 // Empty string without a lead series or any item timings.
-// show: { items, fights, deaths, objectives, towers, buybacks, firstblood } — false leaves that layer out (an empty
+// show: { items, fights, xp, deaths, objectives, towers, buybacks, firstblood } — false leaves that layer out (an empty
 // lane takes no height), for a simpler chart.
 export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {}) {
   const W = Math.max(800, Math.round(width));
@@ -87,7 +87,9 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
   const rows = (list) => (list.length ? Math.max(...list.map((i) => i.row + 1)) : on.items ? 1 : 0);
   const rowsA = rows(top), rowsB = rows(bottom);
   const T = 8 + rowsA * ROW + 6, B = T + PLOT, H = B + 6 + rowsB * ROW + 26;
-  const sc = leadScale(adv); // each side scaled to its own biggest lead
+  // XP lead as a second, dashed line on the same scale (when the replay has it).
+  const xp = on.xp && Array.isArray(m.xp_adv) && m.xp_adv.length >= 2 ? m.xp_adv.slice(0, n) : null;
+  const sc = leadScale(xp ? [...adv, ...xp] : adv); // each side scaled to its own biggest lead
   const y = sc.y(T, PLOT), y0 = y(0);
   const fights = fightsOf(m);
 
@@ -96,6 +98,7 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
   for (let mm = 0; mm < n; mm += n > 50 ? 10 : 5) grid += `<line class="grid" x1="${x(mm)}" x2="${x(mm)}" y1="${T}" y2="${B}"/><text class="tick" x="${x(mm)}" y="${H - 8}" text-anchor="middle">${mm}'</text>`;
 
   const line = adv.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const xpLine = xp ? xp.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("") : "";
   const area = `${line}L${x(n - 1)},${y0}L${x(0)},${y0}Z`;
   // Who died in a fight: a small anchor on the line, team A's dead stacked above it and team B's
   // below (each side's own half of the chart), portraits ringed in their team's colour. More than
@@ -212,6 +215,7 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
     <path class="area il-a" d="${area}" clip-path="url(#${id}-up)"/>
     <path class="area il-b" d="${area}" clip-path="url(#${id}-down)"/>
     <line class="zero" x1="${L}" x2="${W - R}" y1="${y0}" y2="${y0}"/>
+    ${xp ? `<path class="xp-line" d="${xpLine}"/>` : ""}
     <path class="lead-line" d="${line}"/>
     ${pickParts.join("")}
     ${fightParts.map((f) => f.dot).join("")}
@@ -219,7 +223,7 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
     ${top.map((it) => icon(it, "a")).join("")}${bottom.map((it) => icon(it, "b")).join("")}
     <line class="cross" x1="0" x2="0" y1="${T}" y2="${B}" visibility="hidden"/><g class="hover-tags"></g>`;
   const caption = [
-    "Hover for the lead at any minute, or any marker for details.",
+    `Hover for the exact gold${xp ? " and XP" : ""} lead at any minute, or any marker for details.${xp ? " Solid line: gold; dashed: XP." : ""}`,
     on.items && `Items: ${attr(name.a)}'s above the plot, ${attr(name.b)}'s below.`,
     (on.objectives || on.towers) && "Circles on the line, ringed in the colour of the team that took it:",
     on.objectives && "Aegis = Roshan, Shard = Tormentor;",
@@ -229,7 +233,8 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
     on.deaths && `Portraits are the heroes who died (${attr(name.a)}'s above the line, ${attr(name.b)}'s below), teamfights and pickoffs alike; the dot is coloured by the side that lost fewer.${on.fights ? " Shaded bands are teamfights." : ""}`,
     !on.deaths && on.fights && "Shaded bands are teamfights; the dot is sized by deaths and coloured by the side that lost fewer.",
   ].filter(Boolean).join(" ");
-  const data = { kind: "lead", w: W, n, x: [L, W - R], nameA: name.a, nameB: name.b, series: [{ label: "Gold", values: adv }] };
+  const data = { kind: "lead", w: W, n, x: [L, W - R], nameA: name.a, nameB: name.b, tip: true, ys: [T, PLOT, sc.top, sc.bot],
+    series: [{ label: "Gold", values: adv }, ...(xp ? [{ label: "XP", values: xp }] : [])] };
   return `<figure class="chart item-lead" id="${id}" data-chart="${attr(JSON.stringify(data))}">
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${attr(caption)}">${svg}</svg>
     <figcaption class="chart-read">${caption}</figcaption></figure>`;
