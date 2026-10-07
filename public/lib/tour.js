@@ -345,13 +345,13 @@ const DEEP = [
   ]),
 
   ...group("Players", [
-    filter({ page: "players", scope: "#tiers", act: seg(/^Supports$/), when: always, title: "Cores or supports",
+    filter({ page: "players", tab: "tiers", scope: "#tiers", act: seg(/^Supports$/), when: always, title: "Cores or supports",
       text: "Show the tier list for cores or supports only." }),
-    part({ page: "players", sel: "details.how-tiers", title: "How it's scored",
+    part({ page: "players", tab: "tiers", sel: "details.how-tiers", title: "How it's scored",
       text: "Open this for how the tier list is worked out." }),
-    filter({ page: "players", act: choose("#ld-stat", /^GPM$/), box: "#leaders", when: always, title: "Stat leaders",
+    filter({ page: "players", tab: "leaders", act: choose("#ld-stat", /^GPM$/), box: "#leaders", when: always, title: "Stat leaders",
       text: "Pick any stat from the list and see who leads the league in it. Here: GPM." }),
-    filter({ page: "players", scope: "#lane-board", act: seg(/^Mid$/), title: "Lane board",
+    filter({ page: "players", tab: "lanes", scope: "#lane-board", act: seg(/^Mid$/), title: "Lane board",
       text: "Every player's laning, one role at a time. Here: mid." }),
   ]),
 

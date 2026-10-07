@@ -1,7 +1,8 @@
 // Drafter: draft Captains Mode for any two AD2L teams with the draft model (lib/cmdraft.js,
 // Project Sybil's model) scoring every hero at every step. Start from an upcoming series, any
 // two teams, or a past game's draft (rewind to any step and branch). Loaded on first visit.
-import { esc, app, pageHead, portrait, pct, profileLinks, myTeam, DIVISIONS, ALL_DIVS, divLite, divData, gameWeeker } from "../core.js";
+import { esc, app, pageHead, portrait, pct, profileLinks, myTeam, DIVISIONS, ALL_DIVS, divLite, divData, gameWeeker, tabInUrl, setRoutedAt } from "../core.js";
+import { DRAFTER_MODES as MODES } from "../lib/pagetabs.js";
 import { sideOf as teamSide } from "../lib/teams.js";
 import { hasDetails } from "../lib/stats.js";
 import { heroGridHtml, wireHeroGrid, myTeamGames } from "../parts/herogrid.js";
@@ -12,7 +13,6 @@ import { isPlayed } from "../lib/predict.js";
 import { gameContext, scoreHeroes, draftProbability, stateFeatures, sideComposition, openRoleFor, fitsRole, poolShares, flexPositions, CM_STEPS } from "../lib/cmdraft.js";
 import { draftDataFor, heroIndex, MODEL_NOTE, rankName, draftChart, heroGridModelFor } from "../parts/cmdraft.js";
 
-const MODES = [["upcoming", "Upcoming series"], ["teams", "Any two teams"], ["game", "Past game"]];
 const MODE_KEY = "drafter-mode";
 // The hero picker: the hero grid (parts/herogrid.js, the default) or every hero by attribute.
 const VIEWS = [["grid", "Hero grid"], ["all", "All heroes"]];
@@ -38,8 +38,10 @@ export async function renderDrafter(src) {
   app.innerHTML = loading(src.kicker, "Drafter");
   let d;
   try { d = await src.data(); } catch (e) { app.innerHTML = `${pageHead(src.kicker, "Drafter")}${errorBox(e)}`; return; }
+  // ?tab= (the nav dropdown's links) first, then the one used last.
   let mode = "upcoming";
   try { mode = MODES.some(([k]) => k === localStorage.getItem(MODE_KEY)) ? localStorage.getItem(MODE_KEY) : mode; } catch {}
+  if (MODES.some(([k]) => k === tabInUrl())) mode = tabInUrl();
 
   const now = Date.now() / 1000;
   const upcoming = d.series.filter((s) => !isPlayed(s) && s.home && s.away && (s.time ?? now) > now - 6 * 3600).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
@@ -472,6 +474,8 @@ export async function renderDrafter(src) {
   const start = (m) => {
     mode = m;
     try { localStorage.setItem(MODE_KEY, m); } catch {}
+    // A ?tab= from the nav would win over this pick on a reload: drop it.
+    if (new URLSearchParams(location.search).has("tab")) { const u = new URL(location.href); u.searchParams.delete("tab"); history.replaceState({ ...history.state, tab: undefined }, "", u.pathname + u.search + u.hash); setRoutedAt(location.href); }
     app.querySelectorAll(".dx-modes [data-mode]").forEach((b) => { b.classList.toggle("on", b.dataset.mode === m); b.setAttribute("aria-pressed", String(b.dataset.mode === m)); });
     app.querySelectorAll(".dx-mode").forEach((x) => { x.hidden = x.dataset.for !== m; });
     if (m === "upcoming") { const sel = document.getElementById("dx-series"); if (sel) fromSeries(sel.value); else teamsMode().catch((e) => { board.innerHTML = errorBox(e); }); }

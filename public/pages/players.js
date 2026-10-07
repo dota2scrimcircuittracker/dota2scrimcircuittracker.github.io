@@ -1,4 +1,5 @@
-// Players tab: tier list, stat leaders, laning and the full stats table.
+// Players tab: tier list, stat leaders, laning, medal vs rating and the full stats table, one
+// tab each (lib/pagetabs.js PLAYERS_PAGE_TABS, which the nav dropdown lists too).
 import { hasDetails, playerLeaderboard } from "../lib/stats.js";
 import { tierList, rankLabel } from "../lib/tiers.js";
 import { pubSummary, pubsSince } from "../lib/predict.js";
@@ -6,10 +7,11 @@ import { info } from "../lib/glossary.js";
 import { RANK_STATS, rankStat, ends, placeOf, ordinal, formatStat } from "../lib/ranks.js";
 import { medalValue } from "../lib/combat.js";
 import { medalScatterHtml } from "../lib/combat-charts.js";
-import { floorOf, inLeague, portrait, overallBadge, playerLink, teamLink, esc, LEAGUE_COUNT, app, pageHead, playerHref, pubStart, sortableTable, pct, fmt, dec, PUB_DAYS, heroStrip } from "../core.js";
+import { floorOf, inLeague, portrait, overallBadge, playerLink, teamLink, esc, LEAGUE_COUNT, app, pageHead, playerTabs, wirePlayerTabs, playerHref, pubStart, sortableTable, pct, fmt, dec, PUB_DAYS, heroStrip } from "../core.js";
 import { loading, errorBox, weekOfFn, lanesSection, laneCutsOf } from "../parts/lanes.js";
 import { overallStats, statRows } from "../parts/ranks.js";
 import { meter, tierSection, tierRef } from "../parts/tiers.js";
+import { pageTabs, PLAYERS_PAGE_TABS } from "../lib/pagetabs.js";
 
 const LEADER_KEY = "scrim-leader-stat";
 let leaderStat = (() => { try { return localStorage.getItem(LEADER_KEY) ?? "kda"; } catch { return "kda"; } })();
@@ -92,17 +94,17 @@ export async function renderPlayers(src) {
     if (fig) scatter = `<h2 id="medal-rating">Medal vs rating${info("medal_rating")}</h2>${fig}`;
   }
   const hasStandins = src.ad2l && data.some((r) => r.standin || r.standin_games);
-  app.innerHTML = `${pageHead(src.kicker, "Players", data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}.` : "")}
-    ${data.length ? `${tiers.html}
-    ${leaders.html}
-    ${lanes?.html ?? ""}
-    ${scatter}
-    <h2 id="player-stats">All stats</h2>
+  const tabs = data.length && playerTabs(pageTabs(PLAYERS_PAGE_TABS, src, [
+    ["tiers", tiers.html], ["leaders", leaders.html], ["lanes", lanes?.html ?? ""], ["medal", scatter],
+    ["stats", `<h2 id="player-stats">All stats</h2>
     ${hasStandins ? `<div class="row segs pl-filter" role="group" aria-label="Players shown">${[["all", "Everyone"], ["standin", "Played as a stand-in"]].map(([id, label]) => `<button type="button" class="seg${id === "all" ? " on" : ""}" data-pl-filter="${id}" aria-pressed="${id === "all"}">${label}</button>`).join("")}</div>` : ""}
     <div id="t" class="reveal"></div>
-    ${src.ad2l ? `<p class="table-note">Players are matched by their PlayOn name (smurfs included).</p>` : ""}`
-    : `<div class="panel empty"><strong>No players yet</strong>${src.empty}</div>`}`;
+    ${src.ad2l ? `<p class="table-note">Players are matched by their PlayOn name (smurfs included).</p>` : ""}`],
+  ]), { store: "playersTab", label: "Players sections" });
+  app.innerHTML = `${pageHead(src.kicker, "Players", data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}.` : "", tabs?.bar)}
+    ${data.length ? tabs.panels : `<div class="panel empty"><strong>No players yet</strong>${src.empty}</div>`}`;
   if (!data.length) return;
+  wirePlayerTabs();
   tiers.draw();
   leaders.draw();
   lanes?.draw();

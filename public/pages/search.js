@@ -8,7 +8,7 @@ import { HEROES } from "../lib/heroes.js";
 import { INFO } from "../lib/glossary.js";
 import { fold, searchIndex } from "../lib/search.js";
 import { siteSearch, sitelinks, leagueHref, withAt } from "../lib/sitesearch.js";
-import { STANDINGS_TABS, tabList } from "../lib/pagetabs.js";
+import { STANDINGS_TABS, PLAYERS_PAGE_TABS, HEROES_PAGE_TABS, PREDICT_TABS, DRAFTER_MODES, tabList } from "../lib/pagetabs.js";
 import { loadSearch } from "../parts/searchindex.js";
 import { KINDS, parseTable, tableParams, tableState } from "../lib/tables.js";
 import { drawTable, builderHtml, wireBuilder, TABLE_LEAGUES, leagueLabel as tableLeague } from "../parts/tables.js";
@@ -165,7 +165,9 @@ export async function renderSearch(src) {
           ${e.kind === "player" && e.team ? `<span class="sr-sub">${e.standin ? "Stand-in for " : ""}${esc(e.team)}</span>` : ""}${lgChip(e)}</a>
         <div class="sr-links">${sitelinks(e).map(([l, h]) => `<a href="${h}">${esc(l)}</a>`).join("")}</div></div>`;
     const pageHtml = (pg) => {
-      const tabs = pg.tabs === "standings" ? (src.ad2l ? tabList(STANDINGS_TABS, src) : []) : pg.tabs ?? [];
+      // Standings and Predict only have tabs on AD2L.
+      const named = { standings: src.ad2l && STANDINGS_TABS, players: PLAYERS_PAGE_TABS, heroes: HEROES_PAGE_TABS, predict: src.ad2l && PREDICT_TABS, drafter: DRAFTER_MODES };
+      const tabs = typeof pg.tabs === "string" ? (named[pg.tabs] ? tabList(named[pg.tabs], src) : []) : pg.tabs ?? [];
       return `<div class="sr-name"><a class="sr-hit" href="${leagueHref(root, { path: pg.path })}"><span class="sh-kind">Page</span><b>${esc(pg.title)}</b></a>
         ${tabs.length ? `<div class="sr-links">${tabs.map(([id, l]) => `<a href="${leagueHref(root, { path: pg.path, tab: id })}">${esc(l)}</a>`).join("")}</div>` : ""}</div>`;
     };

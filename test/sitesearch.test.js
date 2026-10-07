@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { TOPICS, PAGES, HERO_SHORT, ANCHORS, RATE_WORDS } from "../public/lib/topics.js";
 import { INFO } from "../public/lib/glossary.js";
 import { HEROES } from "../public/lib/heroes.js";
-import { TEAM_TABS, PLAYER_TABS, HERO_TABS, STANDINGS_TABS } from "../public/lib/pagetabs.js";
+import { TEAM_TABS, PLAYER_TABS, HERO_TABS, STANDINGS_TABS, PLAYERS_PAGE_TABS, HEROES_PAGE_TABS } from "../public/lib/pagetabs.js";
 import { fold } from "../public/lib/search.js";
 
-const LEAGUE_TABS = { "": STANDINGS_TABS.map(([id]) => id), heroes: ["tiers", "players", "table"], players: [], week: [] };
+const LEAGUE_TABS = { "": STANDINGS_TABS.map(([id]) => id), heroes: HEROES_PAGE_TABS.map(([id]) => id), players: PLAYERS_PAGE_TABS.map(([id]) => id), week: [] };
 const PAGE_TABS = { team: TEAM_TABS, player: PLAYER_TABS, hero: HERO_TABS };
 const where = (at) => !at || INFO[at] || ANCHORS.includes(at);
 const clean = (w) => w === fold(w).replace(/[^\p{L}\p{N} ]/gu, "") && !/\s{2}/.test(w);
