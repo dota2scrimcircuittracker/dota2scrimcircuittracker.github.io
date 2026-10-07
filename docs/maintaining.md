@@ -39,7 +39,7 @@ once (see "Firebase key").
 - `public/lib/` — logic with no page code, most of it tested in `test/`: `stats.js`
   (leaderboards), `tiers.js` (tier list), `store.js` (Firestore), `divisions.js` (the divisions
   table), `share.js` (shareable paths), `pagetabs.js` (the team, player, hero and standings
-  tabs: the one list both the page's tab bar and the nav dropdown read, so add a tab there),
+  tabs: the one list both the page's tab bar and the nav dropdowns read, so add a tab there),
   `ocr/` (the screenshot reader, shared by the site and the
   Node tests; only `engine-browser.js` / `lib/ocr-node.js` differ), and the rest.
 - `scripts/` — `sync/` (the AD2L sync and its helpers), `deploy/` (build steps the Pages workflow
