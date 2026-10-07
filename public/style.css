@@ -3841,8 +3841,9 @@ html.light .po-need-p, html.light .po-tbar { --pc: hsl(var(--ph, 40) 60% 34%); }
 .sh-name, .td-us, .td-them, .td-nm, .lu-name, .hist-vs, .h2h-name, .chip-name, .chip-meta, .bd-vs, .ld-meta,
 .ga-g-vs, .ga-ten-name, .rt-who b, .mx-t, .ct-row, .bo-who, .sp-tabs .sp-team, .gm-fact .v a, .gm-stand .s,
 .po-poss tbody th, .po-poss tbody th button, .pk-chip, .dx-pickbtn small {
-  white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word;
+  white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere;
 }
+.chip-name { min-width: 0; } /* a long name with no spaces breaks mid-string instead of pushing the rating out */
 .po-poss tbody th { max-width: 22ch; }
 .pk-chip { max-width: 220px; }
 
