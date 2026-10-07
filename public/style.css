@@ -880,7 +880,7 @@ h2 .h-note { font: 400 11px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .draft-step { position: relative; }
 .draft-step .hero-img { width: 100%; height: auto; aspect-ratio: 16 / 9; }
 .draft-step.pick .hero-img { outline: 2px solid var(--side); outline-offset: -2px; }
-.draft-step.ban .hero-img { filter: grayscale(1) brightness(.45); }
+.draft-step.ban .hero-img { filter: grayscale(1) brightness(.8); }
 .draft-rows { display: grid; gap: 6px; }
 .draft-rows.draft-bottom { margin-top: 12px; }
 .draft-step.side-a { --side: var(--jade); }
@@ -3884,3 +3884,32 @@ figure.chart .lead-tip text.s-b { fill: var(--ember); }
 figure.chart .lead-dot { fill: var(--bone); stroke: var(--stone); }
 figure.chart .lead-dot.xp { fill: var(--dust); }
 figure.chart.item-lead .xp-line { stroke: var(--gold); stroke-width: 1.5; opacity: .85; }
+.lane-n { font: 600 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dust); margin: 0 5px 0 2px; }
+
+/* Team hero pool: tiles grouped by games played. */
+.hpool { display: grid; gap: 18px; margin-top: 10px; }
+.hpool-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.hpool-head small { font: 400 11px/1 var(--mono); letter-spacing: .04em; text-transform: none; color: var(--dust); }
+.hpool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.hpool-tile { position: relative; display: grid; gap: 2px; padding: 0 0 7px; background: var(--stone); border: 1px solid var(--seam); color: inherit; text-decoration: none; }
+.hpool-tile:hover { border-color: var(--accent); }
+.hpool-tile .hero-img { width: 100%; height: auto; aspect-ratio: 16 / 9; display: block; }
+.hpool-name { padding: 5px 8px 0; font: 600 12px/1.2 var(--body); color: var(--bone); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hpool-rec { padding: 0 8px; font: 600 12px/1 var(--mono); }
+.hpool-tile.w .hpool-rec b { color: var(--jade); }
+.hpool-tile.l .hpool-rec b { color: var(--ember); }
+.hpool-tile.e .hpool-rec b { color: var(--gold); }
+.hpool-bar { display: block; height: 3px; margin: 5px 8px 0; background: var(--ember-deep); }
+.hpool-bar u { display: block; height: 100%; background: var(--jade); }
+
+/* Same compact drafts in a team's Series tab (seriesDraftsHtml). */
+.sd-game .draft-rows { gap: 4px; }
+.sd-game .draft { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.sd-game .draft-bans, .sd-game .draft-picks { gap: 5px; }
+.sd-game .draft-bans .draft-step { flex: 0 0 60px; }
+.sd-game .draft-picks .draft-step { flex: 0 0 77px; }
+.sd-game .draft-gap { flex: 0 0 10px; }
+.sd-game .draft-tag { padding: 2px 0; font-size: 11px; }
+.sd-game .draft-legend { margin: 6px 0 8px; }
+.sd-game .draft-rows.draft-bottom { margin-top: 8px; }
+.sd-game .draft-rows { gap: 6px; }

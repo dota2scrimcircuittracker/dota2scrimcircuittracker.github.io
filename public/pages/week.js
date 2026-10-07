@@ -3,7 +3,7 @@ import { hasDetails, playerKey, hasMapStats } from "../lib/stats.js";
 import { hasTimeline, swings } from "../lib/timeline.js";
 import { info } from "../lib/glossary.js";
 import { clock } from "../lib/items.js";
-import { laneCuts, laneBoard, LANE_GROUPS } from "../lib/lanes.js";
+import { laneCuts, laneBoard, LANE_GROUPS, playerLane, isJungler } from "../lib/lanes.js";
 import { hasCombat, bestStreakOf, streakName, pausesOf } from "../lib/combat.js";
 import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg } from "../core.js";
 import { fbOf, hitText } from "../parts/combat.js";
@@ -39,7 +39,7 @@ function weekHighlights(games, src, league = games) {
   ];
 }
 
-function gamePanel(m, src, label) {
+function gamePanel(m, src, label, cuts = null) {
   if (m.private) {
     return `<article class="game-panel">
       <header class="gp-head">
@@ -50,9 +50,16 @@ function gamePanel(m, src, label) {
     </article>`;
   }
   const mvp = gameMvp(m);
+  // Lane result at 10:00, from the player's own side of their lane (AD2L games with replay numbers).
+  const LANE_SHORT = { 1: "Safe", 2: "Mid", 3: "Off" };
+  const laneTag = (p) => {
+    const pl = cuts && hasDetails(m) ? playerLane(m, p, cuts) : null, v = pl?.verdict;
+    const role = p.roaming ? ' <span class="tag">roaming</span>' : cuts && isJungler(p) ? ' <span class="tag">jungle</span>' : "";
+    return (v ? ` <span class="lane-n">${LANE_SHORT[pl.role]}</span><span class="lane-v ${v}">${v === "even" ? "Draw" : v === "won" ? "Won" : "Lost"}</span>` : "") + role;
+  };
   const lineup = (t) => m.players.filter((p) => p.team === t).map((p) => `
     <li class="${p === mvp ? "mvp" : ""}">${portrait(p.hero)}
-      <span class="lu-name">${playerLink(src, p)}${p === mvp ? ' <span class="mvp-tag">MVP</span>' : ""}</span>
+      <span class="lu-name">${playerLink(src, p)}${p === mvp ? ' <span class="mvp-tag">MVP</span>' : ""}${laneTag(p)}</span>
       <span class="lu-kda">${p.kills}/${p.deaths}/${p.assists}</span>
       <span class="lu-nw">${fmt(p.net_worth)}</span>
     </li>`).join("");
@@ -84,6 +91,7 @@ export async function renderWeek(src, back = 0) {
   const next = ad2l ? upNextHtml(src, ad2l) : "";
   const nextBlock = next ? `<h2 id="up-next">Up next</h2>${next}` : "";
   const weekOf = weekOfFn(ad2l);
+  const cuts = src.ad2l ? laneCuts(games.filter(hasDetails)) : null;
   const weeks = [...new Set(games.map(weekOf))].sort((a, b) => b - a);
   if (!weeks.length) {
     app.innerHTML = `${pageHead(src.kicker, "Content")}${nextBlock}<div class="panel empty"><strong>No games yet</strong>${src.empty}</div>`;
@@ -128,11 +136,11 @@ export async function renderWeek(src, back = 0) {
         a: s ? tname[s.home] ?? gs[0].team_a : gs[0].team_a, b: s ? tname[s.away] ?? gs[0].team_b : gs[0].team_b, sa, sb,
         win: sa == null || sb == null || sa === sb ? null : sa > sb ? "a" : "b",
         sub: `${gs.length} game${gs.length === 1 ? "" : "s"}`,
-        html: `<h2 class="series-head">${head}</h2>${gs.map((m, j) => gamePanel(m, src, `Game ${j + 1}`)).join("")}`,
+        html: `<h2 class="series-head">${head}</h2>${gs.map((m, j) => gamePanel(m, src, `Game ${j + 1}`, cuts)).join("")}`,
       };
     });
   } else {
-    items = inWeek.map((m) => ({ a: m.team_a, b: m.team_b, sa: m.score_a, sb: m.score_b, win: m.winner, sub: when(m.createdAt), html: gamePanel(m, src, when(m.createdAt)) }));
+    items = inWeek.map((m) => ({ a: m.team_a, b: m.team_b, sa: m.score_a, sb: m.score_b, win: m.winner, sub: when(m.createdAt), html: gamePanel(m, src, when(m.createdAt), cuts) }));
   }
   const noun = src.ad2l ? "series" : "game";
   const tabs = items.map((it, i) => `<button type="button" role="tab" id="sp-tab-${i}" aria-controls="sp-panel-${i}"

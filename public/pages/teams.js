@@ -238,6 +238,23 @@ export async function renderTeams(src, slug) {
       <span class="h2h-last">${o.last ? shortDate(new Date(o.last)) : ""}</span></div>`).join("")}</div>
 ` : "";
 
+  // Every hero the team has played, as tiles grouped by games played: art, name, record, win bar.
+  const heroPool = (list) => {
+    if (!list.length) return `<span class="muted">—</span>`;
+    const bands = [[3, "3+ games"], [2, "2 games"], [1, "1 game"]];
+    const tile = (x) => {
+      const l = x.picks - x.wins, tone = x.wins > l ? "w" : x.wins < l ? "l" : "e";
+      return `<a class="hpool-tile ${tone}" href="${heroHref(src, x.hero)}" title="${esc(x.hero)}: ${x.wins}–${l}">${portrait(x.hero)}
+        <span class="hpool-name">${esc(x.hero)}</span><span class="hpool-rec"><b>${x.wins}–${l}</b></span>
+        <i class="hpool-bar"><u style="width:${Math.round((x.wins / x.picks) * 100)}%"></u></i></a>`;
+    };
+    return `<div class="hpool">${bands.map(([min, label], i) => {
+      const xs = list.filter((x) => (i === 0 ? x.picks >= min : x.picks === min)).sort((a, b) => b.picks - a.picks || b.wins / b.picks - a.wins / a.picks);
+      if (!xs.length) return "";
+      const w = xs.reduce((n, x) => n + x.wins, 0), g = xs.reduce((n, x) => n + x.picks, 0);
+      return `<div class="hpool-band"><div class="hpool-head"><span>${label}</span><small>${xs.length} hero${xs.length === 1 ? "" : "es"} · ${w}–${g - w}</small></div><div class="hpool-grid">${xs.map(tile).join("")}</div></div>`;
+    }).join("")}</div>`;
+  };
   const chips = (list, count, n = 6) => list.length ? `<div class="hero-chips">${list.slice(0, n).map((x) => `<div class="hero-chip">${portrait(x.hero)}<span>${heroLink(src, x.hero)}</span><b>${count(x)}</b></div>`).join("")}</div>` : `<span class="muted">—</span>`;
   const phases = (() => {
     const ph = h.drafted ? teamDraftPhases(h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side)) : null;
@@ -328,7 +345,7 @@ export async function renderTeams(src, slug) {
         ...(h.bans[0] ? [["Bans most", esc(h.bans[0].hero), `${plural(h.bans[0].n, "ban")} in ${plural(h.drafted, "draft")}`]] : []),
         ...(h.banned_against[0] ? [["Banned against", esc(h.banned_against[0].hero), `${h.banned_against[0].n} time${h.banned_against[0].n === 1 ? "" : "s"} by opponents`]] : []),
       ])}
-      <h2 id="hero-pool">Hero pool</h2>${chips(h.heroes, (x) => `${x.wins}–${x.picks - x.wins}`, Infinity)}
+      <h2 id="hero-pool">Hero pool</h2>${heroPool(h.heroes)}
       ${heroGridHtml(team, lineups, { pubs: ad2l?.pubs ?? null })}
       ${sideSplit}
       ${phases}` : ""],

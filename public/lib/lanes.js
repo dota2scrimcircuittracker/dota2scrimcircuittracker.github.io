@@ -23,6 +23,9 @@ export function laneRoleOf(p) {
   if (p.lane_role != null) return p.lane_role >= 1 && p.lane_role <= 3 ? p.lane_role : null;
   return FROM_POS[p.position] ?? null;
 }
+// Jungling: OpenDota's own jungle flag (lane_role 4), or a core (pos 1-3) who barely last-hit by 10:00
+// but killed plenty of neutrals. Rare in AD2L, so the page only shows it when it fires.
+export const isJungler = (p) => p.lane_role === 4 || (p.position != null && p.position <= 3 && !p.roaming && p.lh10 != null && p.lh10 <= 10 && (p.neutral_kills ?? 0) >= 20);
 export const at10 = (p) => (Array.isArray(p.gold_t) && p.gold_t[LANE_END_MIN] != null && p.xp10 != null ? p.gold_t[LANE_END_MIN] + p.xp10 : null);
 const sumAt10 = (ps) => (ps.length && ps.every((p) => at10(p) != null) ? ps.reduce((s, p) => s + at10(p), 0) : null);
 export const hasLanes = (m) => Array.isArray(m.players) && m.players.some((p) => at10(p) != null);

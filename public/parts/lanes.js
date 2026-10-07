@@ -1,14 +1,14 @@
 // Laning: the lane report on game, player and hero pages (lib/lanes.js does the maths).
 import { hasDetails, playerKey } from "../lib/stats.js";
 import { info } from "../lib/glossary.js";
-import { laneCuts, LANE_LABEL, gameLanes, verdict, cutFor, MAP_LANE, playerLane, laneSummary, laneBoard, LANE_GROUPS } from "../lib/lanes.js";
+import { isJungler, at10, laneCuts, LANE_LABEL, gameLanes, verdict, cutFor, MAP_LANE, playerLane, laneSummary, laneBoard, LANE_GROUPS } from "../lib/lanes.js";
 import { leagueSrc, fmt, heroHref, esc, portrait, playerLink, kg, heroLink, signedK, pct, dec, shortDate, floorOf, sortableTable, teamLink, weekStart, pageHead } from "../core.js";
 
 // ---------- Laning (lib/lanes.js) ----------
-// Won / even / lost cut-offs come from the whole division, like the tier list's reference
+// Won / draw / lost cut-offs come from the whole division, like the tier list's reference
 // (only the picked weeks' games while the time machine is on).
 export const laneCutsOf = async (src) => (src.ad2l ? laneCuts((await leagueSrc(src).load()).filter(hasDetails)) : null);
-const VERDICT = { won: "Won", even: "Even", lost: "Lost" };
+const VERDICT = { won: "Won", even: "Draw", lost: "Lost" };
 const verdictTag = (v) => (v ? `<span class="lane-v ${v}">${VERDICT[v]}</span>` : '<span class="muted">—</span>');
 const laneName = (r) => `${LANE_LABEL[r.role]}${r.roaming ? ' <span class="tag">roaming</span>' : ""}`;
 const cutNote = (cuts) => `Won = more than ${fmt(cuts.side)} gold + XP ahead at 10:00 in a side lane, ${fmt(cuts.mid)} in mid (a third of this division's lanes each way); lost = that far behind; even = in between.`;
@@ -21,7 +21,7 @@ export function gameLanesHtml(m, src, cuts) {
   const name = (t) => esc(t === "a" ? m.team_a : m.team_b);
   const card = (l, i) => {
     const v = verdict(l.margin, cutFor(cuts, l.lane));
-    const who = v === "even" ? "Even" : v ? `${name(v === "won" ? "a" : "b")} won` : "No result";
+    const who = v === "even" ? "Draw" : v ? `${name(v === "won" ? "a" : "b")} won` : "No result";
     const side = (t, ps, role) => `<div class="ln-side ${t}"><div class="ln-role">${name(t)} · ${LANE_LABEL[role]}</div>
       ${ps.length ? ps.map((p) => `<div class="ln-p">${portrait(p.hero)}<span>${playerLink(src, p)}<small>${p.lh10 ?? "—"}/${p.dn10 ?? "—"} LH/DN · ${kg((p.gold_t?.[10] ?? 0) + (p.xp10 ?? 0))} gold+XP</small></span></div>`).join("") : '<div class="muted">Nobody</div>'}</div>`;
     return `<div class="card ln-card ${v ?? ""}" style="--i:${i}">
@@ -34,7 +34,22 @@ export function gameLanesHtml(m, src, cuts) {
   const tr = ({ p, r }) => `<tr class="side-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td><td class="l">${laneName(r)}</td>
     <td>${verdictTag(r.verdict)}</td><td>${r.margin == null ? "—" : signedK(r.margin)}</td><td>${r.lh10 ?? "—"}</td><td>${r.dn10 ?? "—"}</td>
     <td>${r.eff == null ? "—" : `${Math.round(r.eff)}%`}</td><td>${r.kills10 ?? "—"}</td><td>${r.deaths10 ?? "—"}</td></tr>`;
-  return `<div class="cards ln-cards reveal">${lanes.map(card).join("")}</div>
+  // Roamers and junglers: who left their lane, what the lane they left did, and what they got.
+  const odd = m.players.filter((p) => p.roaming || isJungler(p));
+  const anyJg = odd.some(isJungler);
+  const oddTr = (p) => {
+    const r = playerLane(m, p, cuts), jg = isJungler(p);
+    const lead = jg ? at10(p) : r?.margin;
+    return `<tr class="side-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td>
+      <td class="l"><span class="tag">${jg ? "jungle" : "roaming"}</span></td>
+      <td class="l">${jg || !r ? "—" : LANE_LABEL[r.role]}</td><td>${jg || !r ? "—" : verdictTag(r.verdict)}</td>
+      <td>${lead == null ? "—" : jg ? kg(lead) : signedK(lead)}</td><td>${r?.kills10 ?? "—"}</td><td>${r?.deaths10 ?? "—"}</td>${anyJg ? `<td class="l">${jg ? `${p.neutral_kills ?? "—"} neutrals · ${p.lh10 ?? "—"} LH` : "—"}</td>` : ""}</tr>`;
+  };
+  const oddHtml = odd.length ? `<h2>Roaming &amp; jungle</h2>
+    <div class="table-wrap"><table class="ln-table"><thead><tr><th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th><th scope="col" class="l">Role</th><th scope="col" class="l">Left lane</th><th scope="col">That lane (their team)</th><th scope="col">Lane gold+XP lead</th><th scope="col">Kills by 10'</th><th scope="col">Deaths by 10'</th>${anyJg ? '<th scope="col" class="l">Jungle</th>' : ""}</tr></thead>
+    <tbody>${odd.map(oddTr).join("")}</tbody></table></div>
+    <p class="table-note keep">Roaming is a support who left their lane in the first minutes (OpenDota's flag): the result shown is how the lane they left did for their team at 10:00. Junglers are shown only when the replay marks one.</p>` : "";
+  return `<div class="cards ln-cards reveal">${lanes.map(card).join("")}</div>${oddHtml}
     <h2>First 10 minutes${info("lane_players")}</h2>
     <div class="table-wrap"><table class="ln-table"><thead><tr><th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th><th scope="col" class="l">Lane</th><th scope="col">Result</th><th scope="col">Gold+XP lead</th><th scope="col">LH</th><th scope="col">DN</th><th scope="col">Lane eff.</th><th scope="col">Kills</th><th scope="col">Deaths</th></tr></thead>
     <tbody>${["a", "b"].map((t) => rows.filter((x) => x.p.team === t).map(tr).join("")).join("")}</tbody></table></div>
@@ -48,8 +63,8 @@ export function lanesPageHtml(src, matches, pred, cuts, { name, hero = false }) 
   if (!rows.length) return "";
   const s = laneSummary(rows);
   const cards = [
-    ["Lanes", `${s.won}–${s.even}–${s.lost}`, "won–even–lost", "lane_record"],
-    ["Lane win %", pct(s.lane_rate), "even counts half", "lane_rate"],
+    ["Lanes", `${s.won}–${s.even}–${s.lost}`, "won–draw–lost", "lane_record"],
+    ["Lane win %", pct(s.lane_rate), "a draw counts half", "lane_rate"],
     ["Avg lead at 10'", s.margin == null ? "—" : signedK(s.margin), "gold + XP, whole lane", "lane_margin"],
     ["Last hits at 10'", dec(s.lh10), `denies ${dec(s.dn10)}`, "lane_lh"],
     ["Deaths before 10'", s.deaths10 == null ? "—" : s.deaths10.toFixed(2), `kills ${s.kills10 == null ? "—" : s.kills10.toFixed(2)}`, "lane_deaths"],
@@ -58,7 +73,7 @@ export function lanesPageHtml(src, matches, pred, cuts, { name, hero = false }) 
   const byRole = [1, 2, 3].map((role) => ({ role, s: laneSummary(rows.filter((r) => r.role === role)) })).filter((x) => x.s.lanes);
   const sorted = [...rows].sort((a, b) => (b.m.start_time ?? 0) - (a.m.start_time ?? 0));
   return `<div class="cards player-cards reveal" style="--cols:3">${cards.map(([k, v, t, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${t}</div></div>`).join("")}</div>
-    ${byRole.length > 1 ? `<h2>By lane</h2><div class="table-wrap"><table><thead><tr><th scope="col" class="l">Lane</th><th scope="col">Lanes</th><th scope="col">Won–even–lost</th><th scope="col">Lane win %</th><th scope="col">Avg lead</th><th scope="col">LH at 10'</th></tr></thead><tbody>
+    ${byRole.length > 1 ? `<h2>By lane</h2><div class="table-wrap"><table><thead><tr><th scope="col" class="l">Lane</th><th scope="col">Lanes</th><th scope="col">Won–draw–lost</th><th scope="col">Lane win %</th><th scope="col">Avg lead</th><th scope="col">LH at 10'</th></tr></thead><tbody>
       ${byRole.map(({ role, s: x }) => `<tr><td class="l">${LANE_LABEL[role]}</td><td>${x.lanes}</td><td>${x.won}–${x.even}–${x.lost}</td><td>${pct(x.lane_rate)}</td><td>${x.margin == null ? "—" : signedK(x.margin)}</td><td>${dec(x.lh10)}</td></tr>`).join("")}</tbody></table></div>` : ""}
     <h2>Every lane</h2>
     <div class="table-wrap"><table class="ln-table"><thead><tr><th scope="col" class="l">Game</th><th scope="col" class="l">${hero ? "Player" : "Hero"}</th><th scope="col" class="l">Lane</th><th scope="col" class="l">With</th><th scope="col" class="l">Against</th><th scope="col">Result</th><th scope="col">Lead</th><th scope="col">LH/DN</th><th scope="col">Game</th></tr></thead><tbody>
@@ -103,8 +118,8 @@ export function teamLanesHtml(src, games, cuts, team) {
     return `<div class="card tl-card ${tone}" style="--i:${i}">
       <div class="k">${LANE_LABEL[role]}</div>
       <div class="v">${t.won}–${t.even}–${t.lost}</div>
-      <div class="tl-split" role="img" aria-label="${t.won} won, ${t.even} even, ${t.lost} lost"><i class="won" style="width:${w(t.won)}%"></i><i class="even" style="width:${w(t.even)}%"></i><i class="lost" style="width:${w(t.lost)}%"></i></div>
-      <div class="s">won–even–lost · ${t.rate == null ? "—" : pct(t.rate)} lane win · avg ${t.lead == null ? "—" : signedK(t.lead)}</div>
+      <div class="tl-split" role="img" aria-label="${t.won} won, ${t.even} drawn, ${t.lost} lost"><i class="won" style="width:${w(t.won)}%"></i><i class="even" style="width:${w(t.even)}%"></i><i class="lost" style="width:${w(t.lost)}%"></i></div>
+      <div class="s">won–draw–lost · ${t.rate == null ? "—" : pct(t.rate)} lane win · avg ${t.lead == null ? "—" : signedK(t.lead)}</div>
       <div class="tl-who">${t.who.map((x) => `<span>${playerLink(src, x.p)} <small>×${x.n}</small></span>`).join("")}</div>
     </div>`;
   };
@@ -151,7 +166,7 @@ export function lanesSection(src, matches, cuts, weekGames) {
     if (!rows.length) { el.querySelector("#lane-table").innerHTML = `<p class="muted">Nobody has ${floorOf(src)}+ lanes here yet.</p>`; return; }
     sortableTable(el.querySelector("#lane-table"), [
       ["name", "Player", (v, r) => playerLink(src, r.p), "l name"], ["team", "Team", (v) => (v ? teamLink(src, v) : ""), "l name"],
-      ["lanes", "Lanes"], ["wel", "W–E–L", null, "l"], ["lane_rate", "Lane win %", pct, "", "jade"],
+      ["lanes", "Lanes"], ["wel", "W–D–L", null, "l"], ["lane_rate", "Lane win %", pct, "", "jade"],
       ["score", "Lane score", (v) => v.toFixed(2), "", "gold"], ["margin", "Avg lead", signedK],
       ["lh10", "LH at 10'", dec], ["dn10", "DN at 10'", dec], ["eff", "Lane eff.", (v) => (v == null ? "—" : `${Math.round(v)}%`)],
       ["kills10", "Kills <10'", (v) => (v == null ? "—" : v.toFixed(2))], ["deaths10", "Deaths <10'", (v) => (v == null ? "—" : v.toFixed(2))],
