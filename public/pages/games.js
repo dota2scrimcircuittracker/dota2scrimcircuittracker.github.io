@@ -153,7 +153,7 @@ export async function renderMatch(id, src) {
       <div class="panel empty"><strong>Private scrim</strong>Only the result was posted: no heroes, players or stats.<br>
         It counts toward both teams' records, but not the tier list, player or hero tables.</div>
       ${CASTS_BOX}
-      <p class="table-note">Posted ${when(m.createdAt)}.</p>${deleteBtn}`;
+      <p class="table-note keep">Posted ${when(m.createdAt)}.</p>${deleteBtn}`;
     wireDelete();
     wireCasts(m.id, src.key);
     return;
@@ -322,7 +322,7 @@ export async function renderMatch(id, src) {
         <span class="rt-r t-${r.tier}"><b>${r.rating}</b><small>${r.tier}</small></span>
       </li>`;
     };
-    ratingsHtml = `<p class="table-note wm-intro">Each player's rating for this game${info("game_rating")}, on the tier list's scale. Green tags lifted it most, red held it back. Season = their tier-list rating.</p>
+    ratingsHtml = `<p class="table-note keep wm-intro">Game ratings${info("game_rating")}</p>
       <ol class="gm-ratings reveal">${rated.map(line).join("")}</ol>`;
   }
 
@@ -406,7 +406,7 @@ export async function renderMatch(id, src) {
     // The draft model's read of this draft: filled when the tab first opens (parts/cmdraft.js).
     ["draft", "Draft", ad2l && !m.unticketed && m.draft?.some((s) => s.pick) && m.players?.length === 10 ? `<div id="cm-box" data-game="${esc(m.id)}"><div class="panel empty">Reading the draft…</div></div>` : ""],
     ["ratings", "Ratings", ratingsHtml],
-    ["lanes", "Laning", gameLanesHtml(m, src, laneCuts_) && `${fb ? `<p class="table-note wm-intro fb-note"><span class="fb-tag">FB</span> First blood at <b>${clock(fb.t)}</b>: ${playerLink(src, fbP)} (${esc(fbP.hero)})${fb.victim != null ? ` killed ${playerLink(src, m.players[fb.victim])} (${esc(m.players[fb.victim].hero)})` : ""}${fb.t < 0 ? ", before the horn" : ""}.</p>` : ""}${gameLanesHtml(m, src, laneCuts_)}`],
+    ["lanes", "Laning", gameLanesHtml(m, src, laneCuts_) && `${fb ? `<p class="table-note keep wm-intro fb-note"><span class="fb-tag">FB</span> First blood at <b>${clock(fb.t)}</b>: ${playerLink(src, fbP)} (${esc(fbP.hero)})${fb.victim != null ? ` killed ${playerLink(src, m.players[fb.victim])} (${esc(m.players[fb.victim].hero)})` : ""}${fb.t < 0 ? ", before the horn" : ""}.</p>` : ""}${gameLanesHtml(m, src, laneCuts_)}`],
     ["farm", "Farm &amp; vision", mapTableHtml(m, src) + replayTableHtml(m, src)],
     ["combat", "Combat", gameCombatHtml(m, src)],
     ["items", "Items", gameItemsHtml(m, src) && `${gameItemsHtml(m, src)}<div id="bo-box" data-game="${esc(m.id)}"></div>`],

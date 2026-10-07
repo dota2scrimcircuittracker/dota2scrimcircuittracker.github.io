@@ -66,7 +66,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         ${left.some((s) => !s.paired) ? `<div class="po-games">${left.filter((s) => !s.paired).map(game).join("")}</div>` : ""}
         ${[...new Set(paired.map((s) => s.week))].map((wk) => `<h4 class="po-h">Week ${wk} · <span class="po-guess">pairings guessed</span></h4><div class="po-games">${paired.filter((s) => s.week === wk).map(game).join("")}</div>`).join("")}
       ${mine && unpicked ? `<p class="po-nudge">${unpicked} ${unpicked === 1 ? "series isn't" : "series aren't"} called yet, so ${unpicked === 1 ? "it goes" : "they go"} the model's way. <button type="button" class="linkish" data-tocards>Call ${unpicked === 1 ? "it" : "them"} on Predictions</button></p>` : ""}
-      ${paired.length ? `<p class="table-note">PlayOn hasn't posted week ${Math.min(...paired.map((s) => s.week))} yet. Until it does, each team plays the nearest team in the table it hasn't met (AD2L pairs "pseudo-swiss" but doesn't publish how)${mine ? ". The model calls these games" : ""}.</p>` : ""}`
+      ${paired.length ? `<p class="table-note keep">PlayOn hasn't posted week ${Math.min(...paired.map((s) => s.week))} yet. Until it does, each team plays the nearest team in the table it hasn't met (AD2L pairs "pseudo-swiss" but doesn't publish how)${mine ? ". The model calls these games" : ""}.</p>` : ""}`
       : `<p class="table-note">Every group-stage series is in.</p>`;
 
     // A team in a match the viewer can pick: a button that sends it through.
@@ -100,12 +100,12 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
             Ranked by SoS: ${tb.sosRank.map((x) => `${esc(name[x.id])} <span class="muted">${x.sos}${x.by && x.by.by !== "SoS" ? `, behind on ${esc(x.by.by)}` : ""}</span>`).join(" · ")}.</p>
           ${tb.matches.length ? `<ul>${tb.matches.map(m).join("")}</ul>` : `<p class="muted">Decided by SoS, no games.</p>`}
           <p class="po-out">${tb.above.map((id) => esc(name[id])).join(", ")} ${esc(to(tb.line.above))}; ${tb.below.map((id) => esc(name[id])).join(", ")} ${esc(to(tb.line.below))}.</p>
-          ${tb.stated ? "" : `<p class="table-note">The rules don't cover ${tb.slots} ${tb.slots === 1 ? "place" : "places"} for ${tb.teams.length} teams, so this uses the nearest case.</p>`}
+          ${tb.stated ? "" : `<p class="table-note keep">The rules don't cover ${tb.slots} ${tb.slots === 1 ? "place" : "places"} for ${tb.teams.length} teams, so this uses the nearest case.</p>`}
         </div>`;
       }).join("");
       const lastSeed = split ? 8 : Math.min(8, dv.rows.length);
       const seedTies = dv.settled.filter((x) => x.place < lastSeed);
-      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, 1v1 mid):
+      const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, then a 1v1 mid for 1st or a coin flip for any other seed):
         ${seedTies.map((x) => `${ord(x.place)}: ${esc(name[x.above])} ahead of ${esc(name[x.below])} on ${esc(x.detail)}`).join(" · ")}.</p>` : "";
 
       // Table on the left, week 8 on the right (stacked on narrow screens).
@@ -149,8 +149,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
           <span class="muted">${state.picks.pick ? "your pick" : `model's pick: the weaker one, seed ${b.modelPick}`}</span></div>` : "";
       const shape = b.fixed ? "" : teams < 8 ? `${teams} teams, so everyone makes it: ${teams <= 4 ? "all start in the upper bracket" : "seeds 5–6 start in the lower bracket"}. The rules only cover 8-team brackets, so this layout is a guess.` : "Lower round 1 is 5 v 8 and 6 v 7. The loser of seed 1's match plays the 6 v 7 winner, as in S47.";
       return `${title ? `<h4 class="po-h">${esc(title)}</h4>` : ""}
-        ${mine ? pickChoice : b.fixed ? "" : `<p class="table-note">${`Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
-        ${shape ? `<p class="table-note">${shape}</p>` : ""}
+        ${mine ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${`Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
+        ${shape ? `<p class="table-note keep">${shape}</p>` : ""}
         <div class="po-br-wrap"><div class="po-br" style="--weeks:${weeks}">
           ${Array.from({ length: weeks }, (_, i) => `<div class="po-wk" style="grid-column:${i + 2}">Playoff week ${i + 1}</div>`).join("")}
           <div class="po-lbl up">Upper</div><div class="po-lbl low">Lower</div>
@@ -161,7 +161,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
 
     const heroicNote = split ? `<p class="po-heroic">Top 8 of each division make the playoffs. <b>Aegis</b>: 1st and 2nd of each division start in the upper bracket, 3rd and 4th in the lower. <b>Heroic</b>: 5th and 6th start upper, 7th and 8th lower. Each is a double-elimination bracket.</p>` : "";
     const splitBrackets = (p.brackets ?? []).map((x) => bracketHtml(x.bracket, { seedOf: x.labels, title: `${x.name} bracket` })).join("");
-    const splitNote = splitBrackets ? `<p class="table-note">AD2L hasn't announced the cross-division matchups. Assumed: upper bracket A1 v B2 and B1 v A2, lower bracket A3 v B4 and B3 v A4 (Heroic the same with 5th–8th). The loser of A1's match plays the B3 v A4 winner, as in S47.</p>` : "";
+    const splitNote = splitBrackets ? `<p class="table-note keep">AD2L hasn't announced the cross-division matchups. Assumed: upper bracket A1 v B2 and B1 v A2, lower bracket A3 v B4 and B3 v A4 (Heroic the same with 5th–8th). The loser of A1's match plays the B3 v A4 winner, as in S47.</p>` : "";
     const lead = mine
       ? `<p class="po-lead">Your calls from Predictions, played out under <a href="${RULES}" target="_blank" rel="noopener">AD2L's rules</a>. Click winners to fill in week 8 and the bracket. Tiebreakers you skip go the model's way (dashed). The bracket fills in as you pick, starting from playoff week 1.</p>`
       : `<p class="po-lead">The model's call for every series under <a href="${RULES}" target="_blank" rel="noopener">AD2L's rules</a>: 2–0 to the favourite, 1–1 for a coin flip. Bo3s and bracket matches show the favourite's likeliest score, with the odds of each score below (top team first).</p>`;
@@ -189,15 +189,15 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       ${howHtml}`;
   };
 
-  const howHtml = `<details class="how"><summary>How the tiebreakers work</summary>
+  const howHtml = `<details class="how explain"><summary>How the tiebreakers work</summary>
       <p>The table counts game wins (a bye counts 1–0). <b>SoS</b> (strength of schedule) is the total wins of every opponent a team has played, counting an opponent twice if met twice. It uses the final table, so a result still to come changes the SoS of everyone who played either team.</p>
       <p>A tie <b>across a dividing line</b> (upper/lower bracket, lower bracket/out${split ? ", Aegis/Heroic" : ""}) is played off in week 8. The tied teams are ranked by SoS and play these formats ("1 SoS" is the tied team with the best SoS):</p>
       <ul class="how-list">
         ${TB_CASES.map(([, text]) => `<li>${text}.</li>`).join("")}
       </ul>
       <p>A case the rules don't list (say, 1 slot for 5+ teams) uses the nearest one and is flagged on the Bracket tab. A tie in SoS goes to head to head, then record against the highest common opponent, then a 1v1 solo mid between one player nominated by each team.</p>
-      <p>A tie that only decides <b>seed order</b> isn't played off: SoS, then head to head, then record against the highest common opponent, then a 1v1 solo mid for the higher seed.</p>
-      <p><b>On this page.</b> The Bracket tab shows one outcome: the model's winner of each week 8 game, and the stronger team wherever it comes down to a 1v1 mid. The Seeding tab counts every outcome: each week 8 game both ways (evenly, or by the model's odds) and each 1v1 mid as 50/50, since the model rates teams, not mid players. With three or more teams level, every order counts equally.</p>
+      <p>A tie that only decides <b>seed order</b> isn't played off: SoS, then head to head, then record against the highest common opponent. If it's still level, a 1v1 solo mid decides 1st; any other seed is a coin flip.</p>
+      <p><b>On this page.</b> The Bracket tab shows one outcome: the model's winner of each week 8 game, and the stronger team wherever it comes down to a 1v1 mid. The Seeding tab counts every outcome: each week 8 game both ways (evenly, or by the model's odds) and each 1v1 mid and coin flip as 50/50, since the model rates teams, not mid players. With three or more teams level, every order counts equally.</p>
       <p><b>Scores.</b> Each game uses the model's one-game odds, independently. The score shown is the winner's likeliest: always 2–0 in a Bo3, since 2–1 needs the favourite to drop a game, so check the odds below it for a close one. In a Bo5 it's 3–1, or 3–0 if the favourite wins more than 2 games in 3.</p>
     </details>`;
 
@@ -248,7 +248,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       <div class="po-tcards">${cards.map((c) => `<div class="po-stat"><span>${esc(c.label)}</span><b>${c.value}${c.note ? ` <i>${c.note}</i>` : ""}</b></div>`).join("")}</div>
       <div class="po-tbars">${bars}</div>
       ${detailHtml(P, dv, sel)}
-      <p class="table-note">Ties on wins: a week 8 playoff across a dividing line; otherwise SoS, head to head, highest common opponent, then a 1v1 mid (counted 50/50). <button type="button" class="linkish" data-goodds>Every team's seeding on Predict →</button></p>`;
+      <p class="table-note"><button type="button" class="linkish" data-goodds>Every team's seeding on Predict →</button></p>`;
   };
 
   const weightBar = () => `<div class="pd-toggle po-weightbar" role="group" aria-label="How outcomes count"><span class="pd-lbl">Count</span>
@@ -263,7 +263,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     const weighting = state.weight === "equal" ? "Every result counts the same." : "Results are weighted by the model's odds.";
     const lead = `<p class="po-lead"><b>Seeding</b> is where each team finishes the group stage, after any week 8 tiebreakers. It sets who starts in the upper or lower bracket. It is not where teams finish in the playoffs.</p>
       <p class="po-lead">${P.exact
-        ? (n ? `${n} group-stage series are left (${counts}${P.divisions.length > 1 ? "" : " ways they can go"}). ${weighting} Each cell is a team's chance of that seed. <b>Click a cell</b> to see what a team needs for it.`
+        ? (n ? `${n} group-stage series are left (${counts}${P.divisions.length > 1 ? "" : " ways they can go"}). ${weighting} Each cell is a team's chance of that seed. <b>Click a cell</b> to see what a team needs for it, or <b>a team ▸</b> for all its seeds.`
           : "The group stage is over. Only week 8 tiebreakers can still change the seeds; each cell is a team's chance of that seed.")
         : `There are too many ways the rest can go to list${unposted ? " while PlayOn hasn't posted every week" : ""}, so this plays out ${sampled?.count} random seasons. ${weighting} Each cell is a team's chance of that seed. Once every week is posted, this lists every way and what each team needs.`}</p>`;
 
@@ -290,7 +290,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     };
 
     return `${weightBar()}${lead}${P.divisions.map(divHtml).join("")}
-      <p class="table-note">Ties on wins: across a dividing line, a week 8 tiebreaker (counted both ways); for seed order, SoS, head to head, record against the highest common opponent, then a 1v1 mid (counted 50/50).</p>
+      <p class="table-note">Ties on wins: across a dividing line, a week 8 tiebreaker (counted both ways); for seed order, SoS, head to head, record against the highest common opponent, then a 1v1 mid for 1st or a coin flip for other seeds (both counted 50/50).</p>
       ${howHtml}`;
   };
 
@@ -318,12 +318,12 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       `<th scope="col" class="l">Line</th><th scope="col" class="l">Teams level</th><th scope="col">Wins</th><th scope="col">Seeds</th><th scope="col" class="l">Format</th>`,
       (e) => `<td class="l">${lineName(e.line)}</td><td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="num">${e.places[0]}–${e.places[1]}</td><td class="l name">${esc(tbCase(e.slots, e.teams.length))}</td>`);
     const mid = section("mid", "Possible 1v1 mids",
-      "Teams level on wins, SoS, head to head and record against the highest common opponent play a 1v1 solo mid, counted here as 50/50.",
+      "A 1v1 solo mid only decides 1st place or a side of a dividing line (upper/lower bracket, in or out of the playoffs). Teams play one when they're level on wins, SoS, head to head and record against the highest common opponent. Counted here as 50/50.",
       "No result left can bring two teams level all the way to a 1v1.",
       `<th scope="col" class="l">Teams</th><th scope="col">Wins</th><th scope="col" class="l">Still level on</th><th scope="col" class="l">Decides</th>`,
       (e) => `<td class="l name">${teams(e)}</td><td class="num">${e.wins}</td><td class="l name po-why">${whyLevel(e)}</td><td class="l name">${e.purpose === "seed"
-        ? (e.teams.length === 2 ? `Which of them is seed ${e.places[0]} and which ${e.places[1]}` : `Their order in seeds ${e.places[0]}–${e.places[1]}`)
-        : `Their order in the ${lineName(e.line)} tiebreaker for seeds ${e.places[0]}–${e.places[1]} (which games they play, or a slot straight in)`}</td>`);
+        ? "Who's seed 1"
+        : `Their order in the ${lineName(e.line)} tiebreaker for seeds ${e.places[0]}–${e.places[1]}`}</td>`);
     return `<div class="po-events">${tb}${mid}<p class="table-note">A 1v1 needs the teams level at every step: wins, SoS, head to head and record against the highest common opponent. "Still level on" is the likeliest way there; the numbers can differ in other ways.</p>${dv.exact ? "" : `<p class="table-note">These chances are simulated. What leads to each shows once every outcome can be listed.</p>`}</div>`;
   };
   // Each tiebreaker step a 1v1's teams came out level on.

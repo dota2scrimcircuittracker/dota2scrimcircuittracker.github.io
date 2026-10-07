@@ -78,11 +78,10 @@ function matchesHtml(src, d, ratings) {
       ${b.list.map((s) => row(s, night)).join("")}
     </section>`;
   }).join("");
-  return `<p class="table-note mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
+  return `<p class="table-note keep mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
       PlayOn posts pairings about a week ahead.
       ${next ? `<button type="button" class="week-btn mx-jump">Jump to the next week ↓</button>` : ""}</p>
-    <div class="mx-grid${split ? " split" : ""} reveal">${html}</div>
-    <p class="table-note">Hover an upcoming series for its odds, as on ${src.all ? "Predict" : `<a href="${src.root}/predict">Predict</a>`}. G1, G2 open each ticketed game.</p>`;
+    <div class="mx-grid${split ? " split" : ""} reveal">${html}</div>`;
 }
 
 // Crosstable: every team against every other, like a Liquipedia group table. Teams run in
@@ -242,8 +241,7 @@ export async function renderStandings(src) {
     ["race", raceHtml],
   ]), { store: "standingsTab", label: "Standings sections" });
   app.innerHTML = `
-    ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`)}
-    <div class="st-tabs">${tabs.bar}</div>
+    ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`, tabs.bar)}
     ${tabs.panels}`;
 
   // A bye is a forfeit win with no games behind it: its own muted square, not a real W.
@@ -270,9 +268,9 @@ export async function renderStandings(src) {
 
   wirePlayerTabs();
   wireCharts(app);
-  // The race panel may be hidden, so measure the tab bar (same width); the figure's padding and
-  // border take 30px of it.
-  const raceBox = app.querySelector(".race"), bar = app.querySelector(".st-tabs");
+  // The race panel may be hidden, so measure the page header (same width); the figure's padding
+  // and border take 30px of it.
+  const raceBox = app.querySelector(".race"), bar = app.querySelector(".page-head");
   if (raceBox && bar) {
     let drawn = 0;
     const draw = () => {

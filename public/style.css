@@ -580,10 +580,9 @@ td.bar.gold { --bar: rgba(232, 182, 76, .55); }
 td.bar.jade { --bar: rgba(var(--jade-rgb), .55); }
 td.bar.ember { --bar: rgba(var(--ember-rgb), .55); }
 .table-note { font: 400 11px/1.6 var(--mono); color: var(--dim); margin: 12px 0 0; }
-/* The small grey explainer lines are off site-wide (asked for Oct 2026). The first-blood
-   line on a game's Laning tab stays: it's a fact about the game, not an explanation. Delete
-   this rule to bring them all back. */
-.table-note:not(.fb-note) { display: none !important; }
+/* Explainer prose is off site-wide: the (i) bubbles carry the explanations. Still shown: notes
+   marked `keep` (data, empty states, warnings) and grey notes holding a button. */
+.table-note:not(.keep):not(:has(button)), .wm-intro:not(.keep):not(:has(button)), .wm-note:not(.keep), .po-lead:not(.keep), .sort-hint, .explain { display: none !important; }
 
 /* ---------- match list: fixtures ---------- */
 .fixtures { display: grid; gap: 10px; }

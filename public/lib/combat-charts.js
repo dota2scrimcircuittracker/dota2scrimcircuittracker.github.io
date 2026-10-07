@@ -125,7 +125,7 @@ export function streakBarsHtml(t) {
 
 // Deaths by source, a game: this player (or hero) against the league's average.
 export function deathSourcesHtml(mine, league, name) {
-  if (!mine.games) return `<p class="table-note">No games with a full death log.</p>`;
+  if (!mine.games) return `<p class="table-note keep">No games with a full death log.</p>`;
   const per = (d) => DEATH_SOURCES.map(([k]) => (d.games ? d.by[k] / d.games : 0));
   const top = Math.max(...[mine, league].filter((d) => d?.games).map((d) => per(d).reduce((a, b) => a + b, 0)));
   const bar = (d, label) => {

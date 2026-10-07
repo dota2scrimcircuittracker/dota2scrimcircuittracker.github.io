@@ -258,7 +258,7 @@ export async function renderTeams(src, slug) {
         ${list.length ? `<div class="hero-chips">${list.map((x, j) => chip(key, x, i, j)).join("")}</div>` : ""}
         ${list.length > SHOW ? `<button type="button" class="link-btn ph-more" data-more="${list.length - SHOW}">+${list.length - SHOW} more</button>` : ""}</div>`;
     };
-    const line = (key, label, sub) => `<div class="ph-row"><div class="ph-label">${label}<small>${sub}</small></div>${ph[key].map((l, i) => cell(key, l, i)).join("")}</div>`;
+    const line = (key, label, sub) => `<div class="ph-row"><div class="ph-label">${label}${sub ? `<small>${sub}</small>` : ""}</div>${ph[key].map((l, i) => cell(key, l, i)).join("")}</div>`;
     const shape = (l) => (l ? `${plural(l.bans, "ban")} · ${plural(l.picks, "pick")}` : "");
     const view = (() => { try { return localStorage.getItem("phaseView") || "n"; } catch { return "n"; } })();
     const seg = ([id, label]) => `<button type="button" class="seg${id === view ? " on" : ""}" data-ph-view="${id}" aria-pressed="${id === view}">${label}</button>`;
@@ -269,9 +269,9 @@ export async function renderTeams(src, slug) {
       </div>
       <div class="phase-grid reveal" data-view="${view}">
         <div class="ph-row ph-top"><div class="ph-label"></div>${PHASES.map((p, i) => `<div class="ph-head">Phase ${p}<small>${shape(ph.layout?.[i])} in the whole draft</small></div>`).join("")}</div>
-        ${line("bans", "They ban", "Win % = their record in those games")}
-        ${line("against", "Banned against them", "Win % = their record when it was taken away")}
-        ${line("picks", "They pick", "Win % = their record with the hero")}
+        ${line("bans", "They ban", "")}
+        ${line("against", "Banned against them", "")}
+        ${line("picks", "They pick", "")}
       </div>
 `;
   })();
@@ -290,7 +290,7 @@ export async function renderTeams(src, slug) {
     ].join("");
     if (!rows) return "";
     const c = ss.combo;
-    const mix = ad2l && ss.drafted ? `<p class="table-note">First pick on Radiant ${c.a.first} · first pick on Dire ${c.b.first} · second pick on Radiant ${c.a.second} · second pick on Dire ${c.b.second}.</p>` : "";
+    const mix = ad2l && ss.drafted ? `<p class="table-note keep">First pick on Radiant ${c.a.first} · first pick on Dire ${c.b.first} · second pick on Radiant ${c.a.second} · second pick on Dire ${c.b.second}.</p>` : "";
     return `<h2>Side and pick order${info("team_side_pick")}</h2>
       <p class="table-note">${ad2l ? `${plural(ss.games, "game")}, ${ss.drafted} with a draft` : plural(ss.drafted, "draft")}. Record after each share.</p>
       <div class="td-odds sp-odds">${rows}</div>${mix}`;

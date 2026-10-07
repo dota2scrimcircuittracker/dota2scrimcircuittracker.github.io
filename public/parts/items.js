@@ -71,7 +71,7 @@ export function playerItemsHtml(src, matches, games) {
     ${views.map(([v, , gs], i) => `<div class="ih-view" data-v="${esc(v)}"${i ? " hidden" : ""}><div class="table-wrap items-table"><table>
       <thead><tr><th scope="col" class="l">Item</th><th scope="col">Built</th><th scope="col">Their avg.</th><th scope="col">League avg. on ${v === "all" ? "their heroes" : "hero"}</th><th scope="col">vs league</th><th scope="col">Lead swing${info("lead_swing")}</th></tr></thead>
       <tbody>${table(gs, v === "all")}</tbody></table></div>
-      ${v === "all" ? (() => { const more = itemStats(gs).filter((s) => s.n < 2).length; return more && more < itemStats(gs).length ? `<button type="button" class="ih-more-btn">Show ${more} item${more === 1 ? "" : "s"} built once</button>` : ""; })() : `<p class="table-note">${heroLink(src, v)}: ${gs.length} game${gs.length === 1 ? "" : "s"} with a replay.</p>`}</div>`).join("")}
+      ${v === "all" ? (() => { const more = itemStats(gs).filter((s) => s.n < 2).length; return more && more < itemStats(gs).length ? `<button type="button" class="ih-more-btn">Show ${more} item${more === 1 ? "" : "s"} built once</button>` : ""; })() : `<p class="table-note keep">${heroLink(src, v)}: ${gs.length} game${gs.length === 1 ? "" : "s"} with a replay.</p>`}</div>`).join("")}
     <p class="table-note">League avg. = every build of that item on the same hero in this league, theirs included (count in brackets). Under All heroes, each build is compared with its own hero's average. vs league: − = faster; shown only when others have built it too.</p>`;
 }
 

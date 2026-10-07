@@ -82,6 +82,14 @@ and change it: [maintaining.md](maintaining.md).
 - **Settings** (cog) — dark, grey or light theme, colour-blind mode, and the **time machine**
   (pick weeks: standings, the Players and Heroes tabs, and team, player and hero pages are
   recomputed over just those weeks; a short pick lowers the 3-game floor to the weeks picked).
+- **Nav dropdowns** — hovering a nav tab (or Arrow Down on it) opens a short list: Teams lists
+  the team names, Content the weeks, and Players, Heroes, Predict (AD2L) and Drafter their page's
+  own tabs (from `public/lib/pagetabs.js`).
+- **Page tabs on the title line** — Teams, Players, Heroes and Predict show their tabs to the
+  right of the title, like team, player and hero pages.
+- **No explainer notes** — grey notes, intro lines, map notes and "How it works" sections are
+  hidden site-wide by one CSS rule in `style.css`; the (i) bubbles carry the explanations (see
+  maintaining.md, "Page text").
 - **Accessibility** — a skip link, focus moves to the new page's heading on navigation, the
   current tab is marked for screen readers, and every table header is scoped.
 - Every table sorts: click a column header (↕), or use the "Sort by" menu on player tables.
@@ -159,7 +167,9 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 
 ## Players tab
 
-- **Tier list** (top) — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
+One tab per section (Laning and Medal vs rating are AD2L only):
+
+- **Tier list** — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
   position, Pos 1–5 (opens on Pos 1; there's no all-players list): that position's own list, each player's games
   there only, rated against that position's players (its anchors, consistency and curve come
   from pos N games; `lib/tiers.js` tierModel/tierList `pos`), so a 4/5 swapper shows in both with
@@ -498,7 +508,8 @@ shrunk-resolution problem above, not a finding problem.
     7–8). Counted equally (a tiebreaker splits its outcome in half) or by the model's odds.
     Ties on wins follow the rules on each outcome's own final table (SoS from those results):
     across a line, week 8 both ways; teams are ranked (for the week 8 table and for seed order)
-    by SoS → head to head → highest common opponent → a 1v1 solo mid, the 1v1 counted 50/50
+    by SoS → head to head → highest common opponent → a 1v1 solo mid (only for 1st or a line;
+    any other seed order is a coin flip), both counted 50/50
     (every order the same for 3+ teams) whatever the weighting, one result per group of teams.
     "How the tiebreakers work" sits under the grid too. Under it, per division, two tables:
     **Possible week 8 tiebreakers** (chance, line, teams level, wins, places, the rules' format
