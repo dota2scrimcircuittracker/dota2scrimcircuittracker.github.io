@@ -193,7 +193,7 @@ export function gameAnalysisHtml(src, mode, games, gi, rated) {
     <h3 class="ga-h3">Stat line <small>place among the ${m.players.length} players in brackets: gold = best in the game, green = top 3, red = bottom 3</small></h3>
     ${groups}
     ${gold ? `<h3 class="ga-h3">Gold &amp; events${info("game_gold")}<small>Their gold against the enemy at the same position, their team's lead underneath, and what happened when. Hover for any minute.</small></h3>${gold}` : ""}
-    ${map ? `<h3 class="ga-h3">Wards</h3>${map}` : `<p class="table-note">No wards on record for this game${src.ad2l ? "" : " (screenshot uploads don't have them)"}.</p>`}`;
+    ${map ? `<h3 class="ga-h3">Wards</h3>${map}` : `<p class="table-note keep">No wards on record for this game${src.ad2l ? "" : " (screenshot uploads don't have them)"}.</p>`}`;
 }
 
 export function wireGameAnalysis(src, mode, games, rated) {

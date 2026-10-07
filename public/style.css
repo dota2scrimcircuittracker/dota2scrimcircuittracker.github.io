@@ -591,6 +591,9 @@ td.bar.gold { --bar: rgba(232, 182, 76, .55); }
 td.bar.jade { --bar: rgba(var(--jade-rgb), .55); }
 td.bar.ember { --bar: rgba(var(--ember-rgb), .55); }
 .table-note { font: 400 11px/1.6 var(--mono); color: var(--dim); margin: 12px 0 0; }
+/* Explainer prose is off site-wide: the (i) bubbles carry the explanations. Still shown: notes
+   marked `keep` (data, empty states, warnings) and grey notes holding a button. */
+.table-note:not(.keep):not(:has(button)), .wm-intro:not(.keep):not(:has(button)), .wm-note:not(.keep), .po-lead:not(.keep), .sort-hint, .explain { display: none !important; }
 
 /* ---------- match list: fixtures ---------- */
 .fixtures { display: grid; gap: 10px; }
@@ -2421,6 +2424,15 @@ button.ga-go:hover:not(:disabled) { background: var(--accent); color: var(--on-a
 }
 .player-cards .best-game { border-color: rgba(var(--accent-rgb), .35); background: linear-gradient(160deg, rgba(var(--accent-rgb), .08), transparent 60%), var(--stone); }
 .player-cards .best-game .k { color: var(--accent); }
+@media (min-width: 1400px) { .player-cards .card .v.pair { font-size: 27px; } }
+/* Team page head cards: two to a row on a phone (fifteen full-width cards is a long scroll). */
+@media (max-width: 600px) {
+  .team-cards { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .team-cards .card { padding: 14px 12px; }
+  .team-cards .card .v { font-size: 28px; margin: 10px 0 6px; }
+  .team-cards .card .v.pair { font-size: 21px; }
+  .team-cards .card .s { font-size: 12px; }
+}
 
 /* Player page tabs (Stats / Heroes / Map / Games): styled like the site nav. */
 /* Compact player header: one kicker line, then name + tier + team line + tabs in one row
@@ -3504,6 +3516,14 @@ button.po-slot.on.me { border-style: solid; border-color: var(--jade); }
 .po-poss tbody th button { color: var(--bone); text-align: left; font: inherit; font-size: 14px; line-height: 1.4; text-transform: none; letter-spacing: 0;
   clip-path: none; display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .po-poss tr.sel th button { color: var(--accent); }
+/* Team names open a drop-down of every place the team can reach: a caret and a hover box say so. */
+.po-poss tbody th button.po-team { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 8px 4px 6px; border: 1px solid transparent; }
+.po-poss tbody th button.po-team:hover { border-color: var(--seam); background: rgba(var(--bone-rgb), .05); }
+.po-poss tbody th button.po-team:hover .po-caret, .po-poss tr.sel .po-caret { color: var(--accent); }
+.po-caret { flex: none; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  color: var(--dust); transition: transform .15s; }
+.po-team[aria-expanded="true"] .po-caret { transform: rotate(90deg); }
+.po-tname { overflow: hidden; text-overflow: ellipsis; }
 .po-c { text-align: center; }
 .po-c.zero { color: var(--dim); opacity: .5; }
 .po-c button {

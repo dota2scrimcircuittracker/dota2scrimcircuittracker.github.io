@@ -105,7 +105,7 @@ export function gameDraftHtml(m, src, data, width = null) {
       <thead><tr><th>#</th><th class="l">Team</th><th class="l"></th><th class="l">Hero</th><th>Rank</th><th>Value</th><th class="l">Model's top 3</th><th>Win after</th><th>Change</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <h3 class="gm-h3">Who plays what</h3>
-    <p class="table-note">The model doesn't know who played which hero; it guesses from each player's heroes and positions. It got ${right} of ${total} right here.</p>
+    <p class="table-note keep">The model doesn't know who played which hero; it guesses from each player's heroes and positions. It got ${right} of ${total} right here.</p>
     <div class="table-wrap"><table><thead><tr><th class="l">Team</th><th class="l">Hero</th><th class="l">Model's guess</th><th class="l">Played by</th><th></th></tr></thead><tbody>${whoRows}</tbody></table></div>
     <h3 class="gm-h3">Players as read</h3>
     <p class="table-note">Pub and league games in the ${data.history_days} days before this game. Rank is from recent pub lobbies, or PlayOn medal if there are none.${unknown ? ` ${unknown} player${unknown === 1 ? " has" : "s have"} no history (a stand-in or private profile) and count${unknown === 1 ? "s" : ""} as an average player at this rank.` : ""}</p>

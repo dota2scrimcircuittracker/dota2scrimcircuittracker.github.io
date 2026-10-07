@@ -139,6 +139,54 @@ export function teamHistory(matches, team) {
   };
 }
 
+// One line per team over its games with stats, for ranking teams on the same terms as players
+// (lib/ranks.js rankStat / placeOf). Team numbers are the five players added up (team GPM is
+// the sum of their GPMs), a game; replay-only numbers (wards, Roshans, ...) are averaged over
+// the games that record them and are null otherwise.
+export function teamLeaderboard(matches) {
+  const rows = new Map();
+  for (const m of matches.filter(hasDetails)) {
+    const minutes = m.duration_sec / 60;
+    for (const side of ["a", "b"]) {
+      const id = side === "a" ? m.team_a_id : m.team_b_id, name = (side === "a" ? m.team_a : m.team_b).trim();
+      const key = id != null ? `id:${id}` : name.toLowerCase();
+      const r = rows.get(key) ?? rows.set(key, { key, id: id ?? null, name, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, gpm: 0, xpm: 0, damage: 0, minutes: 0, sums: {}, lead10: [], fb: [] }).get(key);
+      const ps = m.players.filter((p) => p.team === side);
+      r.games++; if (m.winner === side) r.wins++;
+      r.kills += side === "a" ? m.score_a : m.score_b;
+      r.deaths += side === "a" ? m.score_b : m.score_a;
+      r.assists += ps.reduce((s, p) => s + (p.assists ?? 0), 0);
+      r.gpm += ps.reduce((s, p) => s + (p.gpm ?? 0), 0);
+      r.xpm += ps.reduce((s, p) => s + (p.xpm ?? 0), 0);
+      r.damage += ps.reduce((s, p) => s + (p.hero_damage ?? 0), 0);
+      r.minutes += minutes;
+      // Replay-only fields: a team total for the game when every player has it.
+      const add = (k, f) => { if (ps.every((p) => f(p) != null)) (r.sums[k] ??= []).push(ps.reduce((s, p) => s + f(p), 0)); };
+      add("obs", (p) => p.obs_placed); add("sen", (p) => p.sen_placed);
+      add("dewards", (p) => (p.obs_killed == null ? null : p.obs_killed + (p.sen_killed ?? 0)));
+      add("stacks", (p) => p.camps_stacked); add("healing", (p) => p.hero_healing); add("stuns", (p) => p.stuns);
+      add("building", (p) => p.tower_damage); add("roshans", (p) => p.roshan_kills); add("tormentors", (p) => p.tormentor_kills);
+      if (Array.isArray(m.gold_adv) && m.gold_adv.length > 10) r.lead10.push(side === "a" ? m.gold_adv[10] : -m.gold_adv[10]);
+      if (ps.some((p) => p.first_blood != null)) r.fb.push(ps.some((p) => p.first_blood > 0) ? 1 : 0);
+    }
+  }
+  const avg = (xs) => (xs?.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+  return [...rows.values()].map((r) => ({
+    key: r.key, id: r.id, name: r.name, games: r.games, wins: r.wins,
+    win_rate: r.wins / r.games,
+    kills_pg: r.kills / r.games, deaths_pg: r.deaths / r.games, assists_pg: r.assists / r.games,
+    kill_diff: (r.kills - r.deaths) / r.games,
+    kda: (r.kills + r.assists) / Math.max(r.deaths, 1),
+    team_gpm: r.gpm / r.games, team_xpm: r.xpm / r.games,
+    dmg_per_min: r.minutes ? r.damage / r.minutes : null,
+    avg_minutes: r.minutes / r.games,
+    lead10: avg(r.lead10), fb_rate: avg(r.fb),
+    obs_pg: avg(r.sums.obs), sen_pg: avg(r.sums.sen), dewards_pg: avg(r.sums.dewards), stacks_pg: avg(r.sums.stacks),
+    healing_pg: avg(r.sums.healing), stuns_pg: avg(r.sums.stuns),
+    building_pg: avg(r.sums.building), roshans_pg: avg(r.sums.roshans), tormentors_pg: avg(r.sums.tormentors),
+  }));
+}
+
 // AD2L records from PlayOn's series scores (official; complete even when a game's stats
 // couldn't be found): team id -> { wins, losses, games }, in games.
 export function seriesRecords(series) {

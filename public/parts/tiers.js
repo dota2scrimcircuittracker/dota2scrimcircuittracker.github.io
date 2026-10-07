@@ -207,7 +207,7 @@ export function tierSection(src, matches, model) {
       <div class="row segs tier-pos">${[1, 2, 3, 4, 5].map((n) => tab(`pos${n}`, `Pos ${n}`)).join("")}</div>
       ${n ? `<p class="table-note">Games at pos ${n} only, rated against the other pos ${n} players. Players who also play other positions are rated on their pos ${n} games alone.</p>` : ""}
       <div class="tier-board">${bands}</div>
-      ${list.unranked.length ? `<p class="table-note">Not ranked yet (needs ${floorOf(src)}+ games${n ? ` at pos ${n}` : ""}): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
+      ${list.unranked.length ? `<p class="table-note keep">Not ranked yet (needs ${floorOf(src)}+ games${n ? ` at pos ${n}` : ""}): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
     el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { tierRole = b.dataset.role; draw(); }));
     const toggle = (c) => {
       const k = c.dataset.key;
@@ -224,7 +224,7 @@ export function tierSection(src, matches, model) {
     <p class="table-note wm-intro">${full.eligible} players ranked from ${matches.length} ${matches.length === 1 ? "game" : "games"}.</p>
     <div id="tiers"></div>
     ${tierHow(full.model, src)}`
-    : `<p class="table-note">Tier list: players need ${floorOf(src)}+ games to be ranked.</p>`;
+    : `<p class="table-note keep">Tier list: players need ${floorOf(src)}+ games to be ranked.</p>`;
   return { html, draw };
 }
 

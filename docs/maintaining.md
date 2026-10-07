@@ -57,6 +57,12 @@ the "Items & fights" chart `itemlead.js`; gold `timeline.js`, charts `charts.js`
 (the line of sight, shared with the sync) and `visionmap.js`; unticketed uploads `unticketed.js`;
 visitor counts `visits.js`; trimmed files `lite.js`.
 
+Page text: no explainer prose on the pages. Explanations go in the (i) bubbles
+(`lib/glossary.js`). One rule in `style.css` hides `.table-note`, `.wm-intro`, `.wm-note`,
+`.po-lead`, `.sort-hint` and `.explain` (the "How it works" sections). A note that holds data,
+an empty state or a warning gets the `keep` class to stay visible, and a grey note holding a
+button (a "→" link to another tab) stays too.
+
 Loading: the first page waits only for what it draws. Upload and Predict load on first visit;
 the screenshot reader (and Tesseract) on the first upload; the guided tour and Feedback after
 the first page; the known player names for the review form on the upload page. A page loads its

@@ -5,6 +5,7 @@ import { isPlayed, pubsSince, pubSummary } from "../lib/predict.js";
 import { info } from "../lib/glossary.js";
 import { withPerGame, RANK_STATS, RANK_GROUPS, placeOf, rankStat, ordinal, formatStat } from "../lib/ranks.js";
 import { pubPrep } from "../lib/combat.js";
+import { teamLeaderboard } from "../lib/teams.js";
 import { statRowsCache, heroRankCache, heroRowsCache, allLeagues, floorOf, PLAYER_RANKS, esc, leagueShort, inLeague, overallBadge, LEAGUE_COUNT, heroVal, portrait, heroLink, playerLink, teamLink, HERO_PLAYERS_SHOWN, pubStart, PUB_DAYS, pubStartLabel, heroHref, pct, PREP_DAYS } from "../core.js";
 
 export const statRows = (matches) => statRowsCache.get(matches) ?? statRowsCache.set(matches, playerLeaderboard(matches).map(withPerGame)).get(matches);
@@ -41,6 +42,40 @@ export async function overallHeroRows(src) {
   try { return (await allLeagues(src)).flatMap(({ key, matches }) => heroRows(matches).map((r) => ({ ...r, league: key }))); }
   catch (e) { console.warn("overall ranks unavailable", e); return null; }
 }
+// Teams ranked on the same terms (team page overview): every team's line, in this league and
+// across every league.
+const teamRowsCache = new WeakMap();
+export const teamRows = (matches) => teamRowsCache.get(matches) ?? teamRowsCache.set(matches, teamLeaderboard(matches)).get(matches);
+export async function overallTeamRows(src) {
+  if (!src.ad2l || src.all) return null;
+  try { return (await allLeagues(src)).flatMap(({ key, matches }) => teamRows(matches).map((r) => ({ ...r, league: key }))); }
+  catch (e) { console.warn("overall ranks unavailable", e); return null; }
+}
+export const TEAM_RANKS = {
+  stats: [
+    { key: "win_rate", label: "Win % (with stats)", group: "results", fmt: "pct" },
+    { key: "kill_diff", label: "Kill margin a game", group: "results", fmt: "+1" },
+    { key: "kills_pg", label: "Kills a game", group: "results", fmt: "1" },
+    { key: "deaths_pg", label: "Deaths a game", group: "results", fmt: "1", low: true },
+    { key: "kda", label: "Team KDA", group: "results", fmt: "2" },
+    { key: "team_gpm", label: "Team GPM", group: "economy", fmt: "0" },
+    { key: "team_xpm", label: "Team XPM", group: "economy", fmt: "0" },
+    { key: "lead10", label: "Gold lead at 10 min", group: "economy", fmt: "+0" },
+    { key: "dmg_per_min", label: "Hero damage / min", group: "damage", fmt: "0" },
+    { key: "fb_rate", label: "First blood rate", group: "combat", fmt: "pct" },
+    { key: "obs_pg", label: "Observers a game", group: "support", fmt: "1" },
+    { key: "sen_pg", label: "Sentries a game", group: "support", fmt: "1" },
+    { key: "dewards_pg", label: "Dewards a game", group: "support", fmt: "1" },
+    { key: "stacks_pg", label: "Stacks a game", group: "support", fmt: "1" },
+    { key: "healing_pg", label: "Healing a game", group: "support", fmt: "0" },
+    { key: "stuns_pg", label: "Stun seconds a game", group: "support", fmt: "1" },
+    { key: "building_pg", label: "Building damage a game", group: "objectives", fmt: "0" },
+    { key: "roshans_pg", label: "Roshans a game", group: "objectives", fmt: "2" },
+    { key: "tormentors_pg", label: "Tormentors a game", group: "objectives", fmt: "2" },
+  ],
+  groups: RANK_GROUPS,
+  id: "team-ranks", title: "Team ranks", tip: "team_ranks", unit: "games with stats",
+};
 export const HERO_RANKS = {
   stats: [
     { key: "pick_rate", label: "Pick rate", group: "draft", fmt: "pct" },
@@ -94,7 +129,7 @@ export function statRanksHtml(src, key, rows, overall, opt = PLAYER_RANKS) {
       <div><b class="sr-sum-top">${tops}</b><small>top 3 in ${league}</small></div>
       <div><b class="sr-sum-bottom">${bottoms}</b><small>bottom 3 in ${league}</small></div>
       ${src.ad2l ? `<div><b class="sr-sum-ov">${overall ? ovTops : "…"}</b><small>top 3 across all ${LEAGUE_COUNT} leagues</small></div>` : ""}
-    </div>` : `<p class="table-note wm-intro">Ranks need ${floorOf(src)}+ ${opt.unit}; ${esc(me.name)} has ${me.games}. The numbers so far:</p>`}
+    </div>` : `<p class="table-note keep wm-intro">Ranks need ${floorOf(src)}+ ${opt.unit}; ${esc(me.name)} has ${me.games}. The numbers so far:</p>`}
     <div class="ld-lists">${bands}</div>`;
 }
 
@@ -151,7 +186,7 @@ export function heroPlayersHtml(src, hero, list, lines, overallList) {
   return `<h2 id="hero-players">Players on it${info("hero_rating")}</h2>
     <p class="table-note wm-intro">Hero rating: the tier rating from their games on ${esc(hero)} only. Place: among the ${list.length} player${list.length === 1 ? "" : "s"} in ${league} who played it${src.ad2l ? `, and across all ${LEAGUE_COUNT} leagues` : ""}. One or two games is a small sample.</p>
     <div class="hp-grid reveal">${list.slice(0, HERO_PLAYERS_SHOWN).map(card).join("")}</div>
-    ${more > 0 ? `<p class="table-note">${more} more in the Players table below.</p>` : ""}`;
+    ${more > 0 ? `<p class="table-note keep">${more} more in the Players table below.</p>` : ""}`;
 }
 
 // The last league night (Thursday), per the league's rhythm: predictions count pubs since
@@ -164,7 +199,7 @@ export function pubSection(src, accountId) {
   if (!d?.pubs || !accountId) return "";
   const games = pubsSince(d, accountId, pubStart(d));
   const ps = pubSummary(games);
-  if (!ps) return `<h2>Recent pubs</h2><p class="table-note wm-intro">No public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), or their match history is private.</p>`;
+  if (!ps) return `<h2>Recent pubs</h2><p class="table-note keep wm-intro">No public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), or their match history is private.</p>`;
   const ranked = games.filter((g) => g.ranked).length;
   const good = (wr) => (wr >= 0.5 ? "w" : "l");
   // Form: every game oldest -> newest, the hero with a win/loss bar under it.
@@ -218,7 +253,7 @@ export function heroPubSection(src, hero, known) {
   if (!d?.pubs) return "";
   const roster = d.teams.flatMap((t) => t.players.filter((p) => p.account_id).map((p) => ({ ...p, team: t.name })));
   const who = roster.map((p) => ({ p, games: pubsSince(d, p.account_id, pubStart(d)).filter((g) => g.hero === hero) })).filter((x) => x.games.length);
-  if (!who.length) return `<h2>Recent pubs</h2><p class="table-note wm-intro">Nobody in ${esc(leagueShort(src))} played ${esc(hero)} in public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), among players whose match history is public.</p>`;
+  if (!who.length) return `<h2>Recent pubs</h2><p class="table-note keep wm-intro">Nobody in ${esc(leagueShort(src))} played ${esc(hero)} in public or ranked games in the ${PUB_DAYS} days before the last sync (since ${pubStartLabel(d)}), among players whose match history is public.</p>`;
   const ps = pubSummary(who.flatMap((x) => x.games));
   const good = (wr) => (wr >= 0.5 ? "w" : "l");
   const rows = who.map((x) => ({ ...x, s: pubSummary(x.games) })).sort((a, b) => b.s.games - a.s.games || b.s.wins - a.s.wins);

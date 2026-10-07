@@ -115,7 +115,7 @@ export function heroPowerSection(src, ratings) {
       </div>`;
     };
     el.innerHTML = `<div class="row segs hchip-bar"><label class="min-bar">Heroes picked at least ${minSelect("hp-min", steps, min)} times</label></div>
-      ${total ? board(bands, chip, hs.open, (h) => hs.cards.has(h.hero)) : `<p class="table-note">No hero has ${min}+ games yet.</p>`}
+      ${total ? board(bands, chip, hs.open, (h) => hs.cards.has(h.hero)) : `<p class="table-note keep">No hero has ${min}+ games yet.</p>`}
       <p class="table-note">${total} hero${total === 1 ? "" : "es"}. Rating: the average hero rating of everyone who played it (weighted by games, padded with ${K_HERO} average games), on a curve fitted to the heroes. It ranks how well players do on the hero, not its win rate.</p>`;
     el.querySelector("#hp-min").onchange = (e) => { hs.min = min = +e.target.value; draw(); };
     wireMore(el, hs.open, draw);
@@ -149,14 +149,14 @@ export function heroTierSection(src, ratings) {
           <div class="chip-meta">${heroLink(src, p.hero)}${p.team ? ` · ${teamLink(src, p.team)}` : ""}</div>
           <div class="chip-foot"><span class="role-tag">${p.role === "core" ? "Core" : "Support"}</span><span>${p.wins}–${p.games - p.wins}</span><span>${p.games} game${p.games === 1 ? "" : "s"}</span></div>
         </div>
-        ${caret(open)}${open ? `<p class="table-note hbd-lead">Tier rating from only ${esc(p.name)}'s ${p.games} game${p.games === 1 ? "" : "s"} on ${esc(p.hero)}.</p>${tierBreakdown(src, p)}` : ""}
+        ${caret(open)}${open ? `<p class="table-note keep hbd-lead">Tier rating from only ${esc(p.name)}'s ${p.games} game${p.games === 1 ? "" : "s"} on ${esc(p.hero)}.</p>${tierBreakdown(src, p)}` : ""}
       </div>`;
     };
     const seg = (k, label) => `<button type="button" class="seg${st.role === k ? " on" : ""}" data-role="${k}">${label}</button>`;
     el.innerHTML = `<div class="row segs hchip-bar">${seg("all", "Everyone")}${seg("core", "Cores")}${seg("support", "Supports")}
         <label class="min-bar">Hero <select id="ht-hero"><option value="">All heroes</option>${heroes.map((h) => `<option value="${esc(h)}" ${h === st.hero ? "selected" : ""}>${esc(h)}</option>`).join("")}</select></label>
         <label class="min-bar">At least ${minSelect("ht-min", steps, min)} games on the hero</label></div>
-      ${total ? board(bands, chip, st.open, (p) => st.cards.has(keyOf(p))) : `<p class="table-note">Nobody has ${min}+ games on ${st.hero ? esc(st.hero) : "a hero"}${st.role === "all" ? "" : ` as a ${st.role}`} yet.</p>`}
+      ${total ? board(bands, chip, st.open, (p) => st.cards.has(keyOf(p))) : `<p class="table-note keep">Nobody has ${min}+ games on ${st.hero ? esc(st.hero) : "a hero"}${st.role === "all" ? "" : ` as a ${st.role}`} yet.</p>`}
       <p class="table-note">${total} player–hero pair${total === 1 ? "" : "s"}. Rating: the tier rating from their games on that hero only. A couple of games is a small sample.</p>`;
     el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { st.role = b.dataset.role; draw(); }));
     el.querySelector("#ht-hero").onchange = (e) => { st.hero = e.target.value; draw(); };

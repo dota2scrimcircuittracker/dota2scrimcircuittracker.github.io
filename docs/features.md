@@ -102,7 +102,11 @@ and change it: [maintaining.md](maintaining.md).
 - **Team pages** — record, series and game results, roster, hero pool (W–L per hero), what they
   ban and what's banned against them, split by draft phase, how often they play Radiant and
   pick first (with the record each way and the side/pick mix; scrims show pick order only), and
-  player stats for that team. On
+  player stats for that team. The Overview opens like a player's Stats tab: head cards (record,
+  form, team GPM, damage, vision, objectives, sides, first blood, fights) and three best games
+  (biggest win, fastest win, biggest comeback or most kills), then **Team ranks**: the team's
+  place on each stat (the five players added up, a game) in its division and across all seven
+  leagues, coloured like Stat ranks. On
   the Series tab, every drafted series shows each game's full pick/ban draft under its row.
   **Hero grid for Dota** (Heroes tab, linked from the overview): three columns, as in a matchup:
   the enemy (this team) left, bans middle, you right. "You" is **My team**, set beside the grid or

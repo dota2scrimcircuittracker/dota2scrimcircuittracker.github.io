@@ -47,6 +47,8 @@ export const RANK_STATS = [
 export function formatStat(stat, v) {
   if (v == null) return "—";
   if (stat.fmt === "pct") return `${Math.round(v * 100)}%`;
+  // "+0", "+1": signed, for margins and leads.
+  if (stat.fmt[0] === "+") { const t = Number(v).toFixed(Number(stat.fmt.slice(1))); return Number(t) > 0 ? `+${t}` : t; }
   return Number(v).toFixed(Number(stat.fmt));
 }
 
