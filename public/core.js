@@ -789,12 +789,16 @@ export const heroStrip = (src, list) => (list?.length
   ? `<span class="hero-strip">${list.map(({ hero, n }) => `<a href="${heroHref(src, hero)}" title="${esc(hero)}${n > 1 ? ` ×${n}` : ""}">${portrait(hero)}${n > 1 ? `<b>${n}</b>` : ""}</a>`).join("")}</span>`
   : '<span class="muted">—</span>');
 
-export function draftStrip(m, src) {
+// part: "top" = Radiant's row and the legend, "bottom" = Dire's row; omitted = both rows together.
+export function draftStrip(m, src, part) {
   if (!m.draft?.length) return `<p class="draft-none">Draft order isn't on the post-game screen, so scrims show lineups only.</p>`;
-  return `<div class="draft" aria-label="Draft order">${m.draft.map((s, i) => `
+  // Team A is Radiant: its bans and picks on the top row, Dire's below. Numbers keep the overall order.
+  const row = (side) => `<div class="draft draft-${side}">${m.draft.map((s, i) => s.side !== side ? "" : `
     <a class="draft-step ${s.pick ? "pick" : "ban"} side-${s.side}" href="${heroHref(src, s.hero)}" title="${i + 1}. ${s.side === "a" ? esc(m.team_a) : esc(m.team_b)} ${s.pick ? "picks" : "bans"} ${esc(s.hero)}">
       ${portrait(s.hero)}<span class="draft-n">${i + 1}</span>
-    </a>`).join("")}</div>
+    </a>`).join("")}</div>`;
+  if (part === "bottom") return `<div class="draft-rows draft-bottom" aria-label="Dire draft">${row("b")}</div>`;
+  return `<div class="draft-rows" aria-label="Draft order">${row("a")}${part === "top" ? "" : row("b")}</div>
     <div class="draft-legend"><span class="lg a">${esc(m.team_a)}</span><span class="lg b">${esc(m.team_b)}</span><span class="lg ban">Ban</span><span class="lg pick">Pick</span></div>`;
 }
 

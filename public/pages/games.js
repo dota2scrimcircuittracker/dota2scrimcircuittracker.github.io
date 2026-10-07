@@ -20,7 +20,7 @@ import { clock } from "../lib/items.js";
 import { firstBloodOf } from "../lib/combat.js";
 import { wireStreakCharts, buildOrderHtml } from "../lib/combat-charts.js";
 import { app, pageHead, teamLink, dur, when, sortableTable, pct, scrimNames, divData, editUnlocked, missingGames, seriesOptions, unlockEdit, divUploaded, lockEdit, allMatches, esc, crumbs, floorOf, gameMvp, shortDate, portrait, playerLink, kg, fmt, heroLink, mapCard, playerTabs, draftStrip, wirePlayerTabs, wireMapCards } from "../core.js";
-import { fbTag, gameCombatHtml, detailsFor } from "../parts/combat.js";
+import { gameCombatHtml, detailsFor } from "../parts/combat.js";
 import { rateOf } from "../parts/draft.js";
 import { gameItemsHtml } from "../parts/items.js";
 import { loading, errorBox, laneCutsOf, gameLanesHtml } from "../parts/lanes.js";
@@ -266,7 +266,7 @@ export async function renderMatch(id, src) {
   const who = (p) => {
     const rank = rankLabel(p.rank_tier), r = rateOf.get(playerKey(p));
     return `<td class="l who">${portrait(p.hero)}<span class="who-body"><span class="who-name">${playerLink(src, p)}${p === mvp ? ' <span class="mvp-tag">MVP</span>' : ""}</span>
-      <span class="who-sub">${heroLink(src, p.hero)}${p.position ? ` · pos ${p.position}` : ""}${rank ? ` · ${esc(rank)}` : ""}${p.standin ? " · stand-in" : ""}${fbTag(m, p) ? ` ${fbTag(m, p)}` : ""}</span></span>
+      <span class="who-sub">${heroLink(src, p.hero)}${p.position ? ` · pos ${p.position}` : ""}${rank ? ` · ${esc(rank)}` : ""}${p.standin ? " · stand-in" : ""}</span></span>
       ${r ? `<span class="who-r t-${r.tier}" title="Game rating ${r.rating} (${r.tier})">${r.rating}</span>` : ""}</td>`;
   };
   const rows = (t) => teamOf(t).map((p) => `

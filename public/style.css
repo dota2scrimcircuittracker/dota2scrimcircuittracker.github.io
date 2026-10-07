@@ -874,12 +874,13 @@ h2 .h-note { font: 400 11px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .gp-result b.w { color: var(--bone); }
 .gp-score { color: var(--accent); margin: 0 4px; }
 .gp-meta { font: 400 11px/1 var(--mono); color: var(--dust); margin-left: auto; }
-.draft { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 4px; }
+.draft { display: grid; grid-template-columns: repeat(auto-fill, minmax(57px, 1fr)); gap: 4px; }
 .draft-step { position: relative; }
 .draft-step .hero-img { width: 100%; height: auto; aspect-ratio: 16 / 9; }
 .draft-step.pick .hero-img { outline: 2px solid var(--side); outline-offset: -2px; }
 .draft-step.ban .hero-img { filter: grayscale(1) brightness(.45); }
-.draft-step.ban::after { content: ""; position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: var(--ember); transform: rotate(-20deg); opacity: .85; }
+.draft-rows { display: grid; gap: 6px; }
+.draft-rows.draft-bottom { margin-top: 12px; }
 .draft-step.side-a { --side: var(--jade); }
 .draft-step.side-b { --side: var(--ember); }
 .draft-n { position: absolute; left: 2px; top: 1px; font: 600 9px/1 var(--mono); color: var(--bone); text-shadow: 0 1px 2px #000; }
@@ -1141,8 +1142,9 @@ h2 .h-note { font: 400 11px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .sd-win { font: 600 12px/1 var(--mono); color: var(--bone); }
 .lineups { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .lineup { list-style: none; margin: 0; padding: 0; }
-.lineup li { display: grid; grid-template-columns: 48px 1fr auto auto; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--seam); font-size: 13px; }
+.lineup li { display: grid; grid-template-columns: 53px 1fr auto auto; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--seam); font-size: 13px; }
 .lineup li:last-child { border-bottom: 0; }
+.lineup .hero-img { width: 53px; height: 30px; }
 .lineup .lu-head { display: block; font: 800 15px/1 var(--display); text-transform: uppercase; letter-spacing: .06em; padding: 0 0 8px; }
 .lineup.a .lu-head { color: var(--jade); }
 .lineup.b .lu-head { color: var(--ember); }
@@ -2561,7 +2563,7 @@ a.gm-chip:hover { border-color: var(--seam-2); border-left-color: var(--c); text
 /* Team comparison + draft */
 .gm-top { display: grid; gap: 12px; margin-bottom: 28px; }
 .gm-tape, .gm-draft { background: var(--stone); border: 1px solid var(--seam); padding: 12px 16px 10px; min-width: 0; }
-.gm-draft .draft { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); }
+.gm-draft .draft { grid-template-columns: repeat(auto-fill, minmax(51px, 1fr)); }
 .gm-draft .draft-legend { margin-bottom: 0; }
 .gm-tape-rows { columns: 300px 2; column-gap: 48px; }
 .gm-row { break-inside: avoid; }
@@ -2591,7 +2593,7 @@ a.gm-chip:hover { border-color: var(--seam-2); border-left-color: var(--c); text
 .gm-stand .hero-img.fact-img { width: 48px; height: 27px; }
 .gm-board { max-height: none; }
 .gm-board td.who { display: flex; align-items: center; gap: 10px; min-width: 240px; }
-.gm-board td.who .hero-img { width: 44px; height: 25px; flex: none; }
+.gm-board td.who .hero-img { width: 48px; height: 27px; flex: none; }
 .who-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .who-name { font-weight: 600; }
 .who-sub { font: 400 11px/1.2 var(--mono); color: var(--dim); }
