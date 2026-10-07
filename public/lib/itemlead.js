@@ -50,10 +50,10 @@ const OBJ = { roshan: ["aegis", "Roshan"], tormentor: ["aghanims_shard", "Tormen
 const bIcon = (b) => (/^t\d/.test(b) ? "tower" : b === "fort" ? "ancient" : "barracks");
 const bName = (b) => (b === "fort" ? "Ancient" : /^t\d_/.test(b) ? `T${b[1]} ${b.slice(3)}` : b === "t4" ? "T4" : `${b[0].toUpperCase()}${b.slice(1).replace("_", " rax ")}`);
 // Layers the chart can show; all on unless `show` turns one off.
-export const LAYERS = [["items", "Items"], ["deaths", "Hero deaths"], ["objectives", "Roshan & Tormentor"], ["towers", "Towers"], ["buybacks", "Buybacks"], ["firstblood", "First blood"]];
+export const LAYERS = [["items", "Items"], ["fights", "Teamfights"], ["deaths", "Hero deaths"], ["objectives", "Roshan & Tormentor"], ["towers", "Towers"], ["buybacks", "Buybacks"], ["firstblood", "First blood"]];
 
 // Empty string without a lead series or any item timings.
-// show: { items, deaths, objectives, towers, buybacks, firstblood } — false leaves that layer out (an empty
+// show: { items, fights, deaths, objectives, towers, buybacks, firstblood } — false leaves that layer out (an empty
 // lane takes no height), for a simpler chart.
 export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {}) {
   const W = Math.max(800, Math.round(width));
@@ -125,8 +125,8 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
       + (f.lead != null ? ` · gold lead ${k(Math.abs(f.lead))} to ${f.lead >= 0 ? name.a : name.b} over the fight` : ""))}</title>`;
     const cls = f.won ? ` s-${f.won}` : "";
     return {
-      band: `<rect class="fight-band${cls}" x="${x0.toFixed(1)}" y="${T}" width="${(x1 - x0).toFixed(1)}" height="${PLOT}">${tip}</rect>`,
-      dot: on.deaths && f.dead.length ? faces(f, (x0 + x1) / 2, cy, cls, tip) : `<circle class="fight-dot${cls}" cx="${((x0 + x1) / 2).toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}">${tip}</circle>`,
+      band: !on.fights ? "" : `<rect class="fight-band${cls}" x="${x0.toFixed(1)}" y="${T}" width="${(x1 - x0).toFixed(1)}" height="${PLOT}">${tip}</rect>`,
+      dot: on.deaths && f.dead.length ? faces(f, (x0 + x1) / 2, cy, cls, tip) : on.fights ? `<circle class="fight-dot${cls}" cx="${((x0 + x1) / 2).toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}">${tip}</circle>` : "",
     };
   });
   // Deaths outside every teamfight (pickoffs, lane deaths), grouped when within 20s of each other.
@@ -226,8 +226,8 @@ export function itemLeadHtml(m, { id = "item-lead", show = {}, width = 800 } = {
     on.towers && "tower, barracks or Ancient icons for buildings (hover for which).",
     on.buybacks && m.players.some((p) => p.buybacks?.length) && "A hero in a gold ring on the line is a buyback, on the buyer's side (hover for when they died next).",
     fb && "A hero in a red ring is first blood, on the killer's side.",
-    on.deaths && `Portraits are the heroes who died (${attr(name.a)}'s above the line, ${attr(name.b)}'s below), teamfights and pickoffs alike; the dot is coloured by the side that lost fewer. Shaded bands are teamfights.`,
-    !on.deaths && "Shaded bands are teamfights; the dot is sized by deaths and coloured by the side that lost fewer.",
+    on.deaths && `Portraits are the heroes who died (${attr(name.a)}'s above the line, ${attr(name.b)}'s below), teamfights and pickoffs alike; the dot is coloured by the side that lost fewer.${on.fights ? " Shaded bands are teamfights." : ""}`,
+    !on.deaths && on.fights && "Shaded bands are teamfights; the dot is sized by deaths and coloured by the side that lost fewer.",
   ].filter(Boolean).join(" ");
   const data = { kind: "lead", w: W, n, x: [L, W - R], nameA: name.a, nameB: name.b, series: [{ label: "Gold", values: adv }] };
   return `<figure class="chart item-lead" id="${id}" data-chart="${attr(JSON.stringify(data))}">

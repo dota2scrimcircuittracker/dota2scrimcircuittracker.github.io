@@ -793,10 +793,23 @@ export const heroStrip = (src, list) => (list?.length
 export function draftStrip(m, src, part) {
   if (!m.draft?.length) return `<p class="draft-none">Draft order isn't on the post-game screen, so scrims show lineups only.</p>`;
   // Team A is Radiant: its bans and picks on the top row, Dire's below. Numbers keep the overall order.
-  const row = (side) => `<div class="draft draft-${side}">${m.draft.map((s, i) => s.side !== side ? "" : `
+  const step = (s, i) => `
     <a class="draft-step ${s.pick ? "pick" : "ban"} side-${s.side}" href="${heroHref(src, s.hero)}" title="${i + 1}. ${s.side === "a" ? esc(m.team_a) : esc(m.team_b)} ${s.pick ? "picks" : "bans"} ${esc(s.hero)}">
-      ${portrait(s.hero)}<span class="draft-n">${i + 1}</span>
-    </a>`).join("")}</div>`;
+      ${portrait(s.hero)}<span class="draft-tag">${s.pick ? "Pick" : "Ban"} ${i + 1}</span>
+    </a>`;
+  // A phase is a run of consecutive bans or picks in the draft; a gap marks each new phase in a row.
+  const run = []; m.draft.forEach((s, i) => run.push(i && !!s.pick === !!m.draft[i - 1].pick ? run[i - 1] : (run[i - 1] ?? -1) + 1));
+  // Bans on top, picks below, each in draft order.
+  const row = (side) => `<div class="draft draft-${side}">${[false, true].map((pick) => {
+    let last = null;
+    const cells = m.draft.map((s, i) => {
+      if (s.side !== side || !!s.pick !== pick) return "";
+      const gap = last !== null && run[i] !== last ? '<i class="draft-gap"></i>' : "";
+      last = run[i];
+      return gap + step(s, i);
+    }).join("");
+    return `<div class="draft-${pick ? "picks" : "bans"}">${cells}</div>`;
+  }).join("")}</div>`;
   if (part === "bottom") return `<div class="draft-rows draft-bottom" aria-label="Dire draft">${row("b")}</div>`;
   return `<div class="draft-rows" aria-label="Draft order">${row("a")}${part === "top" ? "" : row("b")}</div>
     <div class="draft-legend"><span class="lg a">${esc(m.team_a)}</span><span class="lg b">${esc(m.team_b)}</span><span class="lg ban">Ban</span><span class="lg pick">Pick</span></div>`;

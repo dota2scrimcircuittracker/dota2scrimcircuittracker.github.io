@@ -874,7 +874,10 @@ h2 .h-note { font: 400 11px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .gp-result b.w { color: var(--bone); }
 .gp-score { color: var(--accent); margin: 0 4px; }
 .gp-meta { font: 400 11px/1 var(--mono); color: var(--dust); margin-left: auto; }
-.draft { display: grid; grid-template-columns: repeat(auto-fill, minmax(57px, 1fr)); gap: 4px; }
+.draft { display: grid; gap: 6px; }
+.draft-bans, .draft-picks { display: flex; gap: 4px; }
+.draft-bans .draft-step, .draft-picks .draft-step { flex: 1 1 0; min-width: 0; }
+.draft-gap { flex: 0 0 14px; }
 .draft-step { position: relative; }
 .draft-step .hero-img { width: 100%; height: auto; aspect-ratio: 16 / 9; }
 .draft-step.pick .hero-img { outline: 2px solid var(--side); outline-offset: -2px; }
@@ -883,6 +886,8 @@ h2 .h-note { font: 400 11px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .draft-rows.draft-bottom { margin-top: 12px; }
 .draft-step.side-a { --side: var(--jade); }
 .draft-step.side-b { --side: var(--ember); }
+.draft-tag { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 0; text-align: center; font: 700 8px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ember); background: #000; pointer-events: none; }
+.draft-step.pick .draft-tag { color: var(--jade); }
 .draft-n { position: absolute; left: 2px; top: 1px; font: 600 9px/1 var(--mono); color: var(--bone); text-shadow: 0 1px 2px #000; }
 .draft-step.side-a .draft-n { color: var(--jade); }
 .draft-step.side-b .draft-n { color: var(--ember-soft); }
@@ -2563,7 +2568,9 @@ a.gm-chip:hover { border-color: var(--seam-2); border-left-color: var(--c); text
 /* Team comparison + draft */
 .gm-top { display: grid; gap: 12px; margin-bottom: 28px; }
 .gm-tape, .gm-draft { background: var(--stone); border: 1px solid var(--seam); padding: 12px 16px 10px; min-width: 0; }
-.gm-draft .draft { grid-template-columns: repeat(auto-fill, minmax(51px, 1fr)); }
+.gm-draft .draft-rows { grid-template-columns: 1fr 1fr; gap: 64px; }
+.gm-draft .draft-picks, .gm-draft .draft-bans { gap: 6px; }
+@media (max-width: 760px) { .gm-draft .draft-rows { grid-template-columns: 1fr; gap: 10px; } }
 .gm-draft .draft-legend { margin-bottom: 0; }
 .gm-tape-rows { columns: 300px 2; column-gap: 48px; }
 .gm-row { break-inside: avoid; }
