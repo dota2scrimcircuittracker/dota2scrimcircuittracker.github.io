@@ -50,9 +50,10 @@ test("replay positions override net worth", () => {
   assert.equal(p["Player 5"].role, "support");
 });
 
-test("every stat and the stat points sit on 0–100; the league's best and worst player averages set 100 and 0", () => {
+test("every stat and the stat points sit on 0–100; the season's best and worst series set 100 and 0", () => {
   // Player 1 (a support by net worth) out-damages everyone in every game, so they have the
-  // league's best support damage average; the weakest support has the worst.
+  // league's best support damage average; the weakest support has the worst average, but their
+  // average isn't the single worst series, so they keep some points.
   const list = tierList(games(8, (g, i) => { g.players[0].hero_damage += 20000; g.players[i % 5].kills += 4 * i; }));
   const all = list.tiers.flatMap((t) => t.players);
   for (const p of all) {
@@ -61,8 +62,10 @@ test("every stat and the stat points sit on 0–100; the league's best and worst
   }
   const dmg = (p) => p.roles.find((r) => r.role === "support").stats.find((s) => s.metric === "dmg").score;
   const supports = all.filter((p) => p.role === "support");
-  assert.equal(dmg(supports.find((p) => p.name === "Player 1")), 100);
-  assert.equal(Math.min(...supports.map(dmg)), 0);
+  const best = dmg(supports.find((p) => p.name === "Player 1"));
+  assert.equal(best, Math.max(...supports.map(dmg)));
+  assert.ok(best > 50 && best <= 100);
+  assert.ok(Math.min(...supports.map(dmg)) > 0, "a weak average still beats the worst series");
 });
 
 test("series average to the season: stat points and score, weighted by games", () => {
@@ -235,7 +238,8 @@ test("a position's tier list: only games at that position, rated against that po
   assert.equal(list.model.pos, 4);
   assert.equal(all.length, 2); // one pos 4 a side
   for (const p of all) assert.deepEqual([p.pos, p.pos_games[4], p.games], [4, 4, 4]);
-  // Its anchors come from pos 4s only, so the two of them span the 0–100.
+  // Its anchors come from pos 4s only: every stat stays on 0–100 and the two differ.
   const scores = all.flatMap((p) => p.roles[0].stats.map((s) => s.score));
-  assert.ok(scores.some((v) => v === 100) && scores.some((v) => v === 0));
+  assert.ok(scores.every((v) => v >= 0 && v <= 100));
+  assert.notEqual(all[0].stat_points, all[1].stat_points);
 });

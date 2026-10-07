@@ -440,16 +440,18 @@ export function tierModel(matches, { minGames = MIN_GAMES, pos = null } = {}) {
   for (const r of all) scoreRow(r, model);
   // Opponent strength always from every game; everything else from the rows this model rates.
   const teams = teamGames(all), rows = pos ? all.filter((r) => r.pos === pos) : all;
-  // Anchors: every player with minGames+ games in a role, their shrunk average per stat; the
-  // best and worst of those set 100 and 0.
+  // Anchors: every series by a player with minGames+ games in a role, its average z per stat; the
+  // best and worst series of the season set 100 and 0.
   const byPlayerRole = new Map();
   for (const r of rows) { const k = `${keyOf(r.p)}|${r.role}`; (byPlayerRole.get(k) ?? byPlayerRole.set(k, []).get(k)).push(r); }
+  const eligible = new Set([...byPlayerRole].filter(([, rs]) => rs.length >= minGames).map(([k]) => k));
+  const perfs = seriesRows(rows).filter((s) => eligible.has(`${s.key}|${s.role}`));
   for (const role of ["core", "support"]) {
     model.anchors[role] = {};
-    const players = [...byPlayerRole.values()].filter((rs) => rs[0].role === role && rs.length >= minGames).map(shrunkZ);
+    const here = perfs.filter((s) => s.role === role);
     for (const metric of Object.keys(scoredMetrics(role))) {
-      // Too few players to find a best and a worst: fall back to ±1 sd.
-      const [lo, hi] = ends(players.filter((z) => z[metric]).map((z) => z[metric][0])) ?? [-1, 1];
+      // Too few series to find a best and a worst: fall back to ±1 sd.
+      const [lo, hi] = ends(here.filter((s) => s.z[metric] != null).map((s) => s.z[metric])) ?? [-1, 1];
       // Some stats are easier to max: 100 sits part of the way to the best player.
       model.anchors[role][metric] = [lo, lo + (hi - lo) * (EASE[role]?.[metric] ?? 1)];
     }
