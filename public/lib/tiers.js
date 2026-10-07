@@ -190,13 +190,13 @@ function scoreRow(row, model) {
 
 // Series rows: one per player, series and role, with each metric's average z and how many of
 // its games had that metric.
-function seriesRows(rows) {
+function seriesRows(rows, unitOf = (r) => r.role) {
   const by = new Map();
   for (const r of rows) {
-    const k = `${keyOf(r.p)}|${r.series}|${r.role}`;
+    const k = `${keyOf(r.p)}|${r.series}|${unitOf(r)}`;
     const m = r.match;
     const s = by.get(k) ?? {
-      key: keyOf(r.p), role: r.role, series: r.series, games: 0, wins: 0, z: {}, n: {},
+      key: keyOf(r.p), role: r.role, unit: unitOf(r), series: r.series, games: 0, wins: 0, z: {}, n: {},
       vs: (r.p.team === "a" ? m.team_b : m.team_a) ?? null, time: m.start_time ?? (m.createdAt ? +new Date(m.createdAt) / 1000 : null),
     };
     s.games++;
@@ -252,9 +252,10 @@ function shrunkZ(rrows) {
   return Object.fromEntries(Object.keys(sum).map((m) => [m, [sum[m] / (n[m] + K_SHRINK), n[m]]]));
 }
 
-// Per player and role: each metric's 0–100 from their shrunk average, plus their average value
-// and position expectation for the breakdown.
-function metricScores(rl, rrows, weights, anchors) {
+// Per player and unit (a role, or a position): each metric's 0–100 from their shrunk average
+// against that unit's `anchors` ({ metric: [0, 100] }), plus their average value and position
+// expectation for the breakdown.
+function metricScores(rrows, weights, anchors) {
   const zs = shrunkZ(rrows), sum = {}, n = {};
   for (const [m, [z, games]] of Object.entries(zs)) {
     if (!(m in weights)) continue;
@@ -267,7 +268,7 @@ function metricScores(rl, rrows, weights, anchors) {
     const rawVals = rawKey ? with_.map((r) => r.raw[rawKey]).filter((v) => v != null) : [];
     return {
       metric: m, weight: weights[m], share: sh[m], games: n[m],
-      score: score100(sum[m], anchors[rl][m]), linear: linear100(sum[m], anchors[rl][m]),
+      score: score100(sum[m], anchors[m]), linear: linear100(sum[m], anchors[m]),
       value: mean(with_.map((r) => r.metrics[m])), avg: mean(with_.map((r) => r.exp[m])),
       raw: rawVals.length ? mean(rawVals) : null,
     };
@@ -277,8 +278,13 @@ function metricScores(rl, rrows, weights, anchors) {
 // Score every player in `rows` against `model` (rows must already be scored). With
 // `consistency: false` (while the model is being built) consistency counts as 1. `teams`:
 // the team results opponent strength is read from (default: `rows` themselves).
+// Normally each role is scored against the league's anchors for that role. A model with
+// `pos_anchors` (a position's list: see tierModels) scores each position's games against that
+// position's own anchors, so a player's off-position games are judged by the position played.
 function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows) } = {}) {
-  const series = seriesRows(rows);
+  const unitOf = model.pos_anchors ? (r) => r.pos : (r) => r.role;
+  const anchorsOf = (u) => (model.pos_anchors ? model.pos_anchors[u] : model.anchors[u]);
+  const series = seriesRows(rows, unitOf);
   const byPlayer = new Map();
   for (const r of rows) {
     const k = keyOf(r.p);
@@ -304,13 +310,12 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
 
     // Stat points and survival, per role, then weighted by games in each role.
     const roles = [];
-    for (const rl of ["core", "support"]) {
-      if (!roleGames[rl]) continue;
-      const rrows = a.rows.filter((r) => r.role === rl);
-      const stats = metricScores(rl, rrows, WEIGHTS[rl], model.anchors);
-      const surv = metricScores(rl, rrows, SURVIVAL, model.anchors);
+    for (const u of [...new Set(a.rows.map(unitOf))].sort()) {
+      const rrows = a.rows.filter((r) => unitOf(r) === u), rl = rrows[0].role;
+      const stats = metricScores(rrows, WEIGHTS[rl], anchorsOf(u));
+      const surv = metricScores(rrows, SURVIVAL, anchorsOf(u));
       roles.push({
-        role: rl, games: roleGames[rl], stats, survival: surv,
+        role: rl, unit: u, games: rrows.length, stats, survival: surv,
         points: stats.reduce((t, s) => t + s.share * s.score, 0),
         survivalScore: surv.length ? surv.reduce((t, s) => t + s.share * s.score, 0) : null,
       });
@@ -331,11 +336,11 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     // and takes the season's cap as a shift; a stat missing from some games counts in
     // proportion to the games that had it.
     for (const s of a.series) {
-      const r = roles.find((x) => x.role === s.role);
+      const r = roles.find((x) => x.unit === s.unit);
       if (!r?.stats.length) { s.points = null; continue; }
       s.points = r.stats.reduce((t, st) => {
         if (s.z[st.metric] == null) return t;
-        const sc = linear100((s.z[st.metric] * st.games) / (st.games + K_SHRINK), model.anchors[s.role][st.metric]) + (st.score - st.linear);
+        const sc = linear100((s.z[st.metric] * st.games) / (st.games + K_SHRINK), anchorsOf(s.unit)[st.metric]) + (st.score - st.linear);
         return t + (st.share * sc * s.n[st.metric] * r.games) / (s.games * st.games);
       }, 0);
     }
@@ -359,7 +364,7 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     const factor = (rate) => lerp(MULT.opponents, (rate - 0.25) / 0.5);
     const oppRate = mean(a.rows.map(oppOf));
     for (const s of a.series) {
-      const rs = a.rows.filter((r) => r.series === s.series && r.role === s.role);
+      const rs = a.rows.filter((r) => r.series === s.series && unitOf(r) === s.unit);
       s.opp_rate = mean(rs.map(oppOf));
       s.opp = mean(rs.map((r) => factor(oppOf(r))));
     }
@@ -389,7 +394,7 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
       // season's survival, consistency and winning. Both average (weighted by games) to the
       // season's stat points and score.
       series: a.series.map((s) => ({
-        series: s.series, role: s.role, games: s.games, wins: s.wins, vs: s.vs, time: s.time,
+        series: s.series, role: s.role, pos: typeof s.unit === "number" ? s.unit : null, games: s.games, wins: s.wins, vs: s.vs, time: s.time,
         points: s.points, opp: s.opp, opp_rate: s.opp_rate,
         score: s.points == null ? null : s.points * s.opp * mult.survival * mult.consistency * mult.winning,
       })).sort((x, y) => (y.time ?? 0) - (x.time ?? 0)),
@@ -479,14 +484,40 @@ export function tierModel(matches, { minGames = MIN_GAMES, pos = null } = {}) {
   return model;
 }
 
-// `pos` (1–5): only games at that position, rated against that position's players (the
-// model must be the same position's; one is built if none is given).
+// The five position models for the per-position tier lists, keyed 1–5. Each is the model for
+// that position's games alone (its anchors, consistency and curve, as `tierModel` with `pos`),
+// and also carries every position's anchors (`pos_anchors`) and the whole set (`set`), so a
+// player with games at several positions is scored on all of them, each against the position
+// played.
+export function tierModels(matches, { minGames = MIN_GAMES } = {}) {
+  const set = {};
+  for (const n of [1, 2, 3, 4, 5]) set[n] = tierModel(matches, { minGames, pos: n });
+  const pos_anchors = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [n, set[n].anchors[n <= 3 ? "core" : "support"]]));
+  for (const n of [1, 2, 3, 4, 5]) Object.assign(set[n], { pos_anchors, set });
+  return set;
+}
+
+// `pos` (1–5): that position's list, the players whose main position it is; `model` is then
+// that position's model from `tierModels`. All of a player's games count, each against the
+// position played in it. A player with games at several positions also gets `by_pos`: the score
+// from their games at each (a full result per position, rated on that position's curve).
 export function tierList(matches, { minGames = MIN_GAMES, model = null, pos = null } = {}) {
-  model ??= tierModel(matches, { minGames, pos });
-  const all = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
-  const rows = pos ? all.filter((r) => r.pos === pos) : all;
-  const players = scorePlayers(rows, model, { teams: teamGames(all) });
+  model ??= pos ? tierModels(matches, { minGames })[pos] : tierModel(matches, { minGames });
+  const rows = matches.flatMap(gameRows).map((r) => scoreRow(r, model));
+  const teams = teamGames(rows);
+  let players = scorePlayers(rows, model, { teams });
+  if (pos) players = players.filter((p) => p.pos === pos);
   for (const p of players) { p.rating_exact = ratingOf(p.score, model.curve); p.rating = Math.round(p.rating_exact); p.curve = model.curve; }
+  const mixed = new Map(players.filter((p) => Object.values(p.pos_games).filter((n) => n).length > 1).map((p) => [p.key, p]));
+  if (pos && mixed.size) {
+    for (const n of [1, 2, 3, 4, 5]) {
+      const m = model.set[n], here = rows.filter((r) => r.pos === n && mixed.has(keyOf(r.p)));
+      for (const q of scorePlayers(here, m, { teams })) {
+        q.rating_exact = ratingOf(q.score, m.curve); q.rating = Math.round(q.rating_exact); q.curve = m.curve;
+        (mixed.get(q.key).by_pos ??= []).push(q); // a full player result for just the games at pos n
+      }
+    }
+  }
 
   const eligible = players.filter((p) => p.games >= minGames).sort((a, b) => b.score - a.score);
   for (const p of eligible) p.tier = TIERS.find((t) => p.rating_exact >= t.min).tier;

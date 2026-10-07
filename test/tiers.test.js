@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { tierList, tierModel, rankLabel, ratingOf, MIN_GAMES, K_PRIOR, K_SPEED, TIERS, MULT } from "../public/lib/tiers.js";
+import { tierList, tierModel, tierModels, rankLabel, ratingOf, MIN_GAMES, K_PRIOR, K_SPEED, TIERS, MULT } from "../public/lib/tiers.js";
 import { parseDuration } from "../public/lib/validate.js";
 
 const game = (id = 1) => {
@@ -242,4 +242,25 @@ test("a position's tier list: only games at that position, rated against that po
   const scores = all.flatMap((p) => p.roles[0].stats.map((s) => s.score));
   assert.ok(scores.every((v) => v >= 0 && v <= 100));
   assert.notEqual(all[0].stat_points, all[1].stat_points);
+});
+
+test("a swapper is listed once, by their main position, and every game counts; others are untouched", () => {
+  // Player 4 (pos 4 on team a) plays pos 5 in two of five games and the pos 5 swaps to pos 4.
+  const place = (g) => g.players.forEach((p, k) => { p.position = (k % 5) + 1; });
+  const swap = (g, i) => { place(g); if (i < 2) { g.players[3].position = 5; g.players[4].position = 4; } };
+  const gs = games(5, swap), plain = games(5, place);
+  const lists = (m) => { const set = tierModels(m); return [4, 5].map((n) => tierList(m, { model: set[n], pos: n }).tiers.flatMap((t) => t.players)); };
+  const [four, five] = lists(gs), [fourPlain, fivePlain] = lists(plain);
+  const names = (l) => l.map((p) => p.name);
+  assert.equal(new Set([...names(four), ...names(five)]).size, names(four).length + names(five).length, "no player on both lists");
+  const sw = four.find((p) => p.games === 5 && p.by_pos);
+  assert.ok(sw, "the swapper keeps all five games on their main list");
+  assert.deepEqual(sw.by_pos.map((b) => [b.pos, b.games]).sort(), [[4, 3], [5, 2]]);
+  // Players on pos 1–3 never swapped, so their position lists don't change.
+  for (const n of [1, 2, 3]) {
+    const set = tierModels(gs), setPlain = tierModels(plain);
+    const a = tierList(gs, { model: set[n], pos: n }).tiers.flatMap((t) => t.players), b = tierList(plain, { model: setPlain[n], pos: n }).tiers.flatMap((t) => t.players);
+    assert.deepEqual(a.map((p) => [p.name, p.score]), b.map((p) => [p.name, p.score]), `pos ${n}`);
+  }
+  assert.ok(fourPlain.length && fivePlain.length);
 });

@@ -1,6 +1,6 @@
 // Tier list: ratings, the breakdown modal and the tier section on the Players page.
 import { hasDetails } from "../lib/stats.js";
-import { tierModel, METRICS, tierList, rankLabel, WEIGHTS, MULT, RATING_STRETCH, ratingOf, TIERS, SURVIVAL, K_SHRINK, EASE, K_CONSISTENCY, K_PRIOR, K_SPEED } from "../lib/tiers.js";
+import { tierModel, tierModels, METRICS, tierList, rankLabel, WEIGHTS, MULT, RATING_STRETCH, ratingOf, TIERS, SURVIVAL, K_SHRINK, EASE, K_CONSISTENCY, K_PRIOR, K_SPEED } from "../lib/tiers.js";
 import { info } from "../lib/glossary.js";
 import { leagueSrc, floorOf, pct, esc, teamLink, playerLink } from "../core.js";
 
@@ -8,16 +8,20 @@ import { leagueSrc, floorOf, pct, esc, teamLink, playerLink } from "../core.js";
 
 let tierRole = "pos1"; // the position shown: pos1 … pos5
 const tierOpen = new Set(); // player keys whose card is expanded
+const tierTab = new Map(); // player key -> the position tab open in their breakdown (none = all games)
+let redrawTiers = null;
 // Each league (AD2L division, or the scrim ledger) is scored against its own games. The
 // Heroic A/B views use the whole division's reference, so a player's stats are judged against
 // the same field as in Combined. With the time machine on, only the picked weeks' games, and
 // the lower game floor. One model per game list and floor.
 const refMemo = new WeakMap();
-// `pos` (1–5): that position's model, rating its players against each other.
+// `pos` (1–5): that position's model, from the set of five that scores a player's games at
+// every position against the position played.
 export async function tierRef(src, pos = null) {
   const all = await (src.view ? leagueSrc(src) : src).load(), min = floorOf(src);
-  const m = refMemo.get(all) ?? refMemo.set(all, new Map()).get(all), k = `${min}|${pos ?? ""}`;
-  return m.get(k) ?? m.set(k, tierModel(all.filter(hasDetails), { minGames: min, pos })).get(k);
+  const m = refMemo.get(all) ?? refMemo.set(all, new Map()).get(all), k = `${min}|${pos ? "pos" : ""}`;
+  const made = m.get(k) ?? m.set(k, pos ? tierModels(all.filter(hasDetails), { minGames: min }) : tierModel(all.filter(hasDetails), { minGames: min })).get(k);
+  return pos ? made[pos] : made;
 }
 
 // How each tier-list stat reads in a breakdown, and the raw number shown under a share.
@@ -67,6 +71,14 @@ if (typeof document !== "undefined" && !window.__bdWired) {
   document.addEventListener("click", (e) => {
     const x = e.target.closest?.(".bd-x");
     if (x) { x.closest(".chip")?.querySelector(".chip-caret")?.click(); return; }
+    const tab = e.target.closest?.(".bd-tabs .seg");
+    if (tab) {
+      const { key, tab: v } = tab.dataset;
+      tierTab.set(key, Number(v));
+      redrawTiers?.();
+      document.querySelector(`.bd-tabs .seg[data-key="${CSS.escape(key)}"][data-tab="${v}"]`)?.focus({ preventScroll: true });
+      return;
+    }
     const b = e.target.closest?.(".bd-sort");
     if (!b) return;
     bdSort = bdSort.by === b.dataset.sort ? { by: b.dataset.sort, dir: -bdSort.dir } : { by: b.dataset.sort, dir: -1 };
@@ -85,6 +97,16 @@ if (typeof document !== "undefined" && !window.__bdWired) {
 // The expanded card: every point of the score (stat by stat, then what each multiplier adds or
 // takes away), the rating, and each series.
 export function tierBreakdown(src, p) {
+  // A player with games at several positions gets a tab per position (opening on their main one):
+  // the same breakdown for just the games at that position.
+  if (!(p.by_pos?.length > 1)) return breakdown(src, p, "");
+  const sub = p.by_pos.find((q) => q.pos === tierTab.get(p.key)) ?? p.by_pos.find((q) => q.pos === p.pos) ?? p.by_pos[0];
+  const tab = (q) => `<button type="button" class="seg${q === sub ? " on" : ""}" data-key="${esc(p.key)}" data-tab="${q.pos}">Pos ${q.pos} <small>${q.games}</small></button>`;
+  const tabs = `<div class="row segs bd-tabs">${[...p.by_pos].sort((a, b) => b.games - a.games || a.pos - b.pos).map(tab).join("")}</div>`;
+  return breakdown(src, sub, tabs);
+}
+
+function breakdown(src, p, tabs) {
   // Stat points, then each multiplier as the points it adds or takes away, in order; all
   // rounded together so the shown rows add up to the shown score.
   const stats = p.roles.flatMap((r) => r.stats);
@@ -109,7 +131,7 @@ export function tierBreakdown(src, p) {
       <td>${METRIC_FMT[s.metric](s.value)}</td><td class="bd-dim bd-wide">${METRIC_FMT[s.metric](s.avg)}</td>
       <td class="bd-100"><b>${Math.round(s.score)}</b>${meter(s.score)}</td><td class="bd-dim">${Math.round(s.share * 100)}%</td></tr>`;
   const roleHead = (r) => p.roles.length > 1
-    ? `<tr class="bd-role"><td class="l" colspan="5">As ${r.role} · ${r.games} of ${p.games} games</td></tr>` : "";
+    ? `<tr class="bd-role"><td class="l" colspan="5">As ${typeof r.unit === "number" ? `pos ${r.unit}` : r.role} · ${r.games} of ${p.games} games</td></tr>` : "";
   const rows = p.roles.map((r) => roleHead(r) + sortStats(r.stats, ptsOf).map(statRow).join("")).join("");
   const main = p.roles[0];
   const multRow = (k, label, theirs, sub, of100) => `<tr class="bd-mult">
@@ -122,7 +144,7 @@ export function tierBreakdown(src, p) {
   // averages to the season's number, shown in the last row.
   const series = p.series.map((s) => `<div class="bd-series">
       <span class="bd-date">${s.time ? esc(new Date(s.time * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" })) : ""}</span>
-      <span class="bd-vs">${s.vs ? `vs ${teamLink(src, s.vs)}` : "—"}${s.role !== p.role ? ` <em>as ${s.role}</em>` : ""}</span>
+      <span class="bd-vs">${s.vs ? `vs ${teamLink(src, s.vs)}` : "—"}${s.pos != null ? (s.pos !== p.pos ? ` <em>as pos ${s.pos}</em>` : "") : s.role !== p.role ? ` <em>as ${s.role}</em>` : ""}</span>
       <span class="bd-wl">${s.wins}–${s.games - s.wins}</span>
       ${meter(s.points ?? 0)}<span class="bd-spts">${s.points == null ? "—" : s.points.toFixed(1)}</span>
       <span class="bd-opp">×${(s.opp ?? 1).toFixed(2)}</span><b>${s.score == null ? "—" : s.score.toFixed(1)}</b></div>`).join("");
@@ -137,6 +159,7 @@ export function tierBreakdown(src, p) {
   // column otherwise with the series straight under the score.
   return `<div class="bd"><button type="button" class="bd-x" aria-label="Close the breakdown" title="Close">×</button>
     <div class="bd-left">
+    ${tabs}
     <div class="bd-sum">
       <div class="bd-total"><b>${p.rating}</b><small>rating</small></div>
       <div class="bd-eq">score <b>${p.score.toFixed(1)}</b> = ${statShown} stat points × ${m.survival.toFixed(2)} survival × ${m.consistency.toFixed(2)} consistency × ${m.opponents.toFixed(2)} opponents × ${m.winning.toFixed(2)} winning<br>
@@ -175,9 +198,10 @@ const posTitle = (p) => `${p.role === "core" ? "Core" : "Support"}. ` + Object.e
 // that fills it in once it's on the page.
 export function tierSection(src, matches, model) {
   const full = tierList(matches, { model, minGames: floorOf(src) });
-  // Pos 1–5: that position's own list (its games only, rated against its players), made once.
+  // Pos 1–5: the players whose main position it is (all their games), made once.
   const posLists = {};
   const draw = async () => {
+    redrawTiers = draw;
     const posOf = (k) => (k.startsWith("pos") ? Number(k.slice(3)) : null);
     const n = posOf(tierRole);
     if (n && !posLists[n]) posLists[n] = tierList(matches, { model: await tierRef(src, n), minGames: floorOf(src), pos: n });
@@ -190,7 +214,7 @@ export function tierSection(src, matches, model) {
       return `<div class="chip ${p.role}${open ? " open" : ""}" style="--i:${i}" data-key="${esc(p.key)}" tabindex="0" role="button" aria-expanded="${open}" title="${open ? "Click to close" : "Click for the breakdown"}">
         <div class="chip-top"><span class="chip-name">${playerLink(src, p)}</span><span class="chip-rating">${p.rating}</span></div>
         <div class="chip-meta">${p.team ? teamLink(src, p.team) : ""}${p.standin ? " · stand-in" : ""}</div>
-        <div class="chip-foot"><span class="role-tag" title="${esc(posTitle(p))}">Pos ${posOf(tierRole) ?? p.pos}</span><span>${p.wins}–${p.games - p.wins}</span>${rank ? `<span>${esc(rank)}</span>` : ""}</div>
+        <div class="chip-foot"><span class="role-tag" title="${esc(posTitle(p))}">Pos ${p.pos}</span><span>${p.wins}–${p.games - p.wins}</span>${rank ? `<span>${esc(rank)}</span>` : ""}</div>
         <div class="chip-caret" aria-hidden="true">${open ? "Close <b>▴</b>" : "Breakdown <b>▾</b>"}</div>
         ${open ? tierBreakdown(src, p) : ""}
       </div>`;
@@ -205,10 +229,10 @@ export function tierSection(src, matches, model) {
     const tab = (k, label) => `<button type="button" class="seg${tierRole === k ? " on" : ""}" data-role="${k}">${label}</button>`;
     el.innerHTML = `
       <div class="row segs tier-pos">${[1, 2, 3, 4, 5].map((n) => tab(`pos${n}`, `Pos ${n}`)).join("")}</div>
-      ${n ? `<p class="table-note">Games at pos ${n} only, rated against the other pos ${n} players. Players who also play other positions are rated on their pos ${n} games alone.</p>` : ""}
+      ${n ? `<p class="table-note">Players whose main position is ${n}. Every game they played counts, each compared with the position they played in it; open a breakdown to see the score at each position.</p>` : ""}
       <div class="tier-board">${bands}</div>
-      ${list.unranked.length ? `<p class="table-note keep">Not ranked yet (needs ${floorOf(src)}+ games${n ? ` at pos ${n}` : ""}): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
-    el.querySelectorAll(".seg").forEach((b) => (b.onclick = () => { tierRole = b.dataset.role; draw(); }));
+      ${list.unranked.length ? `<p class="table-note keep">Not ranked yet (needs ${floorOf(src)}+ games): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
+    el.querySelectorAll(".tier-pos .seg").forEach((b) => (b.onclick = () => { tierRole = b.dataset.role; draw(); }));
     const toggle = (c) => {
       const k = c.dataset.key;
       tierOpen.has(k) ? tierOpen.delete(k) : tierOpen.add(k);

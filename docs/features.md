@@ -170,10 +170,13 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 One tab per section (Laning and Medal vs rating are AD2L only):
 
 - **Tier list** — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
-  position, Pos 1–5 (opens on Pos 1; there's no all-players list): that position's own list, each player's games
-  there only, rated against that position's players (its anchors, consistency and curve come
-  from pos N games; `lib/tiers.js` tierModel/tierList `pos`), so a 4/5 swapper shows in both with
-  each set of games. Each chip says the position played most; its tooltip lists games at each.
+  position, Pos 1–5 (opens on Pos 1; there's no all-players list): a player is on the list of the position
+  they played most, with all their games counting. Each game is scored against the position played in
+  it (that position's anchors; `lib/tiers.js` tierModels/tierList `pos`), and the list's consistency and
+  rating curve come from that position's games, so only players who swap positions score differently
+  from a list of one position's games alone. A swapper's breakdown has a "By position" block with
+  the score from their games at each (rated on that position's curve). Each chip says the position
+  played most; its tooltip lists games at each.
   A breakdown has a × in its top-right corner, and its stat table sorts by Stat, 0–100 or Points
   (the order holds for every breakdown while the page is open).
 - **Stat leaders** — top and bottom 3 on any stat, with "1st overall" badges across every division.

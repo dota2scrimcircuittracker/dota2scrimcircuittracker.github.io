@@ -3853,6 +3853,10 @@ html.light .po-need-p, html.light .po-tbar { --pc: hsl(var(--ph, 40) 60% 34%); }
   font: 400 20px/1 var(--body); color: var(--dust); background: var(--stone-2); border: 1px solid var(--seam-2); clip-path: none; cursor: pointer; }
 .bd-x:hover:not(:disabled) { color: var(--bone); border-color: var(--dust); }
 .tm-body .bd-x { display: none; }
+/* A player who played several positions: one tab per position above the score. */
+.bd-tabs { flex-wrap: wrap; margin: 0 0 14px; }
+.bd-tabs .seg { padding: 6px 12px; font-size: 10px; }
+.bd-tabs .seg small { font: 600 10px var(--mono); color: inherit; opacity: .75; margin-left: 4px; }
 .bd-sort { padding: 0; background: none; border: 0; clip-path: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
 .bd-sort:hover:not(:disabled) { background: none; color: var(--bone); }
 .bd-sort i { font-style: normal; margin-left: 3px; color: var(--dim); }
