@@ -73,8 +73,10 @@ export function teamHistory(matches, team) {
   for (const { m, side } of detailed) {
     const won = m.winner === side;
     for (const p of m.players.filter((q) => q.team === side)) {
-      const h = heroes.get(p.hero) ?? { hero: p.hero, picks: 0, wins: 0 };
+      const h = heroes.get(p.hero) ?? { hero: p.hero, picks: 0, wins: 0, at: {}, by: {} };
       h.picks++; if (won) h.wins++;
+      (h.by[p.name] ??= [0, 0])[0]++; if (won) h.by[p.name][1]++;
+      if (p.position) h.at[p.position] = (h.at[p.position] ?? 0) + 1;
       heroes.set(p.hero, h);
       const key = p.player_key ?? p.name.trim().toLowerCase();
       const pl = players.get(key) ?? { key, name: p.name, account_id: p.account_id ?? null, games: 0, wins: 0, standin: false, kills: 0, deaths: 0, assists: 0, positions: {}, heroes: {} };
@@ -130,7 +132,8 @@ export function teamHistory(matches, team) {
     private_games: games.length - detailed.length,
     games,
     detailed: detailed.map((x) => x.m),
-    heroes: [...heroes.values()].sort((a, b) => b.picks - a.picks || b.wins - a.wins || a.hero.localeCompare(b.hero)),
+    // `pos`: the position the team most often played the hero at (null if unknown).
+    heroes: [...heroes.values()].map(({ at, ...x }) => ({ ...x, pos: Number(Object.entries(at).sort((a, b) => b[1] - a[1])[0]?.[0]) || null })).sort((a, b) => b.picks - a.picks || b.wins - a.wins || a.hero.localeCompare(b.hero)),
     players: playerList.sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
     opponents: [...opp.values()].sort((a, b) => b.games - a.games || b.wins - a.wins || a.name.localeCompare(b.name)),
     drafted,

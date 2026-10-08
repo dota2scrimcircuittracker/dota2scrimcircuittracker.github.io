@@ -3901,8 +3901,30 @@ figure.chart .lead-dot.xp { fill: var(--dust); }
 figure.chart.item-lead .xp-line { stroke: var(--gold); stroke-width: 1.5; opacity: .85; }
 .lane-n { font: 600 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dust); margin: 0 5px 0 2px; }
 
-/* Team hero pool: tiles grouped by games played. */
-.hpool { display: grid; gap: 18px; margin-top: 10px; }
+/* Team hero pool: a sortable table, three rows showing until opened. */
+.hpool { margin-top: 10px; }
+.hpool-table { width: 100%; }
+.hpool-table td, .hpool-table th { vertical-align: middle; }
+.hpool-table th.hp-hero, .hpool-table td.hp-hero { text-align: left; }
+.hpool-table th.hp-pos { text-align: center; }
+.hpool-table .hp-hero a { display: flex; align-items: center; gap: 10px; color: var(--bone); text-decoration: none; font-weight: 600; }
+.hpool-table .hp-hero a:hover { color: var(--accent); }
+.hpool-table .hero-img { width: 56px; height: auto; aspect-ratio: 16 / 9; flex: none; display: block; }
+.hpool-table .hp-pos { text-align: center; font-family: var(--mono); color: var(--dust); }
+.hpool-table td.hp-w { color: var(--jade); }
+.hpool-table td.hp-l { color: var(--ember); }
+.hpool-table td.hp-e { color: var(--gold); }
+.hp-rate span { display: inline-block; min-width: 3ch; }
+.hpool-bar { display: inline-block; vertical-align: middle; width: 48px; height: 3px; margin-left: 8px; background: var(--ember-deep); }
+.hpool-bar u { display: block; height: 100%; background: var(--jade); }
+.hpool-row.hpool-hide:nth-child(n+4) { display: none; }
+.hpool-table .hp-by { text-align: left; color: var(--dust); font-size: 13px; }
+.hpool-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 12px; font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dust); }
+.hpool-filters select { margin-left: 6px; }
+.hpool-clear { padding: 6px 10px; background: none; border: 1px solid var(--seam); color: var(--accent); font: inherit; cursor: pointer; }
+.hpool-sub { margin: 18px 0 8px; font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dust); }
+.hpool-sub:first-child { margin-top: 0; }
+.hpool-bands { display: grid; gap: 18px; }
 .hpool-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 .hpool-head small { font: 400 11px/1 var(--mono); letter-spacing: .04em; text-transform: none; color: var(--dust); }
 .hpool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
@@ -3910,12 +3932,14 @@ figure.chart.item-lead .xp-line { stroke: var(--gold); stroke-width: 1.5; opacit
 .hpool-tile:hover { border-color: var(--accent); }
 .hpool-tile .hero-img { width: 100%; height: auto; aspect-ratio: 16 / 9; display: block; }
 .hpool-name { padding: 5px 8px 0; font: 600 12px/1.2 var(--body); color: var(--bone); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hpool-by { padding: 0 8px; font: 400 11px/1.2 var(--body); color: var(--dust); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hpool-rec { padding: 0 8px; font: 600 12px/1 var(--mono); }
 .hpool-tile.w .hpool-rec b { color: var(--jade); }
 .hpool-tile.l .hpool-rec b { color: var(--ember); }
 .hpool-tile.e .hpool-rec b { color: var(--gold); }
-.hpool-bar { display: block; height: 3px; margin: 5px 8px 0; background: var(--ember-deep); }
-.hpool-bar u { display: block; height: 100%; background: var(--jade); }
+.hpool-tile .hpool-bar { display: block; width: auto; margin: 5px 8px 0; }
+.hpool-toggle { display: block; width: 100%; margin-top: 6px; padding: 9px; background: var(--stone); border: 1px solid var(--seam); color: var(--accent); font: 600 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.hpool-toggle:hover { border-color: var(--accent); }
 
 /* Same compact drafts in a team's Series tab (seriesDraftsHtml). */
 .sd-game .draft-rows { gap: 4px; }

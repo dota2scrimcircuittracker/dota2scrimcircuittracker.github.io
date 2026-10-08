@@ -15,6 +15,7 @@ import { lengthHtml } from "../lib/combat-charts.js";
 import { tune, fitRatings, pubsSince } from "../lib/predict.js";
 import { decodeTotals } from "../lib/herogrid.js";
 import { isBye } from "../lib/playoffs.js";
+import { SEASON } from "../lib/divisions.js";
 import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt, scrollToSection, pubStart, pubStartLabel, PUB_DAYS } from "../core.js";
 import { pageTabs, TEAM_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox, laneCutsOf, teamLanesHtml } from "../parts/lanes.js";
@@ -239,49 +240,128 @@ export async function renderTeams(src, slug) {
       <span class="h2h-last">${o.last ? shortDate(new Date(o.last)) : ""}</span></div>`).join("")}</div>
 ` : "";
 
-  // Every hero the team has played, as tiles grouped by games played: art, name, record, win bar.
-  const heroPool = (list) => {
-    if (!list.length) return `<span class="muted">—</span>`;
+  // Every hero the team has played, as a sortable table. Collapsed it shows the first rows (so it's
+  // clear there's more); the button opens the rest. Sort state lives per table in `pools`.
+  const pools = new Map();
+  const HP_ROWS = 3;
+  // Player and role filters, shared by the table and tiles and kept when the source changes.
+  // A role means the players who usually play it (the position they play most), so it works for
+  // pub sources too, which carry no position of their own.
+  const pf = { player: "", role: "" };
+  const canon = new Map(members.filter((m) => m.g).map((m) => [m.g.name.trim().toLowerCase(), m.name]));
+  const posOf = new Map([...members.map((m) => [m.name, m.g?.position ?? null]), ...others.map((p) => [p.name, p.position ?? null])]);
+  const nameFix = (n) => canon.get(String(n).trim().toLowerCase()) ?? n;
+  const merge = (by) => { const o = {}; for (const [k, v] of Object.entries(by ?? {})) { const b = (o[nameFix(k)] ??= [0, 0]); b[0] += v[0]; b[1] += v[1]; } return o; };
+  // The list narrowed to the chosen player / role: games and wins recounted from those players.
+  const narrow = (list) => {
+    if (!pf.player && !pf.role) return list;
+    const ok = (n) => (pf.player ? n === pf.player : posOf.get(n) === Number(pf.role));
+    const only = pf.player ? posOf.get(pf.player) ?? null : null;
+    return list.flatMap((x) => {
+      const by = Object.fromEntries(Object.entries(x.by).filter(([n]) => ok(n)));
+      const g = Object.values(by).reduce((n, v) => n + v[0], 0);
+      return g ? [{ ...x, by, picks: g, wins: Object.values(by).reduce((n, v) => n + v[1], 0), pos: x.pos ?? only }] : [];
+    });
+  };
+  const filterBar = (full) => {
+    const names = [...new Set(full.flatMap((x) => Object.keys(x.by)))].sort((a, b) => (posOf.get(a) ?? 9) - (posOf.get(b) ?? 9) || a.localeCompare(b));
+    if (names.length < 2) return "";
+    return `<div class="hpool-filters"><label>Player <select data-pf="player"><option value="">Everyone</option>${names.map((n) => `<option value="${esc(n)}"${n === pf.player ? " selected" : ""}>${esc(n)}${posOf.get(n) ? ` (pos ${posOf.get(n)})` : ""}</option>`).join("")}</select></label>
+      <label>Role <select data-pf="role"><option value="">All roles</option>${[1, 2, 3, 4, 5].map((r) => `<option value="${r}"${String(r) === pf.role ? " selected" : ""}>${POS[r]}</option>`).join("")}</select></label>
+      ${pf.player || pf.role ? `<button type="button" class="hpool-clear">Clear</button>` : ""}</div>`;
+  };
+  // Who played the hero: { name: games } as "A, B +1", most games first.
+  const byList = (x) => Object.entries(x.by ?? {}).map(([k, v]) => [k, v[0]]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const byText = (x, n = 2) => { const l = byList(x); return l.length ? l.slice(0, n).map(([k]) => k).join(", ") + (l.length > n ? ` +${l.length - n}` : "") : "–"; };
+  const byTitle = (x) => byList(x).map(([k, c]) => `${k} ${c}`).join(", ");
+  const tile = (x) => {
+    const l = x.picks - x.wins, tone = x.wins > l ? "w" : x.wins < l ? "l" : "e";
+    return `<a class="hpool-tile ${tone}" href="${heroHref(src, x.hero)}" title="${esc(x.hero)}: ${x.wins}–${l}${byTitle(x) ? ` · ${esc(byTitle(x))}` : ""}">${portrait(x.hero)}
+      <span class="hpool-name">${esc(x.hero)}</span><span class="hpool-by">${esc(byText(x, 1))}</span><span class="hpool-rec"><b>${x.wins}–${l}</b></span>
+      <i class="hpool-bar"><u style="width:${Math.round((x.wins / x.picks) * 100)}%"></u></i></a>`;
+  };
+  // The older layout: tiles grouped by games played.
+  const tileBands = (list) => {
     const bands = [[3, "3+ games"], [2, "2 games"], [1, "1 game"]];
-    const tile = (x) => {
-      const l = x.picks - x.wins, tone = x.wins > l ? "w" : x.wins < l ? "l" : "e";
-      return `<a class="hpool-tile ${tone}" href="${heroHref(src, x.hero)}" title="${esc(x.hero)}: ${x.wins}–${l}">${portrait(x.hero)}
-        <span class="hpool-name">${esc(x.hero)}</span><span class="hpool-rec"><b>${x.wins}–${l}</b></span>
-        <i class="hpool-bar"><u style="width:${Math.round((x.wins / x.picks) * 100)}%"></u></i></a>`;
-    };
-    return `<div class="hpool">${bands.map(([min, label], i) => {
+    return `<div class="hpool-bands">${bands.map(([min, label], i) => {
       const xs = list.filter((x) => (i === 0 ? x.picks >= min : x.picks === min)).sort((a, b) => b.picks - a.picks || b.wins / b.picks - a.wins / a.picks);
       if (!xs.length) return "";
       const w = xs.reduce((n, x) => n + x.wins, 0), g = xs.reduce((n, x) => n + x.picks, 0);
       return `<div class="hpool-band"><div class="hpool-head"><span>${label}</span><small>${xs.length} hero${xs.length === 1 ? "" : "es"} · ${w}–${g - w}</small></div><div class="hpool-grid">${xs.map(tile).join("")}</div></div>`;
     }).join("")}</div>`;
   };
+  const poolHtml = (st) => {
+    const { key, dir, open } = st, list = narrow(st.list);
+    const val = (x) => (key === "rate" ? x.wins / x.picks : key === "by" ? byList(x)[0]?.[0] : x[key]);
+    const rows = [...list].sort((a, b) => {
+      const x = val(a), y = val(b);
+      if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+      const d = typeof x === "string" ? x.localeCompare(y) : x - y;
+      return (d * dir) || b.picks - a.picks || b.wins - a.wins || a.hero.localeCompare(b.hero);
+    });
+    const th = ([k, label, cls]) => `<th scope="col" class="sortable ${cls}${k === key ? " sorted" : ""}" data-k="${k}" aria-sort="${k === key ? (dir > 0 ? "ascending" : "descending") : "none"}" title="Sort by ${label}">${label}<span class="sort-ico">${k === key ? (dir > 0 ? "▴" : "▾") : "↕"}</span></th>`;
+    const tr = (x, i) => {
+      const l = x.picks - x.wins, tone = x.wins > l ? "w" : x.wins < l ? "l" : "e", r = Math.round((x.wins / x.picks) * 100);
+      return `<tr class="hpool-row${!open && i >= HP_ROWS ? " hpool-hide" : ""}"><td class="hp-hero"><a href="${heroHref(src, x.hero)}">${portrait(x.hero)}<span>${esc(x.hero)}</span></a></td>
+        <td class="hp-by" title="${esc(byTitle(x))}">${esc(byText(x))}</td>
+        <td class="hp-pos">${x.pos ? `<span title="${POS[x.pos]}">${x.pos}</span>` : "–"}</td><td class="num">${x.picks}</td>
+        <td class="num hp-${tone}">${x.wins}–${l}</td><td class="num hp-rate hp-${tone}"><span>${r}%</span><i class="hpool-bar"><u style="width:${r}%"></u></i></td></tr>`;
+    };
+    const more = rows.length > HP_ROWS;
+    if (!rows.length) return `${filterBar(st.list)}<p class="muted">No heroes for that filter.</p>`;
+    return `${filterBar(st.list)}<h3 class="hpool-sub">Table</h3><div class="table-wrap"><table class="hpool-table"><thead><tr>${[["hero", "Hero", "hp-hero"], ["by", "Players", "hp-by"], ["pos", "Role", "hp-pos"], ["picks", "Games", "num"], ["wins", "W–L", "num"], ["rate", "Win %", "num"]].map(th).join("")}</tr></thead>
+      <tbody>${rows.map(tr).join("")}</tbody></table></div>
+      ${more ? `<button type="button" class="hpool-toggle" aria-expanded="${open}">${open ? "Show fewer" : `Show all ${rows.length} heroes`}</button>` : ""}
+      <h3 class="hpool-sub">Tiles</h3>${tileBands(list)}`;
+  };
+  const drawPool = (el) => { el.innerHTML = poolHtml(pools.get(el)); };
+  const pending = [];
+  const heroPool = (list) => (list.length ? `<div class="hpool" data-pool="${pending.push(list) - 1}"></div>` : `<span class="muted">—</span>`);
+  // Hook up any pool tables rendered since the last call.
+  const wirePools = () => {
+    for (const el of app.querySelectorAll(".hpool[data-pool]")) {
+      pools.set(el, { list: pending[el.dataset.pool].map((x) => ({ ...x, by: merge(x.by) })), key: "picks", dir: -1, open: false });
+      delete el.dataset.pool;
+      drawPool(el);
+      el.addEventListener("click", (e) => {
+        const st = pools.get(el), t = e.target.closest("th.sortable");
+        if (e.target.closest(".hpool-clear")) { pf.player = ""; pf.role = ""; }
+        else if (t) {
+          if (t.dataset.k === st.key) st.dir = -st.dir; else { st.key = t.dataset.k; st.dir = ["hero", "by", "pos"].includes(st.key) ? 1 : -1; }
+        } else if (e.target.closest(".hpool-toggle")) st.open = !st.open;
+        else return;
+        drawPool(el);
+      });
+      el.addEventListener("change", (e) => {
+        const f = e.target.closest("select[data-pf]");
+        if (!f) return;
+        pf[f.dataset.pf] = f.value;
+        // A player and a role together are one choice: picking one clears the other.
+        if (f.dataset.pf === "player" && f.value) pf.role = "";
+        if (f.dataset.pf === "role" && f.value) pf.player = "";
+        drawPool(el);
+      });
+    }
+  };
   // League / Recent pubs / Combined / All-time pubs over the same tiles. Pubs are the roster's
   // main accounts over the last PUB_DAYS days; all-time pubs load from the draft file on first click.
   const poolAccounts = ad2l && roster ? roster.map((r) => String(r.account_id)).filter((a) => a && a !== "undefined" && a !== "null") : [];
+  const nameOf = Object.fromEntries((ad2l && roster ? roster : []).map((r) => [String(r.account_id), r.name]));
   const pubPool = (() => {
     if (!ad2l?.pubs || !poolAccounts.length) return null;
     const all = new Map();
     for (const a of poolAccounts) for (const g of pubsSince(ad2l, a, pubStart(ad2l))) {
-      const x = all.get(g.hero) ?? { hero: g.hero, picks: 0, wins: 0 };
+      const x = all.get(g.hero) ?? { hero: g.hero, picks: 0, wins: 0, by: {} };
       x.picks++; if (g.won) x.wins++;
+      (x.by[nameOf[a]] ??= [0, 0])[0]++; if (g.won) x.by[nameOf[a]][1]++;
       all.set(g.hero, x);
     }
     return [...all.values()];
   })();
-  const combinedPool = (league_, pubs_) => {
-    const all = new Map();
-    for (const x of [...league_, ...pubs_]) {
-      const y = all.get(x.hero) ?? { hero: x.hero, picks: 0, wins: 0 };
-      y.picks += x.picks; y.wins += x.wins;
-      all.set(x.hero, y);
-    }
-    return [...all.values()];
-  };
   const heroPoolBox = (list) => {
     if (!pubPool || !poolAccounts.length) return heroPool(list);
-    const POOLS = [["league", "League"], ["pubs", "Recent pubs"], ["combined", "League + pubs"], ["all", "All-time pubs"]];
-    return `<div class="row segs hpool-segs" role="group" aria-label="Hero pool source">${POOLS.map(([id, label], i) => `<button type="button" class="seg${i === 0 ? " on" : ""}" data-hpool="${id}" aria-pressed="${i === 0}">${label}</button>`).join("")}</div>
+    const POOLS = [["pubs", "Recent pubs"], ["league", `AD2L ${SEASON.name}`], ["lobby", "Esports"], ["all", "All time"]];
+    return `<div class="row segs hpool-segs" role="group" aria-label="Hero pool source">${POOLS.map(([id, label]) => `<button type="button" class="seg${id === "league" ? " on" : ""}" data-hpool="${id}" aria-pressed="${id === "league"}">${label}</button>`).join("")}</div>
       <p class="table-note hpool-note" id="hpool-note">League games with details.</p>
       <div id="hpool-view" data-src="league">${heroPool(list)}</div>`;
   };
@@ -479,6 +559,7 @@ export async function renderTeams(src, slug) {
     for (const x of app.querySelectorAll(".ph-segs .seg")) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }
     try { localStorage.setItem("phaseView", b.dataset.phView); } catch {}
   });
+  wirePools();
   // Hero pool source switch.
   app.querySelector(".hpool-segs")?.addEventListener("click", async (e) => {
     const b = e.target.closest("button[data-hpool]");
@@ -489,22 +570,25 @@ export async function renderTeams(src, slug) {
     view.dataset.src = id;
     const note = app.querySelector("#hpool-note"), since = pubStartLabel(ad2l);
     const none = `<p class="muted">Nothing here yet.</p>`;
-    if (id === "league") { note.textContent = "League games with details."; view.innerHTML = heroPool(h.heroes); return; }
-    if (id === "pubs") { note.textContent = `Public and ranked games by the roster's accounts in the ${PUB_DAYS} days before the last sync (since ${since}).`; view.innerHTML = pubPool.length ? heroPool(pubPool) : none; return; }
-    if (id === "combined") { note.textContent = `League games plus those recent pubs, one tile per hero.`; view.innerHTML = heroPool(combinedPool(h.heroes, pubPool)); return; }
-    note.textContent = "Every public and ranked game on record for the roster's accounts. Loading…";
+    if (id === "league") { note.textContent = "League games with details."; view.innerHTML = heroPool(h.heroes); wirePools(); return; }
+    if (id === "pubs") { note.textContent = `Public and ranked games by the roster's accounts in the ${PUB_DAYS} days before the last sync (since ${since}).`; view.innerHTML = pubPool.length ? heroPool(pubPool) : none; wirePools(); return; }
+    const lobby = id === "lobby";
+    note.textContent = lobby ? "Every practice-lobby game on record for the roster's accounts. Loading…" : "Every public and ranked game on record for the roster's accounts. Loading…";
     view.innerHTML = "";
     const data = await import("../parts/cmdraft.js").then((cm) => cm.draftData(league)).catch(() => null);
-    if (view.dataset.src !== "all") return;
+    if (view.dataset.src !== id) return;
     if (!data?.totals || !data.heroes) { note.textContent = "All-time totals aren't synced for this division yet."; return; }
     const all = new Map();
-    for (const a of poolAccounts) for (const x of decodeTotals(data.totals[a], data.heroes).pubs) {
-      const y = all.get(x.hero) ?? { hero: x.hero, picks: 0, wins: 0 };
-      y.picks += x.games; y.wins += x.wins;
+    for (const a of poolAccounts) for (const x of decodeTotals(data.totals[a], data.heroes)[lobby ? "lobby" : "pubs"]) {
+      const y = all.get(x.hero) ?? { hero: x.hero, picks: 0, wins: 0, by: {} };
+      y.picks += x.games; y.wins += x.wins; { const b = (y.by[nameOf[a]] ??= [0, 0]); b[0] += x.games; b[1] += x.wins; }
       all.set(x.hero, y);
     }
-    note.textContent = `Every public and ranked game on record for the roster's accounts: ${[...all.values()].reduce((n, x) => n + x.picks, 0).toLocaleString()} games.`;
-    view.innerHTML = all.size ? heroPool([...all.values()].sort((a, b) => b.picks - a.picks)) : none;
+    const total = [...all.values()].reduce((n, x) => n + x.picks, 0).toLocaleString();
+    note.textContent = lobby
+      ? `Every practice-lobby game on record for the roster's accounts: ${total} games. That's league games plus scrims and inhouses; OpenDota can't tell them apart.`
+      : `Every public and ranked game on record for the roster's accounts: ${total} games.`;
+    view.innerHTML = all.size ? heroPool([...all.values()].sort((a, b) => b.picks - a.picks)) : none; wirePools();
   });
   app.querySelectorAll(".ph-more").forEach((b) => (b.onclick = () => {
     const open = b.closest(".ph-cell").classList.toggle("open");
