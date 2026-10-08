@@ -491,9 +491,11 @@ shrunk-resolution problem above, not a finding problem.
   step chart, and each team's heroes, players and bans. Measured on this
   season's games read before they were played (`scripts/measure/draft-model.js`): before
   the draft it was no better than the ratings, which is why the ratings stay as they are.
-- **Playoff picture** (`lib/playoffs.js`, `parts/playoffs.js`) — Predict has three tabs, each
-  its own link (`?tab=calls|bracket|odds`, Back works, the last one remembered): **Predictions**
-  (this week's cards, leaderboard, past weeks), **Bracket** (a Your picks / Model's picks toggle)
+- **Playoff picture** (`lib/playoffs.js`, `parts/playoffs.js`) — Predict has four tabs, each
+  its own link (`?tab=calls|board|bracket|odds`, Back works, the last one remembered): **Predictions**
+  (this week's cards), **Leaderboard** (standings, past weeks; click a name for the bracket and
+  final table their series calls lead to, read-only; only series calls are saved, so their
+  tiebreakers and bracket go the model's way), **Bracket** (a Your picks / Model's picks toggle)
   and **Seeding** (worked out the first time its tab opens). The name bar sits above them.
   - **Your picks** (Bracket's default): unreported series go the way the viewer called them on the cards
     above (uncalled ones, and unposted weeks, take the model's call and say so). The table and

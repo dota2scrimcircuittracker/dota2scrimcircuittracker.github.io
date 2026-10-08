@@ -12,9 +12,10 @@ import { info } from "../lib/glossary.js";
 import { clock } from "../lib/items.js";
 import { teamSplits, playerPairs } from "../lib/combat.js";
 import { lengthHtml } from "../lib/combat-charts.js";
-import { tune, fitRatings } from "../lib/predict.js";
+import { tune, fitRatings, pubsSince } from "../lib/predict.js";
+import { decodeTotals } from "../lib/herogrid.js";
 import { isBye } from "../lib/playoffs.js";
-import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt, scrollToSection } from "../core.js";
+import { SOURCES, divCache, app, pageHead, esc, portrait, floorOf, playerLink, teamLink, seriesDraftsHtml, dur, when, heroHref, shortDate, heroLink, playerTabs, teamMapHtml, mapCard, wardView, crumbs, wirePlayerTabs, wireMapCards, sortableTable, pct, fmt, scrollToSection, pubStart, pubStartLabel, PUB_DAYS } from "../core.js";
 import { pageTabs, TEAM_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox, laneCutsOf, teamLanesHtml } from "../parts/lanes.js";
 import { tierRef } from "../parts/tiers.js";
@@ -255,6 +256,35 @@ export async function renderTeams(src, slug) {
       return `<div class="hpool-band"><div class="hpool-head"><span>${label}</span><small>${xs.length} hero${xs.length === 1 ? "" : "es"} · ${w}–${g - w}</small></div><div class="hpool-grid">${xs.map(tile).join("")}</div></div>`;
     }).join("")}</div>`;
   };
+  // League / Recent pubs / Combined / All-time pubs over the same tiles. Pubs are the roster's
+  // main accounts over the last PUB_DAYS days; all-time pubs load from the draft file on first click.
+  const poolAccounts = ad2l && roster ? roster.map((r) => String(r.account_id)).filter((a) => a && a !== "undefined" && a !== "null") : [];
+  const pubPool = (() => {
+    if (!ad2l?.pubs || !poolAccounts.length) return null;
+    const all = new Map();
+    for (const a of poolAccounts) for (const g of pubsSince(ad2l, a, pubStart(ad2l))) {
+      const x = all.get(g.hero) ?? { hero: g.hero, picks: 0, wins: 0 };
+      x.picks++; if (g.won) x.wins++;
+      all.set(g.hero, x);
+    }
+    return [...all.values()];
+  })();
+  const combinedPool = (league_, pubs_) => {
+    const all = new Map();
+    for (const x of [...league_, ...pubs_]) {
+      const y = all.get(x.hero) ?? { hero: x.hero, picks: 0, wins: 0 };
+      y.picks += x.picks; y.wins += x.wins;
+      all.set(x.hero, y);
+    }
+    return [...all.values()];
+  };
+  const heroPoolBox = (list) => {
+    if (!pubPool || !poolAccounts.length) return heroPool(list);
+    const POOLS = [["league", "League"], ["pubs", "Recent pubs"], ["combined", "League + pubs"], ["all", "All-time pubs"]];
+    return `<div class="row segs hpool-segs" role="group" aria-label="Hero pool source">${POOLS.map(([id, label], i) => `<button type="button" class="seg${i === 0 ? " on" : ""}" data-hpool="${id}" aria-pressed="${i === 0}">${label}</button>`).join("")}</div>
+      <p class="table-note hpool-note" id="hpool-note">League games with details.</p>
+      <div id="hpool-view" data-src="league">${heroPool(list)}</div>`;
+  };
   const chips = (list, count, n = 6) => list.length ? `<div class="hero-chips">${list.slice(0, n).map((x) => `<div class="hero-chip">${portrait(x.hero)}<span>${heroLink(src, x.hero)}</span><b>${count(x)}</b></div>`).join("")}</div>` : `<span class="muted">—</span>`;
   const phases = (() => {
     const ph = h.drafted ? teamDraftPhases(h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side)) : null;
@@ -345,7 +375,7 @@ export async function renderTeams(src, slug) {
         ...(h.bans[0] ? [["Bans most", esc(h.bans[0].hero), `${plural(h.bans[0].n, "ban")} in ${plural(h.drafted, "draft")}`]] : []),
         ...(h.banned_against[0] ? [["Banned against", esc(h.banned_against[0].hero), `${h.banned_against[0].n} time${h.banned_against[0].n === 1 ? "" : "s"} by opponents`]] : []),
       ])}
-      <h2 id="hero-pool">Hero pool</h2>${heroPool(h.heroes)}
+      <h2 id="hero-pool">Hero pool</h2>${heroPoolBox(h.heroes)}
       ${heroGridHtml(team, lineups, { pubs: ad2l?.pubs ?? null })}
       ${sideSplit}
       ${phases}` : ""],
@@ -448,6 +478,33 @@ export async function renderTeams(src, slug) {
     app.querySelector(".phase-grid").dataset.view = b.dataset.phView;
     for (const x of app.querySelectorAll(".ph-segs .seg")) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }
     try { localStorage.setItem("phaseView", b.dataset.phView); } catch {}
+  });
+  // Hero pool source switch.
+  app.querySelector(".hpool-segs")?.addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-hpool]");
+    const view = app.querySelector("#hpool-view");
+    if (!b || !view) return;
+    const id = b.dataset.hpool;
+    for (const x of app.querySelectorAll(".hpool-segs .seg")) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }
+    view.dataset.src = id;
+    const note = app.querySelector("#hpool-note"), since = pubStartLabel(ad2l);
+    const none = `<p class="muted">Nothing here yet.</p>`;
+    if (id === "league") { note.textContent = "League games with details."; view.innerHTML = heroPool(h.heroes); return; }
+    if (id === "pubs") { note.textContent = `Public and ranked games by the roster's accounts in the ${PUB_DAYS} days before the last sync (since ${since}).`; view.innerHTML = pubPool.length ? heroPool(pubPool) : none; return; }
+    if (id === "combined") { note.textContent = `League games plus those recent pubs, one tile per hero.`; view.innerHTML = heroPool(combinedPool(h.heroes, pubPool)); return; }
+    note.textContent = "Every public and ranked game on record for the roster's accounts. Loading…";
+    view.innerHTML = "";
+    const data = await import("../parts/cmdraft.js").then((cm) => cm.draftData(league)).catch(() => null);
+    if (view.dataset.src !== "all") return;
+    if (!data?.totals || !data.heroes) { note.textContent = "All-time totals aren't synced for this division yet."; return; }
+    const all = new Map();
+    for (const a of poolAccounts) for (const x of decodeTotals(data.totals[a], data.heroes).pubs) {
+      const y = all.get(x.hero) ?? { hero: x.hero, picks: 0, wins: 0 };
+      y.picks += x.games; y.wins += x.wins;
+      all.set(x.hero, y);
+    }
+    note.textContent = `Every public and ranked game on record for the roster's accounts: ${[...all.values()].reduce((n, x) => n + x.picks, 0).toLocaleString()} games.`;
+    view.innerHTML = all.size ? heroPool([...all.values()].sort((a, b) => b.picks - a.picks)) : none;
   });
   app.querySelectorAll(".ph-more").forEach((b) => (b.onclick = () => {
     const open = b.closest(".ph-cell").classList.toggle("open");

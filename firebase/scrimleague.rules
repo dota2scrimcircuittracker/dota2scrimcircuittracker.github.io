@@ -138,6 +138,27 @@
         && (request.auth.uid == resource.data.uid || request.auth.token.email == "jonahbyu@gmail.com");
     }
 
+    // Brackets: a person's playoff bracket picks for one AD2L league, shown on the Predict
+    // leaderboard. One document per person per league, id "<league>_<uid>". `picks` is JSON
+    // text ({ key: team id }); the site reads it defensively, so only its size is checked.
+    match /scrimLeague/data/brackets/{bracketId} {
+      allow get: if true;
+      allow list: if request.query.limit <= 500;
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['v', 'league', 'name', 'uid', 'picks', 'updatedAt'])
+        && request.resource.data.keys().size() == 6
+        && request.resource.data.v == 1
+        && request.resource.data.league in ['ad2l', 'heroic', 'conqueror', 'warrior', 'challenger', 'voyager', 'explorer']
+        && bracketId == request.resource.data.league + '_' + request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.picks is string && request.resource.data.picks.size() <= 3000
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if request.auth != null
+        && (request.auth.uid == resource.data.uid || request.auth.token.email == "jonahbyu@gmail.com");
+    }
+
     // Scrim fixtures: upcoming scrims anyone can put on the schedule for predictions. Only
     // teams, start time and format; results come from uploaded games (matched by teams and
     // time on the client). Rescheduling changes start/best_of only; delete is open to anyone

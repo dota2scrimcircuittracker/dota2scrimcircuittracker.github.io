@@ -348,6 +348,10 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false }
     const l3 = M("l3", "lower", 2, u1.loser, l2.winner, 3, "Lower round 2");
     const l4 = M("l4", "lower", 2, u2.loser, l1.winner, 3, "Lower round 2");
     const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final");
+    // The loser of seed 1's match meets the 6 v 7 winner, seed 2's loser the 5 v 8 winner, so
+    // list 6 v 7 first and each lower round 2 match sits beside the one that feeds it.
+    const i1 = ms.indexOf(l1), i2 = ms.indexOf(l2);
+    ms[i1] = l2; ms[i2] = l1;
     const l5 = M("l5", "lower", 3, l3.winner, l4.winner, 3, "Lower semifinal");
     const lf = M("lf", "lower", 4, uf.loser, l5.winner, 3, "Lower final");
     M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final");

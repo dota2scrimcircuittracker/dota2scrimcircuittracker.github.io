@@ -23,7 +23,7 @@ export const PLAYERS_PAGE_TABS = [
 // The league's Heroes page.
 export const HEROES_PAGE_TABS = [["tiers", "Hero tiers"], ["players", "Players on heroes"], ["table", "All heroes"]];
 // AD2L's Predict page (the scrim one has no tabs).
-export const PREDICT_TABS = [["calls", "Predictions"], ["bracket", "Bracket"], ["odds", "Seeding"]];
+export const PREDICT_TABS = [["calls", "Predictions"], ["board", "Leaderboard"], ["bracket", "Bracket"], ["odds", "Seeding"]];
 // The Drafter's starting points (buttons on the page, not tabs, but linked the same way).
 export const DRAFTER_MODES = [["upcoming", "Upcoming series"], ["teams", "Any two teams"], ["game", "Past game"]];
 // Race: AD2L divisions only, not All (sixty lines on one chart), once two league nights are in.

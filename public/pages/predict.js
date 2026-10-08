@@ -2,7 +2,7 @@
 import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, crowd, standings, validPicks, favourite, outcomeOf, TIE_EDGE } from "../lib/predict.js";
-import { listPredictions, currentUid, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
+import { listPredictions, listBrackets, saveBracket, currentUid, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
 import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
@@ -51,6 +51,14 @@ export async function renderPredict(src) {
   try { d = await src.data(); } catch (e) { app.innerHTML = `${pageHead(kicker, "Predictions")}${errorBox(e)}`; return; }
   // Each division's picks carry its league key ("ad2l" = Champion).
   try { preds = (await listPredictions()).filter((p) => p.league === src.key); } catch (e) { console.warn(e); preds = null; }
+  // Saved brackets (tiebreaker and bracket picks), newest per name, for the Leaderboard.
+  const savedBrackets = new Map();
+  try {
+    for (const b of (await listBrackets()).filter((x) => x.league === src.key).sort((a, b) => (a.updatedAt ?? 0) - (b.updatedAt ?? 0))) {
+      let picks; try { picks = JSON.parse(b.picks); } catch { continue; }
+      if (picks && typeof picks === "object" && !Array.isArray(picks)) savedBrackets.set(nameKey(b.name), Object.fromEntries(Object.entries(picks).filter(([, v]) => Number.isInteger(v))));
+    }
+  } catch (e) { console.warn(e); }
   const uid = await currentUid();
   const name = storedName();
   const teamName = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
@@ -151,8 +159,9 @@ export async function renderPredict(src) {
       </div>
       <div class="pred-picks" role="group" aria-label="Your pick">${OUTCOMES.map((k) => {
         const n = c ? Math.round(c[k] * c.n) : 0;
-        return `<button type="button" class="${k}" data-pick="${k}" aria-pressed="${my?.pick === k}" ${locked || !preds ? "disabled" : ""}>
-          <span class="pk-main">${label(s, k)}</span>
+        // The buttons sit under their team's name, so the score alone says whose win it is.
+        return `<button type="button" class="${k}" data-pick="${k}" aria-pressed="${my?.pick === k}" aria-label="${label(s, k)}" title="${label(s, k)}" ${locked || !preds ? "disabled" : ""}>
+          <span class="pk-main">${k === "home" ? "2–0" : k === "away" ? "0–2" : "1–1"}</span>
           <span class="pk-sub">${Math.round(o[k] * 100)}%${c ? ` · ${n} pick${n === 1 ? "" : "s"}` : ""}${k === call ? ' · <b>model</b>' : ""}</span>
         </button>`;
       }).join("")}</div>
@@ -169,11 +178,12 @@ export async function renderPredict(src) {
   // Leaderboard: standings plus everyone's picks for the coming night, one column per
   // series. People with picks this week but nothing scored yet still get a row.
   const board = new Map(st.map((r) => [r.model ? "\u0000model" : nameKey(r.name), { ...r, now: {} }]));
+  const unplayed = new Set(d.series.filter((s) => !isPlayed(s)).map((s) => s.id));
   for (const p of valid) {
-    if (!week.some((s) => s.id === p.series_id)) continue;
+    if (!unplayed.has(p.series_id)) continue;
     const k = nameKey(p.name);
     if (!board.has(k)) board.set(k, { name: p.name, points: 0, picks: 0, accuracy: null, now: {} });
-    board.get(k).now[p.series_id] = p.pick;
+    if (week.some((s) => s.id === p.series_id)) board.get(k).now[p.series_id] = p.pick;
   }
   if (week.length) {
     if (!board.has("\u0000model")) board.set("\u0000model", { name: "The model", model: true, points: 0, picks: 0, accuracy: null, now: {} });
@@ -186,7 +196,7 @@ export async function renderPredict(src) {
       ${week.map((s) => `<th scope="col" class="l pb-series"><span class="a">${esc(teamName[s.home])}</span><span class="b">${esc(teamName[s.away])}</span></th>`).join("")}</tr></thead>
     <tbody>${boardRows.map(([k, r], i) => `<tr class="${k === myKey ? "me" : ""}">
       <td class="rank${i < 3 && r.picks ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
-      <td class="l">${r.model ? `<b>${esc(r.name)}</b> <span class="tag">replayed</span>` : esc(r.name)}</td>
+      <td class="l"><button type="button" class="linkish pb-who" data-who="${r.model ? "model" : esc(k)}" aria-pressed="false" title="See ${esc(r.name)}'s bracket and final table"><i class="pb-dot" aria-hidden="true"></i>${r.model ? `<b>${esc(r.name)}</b>` : esc(r.name)}</button>${r.model ? ' <span class="tag">replayed</span>' : ""}</td>
       <td class="num">${r.picks ? `${r.points}<span class="muted">/${r.picks}</span>` : '<span class="muted">—</span>'}</td>
       <td class="num">${r.accuracy == null ? '<span class="muted">—</span>' : pct(r.accuracy)}</td>
       ${week.map((s) => `<td class="l">${pickChip(s, r.now[s.id])}</td>`).join("")}</tr>`).join("")}</tbody>
@@ -217,16 +227,19 @@ export async function renderPredict(src) {
     ${week.length ? `<div class="pred-grid reveal">${week.map(card).join("")}</div>
 `
       : `<div class="panel empty">PlayOn hasn't posted next week's schedule yet.</div>`}
-    <h2>Leaderboard</h2>
-    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks.</p>` : `<div class="panel empty">No picks yet.</div>`}
-    ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}
     <details class="how explain"><summary>How the model works</summary>
       <p>Each team has a strength rating fitted to every series result so far. With only ${playedNights.length} weeks played, results alone are noisy, so each rating is pulled toward a starting point set by the average PlayOn medal of the team's top three players. The pull and the medal weight were tuned by replaying all seven divisions, predicting each week from the weeks before it. So far medals have predicted results far better than past results, so the pull is strong.</p>
       <p>The model's call takes the favourite 2–0, even when 1–1 is the likeliest single result. It only calls 1–1 when per-game odds are within ${TIE_EDGE * 100} points of 50%. The odds are more cautious: past results haven't predicted the next week much better than a coin flip, so most series look close. Replayed over the season, its calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>The two games in a series aren't independent: the better team on the night tends to win both, and only about a third of series have ended 1–1. So an even match is 33% / 33% / 33%, not 25% / 50% / 25%. Current settings: pull ${params.lambda}, medal weight ${params.beta}.</p>
     </details>`;
+  const boardTab = `
+    <h2>Leaderboard</h2>
+    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> to see their bracket and final table.</p>` : `<div class="panel empty">No picks yet.</div>`}
+    ${boardHtml ? `<section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading the bracket…</p></section>` : ""}
+    ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
   const tabs = playerTabs(pageTabs(PREDICT_TABS, src, [
     ["calls", callsHtml],
+    ["board", boardTab],
     ["bracket", `<section class="po" id="po-bracket"></section>`],
     ["odds", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
   ]), { store: "predictTab", label: "Predict sections" });
@@ -303,7 +316,32 @@ export async function renderPredict(src) {
   if (!document.body.contains(poBracket)) return;
   const fullRatings = full === d ? ratings : fitRatings(full.teams, full.series, tune(full.teams, full.series));
   const myCalls = new Map(full.series.filter((s) => !isPlayed(s)).map((s) => [s.id, mine(s.id)?.pick]).filter(([, k]) => k));
-  mountPlayoffs(poBracket, src, full, fullRatings, myCalls);
+  mountPlayoffs(poBracket, src, full, fullRatings, myCalls, { share: { name, saved: savedBrackets.get(myKey), save: (picks) => saveBracket(src.key, picks, name) } });
+
+  // Leaderboard: click a name for the bracket and final table their calls lead to. Fresh host
+  // each time, since mountPlayoffs listens for clicks on its element.
+  const view = document.getElementById("pb-view");
+  if (view) {
+    const fullValid = validPicks(preds ?? [], full.series);
+    const open = new Set(full.series.filter((s) => !isPlayed(s)).map((s) => s.id));
+    const show = (who, scroll) => {
+      const k = who === "model" ? " model" : who, row = board.get(k);
+      if (!row) return;
+      app.querySelectorAll(".pb-who").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.who === who)));
+      const calls = new Map(row.model ? [] : fullValid.filter((p) => nameKey(p.name) === k && open.has(p.series_id)).map((p) => [p.series_id, p.pick]));
+      if (!row.model && !savedBrackets.has(k) && !calls.size) {
+        view.innerHTML = `<h3 class="pb-view-h">${esc(row.name)}'s bracket</h3><p class="muted">${esc(row.name)} hasn't made a bracket yet.</p>`;
+        return;
+      }
+      view.innerHTML = `<h3 class="pb-view-h">${row.model ? "The model's" : `${esc(row.name)}'s`} bracket${row.model ? "" : ` <span class="muted">· ${calls.size} upcoming series called</span>`}</h3><div class="pb-host"></div>`;
+      mountPlayoffs(view.querySelector(".pb-host"), src, full, fullRatings, calls, { watch: { name: row.name, model: !!row.model, picks: row.model ? null : savedBrackets.get(k) ?? {} } });
+      if (scroll) view.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
+    app.querySelectorAll(".pb-who").forEach((b) => b.onclick = () => show(b.dataset.who, true));
+    // Open on you if you saved a bracket, else the first person who did.
+    const first = savedBrackets.has(myKey) && board.has(myKey) ? myKey : boardRows.find(([k, r]) => !r.model && savedBrackets.has(k))?.[0] ?? (board.has(myKey) && myKey ? myKey : boardRows.find(([, r]) => !r.model)?.[0]);
+    if (first) show(first === " model" ? "model" : first, false);
+  }
   // Possibilities runs every outcome, so it waits until its tab is first shown.
   const oddsPanel = poOdds.closest("[role=tabpanel]");
   const mountOdds = () => {

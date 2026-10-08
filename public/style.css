@@ -1698,6 +1698,15 @@ button.linkish:hover { text-decoration: underline; }
 .pred-board th.pb-series .b { color: var(--ember); }
 .pred-board th.pb-series .b::before { content: "vs "; color: var(--dim); }
 .pred-board td:has(> .pk-chip) { white-space: normal; }
+.pred-board .pb-who { font: inherit; color: inherit; text-align: left; display: inline-flex; align-items: center; gap: 9px; cursor: pointer; }
+.pred-board .pb-who:hover { color: var(--accent); }
+.pred-board .pb-who[aria-pressed="true"] { color: var(--accent); font-weight: 700; }
+.pb-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--dim); box-sizing: border-box; }
+.pb-who:hover .pb-dot { border-color: var(--accent); }
+.pb-who[aria-pressed="true"] .pb-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 40%, transparent 45%); }
+.pred-board tr:has(.pb-who[aria-pressed="true"]) td { background: rgba(var(--accent-rgb), .12); }
+.pb-view { margin: 22px 0 8px; scroll-margin-top: 70px; }
+.pb-view-h { margin: 0 0 10px; }
 .pk-chip { display: inline-block; max-width: 170px; overflow-wrap: anywhere; vertical-align: middle; font-size: 13px; line-height: 1.3; padding-left: 7px; border-left: 3px solid var(--seam-2); }
 .pk-chip.home { border-left-color: var(--jade); }
 .pk-chip.tie { border-left-color: var(--gold); }
@@ -3353,7 +3362,7 @@ figure.chart .ms-fit { stroke: var(--bone); stroke-width: 1.4; stroke-dasharray:
 .po-none, .po-settled, .po-heroic { font-size: 14px; color: var(--dust); max-width: 90ch; margin: 0 0 8px; }
 .po-settled b, .po-heroic b { color: var(--bone); }
 .po-br-wrap { overflow-x: auto; padding-bottom: 6px; }
-.po-br { display: grid; grid-template-columns: 22px repeat(var(--weeks), minmax(190px, 1fr)); grid-template-rows: auto auto auto; gap: 10px 12px; min-width: max-content; }
+.po-br { display: grid; grid-template-columns: 22px repeat(var(--weeks), minmax(150px, 1fr)); grid-template-rows: auto auto auto; gap: 10px 10px; min-width: calc(22px + var(--weeks) * 160px); }
 .po-wk { grid-row: 1; font: 600 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
 .po-lbl { grid-column: 1; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dust); }
 .po-lbl.up, .po-col.up { grid-row: 2; }
@@ -3583,6 +3592,12 @@ button.po-slot.on.me { border-style: solid; border-color: var(--jade); }
 .po-split { display: grid; gap: 14px 24px; align-items: start; }
 @media (min-width: 1200px) { .po-split { grid-template-columns: minmax(0, 660px) minmax(0, 1fr); } }
 .po-week8 > .po-h:first-child { margin-top: 0; }
+.po-two { display: grid; gap: 22px 28px; align-items: start; margin-top: 18px; }
+.po-pane { min-width: 0; }
+.po-pane .po-split { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1400px) { .po-two { grid-template-columns: minmax(520px, 530px) minmax(0, 1fr); } }
+.po-pane .table-note { margin-bottom: 14px; }
+.po-pane .po-seedpick { margin-bottom: 14px; }
 .po-table .po-place { color: var(--dim); }
 .po-gain { font: 600 11px var(--mono); color: var(--jade); }
 .po-zone { display: inline-block; padding: 2px 7px; border: 1px solid var(--seam); white-space: nowrap; }
@@ -3913,3 +3928,5 @@ figure.chart.item-lead .xp-line { stroke: var(--gold); stroke-width: 1.5; opacit
 .sd-game .draft-legend { margin: 6px 0 8px; }
 .sd-game .draft-rows.draft-bottom { margin-top: 8px; }
 .sd-game .draft-rows { gap: 6px; }
+.hpool-segs { margin: 10px 0 0; flex-wrap: wrap; }
+.hpool-note { margin: 8px 0 0; }

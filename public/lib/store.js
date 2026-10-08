@@ -160,6 +160,23 @@ export async function savePrediction(seriesId, pick, name, league = "ad2l") {
   return uid;
 }
 
+// ---------- brackets ----------
+// A person's playoff bracket picks (tiebreaker and bracket winners, from Predict's Bracket tab),
+// one document per person per league, id "<league>_<uid>", shown on the Leaderboard. `picks` is
+// the JSON of { key: winner team id }; their series calls are the predictions above.
+const brackets = collection(db, "scrimLeague", "data", "brackets");
+export async function listBrackets() {
+  const snap = await getDocs(query(brackets, limit(500)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data(), updatedAt: d.data().updatedAt?.toDate?.() ?? null }));
+}
+export async function saveBracket(league, picks, name) {
+  await signedIn();
+  const uid = auth.currentUser.uid;
+  await setDoc(doc(brackets, `${league}_${uid}`), {
+    v: 1, league, name: name.trim().slice(0, 24), uid, picks: JSON.stringify(picks), updatedAt: serverTimestamp(),
+  });
+}
+
 // ---------- scrim fixtures ----------
 // Upcoming scrims anyone can put on the schedule: two team names, a start time and the
 // format. Results aren't stored here; uploaded games settle a fixture (lib/fixtures.js).
