@@ -90,6 +90,8 @@ After a push deploys, `scripts/deploy/discord-updates.cjs` posts the commit subj
 the site to the Discord updates channel (`DISCORD_UPDATES_WEBHOOK` secret; sync commits are
 skipped; `[skip announce]` in a message skips it).
 
+The post only goes up after the deploy job succeeds (the `announce` job `needs: deploy`). Every bullet should link to the page it is about: in a `Discord:` line write `[label](/champion/predict/?tab=board)`, a path starting with `/` is that page on the site, and a line can have several links. A bullet with no link gets one to the home page and a warning in the job log. Check with `node scripts/deploy/discord-updates.cjs --dry-run origin/main HEAD`.
+
 **Link previews:** every page has a 1200×630 card, `public/img/og/<league>.png` (`site.png` for
 the home page): the brand mark in the league's colours and the league name in the site font.
 Committed; `python scripts/gen/gen-og-images.py` redraws them after a league or colour changes

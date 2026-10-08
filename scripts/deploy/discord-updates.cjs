@@ -4,6 +4,10 @@
 // in the message, and commits that don't touch the site (SITE_FILES) are left out.
 // Nothing to say → nothing posted.
 //
+// Every bullet links to the page it's about. In a "Discord:" line write [label](/champion/predict/?tab=board);
+// a path starting with / is that page on the site, and a line can carry several links. A bullet with no
+// link gets one to the site home and a warning, so it still posts.
+//
 //   node scripts/deploy/discord-updates.cjs [--dry-run] [BEFORE AFTER]
 //
 // In Actions: BEFORE/AFTER from the push event, DISCORD_UPDATES_WEBHOOK from the repo secret.
@@ -20,6 +24,19 @@ const [argBefore, argAfter] = args.filter((a) => !a.startsWith("--"));
 const git = (...a) => execFileSync("git", a, { cwd: ROOT, encoding: "utf8" });
 const esc = (x) => String(x).replace(/[\\`*_~|>#\[\]()<@-]/g, "\\$&");
 const clip = (x, n) => (x.length > n ? x.slice(0, n - 1) + "…" : x);
+// A line's [label](path) links become Discord links; everything around them is escaped. Only paths
+// on the site and https URLs on its host are linked, anything else stays plain text.
+const LINK = /\[([^\]]+)\]\((\/[^\s)]*|https:\/\/dota2scrimcircuittracker\.github\.io\/[^\s)]*)\)/g;
+function render(line) {
+  let out = "", last = 0, links = 0;
+  for (const m of line.matchAll(LINK)) {
+    const url = m[2].startsWith("/") ? SITE.replace(/\/$/, "") + m[2] : m[2];
+    out += esc(line.slice(last, m.index)) + `[${esc(m[1])}](${url.replace(/[()]/g, encodeURIComponent)})`;
+    last = m.index + m[0].length;
+    links++;
+  }
+  return { text: out + esc(line.slice(last)), links };
+}
 
 function commits(before, after) {
   // A new branch or force push has no usable "before": announce the head commit alone.
@@ -56,7 +73,9 @@ async function main() {
 
   let desc = "";
   for (const [i, l] of lines.entries()) {
-    const next = (desc ? desc + "\n" : "") + `• ${clip(esc(l), 300)}`;
+    let { text, links } = render(l);
+    if (!links) { console.warn(`WARNING: no link in "${clip(l, 80)}"; linking the site home.`); text += ` ([site](${SITE}))`; }
+    const next = (desc ? desc + "\n" : "") + `• ${text}`;
     if (next.length > 3800) { desc += `\n…and ${lines.length - i} more.`; break; }
     desc = next;
   }
