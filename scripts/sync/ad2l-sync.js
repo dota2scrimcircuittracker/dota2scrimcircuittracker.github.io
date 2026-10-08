@@ -247,7 +247,7 @@ console.log(`  ${candidates.size} candidate practice-lobby games; pubs for ${pub
 // first, then oldest) so a run stays about a minute longer, and the rest use their cached copy.
 // A failed call leaves a .tried stamp, and that account waits TOTALS_RETRY_DAYS before trying
 // again, so accounts OpenDota keeps refusing can't take every slot on every run.
-const TOTALS_DAYS = 7, TOTALS_RETRY_DAYS = 1, TOTALS_PER_RUN = 18, TOTAL_LOBBIES = [0, 7, 1];
+const TOTALS_DAYS = 7, TOTALS_RETRY_DAYS = 1, TOTALS_PER_RUN = Number(process.env.TOTALS_PER_RUN) || 18, TOTAL_LOBBIES = [0, 7, 1];
 const totalsFile = (acct, lobby) => path.join(CACHE, "opendota", `heroes_${acct}_${lobby}.json`);
 const triedFile = (acct, lobby) => `${totalsFile(acct, lobby)}.tried`;
 const ageOf = (file) => (existsSync(file) ? Date.now() - statSync(file).mtimeMs : Infinity);

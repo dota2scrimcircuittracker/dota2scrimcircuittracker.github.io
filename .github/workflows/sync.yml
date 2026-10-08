@@ -13,6 +13,10 @@ on:
     # harmless extra run an hour off.
     - cron: "0 4,5 * * 5"
   workflow_dispatch:
+    inputs:
+      totals_per_run:
+        description: "All-time hero totals: accounts refreshed per division this run (18 normally; ~40 to backfill)"
+        default: "18"
 
 permissions:
   contents: write # commit the synced data
@@ -44,6 +48,8 @@ jobs:
       # the job still fails at the end so it shows red.
       # The divisions come from public/lib/divisions.js; sync-all.js writes FAILED to $GITHUB_ENV.
       - name: Sync every division
+        env:
+          TOTALS_PER_RUN: ${{ inputs.totals_per_run }}
         run: node scripts/sync/sync-all.js || true
       - uses: actions/cache/save@v4
         if: always()
@@ -54,7 +60,7 @@ jobs:
       - name: Drop timestamp-only changes
         run: |
           for f in $(git diff --name-only -- public/data); do
-            if [ -z "$(git diff -U0 -- "$f" | grep '^[+-] ' | grep -v '"updated":')" ]; then git checkout -- "$f"; fi
+            if [ -z "$(git diff -U0 -- "$f" | grep -E '^[+-]([^+-]|$)' | grep -v '"updated":')" ]; then git checkout -- "$f"; fi
           done
       - name: Commit and push
         id: commit
