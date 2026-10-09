@@ -101,7 +101,7 @@ export function tierBreakdown(src, p) {
   // the same breakdown for just the games at that position.
   if (!(p.by_pos?.length > 1)) return breakdown(src, p, "");
   const sub = p.by_pos.find((q) => q.pos === tierTab.get(p.key)) ?? p.by_pos.find((q) => q.pos === p.pos) ?? p.by_pos[0];
-  const tab = (q) => `<button type="button" class="seg${q === sub ? " on" : ""}" data-key="${esc(p.key)}" data-tab="${q.pos}">Pos ${q.pos} <small>${q.games}</small></button>`;
+  const tab = (q) => `<button type="button" class="seg${q === sub ? " on" : ""}" data-key="${esc(p.key)}" data-tab="${q.pos}">Pos ${q.pos} <small>(${q.games} game${q.games === 1 ? "" : "s"})</small></button>`;
   const tabs = `<div class="row segs bd-tabs">${[...p.by_pos].sort((a, b) => b.games - a.games || a.pos - b.pos).map(tab).join("")}</div>`;
   return breakdown(src, sub, tabs);
 }
