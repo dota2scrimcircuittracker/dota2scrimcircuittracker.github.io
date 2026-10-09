@@ -40,9 +40,9 @@ test("a swapped lane follows the replay, not the position", () => {
   m.players[3].lane_role = 1; // Radiant pos 4 went bottom with the carry: tri-lane
   const [bot, , top] = gameLanes(m);
   assert.equal(bot.a.length, 3);
-  // 3v2 and 1v2 now: compared per hero, scaled to the average side size.
-  assert.equal(bot.margin, (9000 / 3 - 5000 / 2) * 2.5);
-  assert.equal(top.margin, (4000 - 6000 / 2) * 1.5);
+  // 3v2 and 1v2: the cores against each other, scaled to the average side size.
+  assert.equal(bot.margin, (5000 - 3000) * 2.5);
+  assert.equal(top.margin, (4000 - 4500) * 1.5);
 });
 
 test("cut-offs: a third of lanes each way; too few lanes falls back", () => {
@@ -98,18 +98,27 @@ test("tier lane result: cores against the enemy cores in their lane, supports la
   assert.equal(tierLaneResult(m, m.players[9]), null);
 });
 
-test("uneven lanes compare per hero: a solo core who out-farms a duo wins it", () => {
-  // Bottom 1v2: a's safe core alone (8600) vs b's off 3 + 4 (6600 + 4400). Top 3v2: a's off
-  // 3 + 4 + a roaming 5 vs b's safe 1 + 5.
+test("roamers leave their lane; uneven lanes compare the cores", () => {
+  // Top: a's off 3 + 4 + a roaming 5 vs b's safe 1 + 5, so 2v2 once the roamer is out. Mid:
+  // b's 4 roamed mid with their 2 (the Marci case): 1v1 between the mids, and bottom is left
+  // a's carry against b's offlaner. (Cores in a 3v2: the swapped-lane test above.)
   const m = game({ players: [
-    pl("a", 1, 1, 8600), pl("a", 2, 2, 6000), pl("a", 3, 3, 5700), pl("a", 4, 3, 4500), pl("a", 5, 3, 5200),
-    pl("b", 1, 1, 8400), pl("b", 2, 2, 6000), pl("b", 3, 3, 6600), pl("b", 4, 3, 4400), pl("b", 5, 1, 4800),
+    pl("a", 1, 1, 8600), pl("a", 2, 2, 7500), pl("a", 3, 3, 5700), pl("a", 4, 3, 4500), pl("a", 5, 3, 5200, { roaming: true }),
+    pl("b", 1, 1, 8400), pl("b", 2, 2, 6600), pl("b", 3, 3, 6600), pl("b", 4, 2, 4200, { roaming: true }), pl("b", 5, 1, 4800),
   ] });
-  const [bot, , top] = gameLanes(m);
-  assert.equal(bot.margin, Math.round((8600 - 5500) * 1.5)); // the sum would say -2400
-  assert.equal(top.margin, Math.round((5133.33 - 6600) * 2.5)); // the sum would say +2200
+  m.players[8].lane_role = 2;
+  const [bot, mid, top] = gameLanes(m);
+  assert.deepEqual([bot.b.length, bot.margin], [1, 8600 - 6600]);
+  assert.deepEqual([mid.a.length, mid.b.length, mid.margin], [1, 1, 7500 - 6600]);
+  assert.deepEqual([top.a.length, top.margin], [2, 5700 + 4500 - 8400 - 4800]);
   // Equal sides are still the plain sum.
   assert.equal(gameLanes(game())[0].margin, 7000 - 5000);
-  // The tier list's support lane result follows the same rule.
-  assert.equal(tierLaneResult(m, m.players[4]), top.margin);
+  // A side with no core falls back to per hero.
+  const sup = game();
+  sup.players[0].lane_role = 3; // a's carry goes top: bottom is a's 5 alone vs b's 3 + 4
+  assert.equal(gameLanes(sup)[0].margin, Math.round((2000 - 5000 / 2) * 1.5));
+  // A roamer's own result is the lane they left, for their team.
+  assert.equal(playerLane(m, m.players[4], laneCuts([m])).margin, top.margin);
+  // The tier list's support lane result follows the same lanes.
+  assert.equal(tierLaneResult(m, m.players[3]), top.margin);
 });

@@ -53,7 +53,7 @@ export function gameLanesHtml(m, src, cuts) {
     <h2>First 10 minutes${info("lane_players")}</h2>
     <div class="table-wrap"><table class="ln-table"><thead><tr><th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th><th scope="col" class="l">Lane</th><th scope="col">Result</th><th scope="col">Gold+XP lead</th><th scope="col">LH</th><th scope="col">DN</th><th scope="col">Lane eff.</th><th scope="col">Kills</th><th scope="col">Deaths</th></tr></thead>
     <tbody>${["a", "b"].map((t) => rows.filter((x) => x.p.team === t).map(tr).join("")).join("")}</tbody></table></div>
-    <p class="table-note">${cutNote(cuts)} Lead = the whole lane's gold + XP against the other side. LH, DN, kills and deaths are before 10:00.</p>`;
+    <p class="table-note">${cutNote(cuts)} Lead = the lane's gold + XP against the other side, roamers left out; in a 1v2, the cores'. LH, DN, kills and deaths are before 10:00.</p>`;
 }
 
 // Player and hero pages, Laning tab: record, averages, by lane, then each game.

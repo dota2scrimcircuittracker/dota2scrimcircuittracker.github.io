@@ -5,11 +5,16 @@
 // (1+5 safe, 2 mid, 3+4 off). Team a is Radiant, so a lane is keyed by Radiant's role in it:
 // lane 1 = Radiant safe vs Dire off (bottom), 2 = mid, 3 = Radiant off vs Dire safe (top).
 //
+// Roamers (OpenDota's flag: left their lane in the first minutes) don't count in the lane they
+// left; the page lists them on their own with how that lane did.
+//
 // A lane's margin is one side's gold + XP at 10:00 minus the other's, summed over everyone in
-// it. When the sides differ in size (a 1v2, a 3v2), the extra hero would win the lane on its own
-// gold + XP, so the sides are compared per hero instead and scaled to the lane's average size:
-// equal sides come out exactly as the plain sum. Won / even / lost cut-offs are fitted per division (laneCuts): a third of lanes each way,
-// side lanes and mid separately since a 1v1 swings less than a 2v2.
+// it. When the sides differ in size (a 1v2 once a support roams), the extra hero would win the
+// lane on its own gold + XP, and averaging per hero lets a support's low farm sink its side, so
+// the cores (pos 1-3) are compared instead: their average gap, scaled to the lane's average size.
+// A side with no core falls back to per hero. Won / even / lost cut-offs are fitted per division
+// (laneCuts): a third of lanes each way, side lanes and mid separately since a 1v1 swings less
+// than a 2v2.
 
 import { deathsOf } from "./deathmap.js";
 
@@ -30,20 +35,26 @@ export function laneRoleOf(p) {
 export const isJungler = (p) => p.lane_role === 4 || (p.position != null && p.position <= 3 && !p.roaming && p.lh10 != null && p.lh10 <= 10 && (p.neutral_kills ?? 0) >= 20);
 export const at10 = (p) => (Array.isArray(p.gold_t) && p.gold_t[LANE_END_MIN] != null && p.xp10 != null ? p.gold_t[LANE_END_MIN] + p.xp10 : null);
 const sumAt10 = (ps) => (ps.length && ps.every((p) => at10(p) != null) ? ps.reduce((s, p) => s + at10(p), 0) : null);
-// Side a's lead over side b (see the header): per hero, times the average side size.
+// Side a's lead over side b (see the header): the sum when the sides are the same size, else
+// the cores' (or, without a core on both sides, everyone's) average gap times the average side size.
+const isCore = (p) => p.position != null && p.position <= 3;
 export function laneMargin(a, b) {
   const sa = sumAt10(a), sb = sumAt10(b);
-  return sa == null || sb == null ? null : Math.round((sa / a.length - sb / b.length) * (a.length + b.length) / 2);
+  if (sa == null || sb == null) return null;
+  if (a.length === b.length) return sa - sb;
+  const ca = a.filter(isCore), cb = b.filter(isCore);
+  const [x, y] = ca.length && cb.length ? [ca, cb] : [a, b];
+  return Math.round((sumAt10(x) / x.length - sumAt10(y) / y.length) * (a.length + b.length) / 2);
 }
 export const hasLanes = (m) => Array.isArray(m.players) && m.players.some((p) => at10(p) != null);
 
 // The three lanes of a game: { lane (Radiant's role), a: [players], b: [players], margin } where
-// margin is Radiant's lead (null when a side is empty or missing numbers).
+// margin is Radiant's lead (null when a side is empty or missing numbers). Roamers are left out.
 export function gameLanes(m) {
   if (!hasLanes(m)) return [];
   return [1, 2, 3].map((lane) => {
-    const a = m.players.filter((p) => p.team === "a" && laneRoleOf(p) === lane);
-    const b = m.players.filter((p) => p.team === "b" && laneRoleOf(p) === OPP[lane]);
+    const a = m.players.filter((p) => p.team === "a" && !p.roaming && laneRoleOf(p) === lane);
+    const b = m.players.filter((p) => p.team === "b" && !p.roaming && laneRoleOf(p) === OPP[lane]);
     return { lane, a, b, margin: laneMargin(a, b) };
   });
 }
