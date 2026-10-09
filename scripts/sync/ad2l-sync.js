@@ -456,6 +456,19 @@ async function buildGame(id) {
   };
 }
 
+// PlayOn can sit at 0–0 for days after a series is played. When its games are found, score the
+// series from them; a score PlayOn does enter replaces this on the next sync.
+function scoreFromGames(list, gameList) {
+  for (const s of list) {
+    if (!s.time || s.time > Date.now() / 1000 || s.home_score || s.away_score) continue;
+    const mine = gameList.filter((g) => g.series_id === s.id);
+    if (!mine.length) continue;
+    const won = (id) => mine.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === id).length;
+    [s.home_score, s.away_score] = [won(s.home), won(s.away)];
+    console.log(`  series ${s.id}: no score on PlayOn, ${s.home_score}–${s.away_score} from ${mine.length} games`);
+  }
+}
+
 // --series: each series in turn, written as soon as its games are in, so a failure later on
 // keeps what came before. A team's players are asked for their recent practice lobbies one at a
 // time, stopping once the series has as many games as PlayOn's score says were played.
@@ -485,6 +498,7 @@ async function bySeries() {
       }
     }
     file.games = file.games.filter((g) => !found.has(g.match_id)).concat([...found.values()]).sort((a, b) => b.start_time - a.start_time);
+    scoreFromGames(series, file.games);
     file.series = series;
     file.updated = new Date().toISOString();
     for (const id of found.keys()) if (detail[id]) fileDetail[id] = detail[id];
@@ -495,6 +509,7 @@ async function bySeries() {
   process.exit(0);
 }
 games.sort((a, b) => b.start_time - a.start_time);
+scoreFromGames(series, games);
 
 const out = {
   season: season.title.replace(/\s*\|.*$/, "") || `PlayOn season ${SEASON_ID}`,
