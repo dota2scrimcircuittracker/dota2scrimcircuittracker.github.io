@@ -67,17 +67,17 @@ async function playon(p, ttlHours) {
 }
 
 let lastOD = 0, odCalls = 0;
-async function opendota(p, method = "GET") {
+async function opendota(p, method = "GET", tries = 6) {
   // 429s: wait what OpenDota asks (Retry-After) or 30s, 60s, ... up to 2 min, six times
   // (about 9 minutes in all). The scheduled sync runs on shared GitHub runners, whose IPs
   // other OpenDota users share, so a burst of 429s there isn't this script's own pace.
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < tries; attempt++) {
     await sleep(Math.max(0, 1100 - (Date.now() - lastOD))); // free tier: 60/min
     lastOD = Date.now();
     odCalls++;
     // A dropped connection (ECONNRESET, "terminated") is a hiccup like a 5xx: retry it too.
     const res = await fetch(`https://api.opendota.com/api${p}`, { method, headers: { "user-agent": UA } })
-      .catch((e) => { if (attempt === 5) throw e; return { status: 599, error: e }; });
+      .catch((e) => { if (attempt === tries - 1) throw e; return { status: 599, error: e }; });
     if (res.status === 429) {
       const after = Number(res.headers.get("retry-after"));
       const wait = Math.min(120e3, after > 0 ? after * 1000 : 30e3 * (attempt + 1));
@@ -86,7 +86,7 @@ async function opendota(p, method = "GET") {
       continue;
     }
     // 5xx: OpenDota's own hiccups, gone on a retry. One used to fail the whole division.
-    if (res.status >= 500 && attempt < 5) {
+    if (res.status >= 500 && attempt < tries - 1) {
       const wait = 10e3 * (attempt + 1);
       console.log(`  OpenDota HTTP ${res.status} on ${p}; retrying in ${wait / 1000}s`);
       await sleep(wait);
@@ -467,7 +467,7 @@ async function bySeries() {
     const window = Math.ceil((now - s.time) / 86400) + 1;
     for (const [acct] of accounts) {
       if (played && found.size >= played) break;
-      const rows = await opendota(`/players/${acct}/matches?date=${window}&lobby_type=1`)
+      const rows = await opendota(`/players/${acct}/matches?date=${window}&lobby_type=1`, "GET", 2)
         .catch((e) => (console.log(`  ${acct}: ${e.message}; next player`), []));
       for (const r of rows) {
         if (seen.has(r.match_id) || r.start_time < s.time - 3 * 3600) continue;
