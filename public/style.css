@@ -1691,6 +1691,9 @@ button.linkish:hover { text-decoration: underline; }
 .pred-picks button:disabled { opacity: .55; cursor: not-allowed; }
 .pred-picks button[aria-pressed="true"]:disabled { opacity: 1; }
 .pred-board td.num { text-align: right; }
+.pb-delta { display: inline-block; margin-right: 10px; font: 500 11px var(--mono); color: var(--dust); }
+.pb-delta.up { color: var(--jade); }
+.pb-delta.down { color: var(--ember); }
 .pred-board tr.me td { background: rgba(var(--accent-rgb), .08); }
 .pred-board th.pb-series { white-space: normal; min-width: 120px; max-width: 170px; vertical-align: bottom; font-size: 10px; line-height: 1.35; }
 .pred-board th.pb-series span { display: block; }

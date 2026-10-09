@@ -496,7 +496,7 @@ shrunk-resolution problem above, not a finding problem.
   its own link (`?tab=calls|board|bracket|odds`, Back works, the last one remembered): **Predictions**
   (this week's cards, then **Latest results**: the last played night's series with the model's,
   the crowd's and your call, that night's top scorers, the model's and your score; a name opens
-  their history), **Leaderboard** (standings, past weeks; click a name for their pick history —
+  their history), **Leaderboard** (standings, each row with last week's right/called and how its % moved since, past weeks; click a name for their pick history —
   every counting call, newest night first, with the result, a ✓/✗ and each night's score; the
   model's is its replayed calls plus this week's — then the bracket and
   final table their series calls lead to, read-only; only series calls are saved, so their

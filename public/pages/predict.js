@@ -189,6 +189,25 @@ export async function renderPredict(src) {
     if (!board.has("\u0000model")) board.set("\u0000model", { name: "The model", model: true, points: 0, picks: 0, accuracy: null, now: {} });
     for (const s of week) board.get("\u0000model").now[s.id] = modelCall(oddsOf(s));
   }
+  // Change from last week: each row's score on the latest played night, and how their
+  // accuracy moved against where it stood before that night (in points of %).
+  const lastNightScore = new Map();
+  if (playedNights.length) {
+    for (const r of preds ? nightScores(preds, d.series, playedNights[0]) : []) lastNightScore.set(nameKey(r.name), r);
+    const m = bt.filter((x) => x.s.time === playedNights[0]);
+    if (m.length) lastNightScore.set(" model", { points: m.filter((x) => x.correct).length, picks: m.length });
+  }
+  const delta = (k, r) => {
+    const l = lastNightScore.get(k);
+    if (!l?.picks) return { pts: "", acc: "" };
+    const before = r.picks - l.picks;
+    const diff = before > 0 ? Math.round((r.points / r.picks - (r.points - l.points) / before) * 100) : null;
+    return {
+      pts: `<span class="pb-delta" title="Last week: ${l.points} right of ${l.picks}">+${l.points}<span class="muted">/${l.picks}</span></span>`,
+      acc: diff == null ? `<span class="pb-delta muted" title="First week with picks">new</span>`
+        : `<span class="pb-delta ${diff > 0 ? "up" : diff < 0 ? "down" : "muted"}" title="Change since last week, in points of %">${diff > 0 ? "▲" : diff < 0 ? "▼" : "±"}${Math.abs(diff)}%</span>`,
+    };
+  };
   const boardRows = [...board.entries()].sort(([, a], [, b]) => b.points - a.points || (b.accuracy ?? -1) - (a.accuracy ?? -1) || a.name.localeCompare(b.name));
   const pickChip = (s, k) => (k ? `<span class="pk-chip ${k}" title="${k === "tie" ? "1–1" : `${esc(teamName[k === "home" ? s.home : s.away])} 2–0`}">${k === "tie" ? "1–1" : `${esc(teamName[k === "home" ? s.home : s.away])} 2–0`}</span>` : '<span class="muted">—</span>');
   const boardHtml = boardRows.length ? `<div class="table-wrap sticky-name"><table class="pred-board">
@@ -197,8 +216,8 @@ export async function renderPredict(src) {
     <tbody>${boardRows.map(([k, r], i) => `<tr class="${k === myKey ? "me" : ""}">
       <td class="rank${i < 3 && r.picks ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
       <td class="l"><button type="button" class="linkish pb-who" data-who="${r.model ? "model" : esc(k)}" aria-pressed="false" title="See ${esc(r.name)}'s picks and bracket"><i class="pb-dot" aria-hidden="true"></i>${r.model ? `<b>${esc(r.name)}</b>` : esc(r.name)}</button>${r.model ? ' <span class="tag">replayed</span>' : ""}</td>
-      <td class="num">${r.picks ? `${r.points}<span class="muted">/${r.picks}</span>` : '<span class="muted">—</span>'}</td>
-      <td class="num">${r.accuracy == null ? '<span class="muted">—</span>' : pct(r.accuracy)}</td>
+      <td class="num">${r.picks ? `${delta(k, r).pts}${r.points}<span class="muted">/${r.picks}</span>` : '<span class="muted">—</span>'}</td>
+      <td class="num">${r.accuracy == null ? '<span class="muted">—</span>' : `${delta(k, r).acc}${pct(r.accuracy)}`}</td>
       ${week.map((s) => `<td class="l">${pickChip(s, r.now[s.id])}</td>`).join("")}</tr>`).join("")}</tbody>
   </table></div>` : "";
   // One played night: each series' result and how the model, the crowd and you called it.
