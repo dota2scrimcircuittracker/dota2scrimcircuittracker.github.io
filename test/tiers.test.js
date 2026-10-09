@@ -50,11 +50,16 @@ test("replay positions override net worth", () => {
   assert.equal(p["Player 5"].role, "support");
 });
 
-test("every stat and the stat points sit on 0–100; the season's best and worst series set 100 and 0", () => {
+test("every stat and the stat points sit on 0–100; the best season average scores 100", () => {
   // Player 1 (a support by net worth) out-damages everyone in every game, so they have the
-  // league's best support damage average; the weakest support has the worst average, but their
-  // average isn't the single worst series, so they keep some points.
-  const list = tierList(games(8, (g, i) => { g.players[0].hero_damage += 20000; g.players[i % 5].kills += 4 * i; }));
+  // league's best support damage average and get all of damage's points. Their position's other
+  // games are split between Player 10 and Player 11, whose averages (padded over fewer games) sit
+  // closer to average than Player 1's, so 0 sits as far below average as Player 1 is above it
+  // and neither drops to 0.
+  const list = tierList(games(8, (g, i) => {
+    g.players[0].hero_damage += 20000; g.players[i % 5].kills += 4 * i;
+    if (i >= 4) Object.assign(g.players[9], { name: "Player 11", player_key: "player 11" });
+  }));
   const all = list.tiers.flatMap((t) => t.players);
   for (const p of all) {
     assert.ok(p.stat_points >= 0 && p.stat_points <= 100);
@@ -64,8 +69,8 @@ test("every stat and the stat points sit on 0–100; the season's best and worst
   const supports = all.filter((p) => p.role === "support");
   const best = dmg(supports.find((p) => p.name === "Player 1"));
   assert.equal(best, Math.max(...supports.map(dmg)));
-  assert.ok(best > 50 && best <= 100);
-  assert.ok(Math.min(...supports.map(dmg)) > 0, "a weak average still beats the worst series");
+  assert.ok(Math.abs(best - 100) < 1e-9);
+  for (const name of ["Player 10", "Player 11"]) assert.ok(dmg(supports.find((p) => p.name === name)) > 0, `${name}: a little below average isn't a flat 0`);
 });
 
 test("series average to the season: stat points and score, weighted by games", () => {
@@ -164,14 +169,15 @@ test("opponent strength: games against a team that wins elsewhere count up, a te
   assert.ok(Math.abs(p["Y-Player 1"].mult.opponents - 0.92) < 1e-9);
 });
 
-test("lane result: cores against the opposite core, supports as a lane pair against the enemy pair", () => {
+test("lane result: supports only, as a lane pair against the enemy pair (cores have laning)", () => {
   const g = game(1);
   g.players.forEach((p, i) => { p.position = (i % 5) + 1; p.gold_t = Array(11).fill(0); p.gold_t[10] = 3000 + 100 * i; p.xp10 = 2000 + 10 * i; });
   const list = tierList([g, g, g].map((x, i) => ({ ...x, id: `g${i}`, players: x.players.map((p) => ({ ...p })) })), { minGames: 1 });
-  const v = (name) => byName(list)[name].roles[0].stats.find((s) => s.metric === "lanewin").value;
+  const stat = (name) => byName(list)[name].roles[0].stats.find((s) => s.metric === "lanewin");
+  const v = (name) => stat(name).value;
   const at10 = (i) => 3000 + 100 * i + 2000 + 10 * i; // player index i (Player i+1)
-  assert.equal(v("Player 1"), at10(0) - at10(7)); // pos 1 vs enemy pos 3
-  assert.equal(v("Player 2"), at10(1) - at10(6)); // mid vs mid
+  assert.equal(stat("Player 1"), undefined); // pos 1
+  assert.equal(stat("Player 2"), undefined); // mid
   assert.equal(v("Player 5"), at10(4) + at10(0) - (at10(7) + at10(8))); // pos 5 + 1 vs enemy 3 + 4
   assert.equal(v("Player 4"), at10(3) + at10(2) - (at10(5) + at10(9))); // pos 4 + 3 vs enemy 1 + 5
 });

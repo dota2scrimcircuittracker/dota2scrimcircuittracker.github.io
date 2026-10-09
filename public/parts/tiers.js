@@ -27,8 +27,8 @@ export async function tierRef(src, pos = null) {
 // How each tier-list stat reads in a breakdown, and the raw number shown under a share.
 const kNum = (v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${Math.round(v)}`);
 const METRIC_FMT = {
-  farm: pct, dmg: pct, tower: pct, xp: pct, kills: pct, assists: pct, dead: pct,
-  gpm: (v) => `${Math.round(v)}`, nw: kNum,
+  farm: pct, dmg: pct, tower: pct, kills: pct, assists: pct, dead: pct,
+  gpm: (v) => `${Math.round(v)}`, xpm: (v) => `${Math.round(v)}`, nw: kNum,
   lane: (v) => `${Math.round(v)}%`,
   stuns: (v) => `${v.toFixed(1)}s/m`, // seconds per minute
   vision: (v) => `${v.toFixed(1)}% of map`,
@@ -40,7 +40,7 @@ const METRIC_FMT = {
 };
 const RAW_FMT = {
   farm: (v) => `${Math.round(v)} GPM`, dmg: (v) => `${kNum(v)} dmg a game`, tower: (v) => `${kNum(v)} bldg dmg a game`,
-  xp: (v) => `${Math.round(v)} XPM`, kills: (v) => `${v.toFixed(1)} kills a game`, assists: (v) => `${v.toFixed(1)} assists a game`,
+  kills: (v) => `${v.toFixed(1)} kills a game`, assists: (v) => `${v.toFixed(1)} assists a game`,
 };
 // Round a list of point values to tenths so the shown numbers add up to the shown total
 // (largest remainder: the tenths lost to rounding down go to the biggest fractions).
@@ -280,9 +280,9 @@ function tierHow(model, src) {
 
     <h3>2. Each stat, against the same position</h3>
     <p>Each stat in each game is compared with the average for that position across ${pool}: a position 3 against other position 3s. The comparison is a z-score (standard deviations from average), capped at ±2.5 so one freak number can't carry a game, and flipped for stats where less is better.</p>
-    <p><b>Shares, so long games don't pay.</b> Farm, hero damage, building damage, XP, kills and assists are measured as the player's <i>share of their team's total</i>, because per-minute and per-game numbers climb in long games. The breakdown shows the raw number (GPM, damage, kills per game) next to each share.</p>
-    <p><b>GPM and net worth</b> count on top of farm share: farm share is how much of the team's gold you took, these are how rich you got. Both climb with game length${gpmSlope ? ` (about +${gpmSlope.toFixed(1)} GPM per extra minute for a position 1)` : ""}, so they're compared with what that position gets in a game <i>that long</i>, from a straight line fitted through every game. <b>Stacks</b> (supports) work the same way. They're counted per game, not per minute, because stacking is early-game work.</p>
-    <p><b>Lane result</b> is the gold + XP lead at 10 minutes over whoever you laned against: a position 1 against the enemy position 3, mid against mid, a position 3 against the enemy position 1. Supports are judged as a lane pair: the safe-lane support with their carry against the enemy offlane pair, and the reverse. Laning efficiency counts separately for cores: how much of the lane's gold you took, whoever was across from you.</p>
+    <p><b>Shares, so long games don't pay.</b> Farm, hero damage, building damage, kills and assists are measured as the player's <i>share of their team's total</i>, because per-minute and per-game numbers climb in long games. The breakdown shows the raw number (GPM, damage, kills per game) next to each share.</p>
+    <p><b>GPM, XPM and net worth</b> count on top of farm share: farm share is how much of the team's gold you took, these are how rich and how high level you got. All three climb with game length${gpmSlope ? ` (about +${gpmSlope.toFixed(1)} GPM per extra minute for a position 1)` : ""}, so they're compared with what that position gets in a game <i>that long</i>, from a straight line fitted through every game. <b>Stacks</b> (supports) work the same way. They're counted per game, not per minute, because stacking is early-game work.</p>
+    <p><b>Lane result</b> (supports) is the gold + XP lead at 10 minutes of your lane pair over the one you laned against: the safe-lane support with their carry against the enemy offlane pair, and the reverse. Cores are judged on <b>laning</b> instead: how much of the lane's gold you took in the first 10 minutes.</p>
     <p><b>Kills and assists</b> are separate. Kill share is the team's kills you finished; assist share is the ones you helped with. Together they make kill participation.</p>
     <p><b>Utility</b> (supports): smokes used, dust used and sentries placed, per 10 minutes, each its own stat. Sentries count as placed, not bought. They're worth few points because dewards already credit the sentries that find enemy wards.</p>
     <p>If a game is missing a stat (screenshot uploads have no wards, stuns or laning), that stat is left out and the others fill its points.</p>
@@ -292,7 +292,7 @@ function tierHow(model, src) {
     <ul class="how-list">
       <li>First, the player's average for the stat in that role, padded with ${K_SHRINK} games at the position average. A 3-game player keeps about half of how far they are from average, a 20-game player nearly all of it.</li>
       <li><b>100</b> = the <b>best</b> such average of any player with ${floorOf(src)}+ games in that role in this league. If you have the league's best average farm share among cores, you get all of farm share's points.</li>
-      <li><b>0</b> = the <b>worst</b> such average. Everyone else sits in between, in proportion.</li>
+      <li><b>0</b> = the <b>worst</b> such average, but never closer to the position average than the best is. In a small league the worst player may be only a little below average, and they don't drop to 0 for it. Everyone else sits in between, in proportion.</li>
       <li><b>Stacks (supports)</b> are easier: 100 sits ${Math.round(EASE.support.stacks * 100)}% of the way from the worst stacker to the best. A few supports stack far more than anyone else, and without this everyone else would score close to nothing.</li>
     </ul>
     <p>Each AD2L division and the scrim ledger has its own 100s and 0s, so a 90 in one division isn't the same as a 90 in another.</p>
@@ -303,7 +303,7 @@ function tierHow(model, src) {
       <div><h4>Cores</h4>${statTable("core")}</div>
       <div><h4>Supports</h4>${statTable("support")}</div>
     </div>
-    <p><b>Why these points.</b> Cores are there to farm, fight, win their lane and take buildings, so damage, farm, lane result and buildings carry the most. Supports win games through vision, killing the enemy's vision, assists, disables and utility. Their farm and net worth count a little: a support who turns gold into items fights better, but farm isn't the job.</p>
+    <p><b>Why these points.</b> Cores are there to farm and fight, so damage, farm, kills and GPM carry the most. Supports win games through vision, killing the enemy's vision, assists, disables and utility. Their farm and net worth count a little: a support who turns gold into items fights better, but farm isn't the job.</p>
 
     <h3>5. The multipliers</h3>
     <p>Four multipliers scale the stat points. They measure <i>how</i> the stats were earned: 50 stat points from a player who never died, against strong teams, in wins, are worth more than the same 50 from one who fed in losses to weak teams.</p>

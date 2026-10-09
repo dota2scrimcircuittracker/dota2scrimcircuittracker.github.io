@@ -231,6 +231,29 @@ export function pubSection(src, accountId) {
     </div>
     <div class="ph-grid reveal">${ps.heroes.slice(0, 12).map(heroCard).join("")}</div>`;
 }
+// All-time hero totals for one player (the division's draft file, decodeTotals): every public and
+// ranked game on record, and every practice-lobby game (league, scrims and inhouses together).
+export function allTimeSection(src, list) {
+  const block = (title, tip, rows, empty) => {
+    const games = rows.reduce((n, x) => n + x.games, 0), wins = rows.reduce((n, x) => n + x.wins, 0);
+    if (!games) return `<h3 class="hpool-sub">${title}</h3><p class="table-note keep wm-intro">${empty}</p>`;
+    const good = (wr) => (wr >= 0.5 ? "w" : "l");
+    const card = (x, i) => {
+      const wr = x.wins / x.games;
+      return `<div class="ph-card ph-${good(wr)}" style="--i:${i}; --m:${wr.toFixed(3)}"><div class="ph-banner">${portrait(x.hero, "ph-img")}</div>
+        <div class="ph-body"><div class="ph-name">${heroLink(src, x.hero)}</div><div class="ph-wl">${x.wins}–${x.games - x.wins}</div>
+        <div class="ph-sub">${pct(wr)} · ${x.games.toLocaleString()} game${x.games === 1 ? "" : "s"}</div></div><div class="ld-meter"><i></i></div></div>`;
+    };
+    return `<h3 class="hpool-sub">${title}</h3><p class="table-note wm-intro">${tip}</p>
+      <div class="sr-summary pub-summary"><div><b class="res-${good(wins / games)}">${wins.toLocaleString()}–${(games - wins).toLocaleString()}</b><small>record</small></div>
+        <div><b class="res-${good(wins / games)}">${pct(wins / games)}</b><small>win rate</small></div>
+        <div><b>${games.toLocaleString()}</b><small>games · ${rows.length} heroes</small></div></div>
+      <div class="ph-grid reveal">${rows.slice(0, 12).map(card).join("")}</div>`;
+  };
+  return `<h2>All time</h2>
+    ${block("Pubs", "Every public and ranked game on record for this account, most-played heroes first.", list.pubs, "No public or ranked totals synced for this account yet, or their match history is private.")}
+    ${block("Esports", "Every practice-lobby game on record: league games plus scrims and inhouses. OpenDota can't tell them apart.", list.lobby, "No practice-lobby totals synced for this account yet.")}`;
+}
 export function pubPrepHtml(src, accountId, games) {
   const d = src.cache();
   if (!d?.pubs?.[accountId]) return "";

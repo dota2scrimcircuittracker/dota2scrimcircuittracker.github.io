@@ -7,13 +7,14 @@
 //             worth rank within the team. Each game is scored in the role played in it; a
 //             player's listed role is the one they played most.
 //   stat z    Each game, every stat is a z-score against the same position (a pos 3 is compared
-//             with pos 3s), capped at ±Z_CAP, flipped for stats where less is better. GPM and
+//             with pos 3s), capped at ±Z_CAP, flipped for stats where less is better. GPM, XPM and
 //             net worth are compared with what that position gets in a game that long (a
-//             straight-line fit on game length), since both climb as games go on.
+//             straight-line fit on game length), since they climb as games go on.
 //   stat 0–100  A player's average z for each stat in a role, padded with K_SHRINK games at the
 //             position average (so 3 lucky games don't read as a season). Then each stat is put on
 //             its own 0–100 per role: 100 = the best such average of any player with MIN_GAMES+
-//             games in that role, 0 = the worst. Capped to 0–100.
+//             games in that role, 0 = the worst (but no closer to average than the best is).
+//             Capped to 0–100.
 //   stat points  Each stat is worth a fixed number of points (WEIGHTS, 100 per role) and earns
 //             its 0–100 as a percentage of them. No base or offset.
 //   survival  Deaths, time dead and hero damage taken per life, each on its own 0–100 the same
@@ -32,7 +33,7 @@
 //             and the spread is RATING_STRETCH × the pool's standard deviation. Tiers by fixed
 //             rating cutoffs.
 //
-// Farm, damage, building damage, XP, kills and assists are shares of the team's total, which
+// Farm, damage, building damage, kills and assists are shares of the team's total, which
 // don't grow with game length the way per-minute numbers do.
 //
 // The reference (per-position means, anchors, win lengths, consistency spread, curve) comes
@@ -63,7 +64,8 @@ const WIN_PARTS = { win: 2, speed: 1 }; // winning = (2 × win rate + 1 × win s
 // better. A player missing a stat (screenshot uploads have no wards) has the rest scaled up
 // to fill its points. See METRICS for definitions.
 export const WEIGHTS = {
-  core: { farm: 15, dmg: 14, kills: 13, gpm: 13, nw: 10, xp: 8, assists: 8, tower: 5, lane: 5, lanewin: 5, stuns: 4 },
+  // No lanewin for cores: laning already covers their lane.
+  core: { dmg: 16, farm: 15, kills: 15, gpm: 14, nw: 10, xpm: 8, assists: 8, tower: 5, lane: 5, stuns: 4 },
   support: { vision: 16, dewards: 13, assists: 13, stuns: 8, kills: 8, lanewin: 7, heal: 7, stacks: 7, smokes: 5, dmg: 3, gpm: 3, dust: 2, sentries: 2, farm: 2, nw: 2, tower: 2 },
 };
 // Survival: its three parts' share of the survival score. Negative = lower is better.
@@ -76,10 +78,10 @@ export const METRICS = {
   nw: { label: "Net worth", def: "Net worth at the end of the game, against what the same position has in a game that long." },
   dmg: { label: "Damage share", def: "Share of the team's hero damage." },
   tower: { label: "Building share", def: "Share of the team's damage to towers, barracks and the Ancient." },
-  xp: { label: "XP share", def: "The player's share of the team's experience." },
+  xpm: { label: "XPM", def: "Experience per minute, against what the same position gets in a game that long." },
   kills: { label: "Kill share", def: "Share of the team's kills the player got the last hit on." },
   assists: { label: "Assist share", def: "Share of the team's kills the player assisted. Kill share + assist share = kill participation." },
-  lanewin: { label: "Lane result", def: "Gold + XP lead at 10 minutes over their lane opponents. Cores: against the enemy core(s) in their lane. Supports: their whole lane against the enemy's. Junglers have none." },
+  lanewin: { label: "Lane result", def: "Supports only. Gold + XP lead at 10 minutes of their whole lane over the enemy's. Junglers have none." },
   lane: { label: "Laning", def: "Gold earned in the first 10 minutes as a % of the most a lane can give." },
   stuns: { label: "Stun time", def: "Seconds of disable on enemy heroes per minute." },
   vision: { label: "New vision", def: "Share of the map outside their base that their observer wards lit up first on the team, averaged over the game. Trees and cliffs block wards; ground a teammate already showed doesn't count. Older games have no number." },
@@ -95,7 +97,7 @@ export const METRICS = {
 };
 
 // Stats compared with the position's line fit on game length instead of a flat average.
-const LENGTH_FIT = new Set(["gpm", "nw", "stacks"]);
+const LENGTH_FIT = new Set(["gpm", "xpm", "nw", "stacks"]);
 
 // Fixed rating cutoffs, same for cores and supports (both are scored against their own role).
 // With the curve fitted to the AD2L pool these split it about 8/20/32/26/14%.
@@ -133,7 +135,7 @@ function gameRows(m) {
     const team = m.players.filter((p) => p.team === t);
     const sum = (f) => team.reduce((s, p) => s + (f(p) ?? 0), 0);
     const kills = t === "a" ? m.score_a : m.score_b;
-    const gold = sum((p) => p.gpm), xp = sum((p) => p.xpm), dmg = sum((p) => p.hero_damage);
+    const gold = sum((p) => p.gpm), dmg = sum((p) => p.hero_damage);
     const tower = team.every((p) => p.tower_damage != null) ? sum((p) => p.tower_damage) : null;
     const byNw = [...team].sort((x, y) => y.net_worth - x.net_worth);
     for (const p of team) {
@@ -147,7 +149,7 @@ function gameRows(m) {
         raw: { gpm: p.gpm, xpm: p.xpm, dmg: p.hero_damage, tower: p.tower_damage ?? null, kills: p.kills, assists: p.assists, taken: p.dmg_taken ?? null },
         metrics: {
           farm: share(p.gpm, gold), gpm: p.gpm ?? null, nw: p.net_worth ?? null,
-          dmg: share(p.hero_damage, dmg), xp: share(p.xpm, xp),
+          dmg: share(p.hero_damage, dmg), xpm: p.xpm ?? null,
           tower: tower ? share(p.tower_damage, tower) : null,
           kills: kills ? p.kills / kills : null, assists: kills ? p.assists / kills : null,
           lanewin: tierLaneResult(m, p),
@@ -264,7 +266,7 @@ function metricScores(rrows, weights, anchors) {
   const sh = shares(weights, new Set(Object.keys(n)));
   return Object.keys(sh).map((m) => {
     const with_ = rrows.filter((r) => r.z[m] != null);
-    const rawKey = { farm: "gpm", dmg: "dmg", tower: "tower", xp: "xpm", kills: "kills", assists: "assists", tanked: "taken" }[m];
+    const rawKey = { farm: "gpm", dmg: "dmg", tower: "tower", kills: "kills", assists: "assists", tanked: "taken" }[m];
     const rawVals = rawKey ? with_.map((r) => r.raw[rawKey]).filter((v) => v != null) : [];
     return {
       metric: m, weight: weights[m], share: sh[m], games: n[m],
@@ -445,18 +447,19 @@ export function tierModel(matches, { minGames = MIN_GAMES, pos = null } = {}) {
   for (const r of all) scoreRow(r, model);
   // Opponent strength always from every game; everything else from the rows this model rates.
   const teams = teamGames(all), rows = pos ? all.filter((r) => r.pos === pos) : all;
-  // Anchors: every series by a player with minGames+ games in a role, its average z per stat; the
-  // best and worst series of the season set 100 and 0.
+  // Anchors, from every player with minGames+ games in a role and their shrunk average per stat
+  // (the number players are scored on): the best sets 100, so the league's best at a stat gets
+  // all its points. The worst sets 0, but never closer to the position average than the best is,
+  // so in a small pool a player a little below average isn't a flat 0.
   const byPlayerRole = new Map();
   for (const r of rows) { const k = `${keyOf(r.p)}|${r.role}`; (byPlayerRole.get(k) ?? byPlayerRole.set(k, []).get(k)).push(r); }
-  const eligible = new Set([...byPlayerRole].filter(([, rs]) => rs.length >= minGames).map(([k]) => k));
-  const perfs = seriesRows(rows).filter((s) => eligible.has(`${s.key}|${s.role}`));
   for (const role of ["core", "support"]) {
     model.anchors[role] = {};
-    const here = perfs.filter((s) => s.role === role);
+    const players = [...byPlayerRole.values()].filter((rs) => rs[0].role === role && rs.length >= minGames).map(shrunkZ);
     for (const metric of Object.keys(scoredMetrics(role))) {
-      // Too few series to find a best and a worst: fall back to ±1 sd.
-      const [lo, hi] = ends(here.filter((s) => s.z[metric] != null).map((s) => s.z[metric])) ?? [-1, 1];
+      const e = ends(players.filter((z) => z[metric]).map((z) => z[metric][0]));
+      // Too few players to find a best and a worst: fall back to ±1 sd.
+      const [lo, hi] = e ? [Math.min(e[0], -e[1]), e[1]] : [-1, 1];
       // Some stats are easier to max: 100 sits part of the way to the best player.
       model.anchors[role][metric] = [lo, lo + (hi - lo) * (EASE[role]?.[metric] ?? 1)];
     }

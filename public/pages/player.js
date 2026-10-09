@@ -14,7 +14,7 @@ import { combatTabHtml, fbCell, fbRole } from "../parts/combat.js";
 import { draftSlotHtml, rateOf } from "../parts/draft.js";
 import { playerItemsHtml, wireItemHeroes } from "../parts/items.js";
 import { loading, errorBox, laneCutsOf, lanesPageHtml } from "../parts/lanes.js";
-import { statRows, heroRanks, statRanksHtml, heroRanksHtml, pubSection, pubPrepHtml, overallStats, overallHeroes } from "../parts/ranks.js";
+import { statRows, heroRanks, statRanksHtml, heroRanksHtml, pubSection, pubPrepHtml, allTimeSection, overallStats, overallHeroes } from "../parts/ranks.js";
 import { tierRef, tierBreakdown } from "../parts/tiers.js";
 
 // ---------- Player page ----------
@@ -97,7 +97,7 @@ export async function renderPlayer(src, key) {
         <div id="stat-ranks-box" data-key="${esc(key)}">${statRanksHtml(src, key, rows, null)}</div>`],
       ["heroes", `<div id="hero-ranks-box" data-key="${esc(key)}">${heroRanksHtml(src, key, h, ratings, null)}</div>
         ${draftSlotHtml(draftSlotRecord(matches, byPlayer(key)), src, s.name, rateOf(h.games, gameRated))}
-        ${src.ad2l ? pubSection(src, key) + pubPrepHtml(src, key, h.games) : ""}`],
+        ${src.ad2l ? pubSection(src, key) + pubPrepHtml(src, key, h.games) + `<div id="alltime-box" data-key="${esc(key)}"></div>` : ""}`],
       ["combat", combatTabHtml(src, matches, byPlayer(key), s.name)],
       ["lanes", lanesPageHtml(src, matches, byPlayer(key), laneCuts_, { name: s.name })],
       ["items", playerItemsHtml(src, matches, h.games)],
@@ -151,6 +151,17 @@ export async function renderPlayer(src, key) {
     if (sb) sb.innerHTML = statRanksHtml(src, key, rows, os ?? []);
     if (hb) hb.innerHTML = heroRanksHtml(src, key, h, ratings, oh ?? (() => []));
   });
+
+  // All-time totals load from the division's draft file (not part of the main data).
+  if (src.ad2l) {
+    const league = roster?.team?.league ?? src.key;
+    Promise.all([import("../parts/cmdraft.js"), import("../lib/herogrid.js")]).then(async ([cm, hg]) => [hg, await cm.draftData(league)]).then(([hg, data]) => {
+      const el = document.getElementById("alltime-box");
+      if (el?.dataset.key !== key || !data?.totals || !data.heroes) return;
+      const list = hg.decodeTotals(data.totals[key], data.heroes);
+      if (list.pubs.length || list.lobby.length) el.innerHTML = allTimeSection(src, list);
+    }).catch(() => {});
+  }
 
   sortableTable(document.getElementById("t"), [
     ["date", "Date", (v, r) => `${when(new Date(v))} <button type="button" class="ga-go" data-analyze="${r.gi}" title="Analyze this game">Analyze</button>`, "l"],

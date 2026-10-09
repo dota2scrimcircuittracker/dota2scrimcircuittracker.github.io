@@ -16,8 +16,8 @@ import { rateOf } from "./draft.js";
 
 const per10 = (v) => `${v.toFixed(1)}/10m`;
 const GA_METRIC_FMT = {
-  farm: pct, dmg: pct, xp: pct, tower: pct, kills: pct, assists: pct, dead: pct,
-  gpm: (v) => fmt(Math.round(v)), nw: kg, tanked: kg, stacks: (v) => v.toFixed(1),
+  farm: pct, dmg: pct, tower: pct, kills: pct, assists: pct, dead: pct,
+  gpm: (v) => fmt(Math.round(v)), xpm: (v) => fmt(Math.round(v)), nw: kg, tanked: kg, stacks: (v) => v.toFixed(1),
   lanewin: (v) => `${v >= 0 ? "+" : "−"}${kg(Math.abs(v))}`, lane: (v) => `${Math.round(v)}%`,
   stuns: (v) => `${v.toFixed(1)}s/min`, vision: (v) => `${v.toFixed(1)}% of map`, heal: (v) => `${Math.round(v)}/min`,
   dewards: per10, sentries: per10, dust: per10, smokes: per10, deaths: per10,

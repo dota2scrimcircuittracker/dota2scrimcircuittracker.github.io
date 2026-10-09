@@ -97,6 +97,9 @@ const tally = (map, hero, won, t) => {
   map.set(hero, h);
 };
 
+// How much a game counts in the blended source, by where it was played: league and scrim games
+// show what they actually play now, recent pubs what they're on, the rest fills in the pool.
+const BLEND = { league: 4, recent: 3, lobby: 2, all: 1 };
 const PUB_DAY = 86400;
 // One player's recent pubs (the division file's flat groups of 7: time, hero, won, k, d, a,
 // ranked), heroes by games.
@@ -199,6 +202,26 @@ export function heroSources(games, { model = null, pubs = null, totals = null, h
     if (pubsAll.length) out.allpubs = { name: "All-time pubs", note: "the five together", heroes: pubsAll };
     if (lobbyAll.length) out.alllobby = { name: "All-time lobby games", note: "league, scrims, inhouses", heroes: lobbyAll };
   }
+  // Blended: each player's heroes from every source at once, weighted. The sources overlap (the
+  // lobby totals include the league games, the all-time pubs the recent ones), so each is cut
+  // down to what the others don't already count before it's weighted.
+  five.forEach((pl, i) => {
+    const t = totals && heroNames ? decodeTotals(totals[pl.key], heroNames) : { pubs: [], lobby: [] };
+    const recent = pubs ? pubHeroes(pubs[pl.key], now) : [];
+    const rows = new Map();
+    const put = (kind, list) => { for (const h of list) { const r = rows.get(h.hero) ?? { hero: h.hero }; r[kind] = [h.games, h.wins]; rows.set(h.hero, r); } };
+    put("league", [...pl.heroes.values()]); put("recent", recent); put("lobby", t.lobby); put("all", t.pubs);
+    const rest = (a = [0, 0], b = [0, 0]) => { const g = Math.max(0, a[0] - b[0]); return [g, Math.min(g, Math.max(0, a[1] - b[1]))]; };
+    const heroes = [];
+    for (const r of rows.values()) {
+      const parts = [["league", BLEND.league, r.league ?? [0, 0]], ["recent pubs", BLEND.recent, r.recent ?? [0, 0]], ["other Esports", BLEND.lobby, rest(r.lobby, r.league)], ["older pubs", BLEND.all, rest(r.all, r.recent)]];
+      const score = parts.reduce((n, [, k, v]) => n + k * v[0], 0), won = parts.reduce((n, [, k, v]) => n + k * v[1], 0);
+      if (score < 1) continue;
+      const have = parts.filter(([, , v]) => v[0]).map(([label, , v]) => `${label} ${v[0]}`).join(", ");
+      heroes.push({ hero: r.hero, games: Math.round(score), wins: Math.round(won), tag: "", title: `${r.hero}: score ${Math.round(score)} (${have}); weighted ${Math.round(won)}–${Math.round(score - won)}` });
+    }
+    if (heroes.length) out[`blend${i + 1}`] = { name: `${String(pl.name).slice(0, 30)} overall`, note: "league, pubs and Esports, weighted", heroes: heroes.sort((a, b) => b.games - a.games) };
+  });
   if (model) {
     const vs = model.vs ? `vs ${model.vs}` : "vs an average team";
     if (model.likely?.length) out.likely = { name: "Likely picks", note: "the model: who'd play it", heroes: model.likely.slice(0, 24) };
@@ -237,6 +260,7 @@ export const SOURCES = [
   ...[1, 2, 3].map((n) => [`bans${n}`, `They ban, phase ${n}`]),
   ...[1, 2, 3, 4, 5].map((n) => [`pos${n}`, `Pos ${n} ${POS_NAMES[n]}: heroes played there`]),
   ...[1, 2, 3, 4, 5].map((n) => [`player${n}`, `Player ${n} (by games): league heroes`]),
+  ...[1, 2, 3, 4, 5].map((n) => [`blend${n}`, `Overall: player ${n} (by games), all sources weighted`]),
   ["pubs", "Pubs: the five together"],
   ...[1, 2, 3, 4, 5].map((n) => [`pubs${n}`, `Pubs: player ${n} (by games)`]),
   ["allpubs", "All-time pubs: the five together"],
@@ -271,6 +295,7 @@ export const TEMPLATES = [
   { id: "position", name: "By position", boxes: both(["pos1", "pos2", "pos3", "pos4", "pos5"]) },
   { id: "player", name: "By player", boxes: both(["player1", "player2", "player3", "player4", "player5"]) },
   { id: "picksbans", name: "Picks and bans", boxes: [...boxes("them", ["likely", "picks"]), ...boxes("bans", [...[1, 2, 3].map((n) => ({ source: `banvs${n}`, max: 12 })), ...[1, 2, 3].map((n) => ({ source: `banned${n}`, max: 12 }))]), ...boxes("us", ["likely", "picks"])] },
+  { id: "blend", name: "Overall (weighted)", boxes: both([1, 2, 3, 4, 5].map((n) => ({ source: `blend${n}`, max: 12 }))) },
   { id: "pubs", name: "Recent pubs", needs: "pubs", boxes: both(["pubs1", "pubs2", "pubs3", "pubs4", "pubs5"]) },
   { id: "allpubs", name: "All-time pubs", needs: "allpubs", boxes: both([1, 2, 3, 4, 5].map((n) => ({ source: `allpubs${n}`, max: 12 }))) },
   { id: "alllobby", name: "All-time lobby games", needs: "alllobby", boxes: both([1, 2, 3, 4, 5].map((n) => ({ source: `alllobby${n}`, max: 12 }))) },

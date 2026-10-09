@@ -38,6 +38,10 @@ if (!DIV) throw new Error(`Unknown division "${arg("division")}". One of: ${DIVI
 const OUT = path.join(ROOT, "public", "data", path.basename(arg("out", `${DIV.key}.json`)));
 const SEASON_ID = Number(arg("season", DIV.season)); // PlayOn season, e.g. "S48 Champion League"
 const LEAGUE_ID = Number(arg("league", SEASON.dotaLeague)); // Dota league, e.g. "AD2L Season 48"
+// --series latest (the series played in the last 2 days) or --series <id>,<id>: only those
+// series' games, found through the two teams' recent practice lobbies, merged into the existing
+// file and written after each series. No pubs, draft history or hero totals. For league night.
+const ONLY = arg("series");
 const UA = "dota-scrim-league/0.1 (AD2L fan stats page; contact: jonahbyu@gmail.com)";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -71,7 +75,9 @@ async function opendota(p, method = "GET") {
     await sleep(Math.max(0, 1100 - (Date.now() - lastOD))); // free tier: 60/min
     lastOD = Date.now();
     odCalls++;
-    const res = await fetch(`https://api.opendota.com/api${p}`, { method, headers: { "user-agent": UA } });
+    // A dropped connection (ECONNRESET, "terminated") is a hiccup like a 5xx: retry it too.
+    const res = await fetch(`https://api.opendota.com/api${p}`, { method, headers: { "user-agent": UA } })
+      .catch((e) => { if (attempt === 5) throw e; return { status: 599, error: e }; });
     if (res.status === 429) {
       const after = Number(res.headers.get("retry-after"));
       const wait = Math.min(120e3, after > 0 ? after * 1000 : 30e3 * (attempt + 1));
@@ -221,11 +227,29 @@ console.log(`  series: ${series.filter((s) => (s.home_score ?? 0) + (s.away_scor
 const PUB_DAYS = 30;
 const HISTORY_DAYS = 390;
 const PROJECT = ["hero_id", "kills", "deaths", "assists", "last_hits", "gold_per_min", "hero_healing", "lane_role", "average_rank"].map((f) => `&project=${f}`).join("");
+// Each account's list is kept on disk for 2 hours, so a run that dies partway (OpenDota errors)
+// and is run again picks up where it stopped instead of walking every account again.
+async function playerMatches(acct, date) {
+  const file = path.join(CACHE, "opendota", `matches_${acct}.json`);
+  if (existsSync(file) && Date.now() - statSync(file).mtimeMs < 2 * 3600e3) {
+    const kept = JSON.parse(await readFile(file, "utf8"));
+    if (kept.date >= date) return kept.rows;
+  }
+  const rows = await opendota(`/players/${acct}/matches?date=${date}${PROJECT}`);
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, JSON.stringify({ date, rows }));
+  return rows;
+}
 const candidates = new Set();
 const pubRows = new Map(); // main account -> rows
 const historyRows = new Map(); // main account -> rows (smurfs merged), for the draft model
-for (const [acct, o] of owner) {
-  const rows = await opendota(`/players/${acct}/matches?date=${Math.max(days, PUB_DAYS, HISTORY_DAYS)}${PROJECT}`);
+for (const [acct, o] of ONLY ? [] : owner) {
+  // OpenDota can 500 on a long history for a busy account: fall back to the season window (its
+  // league games and pubs still count; the draft history is shorter this run), then to skipping it.
+  const rows = await playerMatches(acct, Math.max(days, PUB_DAYS, HISTORY_DAYS))
+    .catch((e) => (console.log(`  ${acct}: ${e.message}; retrying with the last ${Math.max(days, PUB_DAYS)} days`),
+      playerMatches(acct, Math.max(days, PUB_DAYS))))
+    .catch((e) => (console.log(`  ${acct}: ${e.message}; skipped this run`), []));
   const hist = historyRows.get(o.main) ?? historyRows.set(o.main, []).get(o.main);
   for (const r of rows) if (r.hero_id && r.start_time) hist.push(r);
   for (const r of rows) {
@@ -256,7 +280,7 @@ for (const acct of owner.keys()) {
   if (TOTAL_LOBBIES.some((l) => ageOf(triedFile(acct, l)) < TOTALS_RETRY_DAYS * 86400e3)) continue;
   totalsAge.set(acct, Math.max(...TOTAL_LOBBIES.map((l) => ageOf(totalsFile(acct, l)))));
 }
-const refresh = [...totalsAge].filter(([, age]) => age > TOTALS_DAYS * 86400e3).sort((a, b) => b[1] - a[1]).slice(0, TOTALS_PER_RUN).map(([a]) => a);
+const refresh = ONLY ? [] : [...totalsAge].filter(([, age]) => age > TOTALS_DAYS * 86400e3).sort((a, b) => b[1] - a[1]).slice(0, TOTALS_PER_RUN).map(([a]) => a);
 for (const acct of refresh) {
   for (const lobby of TOTAL_LOBBIES) {
     const rows = await opendota(`/players/${acct}/heroes?lobby_type=${lobby}`).catch((e) => (console.log(`  hero totals ${acct}/${lobby}: ${e.message}`), null));
@@ -288,14 +312,24 @@ const heroes = Object.fromEntries(heroList.map((h) => [h.id, h.localized_name ==
 const heroKeys = Object.fromEntries(heroList.map((h) => [h.id, h.name])); // "npc_dota_hero_…", as the death logs name killers
 // Each hero's ranked picks and wins per bracket (Herald 1 … Immortal 8): the draft model's hero
 // baselines, which a player's record on a hero is shrunk toward.
-const heroStats = await opendota("/heroStats");
+const heroStats = ONLY ? [] : await opendota("/heroStats");
 
 const games = [], detail = {};
+if (ONLY) await bySeries();
 for (const id of [...candidates].sort()) {
+  // A match OpenDota won't serve this run is left out (and its parse retried next run), not the
+  // whole division. Its cached copy, if any, still counts.
+  const g = await buildGame(id).catch((e) => (console.log(`  match ${id}: ${e.message}; left out this run`), null));
+  if (g) games.push(g);
+}
+
+// One game's entry, or null if it isn't this division's league game. Its purchases and skill
+// builds go into `detail`.
+async function buildGame(id) {
   const d = await matchDetail(id);
-  if (d.leagueid !== LEAGUE_ID || !Array.isArray(d.players) || d.players.length !== 10) continue;
+  if (d.leagueid !== LEAGUE_ID || !Array.isArray(d.players) || d.players.length !== 10) return null;
   // A remake: lobby made, game never played; every player 0/0/0.
-  if (d.players.every((p) => !p.kills && !p.deaths && !p.assists)) continue;
+  if (d.players.every((p) => !p.kills && !p.deaths && !p.assists)) return null;
   // Which division team is each side? Majority of its 5 accounts.
   const sideTeam = (radiant) => {
     const counts = {};
@@ -307,7 +341,7 @@ for (const id of [...candidates].sort()) {
     return n >= 3 ? Number(team) : null;
   };
   const rad = sideTeam(true), dire = sideTeam(false);
-  if (rad == null || dire == null || rad === dire) continue;
+  if (rad == null || dire == null || rad === dire) return null;
   const teamName = (id) => teams.find((t) => t.id === id).name;
   // Which PlayOn series this game belongs to: same two teams, closest scheduled time.
   const deaths = deathsFrom(d, (id) => heroKeys[id]);
@@ -318,7 +352,7 @@ for (const id of [...candidates].sort()) {
   if (det) detail[d.match_id] = det;
   const extras = gameExtras(d);
   const vis = visionFields(await visionMap(d.patch, CACHE), d);
-  games.push({
+  return {
     series_id: seriesOf?.id ?? null,
     // Captains Mode draft in order; OpenDota team 0 = Radiant = side "a".
     draft: (d.picks_bans ?? []).sort((x, y) => x.order - y.order)
@@ -411,7 +445,46 @@ for (const id of [...candidates].sort()) {
       // kills, biggest hit, pings, public benchmarks and smoke kills (see scripts/sync/combat-fields.js).
       ...combatFields(p, firstDeathOf(extras.first_blood_at, i)),
     })),
-  });
+  };
+}
+
+// --series: each series in turn, written as soon as its games are in, so a failure later on
+// keeps what came before. A team's players are asked for their recent practice lobbies one at a
+// time, stopping once the series has as many games as PlayOn's score says were played.
+async function bySeries() {
+  const now = Date.now() / 1000;
+  const targets = ONLY === "latest"
+    ? series.filter((s) => s.time && s.time > now - 2 * 86400 && s.time < now)
+    : series.filter((s) => ONLY.split(",").map(Number).includes(s.id));
+  console.log(`  --series: ${targets.length} series`);
+  const file = JSON.parse(await readFile(OUT, "utf8"));
+  const fileDetail = existsSync(detailName(OUT)) ? JSON.parse(await readFile(detailName(OUT), "utf8")) : {};
+  for (const s of targets) {
+    const label = `${teams.find((t) => t.id === s.home).name} v ${teams.find((t) => t.id === s.away).name}`;
+    const played = (s.home_score ?? 0) + (s.away_score ?? 0);
+    const found = new Map(), seen = new Set();
+    const accounts = [...owner].filter(([, o]) => o.team === s.home || o.team === s.away);
+    const window = Math.ceil((now - s.time) / 86400) + 1;
+    for (const [acct] of accounts) {
+      if (played && found.size >= played) break;
+      const rows = await opendota(`/players/${acct}/matches?date=${window}&lobby_type=1`)
+        .catch((e) => (console.log(`  ${acct}: ${e.message}; next player`), []));
+      for (const r of rows) {
+        if (seen.has(r.match_id) || r.start_time < s.time - 3 * 3600) continue;
+        seen.add(r.match_id);
+        const g = await buildGame(r.match_id).catch((e) => (console.log(`  match ${r.match_id}: ${e.message}`), null));
+        if (g && g.series_id === s.id) found.set(g.match_id, g);
+      }
+    }
+    file.games = file.games.filter((g) => !found.has(g.match_id)).concat([...found.values()]).sort((a, b) => b.start_time - a.start_time);
+    file.series = series;
+    file.updated = new Date().toISOString();
+    for (const id of found.keys()) if (detail[id]) fileDetail[id] = detail[id];
+    await writeFile(OUT, leagueJson(file));
+    await writeFile(detailName(OUT), detailJson(fileDetail));
+    console.log(`  ${label} ${s.home_score}-${s.away_score}: ${found.size} of ${played} games written`);
+  }
+  process.exit(0);
 }
 games.sort((a, b) => b.start_time - a.start_time);
 

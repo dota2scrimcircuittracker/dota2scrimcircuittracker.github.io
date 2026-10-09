@@ -201,16 +201,17 @@ to the stat points and each multiplier shows the points it adds or removes.
 - **Role** from the replay's position (1–3 core, 4–5 support); games without one (screenshot
   uploads, scrims) use net worth rank in the team. Each game is scored in the role played.
 - **Stats** — each game, each stat is a z-score against the same position (capped at ±2.5).
-  Farm, hero damage, building damage, XP, kills and assists are shares of the team's total, so
-  long games don't inflate them. GPM, net worth and support stacks (per game) are compared with
-  the position's straight-line fit on game length. Lane result = gold + XP lead at 10 min over
-  who they actually laned against, from the replay's lanes (cores: the enemy core(s) in their
-  lane; supports: their lane vs the enemy's; jungling: none). Each stat is then on its own 0–100
+  Farm, hero damage, building damage, kills and assists are shares of the team's total, so
+  long games don't inflate them. GPM, XPM, net worth and support stacks (per game) are compared with
+  the position's straight-line fit on game length. Lane result (supports only) = their lane's
+  gold + XP lead at 10 min over the enemy lane, from the replay's lanes (jungling: none). Cores
+  get laning instead, so the lane isn't counted twice. Each stat is then on its own 0–100
   per role: a player's average, padded with 3 games at the position average; 100 = the league's
-  best such average (players with 3+ games in the role), 0 = the worst. Support stacks are
+  best such average (players with 3+ games in the role), 0 = the worst (but no closer to the
+  position average than the best is, so a small pool's worst isn't a flat 0). Support stacks are
   easier: 100 sits 70% of the way from the worst stacker to the best.
-- **Stat points** out of 100 — cores: farm share 15, damage share 14, kill share 13, GPM 13, net
-  worth 10, XP share 8, assist share 8, building share 5, laning 5, lane result 5, stun time 4.
+- **Stat points** out of 100 — cores: damage share 16, farm share 15, kill share 15, GPM 14, net
+  worth 10, XPM 8, assist share 8, building share 5, laning 5, stun time 4.
   Supports: new vision 16 (replaced ward uptime; see Vision), dewards 13, assist share 13, stun
   time 8, kill share 8, lane result 7, healing 7, stacks 7, smokes 5, damage share 3, GPM 3, dust
   2, sentries 2, farm share 2, net worth 2, building share 2.
