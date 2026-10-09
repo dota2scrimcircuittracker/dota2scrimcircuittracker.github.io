@@ -494,7 +494,11 @@ shrunk-resolution problem above, not a finding problem.
   the draft it was no better than the ratings, which is why the ratings stay as they are.
 - **Playoff picture** (`lib/playoffs.js`, `parts/playoffs.js`) — Predict has four tabs, each
   its own link (`?tab=calls|board|bracket|odds`, Back works, the last one remembered): **Predictions**
-  (this week's cards), **Leaderboard** (standings, past weeks; click a name for the bracket and
+  (this week's cards, then **Latest results**: the last played night's series with the model's,
+  the crowd's and your call, that night's top scorers, the model's and your score; a name opens
+  their history), **Leaderboard** (standings, past weeks; click a name for their pick history —
+  every counting call, newest night first, with the result, a ✓/✗ and each night's score; the
+  model's is its replayed calls plus this week's — then the bracket and
   final table their series calls lead to, read-only; only series calls are saved, so their
   tiebreakers and bracket go the model's way), **Bracket** (a Your picks / Model's picks toggle)
   and **Seeding** (worked out the first time its tab opens). The name bar sits above them.

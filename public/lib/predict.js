@@ -250,6 +250,38 @@ export function crowd(preds, s) {
   return { n, home: share("home"), tie: share("tie"), away: share("away") };
 }
 
+// One person's counting calls, grouped by league night, newest first. Each row has the series,
+// their pick and, once it's played, the result and whether they got it. `calls` is
+// [{ series_id, pick }]: validPicks for one name, or the model's calls.
+export function pickHistory(calls, series) {
+  const byId = new Map(series.map((s) => [s.id, s]));
+  const out = new Map();
+  for (const c of calls) {
+    const s = byId.get(c.series_id);
+    if (!s) continue;
+    const played = isPlayed(s), actual = played ? outcomeOf(s) : null;
+    const n = out.get(s.time) ?? { time: s.time, points: 0, picks: 0, rows: [] };
+    n.rows.push({ s, pick: c.pick, actual, correct: played ? c.pick === actual : null });
+    if (played) { n.picks++; if (c.pick === actual) n.points++; }
+    out.set(s.time, n);
+  }
+  for (const n of out.values()) n.rows.sort((a, b) => a.s.id - b.s.id);
+  return [...out.values()].sort((a, b) => b.time - a.time);
+}
+
+// Everyone's score on one league night, best first (ties share the order of the name).
+export function nightScores(preds, series, time) {
+  const night = series.filter((s) => s.time === time && isPlayed(s));
+  const rows = new Map();
+  for (const p of validPicks(preds, night)) {
+    const k = key(p.name), r = rows.get(k) ?? { name: p.name, points: 0, picks: 0 };
+    r.picks++;
+    if (p.pick === outcomeOf(night.find((s) => s.id === p.series_id))) r.points++;
+    rows.set(k, r);
+  }
+  return [...rows.values()].sort((a, b) => b.points - a.points || a.picks - b.picks || a.name.localeCompare(b.name));
+}
+
 // ---------- the model's call ----------
 // The odds stay honest; the call is bold. It takes the favourite to win 2-0 unless the
 // teams are a genuine coin flip (per-game odds within 1.5 points of 50%), then it calls 1-1.

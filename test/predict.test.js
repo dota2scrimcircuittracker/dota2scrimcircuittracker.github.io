@@ -89,3 +89,23 @@ test("the model's call takes a side unless it's a coin flip", () => {
   assert.equal(modelCall({ game: 0.51 }), "tie");
   assert.equal(modelCall({ game: 0.5 }), "tie");
 });
+
+import { pickHistory, nightScores } from "../public/lib/predict.js";
+
+test("pick history groups one person's calls by night, newest first, and scores played ones", () => {
+  const h = pickHistory([{ series_id: 11, pick: "tie" }, { series_id: 10, pick: "away" }, { series_id: 12, pick: "home" }, { series_id: 99, pick: "home" }], series);
+  assert.deepEqual(h.map((n) => [n.time, n.points, n.picks]), [[T + 604800, 0, 0], [T, 1, 2]]);
+  assert.deepEqual(h[1].rows.map((r) => [r.s.id, r.actual, r.correct]), [[10, "home", false], [11, "tie", true]]);
+  assert.deepEqual(h[0].rows.map((r) => [r.s.id, r.actual, r.correct]), [[12, null, null]]); // upcoming
+});
+
+test("night scores count only that night's played series and picks made before the start", () => {
+  const preds = [
+    { series_id: 10, pick: "home", name: "Ann", updatedAt: at(T - 100) },
+    { series_id: 11, pick: "tie", name: "Ann", updatedAt: at(T - 100) },
+    { series_id: 10, pick: "away", name: "Bob", updatedAt: at(T - 100) },
+    { series_id: 11, pick: "tie", name: "Cat", updatedAt: at(T + 10) }, // late
+    { series_id: 12, pick: "home", name: "Dan", updatedAt: at(T) }, // another night
+  ];
+  assert.deepEqual(nightScores(preds, series, T).map((r) => [r.name, r.points, r.picks]), [["Ann", 2, 2], ["Bob", 0, 1]]);
+});

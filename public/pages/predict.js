@@ -1,7 +1,7 @@
 // Predictions: AD2L series calls and the scrim schedule. Loaded on demand.
 import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
-import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, crowd, standings, validPicks, favourite, outcomeOf, TIE_EDGE } from "../lib/predict.js";
+import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
 import { listPredictions, listBrackets, saveBracket, currentUid, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
@@ -196,12 +196,14 @@ export async function renderPredict(src) {
       ${week.map((s) => `<th scope="col" class="l pb-series"><span class="a">${esc(teamName[s.home])}</span><span class="b">${esc(teamName[s.away])}</span></th>`).join("")}</tr></thead>
     <tbody>${boardRows.map(([k, r], i) => `<tr class="${k === myKey ? "me" : ""}">
       <td class="rank${i < 3 && r.picks ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
-      <td class="l"><button type="button" class="linkish pb-who" data-who="${r.model ? "model" : esc(k)}" aria-pressed="false" title="See ${esc(r.name)}'s bracket and final table"><i class="pb-dot" aria-hidden="true"></i>${r.model ? `<b>${esc(r.name)}</b>` : esc(r.name)}</button>${r.model ? ' <span class="tag">replayed</span>' : ""}</td>
+      <td class="l"><button type="button" class="linkish pb-who" data-who="${r.model ? "model" : esc(k)}" aria-pressed="false" title="See ${esc(r.name)}'s picks and bracket"><i class="pb-dot" aria-hidden="true"></i>${r.model ? `<b>${esc(r.name)}</b>` : esc(r.name)}</button>${r.model ? ' <span class="tag">replayed</span>' : ""}</td>
       <td class="num">${r.picks ? `${r.points}<span class="muted">/${r.picks}</span>` : '<span class="muted">—</span>'}</td>
       <td class="num">${r.accuracy == null ? '<span class="muted">—</span>' : pct(r.accuracy)}</td>
       ${week.map((s) => `<td class="l">${pickChip(s, r.now[s.id])}</td>`).join("")}</tr>`).join("")}</tbody>
   </table></div>` : "";
-  const past = playedNights.map((t) => {
+  // One played night: each series' result and how the model, the crowd and you called it.
+  const dayLabel = (t, month = "short") => new Date(t * 1000).toLocaleDateString(undefined, { weekday: "long", month, day: "numeric" });
+  const nightTable = (t) => {
     const rows = d.series.filter((s) => s.time === t && isPlayed(s)).map((s) => {
       const m = bt.find((x) => x.s.id === s.id);
       const c = preds ? crowd(preds, s) : null;
@@ -213,9 +215,49 @@ export async function renderPredict(src) {
         <td>${s.home_score}–${s.away_score}</td><td class="l">${m ? `${tick(m.pick)} <span class="muted">(${Math.round(m.p_actual * 100)}% on the result)</span>` : "—"}</td>
         <td class="l">${c?.n ? `${tick(crowdPick)} <span class="muted">${c.n}</span>` : '<span class="muted">—</span>'}</td>${myKey ? `<td class="l">${me ? tick(me.pick) : '<span class="muted">—</span>'}</td>` : ""}</tr>`;
     }).join("");
-    return `<h3 class="pred-night">${new Date(t * 1000).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</h3>
-      <div class="table-wrap"><table><thead><tr><th scope="col" class="l">Series</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
-  }).join("");
+    return `<div class="table-wrap"><table><thead><tr><th scope="col" class="l">Series</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  };
+  const past = playedNights.map((t) => `<h3 class="pred-night">${dayLabel(t)}</h3>${nightTable(t)}`).join("");
+  // A name that opens that person's history on the Leaderboard.
+  const whoBtn = (k, text) => `<button type="button" class="linkish" data-history="${esc(k)}">${text}</button>`;
+  const scoreChip = (who, r) => `<span class="pred-lw-chip"><span>${who}</span><b>${r.points}<span class="muted">/${r.picks}</span></b></span>`;
+  // Last week, on the Predictions tab: the latest played night, the best scores, the model's and yours.
+  const prevNight = playedNights[0];
+  const lastWeekHtml = prevNight ? (() => {
+    const scores = preds ? nightScores(preds, d.series, prevNight) : [];
+    const mdl = bt.filter((x) => x.s.time === prevNight);
+    const best = scores.filter((r) => r.points === scores[0]?.points && r.points > 0);
+    const me = myKey ? scores.find((r) => nameKey(r.name) === myKey) : null;
+    const chips = [
+      ...best.slice(0, 4).map((r) => scoreChip(whoBtn(nameKey(r.name), esc(r.name)), r)),
+      best.length > 4 ? `<span class="muted">+${best.length - 4} more</span>` : "",
+      mdl.length ? scoreChip(whoBtn("model", "The model"), { points: mdl.filter((x) => x.correct).length, picks: mdl.length }) : "",
+      me && !best.includes(me) ? scoreChip(whoBtn(myKey, "You"), me) : "",
+    ].filter(Boolean);
+    return `<section class="pred-lw">
+      <h2>Latest results <span class="pred-time">${dayLabel(prevNight, "long")}</span></h2>
+      ${chips.length ? `<div class="pred-lw-scores">${best.length ? '<span class="pred-lw-lbl">Top</span>' : ""}${chips.join("")}</div>` : ""}
+      ${nightTable(prevNight)}
+      ${board.has(myKey) && myKey ? `<p class="table-note keep">${whoBtn(myKey, "Your full pick history →")}</p>` : boardRows.length ? `<p class="table-note keep">${whoBtn("", "Everyone's pick history on the Leaderboard →")}</p>` : ""}
+    </section>`;
+  })() : "";
+
+  // One person's (or the model's) every call, newest night first, with the result of each.
+  const historyHtml = (row, calls) => {
+    const nights = pickHistory(calls, d.series);
+    if (!nights.length) return `<p class="muted">No picks yet.</p>`;
+    const tot = nights.reduce((a, n) => ({ points: a.points + n.points, picks: a.picks + n.picks }), { points: 0, picks: 0 });
+    const res = (s) => `<span class="${s.home_score > s.away_score ? "s-a" : s.home_score < s.away_score ? "s-b" : ""}">${s.home_score}–${s.away_score}</span>`;
+    return `<p class="pb-hist-sum">${tot.picks ? `<b>${tot.points}</b> of ${tot.picks} called right · ${pct(tot.points / tot.picks)}` : "Nothing decided yet"} <span class="muted">· ${nights.length} week${nights.length === 1 ? "" : "s"}</span></p>
+      <div class="table-wrap"><table class="pb-hist">
+      <thead><tr><th scope="col" class="l">Series</th><th scope="col" class="l">${row.model ? "Call" : "Pick"}</th><th scope="col">Result</th><th scope="col"><span class="sr-only">Right?</span></th></tr></thead>
+      ${nights.map((n) => `<tbody><tr class="pb-hist-night"><th scope="rowgroup" colspan="4">${dayLabel(n.time)}<span>${n.picks ? `${n.points}/${n.picks}` : "to play"}</span></th></tr>
+        ${n.rows.map(({ s, pick, correct }) => `<tr><td class="l">${teamLink(src, teamName[s.home], s.home)} <i class="muted">vs</i> ${teamLink(src, teamName[s.away], s.away)}</td>
+          <td class="l">${pickChip(s, pick)}</td>
+          <td>${correct == null ? '<span class="muted">—</span>' : res(s)}</td>
+          <td>${correct == null ? "" : correct ? '<b class="s-a" aria-label="right">✓</b>' : '<b class="s-b" aria-label="wrong">✗</b>'}</td></tr>`).join("")}</tbody>`).join("")}
+      </table></div>`;
+  };
 
   const called = bt.filter((x) => x.correct).length;
   const ties = bt.filter((x) => x.actual === "tie").length;
@@ -227,6 +269,7 @@ export async function renderPredict(src) {
     ${week.length ? `<div class="pred-grid reveal">${week.map(card).join("")}</div>
 `
       : `<div class="panel empty">PlayOn hasn't posted next week's schedule yet.</div>`}
+    ${lastWeekHtml}
     <details class="how explain"><summary>How the model works</summary>
       <p>Each team has a strength rating fitted to every series result so far. With only ${playedNights.length} weeks played, results alone are noisy, so each rating is pulled toward a starting point set by the average PlayOn medal of the team's top three players. The pull and the medal weight were tuned by replaying all seven divisions, predicting each week from the weeks before it. So far medals have predicted results far better than past results, so the pull is strong.</p>
       <p>The model's call takes the favourite 2–0, even when 1–1 is the likeliest single result. It only calls 1–1 when per-game odds are within ${TIE_EDGE * 100} points of 50%. The odds are more cautious: past results haven't predicted the next week much better than a coin flip, so most series look close. Replayed over the season, its calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
@@ -234,8 +277,8 @@ export async function renderPredict(src) {
     </details>`;
   const boardTab = `
     <h2>Leaderboard</h2>
-    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> to see their bracket and final table.</p>` : `<div class="panel empty">No picks yet.</div>`}
-    ${boardHtml ? `<section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading the bracket…</p></section>` : ""}
+    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> for their pick history and bracket.</p>` : `<div class="panel empty">No picks yet.</div>`}
+    ${boardHtml ? `<section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading…</p></section>` : ""}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
   const tabs = playerTabs(pageTabs(PREDICT_TABS, src, [
     ["calls", callsHtml],
@@ -329,17 +372,26 @@ export async function renderPredict(src) {
       if (!row) return;
       app.querySelectorAll(".pb-who").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.who === who)));
       const calls = new Map(row.model ? [] : fullValid.filter((p) => nameKey(p.name) === k && open.has(p.series_id)).map((p) => [p.series_id, p.pick]));
-      if (!row.model && !savedBrackets.has(k) && !calls.size) {
-        view.innerHTML = `<h3 class="pb-view-h">${esc(row.name)}'s bracket</h3><p class="muted">${esc(row.name)} hasn't made a bracket yet.</p>`;
-        return;
-      }
-      view.innerHTML = `<h3 class="pb-view-h">${row.model ? "The model's" : `${esc(row.name)}'s`} bracket${row.model ? "" : ` <span class="muted">· ${calls.size} upcoming series called</span>`}</h3><div class="pb-host"></div>`;
-      mountPlayoffs(view.querySelector(".pb-host"), src, full, fullRatings, calls, { watch: { name: row.name, model: !!row.model, picks: row.model ? null : savedBrackets.get(k) ?? {} } });
+      const whose = row.model ? "The model's" : `${esc(row.name)}'s`;
+      const history = row.model
+        ? [...bt.map((x) => ({ series_id: x.s.id, pick: x.pick })), ...week.map((s) => ({ series_id: s.id, pick: modelCall(oddsOf(s)) }))]
+        : valid.filter((p) => nameKey(p.name) === k);
+      const hasBracket = row.model || savedBrackets.has(k) || calls.size;
+      view.innerHTML = `<h3 class="pb-view-h">${whose} picks</h3>${historyHtml(row, history)}
+        <h3 class="pb-view-h pb-view-h2">${whose} bracket${row.model || !hasBracket ? "" : ` <span class="muted">· ${calls.size} upcoming series called</span>`}</h3>
+        ${hasBracket ? `<div class="pb-host"></div>` : `<p class="muted">${esc(row.name)} hasn't made a bracket yet.</p>`}`;
+      if (hasBracket) mountPlayoffs(view.querySelector(".pb-host"), src, full, fullRatings, calls, { watch: { name: row.name, model: !!row.model, picks: row.model ? null : savedBrackets.get(k) ?? {} } });
       if (scroll) view.scrollIntoView({ block: "nearest", behavior: "smooth" });
     };
     app.querySelectorAll(".pb-who").forEach((b) => b.onclick = () => show(b.dataset.who, true));
-    // Open on you if you saved a bracket, else the first person who did.
-    const first = savedBrackets.has(myKey) && board.has(myKey) ? myKey : boardRows.find(([k, r]) => !r.model && savedBrackets.has(k))?.[0] ?? (board.has(myKey) && myKey ? myKey : boardRows.find(([, r]) => !r.model)?.[0]);
+    // Last week's names (and "Your full pick history") open the Leaderboard on that person.
+    app.querySelectorAll("[data-history]").forEach((b) => b.onclick = () => {
+      app.querySelector('.pp-tabs [data-tab="board"]')?.click();
+      if (b.dataset.history) show(b.dataset.history, true);
+      else view.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    // Open on you if you're on the board, else the first person with a saved bracket, else the leader.
+    const first = myKey && board.has(myKey) ? myKey : boardRows.find(([k, r]) => !r.model && savedBrackets.has(k))?.[0] ?? boardRows.find(([, r]) => !r.model)?.[0];
     if (first) show(first === " model" ? "model" : first, false);
   }
   // Possibilities runs every outcome, so it waits until its tab is first shown.

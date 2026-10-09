@@ -1707,6 +1707,24 @@ button.linkish:hover { text-decoration: underline; }
 .pred-board tr:has(.pb-who[aria-pressed="true"]) td { background: rgba(var(--accent-rgb), .12); }
 .pb-view { margin: 22px 0 8px; scroll-margin-top: 70px; }
 .pb-view-h { margin: 0 0 10px; }
+.pb-view-h2 { margin-top: 26px; }
+.pb-hist-sum { margin: 0 0 10px; font-size: 14px; }
+.pb-hist-sum b { font: 700 18px var(--mono); color: var(--accent); }
+.pb-hist { min-width: 0; }
+.pb-hist td { vertical-align: middle; }
+.pb-hist td.l { white-space: normal; }
+.pb-hist td:first-child { min-width: 140px; }
+.pb-hist td:has(> .pk-chip) { min-width: 110px; }
+.pb-hist tr.pb-hist-night th { text-align: left; padding-top: 14px; font: 800 13px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--dust); border-bottom: 1px solid var(--seam); }
+.pb-hist tr.pb-hist-night th span { float: right; font: 600 12px var(--mono); letter-spacing: 0; color: var(--dim); }
+.pb-hist tbody:first-of-type tr.pb-hist-night th { padding-top: 6px; }
+.pred-lw { margin-top: 30px; }
+.pred-lw-scores { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 10px; }
+.pred-lw-lbl { font: 600 9px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.pred-lw-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--stone-2); border: 1px solid var(--seam); padding: 3px 9px; font-size: 13px; }
+.pred-lw-chip b { font: 600 13px var(--mono); color: var(--accent); }
+.pred-lw-chip .linkish { font: inherit; color: inherit; }
+.pred-lw-chip .linkish:hover { color: var(--accent); }
 .pk-chip { display: inline-block; max-width: 170px; overflow-wrap: anywhere; vertical-align: middle; font-size: 13px; line-height: 1.3; padding-left: 7px; border-left: 3px solid var(--seam-2); }
 .pk-chip.home { border-left-color: var(--jade); }
 .pk-chip.tie { border-left-color: var(--gold); }
