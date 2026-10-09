@@ -211,6 +211,14 @@ for (const id of season.series) {
   const s = parseSeries(await playon(`/matches/${id}`, 6), id);
   // "TBD / Bye vs TBD / Bye" placeholders (no team links) aren't series between two teams.
   if (!season.teams.has(s.home) || !season.teams.has(s.away)) { console.log(`  skipping series ${id}: not two division teams`); continue; }
+  // A bye is a 1–0 forfeit win, but PlayOn shows 0–0 until an admin enters it, which can take
+  // days (the team drops a point meanwhile). Once its night has passed, score it 1–0 ourselves;
+  // a score PlayOn does enter is kept as it is.
+  const isBye = (t) => /\bbye week\b/i.test(season.teams.get(t) ?? "");
+  if (s.time && s.time < Date.now() / 1000 && !s.home_score && !s.away_score && isBye(s.home) !== isBye(s.away)) {
+    [s.home_score, s.away_score] = isBye(s.home) ? [0, 1] : [1, 0];
+    console.log(`  series ${id}: bye with no score on PlayOn, counted 1–0`);
+  }
   series.push(s);
 }
 series.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
