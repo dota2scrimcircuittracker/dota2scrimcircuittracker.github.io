@@ -286,8 +286,6 @@ function metricScores(rrows, weights, anchors) {
 function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows) } = {}) {
   const unitOf = model.pos_anchors ? (r) => r.pos : (r) => r.role;
   const anchorsOf = (u) => (model.pos_anchors ? model.pos_anchors[u] : model.anchors[u]);
-  // The breakdown's shown series scale (see tierModel); a model without one shows `anchors`.
-  const shownOf = (u) => (model.pos_anchors ? model.pos_series_anchors?.[u] : model.series_anchors?.[u]) ?? anchorsOf(u);
   const series = seriesRows(rows, unitOf);
   const byPlayer = new Map();
   for (const r of rows) {
@@ -318,9 +316,8 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
       const rrows = a.rows.filter((r) => unitOf(r) === u), rl = rrows[0].role;
       const stats = metricScores(rrows, WEIGHTS[rl], anchorsOf(u));
       const surv = metricScores(rrows, SURVIVAL, anchorsOf(u));
-      const shown = metricScores(rrows, WEIGHTS[rl], shownOf(u));
       roles.push({
-        role: rl, unit: u, games: rrows.length, stats, survival: surv, shown,
+        role: rl, unit: u, games: rrows.length, stats, survival: surv,
         points: stats.reduce((t, s) => t + s.share * s.score, 0),
         survivalScore: surv.length ? surv.reduce((t, s) => t + s.share * s.score, 0) : null,
       });
@@ -330,7 +327,7 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     for (const r of roles) r.frac = scoredGames && r.stats.length ? r.games / scoredGames : 0;
     const statPoints = scoredGames ? scored.reduce((t, r) => t + r.frac * r.points, 0) : 50;
     // Each stat's points toward the stat subtotal: 100 × the role's share of games × its share × 0–100.
-    for (const r of roles) for (const s of [...r.stats, ...r.shown]) { s.max = 100 * r.frac * s.share; s.points = (s.max * s.score) / 100; }
+    for (const r of roles) for (const s of r.stats) { s.max = 100 * r.frac * s.share; s.points = (s.max * s.score) / 100; }
     const survRoles = roles.filter((r) => r.survivalScore != null);
     const survGames = survRoles.reduce((t, r) => t + r.games, 0);
     const survival = survGames ? survRoles.reduce((t, r) => t + r.games * r.survivalScore, 0) / survGames : 50;
@@ -340,20 +337,15 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
     // (× n / (n + K_SHRINK), n = the season's games with that stat), isn't capped on its own,
     // and takes the season's cap as a shift; a stat missing from some games counts in
     // proportion to the games that had it.
-    // The same again on the shown series scale gives `shown`, which averages the same way to
-    // the season's shown stat points.
-    const seriesPoints = (s, r, stats, anchors) => stats.reduce((t, st) => {
-      if (s.z[st.metric] == null) return t;
-      const sc = linear100((s.z[st.metric] * st.games) / (st.games + K_SHRINK), anchors[st.metric]) + (st.score - st.linear);
-      return t + (st.share * sc * s.n[st.metric] * r.games) / (s.games * st.games);
-    }, 0);
     for (const s of a.series) {
       const r = roles.find((x) => x.unit === s.unit);
-      if (!r?.stats.length) { s.points = s.shown = null; continue; }
-      s.points = seriesPoints(s, r, r.stats, anchorsOf(s.unit));
-      s.shown = seriesPoints(s, r, r.shown, shownOf(s.unit));
+      if (!r?.stats.length) { s.points = null; continue; }
+      s.points = r.stats.reduce((t, st) => {
+        if (s.z[st.metric] == null) return t;
+        const sc = linear100((s.z[st.metric] * st.games) / (st.games + K_SHRINK), anchorsOf(s.unit)[st.metric]) + (st.score - st.linear);
+        return t + (st.share * sc * s.n[st.metric] * r.games) / (s.games * st.games);
+      }, 0);
     }
-    const shownPoints = scoredGames ? scored.reduce((t, r) => t + r.frac * r.shown.reduce((u, s) => u + s.share * s.score, 0), 0) : 50;
     const scoredSeries = a.series.filter((s) => s.points != null);
     const seriesPts = scoredSeries.map((s) => s.points);
 
@@ -407,10 +399,7 @@ function scorePlayers(rows, model, { consistency = true, teams = teamGames(rows)
         series: s.series, role: s.role, pos: typeof s.unit === "number" ? s.unit : null, games: s.games, wins: s.wins, vs: s.vs, time: s.time,
         points: s.points, opp: s.opp, opp_rate: s.opp_rate,
         score: s.points == null ? null : s.points * s.opp * mult.survival * mult.consistency * mult.winning,
-        // The breakdown shows these: the same on the shown series scale.
-        shown_points: s.shown, shown_score: s.shown == null ? null : s.shown * s.opp * mult.survival * mult.consistency * mult.winning,
       })).sort((x, y) => (y.time ?? 0) - (x.time ?? 0)),
-      shown_points: shownPoints, shown_score: shownPoints * mult.survival * mult.consistency * mult.opponents * mult.winning,
       series_points: seriesPts,
       stat_points: statPoints, survival, consistency: consistencyScore, spread, opp_rate: oppRate,
       win_minutes: winRows.length ? mean(winRows.map((r) => r.minutes)) : null,
@@ -458,35 +447,25 @@ export function tierModel(matches, { minGames = MIN_GAMES, pos = null } = {}) {
   for (const r of all) scoreRow(r, model);
   // Opponent strength always from every game; everything else from the rows this model rates.
   const teams = teamGames(all), rows = pos ? all.filter((r) => r.pos === pos) : all;
-  // Anchors, from every player with minGames+ games in a role and their shrunk average per stat
-  // (the number players are scored on): the best sets 100, so the league's best at a stat gets
-  // all its points. The worst sets 0, but never closer to the position average than the best is,
-  // so in a small pool a player a little below average isn't a flat 0.
+  // Anchors, from every player with minGames+ games in a role. 100 is the best shrunk season
+  // average at a stat (the number players are scored on), so the league's best gets all its
+  // points. 0 is the worst single series by such a player, flat out, so every series and season
+  // sits inside the scale and a weak series isn't a 0 or 1.
   const byPlayerRole = new Map();
   for (const r of rows) { const k = `${keyOf(r.p)}|${r.role}`; (byPlayerRole.get(k) ?? byPlayerRole.set(k, []).get(k)).push(r); }
-  for (const role of ["core", "support"]) {
-    model.anchors[role] = {};
-    const players = [...byPlayerRole.values()].filter((rs) => rs[0].role === role && rs.length >= minGames).map(shrunkZ);
-    for (const metric of Object.keys(scoredMetrics(role))) {
-      const e = ends(players.filter((z) => z[metric]).map((z) => z[metric][0]));
-      // Too few players to find a best and a worst: fall back to ±1 sd.
-      const [lo, hi] = e ? [Math.min(e[0], -e[1]), e[1]] : [-1, 1];
-      // Some stats are easier to max: 100 sits part of the way to the best player.
-      model.anchors[role][metric] = [lo, lo + (hi - lo) * (EASE[role]?.[metric] ?? 1)];
-    }
-  }
-  // Shown series scale, for the series rows of a player's breakdown only: 100 as above, 0 the
-  // worst single series by such a player, so a weak series reads low instead of 0 or 1. Ratings,
-  // tiers and consistency stay on `anchors` (a lower 0 there squeezed the top players together).
-  model.series_anchors = {};
   const eligible = new Set([...byPlayerRole].filter(([, rs]) => rs.length >= minGames).map(([k]) => k));
   const perfs = seriesRows(rows).filter((s) => eligible.has(`${s.key}|${s.role}`));
   for (const role of ["core", "support"]) {
-    model.series_anchors[role] = {};
+    model.anchors[role] = {};
+    const players = [...byPlayerRole.values()].filter((rs) => rs[0].role === role && rs.length >= minGames).map(shrunkZ);
     const here = perfs.filter((s) => s.role === role);
-    for (const [metric, [lo, hi]] of Object.entries(model.anchors[role])) {
-      const worst = ends(here.filter((s) => s.z[metric] != null).map((s) => s.z[metric]))?.[0] ?? lo;
-      model.series_anchors[role][metric] = [Math.min(worst, lo), hi];
+    for (const metric of Object.keys(scoredMetrics(role))) {
+      const best = ends(players.filter((z) => z[metric]).map((z) => z[metric][0]));
+      const worst = ends(here.filter((s) => s.z[metric] != null).map((s) => s.z[metric]));
+      // Too few players or series to find a best and a worst: fall back to ±1 sd.
+      const [lo, hi] = best && worst ? [Math.min(worst[0], best[1] - 1e-6), best[1]] : [-1, 1];
+      // Some stats are easier to max: 100 sits part of the way to the best player.
+      model.anchors[role][metric] = [lo, lo + (hi - lo) * (EASE[role]?.[metric] ?? 1)];
     }
   }
   // Consistency reference: eligible players' series spreads (2+ series).
@@ -521,8 +500,7 @@ export function tierModels(matches, { minGames = MIN_GAMES } = {}) {
   const set = {};
   for (const n of [1, 2, 3, 4, 5]) set[n] = tierModel(matches, { minGames, pos: n });
   const pos_anchors = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [n, set[n].anchors[n <= 3 ? "core" : "support"]]));
-  const pos_series_anchors = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [n, set[n].series_anchors[n <= 3 ? "core" : "support"]]));
-  for (const n of [1, 2, 3, 4, 5]) Object.assign(set[n], { pos_anchors, pos_series_anchors, set });
+  for (const n of [1, 2, 3, 4, 5]) Object.assign(set[n], { pos_anchors, set });
   return set;
 }
 

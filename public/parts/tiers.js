@@ -106,13 +106,7 @@ export function tierBreakdown(src, p) {
   return breakdown(src, sub, tabs);
 }
 
-function breakdown(src, real, tabs) {
-  // The breakdown reads on the shown scale (lib/tiers.js: 0 = the worst single series), so a weak
-  // stat or series isn't a flat 0. The rating is the real one; the curve row bridges the two.
-  const p = {
-    ...real, roles: real.roles.map((r) => ({ ...r, stats: r.shown ?? r.stats })),
-    stat_points: real.shown_points ?? real.stat_points, score: real.shown_score ?? real.score,
-  };
+function breakdown(src, p, tabs) {
   // Stat points, then each multiplier as the points it adds or takes away, in order; all
   // rounded together so the shown rows add up to the shown score.
   const stats = p.roles.flatMap((r) => r.stats);
@@ -152,16 +146,15 @@ function breakdown(src, real, tabs) {
       <span class="bd-date">${s.time ? esc(new Date(s.time * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" })) : ""}</span>
       <span class="bd-vs">${s.vs ? `vs ${teamLink(src, s.vs)}` : "—"}${s.pos != null ? (s.pos !== p.pos ? ` <em>as pos ${s.pos}</em>` : "") : s.role !== p.role ? ` <em>as ${s.role}</em>` : ""}</span>
       <span class="bd-wl">${s.wins}–${s.games - s.wins}</span>
-      ${meter(s.shown_points ?? 0)}<span class="bd-spts">${s.shown_points == null ? "—" : s.shown_points.toFixed(1)}</span>
-      <span class="bd-opp">×${(s.opp ?? 1).toFixed(2)}</span><b>${s.shown_score == null ? "—" : s.shown_score.toFixed(1)}</b></div>`).join("");
+      ${meter(s.points ?? 0)}<span class="bd-spts">${s.points == null ? "—" : s.points.toFixed(1)}</span>
+      <span class="bd-opp">×${(s.opp ?? 1).toFixed(2)}</span><b>${s.score == null ? "—" : s.score.toFixed(1)}</b></div>`).join("");
   const seriesAvg = `<div class="bd-series bd-series-avg"><span></span><span class="bd-vs">Season, weighted by games</span><span class="bd-wl">${p.wins}–${p.games - p.wins}</span>
-      <span></span><span class="bd-spts">${p.shown_points.toFixed(1)}</span><span class="bd-opp">×${p.mult.opponents.toFixed(2)}</span><b>${p.shown_score.toFixed(1)}</b></div>`;
+      <span></span><span class="bd-spts">${p.stat_points.toFixed(1)}</span><span class="bd-opp">×${p.mult.opponents.toFixed(2)}</span><b>${p.score.toFixed(1)}</b></div>`;
   const m = p.mult;
   // The curve row: rating − score as shown, so score + this row = the rating exactly.
   const curveDelta = p.rating - Number(p.score.toFixed(1));
   const curveShown = `${curveDelta >= 0 ? "+" : "−"}${Math.abs(curveDelta).toFixed(1)}`;
-  // Where the real score sits on the curve (the shown score is on its own scale).
-  const curveWidths = Math.abs((real.score - p.curve[0]) / p.curve[1]).toFixed(1);
+  const curveWidths = Math.abs((p.score - p.curve[0]) / p.curve[1]).toFixed(1);
   // Two columns on wide screens (rating, score and series left; the stat table right), one
   // column otherwise with the series straight under the score.
   return `<div class="bd"><button type="button" class="bd-x" aria-label="Close the breakdown" title="Close">×</button>
@@ -190,7 +183,7 @@ function breakdown(src, real, tabs) {
         ${multRow("winning", "Winning", `${p.wins}–${p.games - p.wins}`, `${Math.round(p.win_shrunk * 100)}% adj.${p.win_minutes ? `<br>${Math.round(p.win_minutes)}-min wins` : ""}`, p.winning)}
         <tr class="bd-sub"><td class="l">Score</td><td></td><td class="bd-wide"></td><td></td><td class="bd-pts">${p.score.toFixed(1)}</td></tr>
         <tr class="bd-mult bd-curve"><td class="l">Rating curve${info("tm_curve")}<span class="bd-note"> compares you with your league</span></td>
-          <td>${real.score >= p.curve[0] ? "+" : "−"}${curveWidths}<small class="bd-raw">widths ${real.score >= p.curve[0] ? "above" : "below"} the league median, which rates 50</small></td><td class="bd-wide"></td>
+          <td>${p.score >= p.curve[0] ? "+" : "−"}${curveWidths}<small class="bd-raw">widths ${p.score >= p.curve[0] ? "above" : "below"} the league median (${p.curve[0].toFixed(1)}, which rates 50)</small></td><td class="bd-wide"></td>
           <td></td><td class="bd-pts">${curveShown}</td></tr>
         <tr class="bd-total-row"><td class="l">Rating</td><td></td><td class="bd-wide"></td><td></td><td class="bd-pts">${p.rating}</td></tr>
       </tbody></table>
