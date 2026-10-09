@@ -299,7 +299,8 @@ The Heroes tab has three sub-tabs (`?tab=tiers|players|table`):
 - **Laning** (AD2L, parsed replays) — each lane (top, middle, bottom) called won, even or lost at
   10:00 on the whole lane's gold + XP lead, with each side's heroes, then every player's last
   hits, denies, lane efficiency, kills and deaths before 10:00. Lanes are the replay's own, so
-  swaps and tri-lanes count as played. Won/lost cut-offs are fitted per division, a third of
+  swaps and tri-lanes count as played; a lane with more heroes on one side (1v2, 3v2) compares
+  gold + XP per hero, scaled to the lane's average size, so the extra hero doesn't win it alone. Won/lost cut-offs are fitted per division, a third of
   lanes each way, side lanes and mid separately (S48 Champion: ~1,000 side, ~850 mid). Player and
   hero pages get a Laning tab (record, averages, by lane, every lane with who they laned with and
   against). Team pages get one too: each lane's won–even–lost record with who played it, then

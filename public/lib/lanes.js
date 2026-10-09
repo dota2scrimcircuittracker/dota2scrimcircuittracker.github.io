@@ -6,7 +6,9 @@
 // lane 1 = Radiant safe vs Dire off (bottom), 2 = mid, 3 = Radiant off vs Dire safe (top).
 //
 // A lane's margin is one side's gold + XP at 10:00 minus the other's, summed over everyone in
-// it. Won / even / lost cut-offs are fitted per division (laneCuts): a third of lanes each way,
+// it. When the sides differ in size (a 1v2, a 3v2), the extra hero would win the lane on its own
+// gold + XP, so the sides are compared per hero instead and scaled to the lane's average size:
+// equal sides come out exactly as the plain sum. Won / even / lost cut-offs are fitted per division (laneCuts): a third of lanes each way,
 // side lanes and mid separately since a 1v1 swings less than a 2v2.
 
 import { deathsOf } from "./deathmap.js";
@@ -28,6 +30,11 @@ export function laneRoleOf(p) {
 export const isJungler = (p) => p.lane_role === 4 || (p.position != null && p.position <= 3 && !p.roaming && p.lh10 != null && p.lh10 <= 10 && (p.neutral_kills ?? 0) >= 20);
 export const at10 = (p) => (Array.isArray(p.gold_t) && p.gold_t[LANE_END_MIN] != null && p.xp10 != null ? p.gold_t[LANE_END_MIN] + p.xp10 : null);
 const sumAt10 = (ps) => (ps.length && ps.every((p) => at10(p) != null) ? ps.reduce((s, p) => s + at10(p), 0) : null);
+// Side a's lead over side b (see the header): per hero, times the average side size.
+export function laneMargin(a, b) {
+  const sa = sumAt10(a), sb = sumAt10(b);
+  return sa == null || sb == null ? null : Math.round((sa / a.length - sb / b.length) * (a.length + b.length) / 2);
+}
 export const hasLanes = (m) => Array.isArray(m.players) && m.players.some((p) => at10(p) != null);
 
 // The three lanes of a game: { lane (Radiant's role), a: [players], b: [players], margin } where
@@ -37,8 +44,7 @@ export function gameLanes(m) {
   return [1, 2, 3].map((lane) => {
     const a = m.players.filter((p) => p.team === "a" && laneRoleOf(p) === lane);
     const b = m.players.filter((p) => p.team === "b" && laneRoleOf(p) === OPP[lane]);
-    const sa = sumAt10(a), sb = sumAt10(b);
-    return { lane, a, b, margin: sa == null || sb == null ? null : sa - sb };
+    return { lane, a, b, margin: laneMargin(a, b) };
   });
 }
 
@@ -138,6 +144,5 @@ export function tierLaneResult(m, p) {
     const cores = them.filter((q) => q.position != null && q.position <= 3 && at10(q) != null);
     return cores.length ? mine - cores.reduce((s, q) => s + at10(q), 0) / cores.length : null;
   }
-  const a = sumAt10(us), b = sumAt10(them);
-  return a == null || b == null ? null : a - b;
+  return laneMargin(us, them);
 }

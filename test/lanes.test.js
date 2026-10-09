@@ -40,8 +40,9 @@ test("a swapped lane follows the replay, not the position", () => {
   m.players[3].lane_role = 1; // Radiant pos 4 went bottom with the carry: tri-lane
   const [bot, , top] = gameLanes(m);
   assert.equal(bot.a.length, 3);
-  assert.equal(bot.margin, 4000);
-  assert.equal(top.margin, 4000 - 6000);
+  // 3v2 and 1v2 now: compared per hero, scaled to the average side size.
+  assert.equal(bot.margin, (9000 / 3 - 5000 / 2) * 2.5);
+  assert.equal(top.margin, (4000 - 6000 / 2) * 1.5);
 });
 
 test("cut-offs: a third of lanes each way; too few lanes falls back", () => {
@@ -95,4 +96,20 @@ test("tier lane result: cores against the enemy cores in their lane, supports la
   assert.equal(tierLaneResult(m, m.players[1]), -500);
   m.players[9].lane_role = 4; // b5 jungles
   assert.equal(tierLaneResult(m, m.players[9]), null);
+});
+
+test("uneven lanes compare per hero: a solo core who out-farms a duo wins it", () => {
+  // Bottom 1v2: a's safe core alone (8600) vs b's off 3 + 4 (6600 + 4400). Top 3v2: a's off
+  // 3 + 4 + a roaming 5 vs b's safe 1 + 5.
+  const m = game({ players: [
+    pl("a", 1, 1, 8600), pl("a", 2, 2, 6000), pl("a", 3, 3, 5700), pl("a", 4, 3, 4500), pl("a", 5, 3, 5200),
+    pl("b", 1, 1, 8400), pl("b", 2, 2, 6000), pl("b", 3, 3, 6600), pl("b", 4, 3, 4400), pl("b", 5, 1, 4800),
+  ] });
+  const [bot, , top] = gameLanes(m);
+  assert.equal(bot.margin, Math.round((8600 - 5500) * 1.5)); // the sum would say -2400
+  assert.equal(top.margin, Math.round((5133.33 - 6600) * 2.5)); // the sum would say +2200
+  // Equal sides are still the plain sum.
+  assert.equal(gameLanes(game())[0].margin, 7000 - 5000);
+  // The tier list's support lane result follows the same rule.
+  assert.equal(tierLaneResult(m, m.players[4]), top.margin);
 });
