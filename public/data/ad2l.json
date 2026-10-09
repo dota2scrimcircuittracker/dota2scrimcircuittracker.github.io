@@ -2,7 +2,7 @@
  "season": "S48 Champion League - Amateur Dota 2 League",
  "playon_season_id": 675,
  "league_id": 20077,
- "updated": "2026-10-09T00:08:39.616Z",
+ "updated": "2026-10-09T04:01:23.908Z",
  "teams": [
   {
    "id": 15012,
@@ -661,7 +661,7 @@
    "time": 1791507600,
    "home": 15022,
    "away": 13679,
-   "home_score": 0,
+   "home_score": 2,
    "away_score": 0
   },
   {
@@ -669,16 +669,16 @@
    "time": 1791507600,
    "home": 14889,
    "away": 15026,
-   "home_score": 0,
-   "away_score": 0
+   "home_score": 1,
+   "away_score": 1
   },
   {
    "id": 20829,
    "time": 1791507600,
    "home": 14995,
    "away": 15033,
-   "home_score": 0,
-   "away_score": 0
+   "home_score": 1,
+   "away_score": 1
   },
   {
    "id": 20828,
@@ -686,7 +686,7 @@
    "home": 15037,
    "away": 15036,
    "home_score": 0,
-   "away_score": 0
+   "away_score": 2
   },
   {
    "id": 20827,
