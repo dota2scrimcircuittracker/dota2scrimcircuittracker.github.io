@@ -4,7 +4,7 @@ import { isPlayed, seriesOdds, postOdds, tune, fitRatings } from "../lib/predict
 import { strengthOfSchedule, gameWins } from "../lib/schedule.js";
 import { info } from "../lib/glossary.js";
 import { weekStart, DIVISIONS, teamLink, pct, esc, app, pageHead, playerTabs, sortableTable, SOURCES, wirePlayerTabs } from "../core.js";
-import { groupStage, isPostseason } from "../lib/divisions.js";
+import { groupStage, isPostseason, withAnnounced, announcedRole } from "../lib/divisions.js";
 import { postseason } from "../lib/playoffs.js";
 import { pageTabs, STANDINGS_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox } from "../parts/lanes.js";
@@ -136,14 +136,17 @@ function crossTableHtml(src, d, order) {
 // "" when there are none.
 export function upNextHtml(src, d) {
   const played = (s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0;
-  const upcoming = d.series.filter((s) => !played(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).sort((a, b) => a.time - b.time);
+  const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
+  // Series the admins announced before PlayOn posts them (lib/divisions.js ANNOUNCED), for this
+  // division's teams; one decided by an earlier series shows TBD.
+  const all = src.all ? d.series : withAnnounced(src.key, d.series).filter((s) => name[s.away] && (s.home == null || name[s.home]));
+  const upcoming = all.filter((s) => !played(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).sort((a, b) => a.time - b.time);
   if (!upcoming.length) return "";
   const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
-  const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const ratings = fitRatings(d.teams, d.series, tune(d.teams, d.series));
   // Postseason series: their round and best-of (lib/playoffs.js postseason), a win bar (no tie).
   const post = upcoming.some(isPostseason) && !src.all ? postseason(d.teams, d.series, ratings, { split: !!DIVISIONS[src.key]?.views && !src.view }) : null;
-  const roleOf = (s) => post?.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
+  const roleOf = (s) => announcedRole(src.key, s) ?? post?.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
   const date = (s) => new Date(s * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const oddsBar = (o) => `<div class="st-odds" title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}">${
     [["home", "2–0", "h"], ["tie", "1–1", "t"], ["away", "0–2", "a"]].map(([k, lbl, c]) => `<span class="${c}" style="flex:${o[k].toFixed(3)}">${o[k] >= 0.14 ? `${lbl} ${pct(o[k])}` : ""}</span>`).join("")}</div>`;

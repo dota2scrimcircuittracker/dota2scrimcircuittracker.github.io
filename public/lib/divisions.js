@@ -45,6 +45,13 @@ export function withAnnounced(key, series) {
   const near = (a, s) => Math.abs((s.time ?? 0) - a.time) < 4 * 86400 && [a.home, a.away].some((t) => t != null && (s.home === t || s.away === t));
   return [...series, ...(ANNOUNCED[key] ?? []).filter((a) => !series.some((s) => near(a, s)))];
 }
+// An announced series' round ("Week 8 · …" and its best-of), found by its id or, once PlayOn
+// posts it, by the same teams within 4 days. null for anything else.
+export function announcedRole(key, s) {
+  const a = (ANNOUNCED[key] ?? []).find((a) => a.id === s.id || a.pid === s.id
+    || (a.home != null && Math.abs((s.time ?? 0) - a.time) < 4 * 86400 && [a.home, a.away].every((t) => s.home === t || s.away === t)));
+  return a ? { label: `Week 8 · ${a.note}`, bestOf: a.best_of } : null;
+}
 export const isPostseason = (s) => SEASON.regularEnd != null && (s.time ?? 0) > SEASON.regularEnd && !SEASON.regularIds.includes(s.id);
 export const groupStage = (series) => series.filter((s) => !isPostseason(s));
 
