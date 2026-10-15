@@ -3,6 +3,7 @@ import { signatureHtml } from './signatures.js';
 import { steamAccount, steamIdToken } from './store.js';
 import { cardArtwork } from './card-art.js';
 import { heroById, heroImg } from './hero-meta.js';
+import { plusSlot } from './hero-levels.js';
 import { cardAppearance, selectedCardDesign, shownNickname } from './cosmetics-engine.js';
 export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight']);
 import { syncPackOfferClaims } from './bonus-offers.js';
@@ -128,6 +129,9 @@ export function applyEquipment(card,e,name) {
       card.classList.toggle('ft-custom-crop',!!art.crop);
       if(art.crop)for(const [k,v] of Object.entries(art.crop))card.style.setProperty(k==='zoom'?'--art-zoom':`--art-${k}`,k==='zoom'?v:`${v}%`);
       const label=card.querySelector('.ft-sig');if(label)label.textContent=heroById(hero)?.name??'';
+      // The Dota Plus badge belongs to the shown hero: redraw it (the page's observer fills it in).
+      const plus=card.querySelector('.ft-plus');
+      if(plus)plus.innerHTML=plusSlot(card.dataset.pick,hero);
     }
   }
   applyLayout(card,e.layout??null,name);
