@@ -1,13 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cardArtOptions, cardArtwork, checkCardChoices, CARD_STYLES } from "../public/lib/card-art.js";
-import { heroArt } from "../public/lib/hero-art.js";
 
-test("existing cards keep the site's art and style; saved filters override it", () => {
-  assert.equal(cardArtwork("Windranger").style, heroArt("Windranger").style);
+test("cards default to no filter; saved filters override it", () => {
+  assert.equal(cardArtwork("Windranger").style, "plain");
   assert.equal(cardArtwork("Windranger", { style: "frost" }).style, "frost");
-  assert.equal(cardArtwork("Windranger", { style: "untrusted" }).style, heroArt("Windranger").style);
-  assert.equal(CARD_STYLES.length, 8);
+  assert.equal(cardArtwork("Windranger", { style: "untrusted" }).style, "plain");
+  assert.equal(CARD_STYLES.length, 9);
 });
 
 test("art belongs to the selected hero and unrecognized choices fall back", () => {
@@ -39,4 +38,12 @@ test("saved framing is bounded, compatible with old cards, and ignores malformed
     assert.equal(checkCardChoices({ hero: 22, crop: invalid }), "Choose a valid crop.");
     assert.equal(cardArtwork(22, { crop: invalid }).crop, null);
   }
+});
+
+test("a crop may carry a rotation and a mirror, and nothing else", () => {
+  const crop = { x: 50, y: 50, zoom: 1, rot: -180, flip: true };
+  assert.equal(checkCardChoices({ hero: 22, crop }), null);
+  assert.deepEqual(cardArtwork(22, { crop }).crop, crop);
+  for (const bad of [{ ...crop, rot: 181 }, { ...crop, rot: "5" }, { ...crop, flip: 1 }, { ...crop, url: "x" }])
+    assert.equal(checkCardChoices({ hero: 22, crop: bad }), "Choose a valid crop.");
 });

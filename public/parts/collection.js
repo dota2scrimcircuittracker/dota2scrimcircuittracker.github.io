@@ -2,7 +2,7 @@ import { esc, SOURCES, allLoad, pageList } from '../core.js';
 import { steamAccount, steamLoginUrl, listCards } from '../lib/store.js';
 import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
 import { TIERS, itemByKey } from '../lib/cosmetics-catalog.js';
-import { signatureHtml, renderedName } from '../lib/signatures.js';
+import { signatureHtml, renderedName, signatureSize } from '../lib/signatures.js';
 import { createPlayerCards, PAINT_FILTER, wirePlayerCards } from './player-card.js';
 import { startSteamSignIn, steamName } from './me.js';
 import { HERO_META } from '../lib/hero-meta.js';
@@ -241,7 +241,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const template=document.createElement('template');template.innerHTML=cardHtml;
     const effectiveHero=base.hero||Number(template.content.querySelector('.ft-card').dataset.autoHero);
     const artOptions=cardArtOptions(effectiveHero,state?.screens??(String(base.art??'').startsWith('scr:')?[base.art]:[]));
-    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label></section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]}"></label>`).join('')}</div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar"><label class="particle-speed-control">Particle speed <output data-particle-speed-value>${equipment.particleSpeed}%</output><input type="range" data-particle-speed min="50" max="200" step="10" value="${equipment.particleSpeed}" ${editable?'':'disabled'}></label><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
+    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror</button> <button type="button" data-crop-turn>Turn 180°</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label></section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar"><label class="particle-speed-control">Particle speed <output data-particle-speed-value>${equipment.particleSpeed}%</output><input type="range" data-particle-speed min="50" max="200" step="10" value="${equipment.particleSpeed}" ${editable?'':'disabled'}></label><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
     wireCardSlots();
     if(editable)mountNameEditor(body.querySelector('[data-name-editor]'),{state,inGame:name,action,onSaved:next=>{state=next;draw();say(shownNickname(next)?`Showing ${shownNickname(next)} on your cards and profile.`:'Showing your in-game name.');}});
     const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');
@@ -272,7 +272,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       host.querySelectorAll('.image-choice-strip').forEach((el,i)=>el.scrollLeft=scrolls[i]??0);
       host.querySelectorAll('[data-image-choice]').forEach(button=>button.onclick=()=>{
         const type=button.dataset.imageChoice;base[type]=button.dataset.choice||null;
-        if(type==='art') {if(base.art&&!base.hero)base.hero=effectiveHero;base.crop=null;body.querySelectorAll('[data-crop]').forEach(input=>input.value=defaultCardCrop(cardArtwork(effectiveHero,base))[input.dataset.crop]);}
+        if(type==='art') {if(base.art&&!base.hero)base.hero=effectiveHero;base.crop=null;body.querySelectorAll('[data-crop]').forEach(input=>input.value=defaultCardCrop(cardArtwork(effectiveHero,base))[input.dataset.crop]??0);}
         update();drawImageGallery();
         host.querySelector(`[data-image-choice="${type}"][data-choice="${CSS.escape(button.dataset.choice)}"]`)?.focus({preventScroll:true});
       });
@@ -285,6 +285,9 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelector('[data-emblem]').onchange=e=>{equipment.emblem=e.target.checked;update();};
     body.querySelector('[data-hue]').oninput=e=>{equipment.hue=Number(e.target.value);body.querySelector('[data-hue-value]').textContent=equipment.hue;update();};
     body.querySelectorAll('[data-crop]').forEach(input=>input.oninput=()=>{base.crop??=defaultCardCrop(cardArtwork(effectiveHero,base));base.crop[input.dataset.crop]=Number(input.value);update();});
+    const cropOf=()=>base.crop??=defaultCardCrop(cardArtwork(effectiveHero,base));
+    body.querySelector('[data-crop-flip]').onclick=()=>{const c=cropOf();c.flip=!c.flip;update();};
+    body.querySelector('[data-crop-turn]').onclick=()=>{const c=cropOf();c.rot=((c.rot??0)+180>180)?(c.rot??0)-180:(c.rot??0)+180;body.querySelector('[data-crop="rot"]').value=c.rot;update();};
     body.querySelectorAll('[data-position]').forEach(input=>input.oninput=()=>{equipment[input.dataset.position]=Number(input.value);syncControls();update();});
     const syncControls=()=>body.querySelectorAll('[data-position]').forEach(input=>{input.value=equipment[input.dataset.position];body.querySelector(`[data-value="${input.dataset.position}"]`).textContent=Math.round(equipment[input.dataset.position]);});
     const front=card.querySelector('.ft-front');let pan=null;
@@ -298,9 +301,9 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       if(!pan||e.pointerId!==pan.id)return;
       const dx=e.clientX-pan.x,dy=e.clientY-pan.y;if(Math.abs(dx)+Math.abs(dy)<2)return;
       const clamp=n=>Math.round(Math.max(0,Math.min(100,n))*10)/10;
-      base.crop={x:clamp(pan.crop.x-dx/pan.width*100),y:clamp(pan.crop.y-dy/pan.height*100),zoom:pan.crop.zoom};
+      base.crop={...pan.crop,x:clamp(pan.crop.x-dx/pan.width*100),y:clamp(pan.crop.y-dy/pan.height*100)};
       card.classList.add('ft-custom-crop');card.style.setProperty('--art-x',`${base.crop.x}%`);card.style.setProperty('--art-y',`${base.crop.y}%`);card.style.setProperty('--art-zoom',base.crop.zoom);
-      body.querySelectorAll('[data-crop]').forEach(input=>input.value=base.crop[input.dataset.crop]);say('Unsaved card changes');
+      body.querySelectorAll('[data-crop]').forEach(input=>input.value=base.crop[input.dataset.crop]??0);say('Unsaved card changes');
     };
     const stopPan=e=>{if(pan?.id!==e.pointerId)return;pan=null;front.classList.remove('panning');if(front.hasPointerCapture(e.pointerId))front.releasePointerCapture(e.pointerId);};
     front.onpointerup=stopPan;front.onpointercancel=stopPan;front.onlostpointercapture=()=>{pan=null;front.classList.remove('panning');};
@@ -312,6 +315,38 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
         sig.onpointermove=ev=>{equipment.x=Math.max(0,Math.min(100,start.x+(ev.clientX-start.px)/rect.width*100));equipment.y=Math.max(0,Math.min(100,start.y+(ev.clientY-start.py)/rect.height*100));sig.style.left=equipment.x+'%';sig.style.top=equipment.y+'%';syncControls();say('Unsaved card changes');};
         sig.onpointerup=()=>{sig.onpointermove=null;};sig.onpointercancel=sig.onpointerup;
       };
+      // Rotation wheel: a ring round the signature with a handle at its angle; drag the handle to turn it.
+      card.querySelectorAll('.sig-wheel').forEach(w=>w.remove());
+      if(editable) {
+        const front=card.querySelector('.ft-front'),wheel=document.createElement('div'),dot=document.createElement('button');
+        wheel.className='sig-wheel';dot.type='button';dot.className='sig-wheel-handle';dot.setAttribute('aria-label','Rotate signature');dot.title='Drag to rotate (Shift snaps to 15°)';
+        const grow=document.createElement('button');grow.type='button';grow.className='sig-size-handle';grow.setAttribute('aria-label','Resize signature');grow.title='Drag to resize';
+        wheel.append(dot,grow);front.append(wheel);
+        const place=()=>{const d=Math.max(72,sig.offsetWidth+28);wheel.style.width=wheel.style.height=d+'px';wheel.style.setProperty('--wheel-r',d/2+'px');wheel.style.left=equipment.x+'%';wheel.style.top=equipment.y+'%';dot.style.setProperty('--wheel-angle',equipment.rotation+'deg');};
+        place();
+        const sync=()=>{place();sig.style.left=equipment.x+'%';sig.style.top=equipment.y+'%';};
+        sig.addEventListener('pointermove',sync);
+        dot.onpointerdown=e=>{
+          e.preventDefault();e.stopPropagation();dot.setPointerCapture(e.pointerId);wheel.classList.add('turning');
+          dot.onpointermove=ev=>{
+            const r=wheel.getBoundingClientRect();let a=Math.atan2(ev.clientY-(r.top+r.height/2),ev.clientX-(r.left+r.width/2))*180/Math.PI;
+            if(ev.shiftKey)a=Math.round(a/15)*15;else for(const t of [-180,-90,0,90,180])if(Math.abs(a-t)<3)a=t;
+            equipment.rotation=Math.round(a);sig.style.setProperty('--placement-rotation',equipment.rotation+'deg');place();syncControls();say('Unsaved card changes');
+          };
+          dot.onpointerup=dot.onpointercancel=()=>{dot.onpointermove=null;wheel.classList.remove('turning');};
+        };
+        // Size handle: drag away from the signature to make it bigger, towards it to shrink it.
+        grow.onpointerdown=e=>{
+          e.preventDefault();e.stopPropagation();grow.setPointerCapture(e.pointerId);wheel.classList.add('turning');
+          const r=wheel.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dist=ev=>Math.max(8,Math.hypot(ev.clientX-cx,ev.clientY-cy));
+          const d0=dist(e),size0=equipment.size;
+          grow.onpointermove=ev=>{
+            equipment.size=Math.round(Math.max(5,Math.min(30,size0*dist(ev)/d0))*2)/2;
+            sig.style.setProperty('--signature-size',signatureSize(equipment.size,renderedName(shownName(),equipment.translation,equipment.letterCase))+'cqi');place();syncControls();say('Unsaved card changes');
+          };
+          grow.onpointerup=grow.onpointercancel=()=>{grow.onpointermove=null;wheel.classList.remove('turning');};
+        };
+      }
       sig.onkeydown=e=>{const d={ArrowLeft:['x',-1],ArrowRight:['x',1],ArrowUp:['y',-1],ArrowDown:['y',1]}[e.key];if(!editable||!d)return;e.preventDefault();equipment[d[0]]=Math.max(0,Math.min(100,equipment[d[0]]+d[1]));syncControls();update();card.querySelector('.card-autograph').focus();};
     }
     body.querySelector('[data-save]').disabled=!editable;

@@ -106,7 +106,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
     const st = stats.get(p.account), t = tier ?? tierOf(p.account), top = st?.top ?? [], g = st?.games ?? 0;
     const face = heroById(ov?.hero)?.name ?? top[0]?.hero, faceRec = face && st?.heroes.get(face);
     const ha = face && cardArtwork(face, ov), art = ha?.src ?? (face && heroVert(face)), wide = face && heroImg(face);
-    const cropStyle = ha?.crop ? `--art-x:${ha.crop.x}%;--art-y:${ha.crop.y}%;--art-zoom:${ha.crop.zoom};` : "";
+    const cropStyle = ha?.crop ? `--art-x:${ha.crop.x}%;--art-y:${ha.crop.y}%;--art-zoom:${ha.crop.zoom};--art-rot:${ha.crop.rot ?? 0}deg;--art-flip:${ha.crop.flip ? -1 : 1};` : "";
     const appearance=cosmeticAttributes(equipment).replace('style="',`style="${cropStyle}${equipment?.layout?.nameSize && equipment.layout.nameSize !== 100 ? `--name-size:${equipment.layout.nameSize / 100};` : ""}`);
     const avg = (v) => (g ? v / g : 0), one = (v) => (g ? avg(v).toFixed(1) : "—");
     const role = roleOf(p.account, ov), set = ov?.pos != null;

@@ -86,11 +86,13 @@ export function renderedName(text,translation='none',letterCase='lower') {
   return letterCase==='upper'?out.toUpperCase():translation==='greek'?finalSigma(out):out;
 }
 export const writingOf=text=>/[\u3040-\u30ff]/u.test(text)?'ja':/[\uac00-\ud7af]/u.test(text)?'ko':/[\u3400-\u9fff]/u.test(text)?'zh':/[\u0400-\u04ff]/u.test(text)?'cyrl':/[\u0370-\u03ff]/u.test(text)?'greek':/[\u16a0-\u16ff]/u.test(text)?'runic':/[฀-๿]/u.test(text)?'thai':'latin';
+// The most a name's signature may grow before it runs off the card: long names stop sooner.
+export const signatureSize=(size,text)=>Math.min(size,200/Math.max(8,[...text].length));
 export function signatureHtml(equipment,name) {
   const item=itemByKey(`autograph:${equipment.autograph}`);if(!item)return '';
   const text=renderedName(name,equipment.translation,equipment.letterCase);
   const glyphs=item.rough?[...text].map((c,i)=>`<span class="signature-glyph" style="--glyph-lift:${(i%3)-1}px;--glyph-tilt:${(i%5-2)*2}deg">${escape(c)}</span>`).join(''):escape(text);
   const paths=(PEN_MARKS[item.flourish]??PEN_MARKS.simple).map(d=>`<path d="${d}"/>`).join('');
-  const size=Math.min(equipment.size,140/Math.max(8,[...text].length));
+  const size=signatureSize(equipment.size,text);
   return `<span class="card-autograph" data-autograph="${item.id}" data-writing="${equipment.translation==='kanji'?'ja':writingOf(text)}" style="left:${equipment.x}%;top:${equipment.y}%;--signature-size:${size}cqi;--placement-rotation:${equipment.rotation}deg" aria-label="Signature: ${escape(text)}"><span class="autograph-lettering">${glyphs}</span><svg class="signature-penmarks" viewBox="-10 -10 320 105" aria-hidden="true">${paths}</svg></span>`;
 }

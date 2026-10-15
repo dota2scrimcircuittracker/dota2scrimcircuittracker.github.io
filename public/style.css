@@ -4687,6 +4687,7 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .ft-card.src-render .ft-art img { object-position: center 20%; transform: scale(1.35); transform-origin: 50% 20%; }
 .ft-card[data-style]:not([data-style="stencil"]) .ft-art img { -webkit-mask: none; mask: none; }
 .ft-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.ft-card[data-style="plain"] .ft-art img { filter: none; }
 .ft-card[data-style="clean"] .ft-art img { filter: contrast(1.08) saturate(1.12); }
 .ft-card[data-style="cinema"] .ft-art img { filter: contrast(1.18) saturate(.85) sepia(.18) brightness(.95); }
 .ft-card[data-style="cinema"] .ft-art::before { background: radial-gradient(120% 80% at 50% 35%, transparent 45%, rgba(0, 0, 0, .7) 100%); }
@@ -5017,7 +5018,7 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 }
 
 /* Saved art framing applies identically to full-size and miniature cards. */
-.ft-card.ft-custom-crop .ft-front .ft-art img { height: 100%; object-position: var(--art-x) var(--art-y); transform-origin: var(--art-x) var(--art-y); transform: scale(var(--art-zoom)); transition: none; }
+.ft-card.ft-custom-crop .ft-front .ft-art img { height: 100%; object-position: var(--art-x) var(--art-y); transform-origin: var(--art-x) var(--art-y); transform: scale(var(--art-zoom)) rotate(var(--art-rot, 0deg)) scaleX(var(--art-flip, 1)); transition: none; }
 .ft-mine-card .ft-front { touch-action: none; user-select: none; }
 .ft-mine-card .ft-front .ft-art img { -webkit-user-drag: none; }
 .ft-mine-card .ft-card.own .ft-front { cursor: grab; }

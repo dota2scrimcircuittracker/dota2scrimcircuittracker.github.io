@@ -2,7 +2,7 @@ import { heroById, HERO_META } from "./hero-meta.js";
 import { heroArt } from "./hero-art.js";
 import { CARD_ART } from "./card-art-data.js";
 import { SCREEN_ART } from "./screen-art-data.js";
-export const CARD_STYLES = [["stencil", "Stencil"], ["clean", "Clean"], ["cinema", "Cinematic"], ["ember", "Ember"], ["frost", "Frost"], ["comic", "Comic"], ["ink", "Ink"], ["noir", "Noir"]];
+export const CARD_STYLES = [["plain", "No filter"], ["stencil", "Stencil"], ["clean", "Clean"], ["cinema", "Cinematic"], ["ember", "Ember"], ["frost", "Frost"], ["comic", "Comic"], ["ink", "Ink"], ["noir", "Noir"]];
 const byName = new Map(HERO_META.map(([id, name]) => [name, heroById(id)]));
 const base = "https://cdn.cloudflare.steamstatic.com/apps/dota2";
 const absolute = (src) => new URL(src, new URL("../", import.meta.url)).href;
@@ -37,7 +37,7 @@ export function cardArtwork(hero, choices = {}) {
   const art = options.find((x) => x.id === (choices?.art ?? null)) ?? options[0];
   if (!art) return null;
   const def = heroArt(typeof hero === "number" ? heroById(hero)?.name : hero);
-  const style = CARD_STYLES.some(([id]) => id === choices?.style) ? choices.style : def?.style ?? "stencil";
+  const style = CARD_STYLES.some(([id]) => id === choices?.style) ? choices.style : "plain";
   return { ...art, style, crop: validCardCrop(choices?.crop) ? choices.crop : null };
 }
 export function checkCardChoices({ hero = null, pos = null, art = null, style = null, crop = null }) {
@@ -51,7 +51,10 @@ export function checkCardChoices({ hero = null, pos = null, art = null, style = 
 
 export function validCardCrop(crop) {
   return crop != null && typeof crop === "object" && !Array.isArray(crop)
-    && Object.keys(crop).length === 3 && ["x", "y", "zoom"].every((key) => typeof crop[key] === "number" && Number.isFinite(crop[key]))
+    && Object.keys(crop).every((key) => ["x", "y", "zoom", "rot", "flip"].includes(key))
+    && ["x", "y", "zoom"].every((key) => typeof crop[key] === "number" && Number.isFinite(crop[key]))
+    && (crop.rot === undefined || (typeof crop.rot === "number" && crop.rot >= -180 && crop.rot <= 180))
+    && (crop.flip === undefined || typeof crop.flip === "boolean")
     && crop.x >= 0 && crop.x <= 100 && crop.y >= 0 && crop.y <= 100 && crop.zoom >= 1 && crop.zoom <= 3;
 }
 export function defaultCardCrop(art) {

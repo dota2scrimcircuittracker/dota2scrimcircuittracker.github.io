@@ -127,7 +127,7 @@ export function applyEquipment(card,e,name) {
       const host=card.querySelector('.ft-art');let img=host.querySelector('img');
       if(!img){img=document.createElement('img');img.alt='';host.append(img);}img.src=art.src;img.dataset.wide=heroImg(heroById(hero)?.name)??'';
       card.classList.toggle('ft-custom-crop',!!art.crop);
-      if(art.crop)for(const [k,v] of Object.entries(art.crop))card.style.setProperty(k==='zoom'?'--art-zoom':`--art-${k}`,k==='zoom'?v:`${v}%`);
+      if(art.crop){for(const k of ['x','y'])card.style.setProperty(`--art-${k}`,`${art.crop[k]}%`);card.style.setProperty('--art-zoom',art.crop.zoom);card.style.setProperty('--art-rot',`${art.crop.rot??0}deg`);card.style.setProperty('--art-flip',art.crop.flip?-1:1);}
       const label=card.querySelector('.ft-sig');if(label)label.textContent=heroById(hero)?.name??'';
       // The Dota Plus badge belongs to the shown hero: redraw it (the page's observer fills it in).
       const plus=card.querySelector('.ft-plus');
