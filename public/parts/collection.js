@@ -1,4 +1,4 @@
-import { esc, SOURCES, allLoad, pageList } from '../core.js';
+import { esc, SOURCES, allLoad, pageList, navigate } from '../core.js';
 import { steamAccount, steamLoginUrl, listCards } from '../lib/store.js';
 import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
 import { isThemedPack, parsePack, themedLabel, oddsText, ODDS_ROWS } from '../lib/pack-types.js';
@@ -134,7 +134,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   }
   function draw() {
     body._feedToken=null; // cancel a Feed request that finishes after another tab was chosen
-    body.dataset.collectionView=tab;
+    body.dataset.collectionView=tab;body.classList.remove('feed-body'); // the Feed's two-column layout (parts/feed.js) is the Feed's alone
     tabsHost.querySelectorAll('[data-tab]').forEach(b=>{b.setAttribute(tabBar?'aria-selected':'aria-pressed',String(b.dataset.tab===tab));if(tabBar)b.tabIndex=b.dataset.tab===tab?0:-1;b.disabled=busy;});
     if(tab==='packs')drawPacks();else if(tab==='collection')drawDex();else if(tab==='customize')drawEditor();else if(tab==='gallery')drawGallery(body,{viewer:own,signIn});else if(tab==='feed'){drawFeed(body,{viewer:own,signIn,action,swatch,colors,typeLabel,ago,focus});focus=null;}else drawRecycle();
   }
@@ -691,13 +691,13 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
       // Achievement progress is its own column right of the collection (parts/achievements.js, loaded on demand).
       const ach=document.createElement('div');section.append(ach);
       import('./achievements.js').then(m=>m.mountAchievementSummary(ach,account)).catch(()=>ach.remove());
-      // Your empty card slots show as outlines with an Add button that opens that slot in Customize.
+      // Your empty card slots show as outlines with an Add button that goes to that slot on the Gallery's Customize tab.
       const designsBox=section.querySelector('.profile-card-designs');
       preferences.cardDesigns.forEach((design,i)=>{
         if(design||!designsBox)return;
         const fig=document.createElement('figure');fig.className='card-slot-empty';fig.dataset.emptySlot=i;
         fig.innerHTML=`<button type="button" aria-label="Add a design to ${esc(cardSlotName(preferences,i))}"><span aria-hidden="true">+</span>Add card</button><figcaption>${esc(cardSlotName(preferences,i))}</figcaption>`;
-        fig.querySelector('button').onclick=()=>openCollection({tab:'customize',slot:i,name});
+        fig.querySelector('button').onclick=()=>navigate(`#/gallery/customize?slot=${i+1}`);
         const after=[...designsBox.querySelectorAll(':scope>figure')].find(f=>Number(f.querySelector('[data-design-slot]')?.dataset.designSlot??f.dataset.emptySlot)>i);
         designsBox.insertBefore(fig,after??null);
       });
