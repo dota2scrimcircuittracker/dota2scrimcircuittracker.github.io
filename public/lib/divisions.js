@@ -26,16 +26,17 @@ export const REMOVED = new Map([
 ]);
 // Series the admins announced before PlayOn posts them, per league key. Fantasy plays them as
 // that week's series until the sync brings PlayOn's own between the same teams (withAnnounced).
-// `home` null: decided by an earlier series (`after`). New season: empty it.
+// `home` null: decided by an earlier series (`after`). `pid`: a stand-in PlayOn-style int id
+// Predictions saves picks under (the rules want an int) until PlayOn's own series arrives. New season: empty it.
 // Week 8 tiebreakers, admins' announcement on Discord (2026-10-12): default date Thu Oct 15, the
 // usual league-night start (Fri 01:00 UTC).
 const WEEK8 = Date.UTC(2026, 9, 16, 1) / 1000;
 export const ANNOUNCED = {
-  challenger: [{ id: "tb-challenger-1", time: WEEK8, home: 15017, away: 15050, best_of: 3, note: "Tiebreaker for 4th seed" }], // Castaway Baes v Get Ganked Challenger 2
-  ad2l: [{ id: "tb-champion-1", time: WEEK8, home: 13679, away: 14997, best_of: 3, note: "Tiebreaker for 8th seed" }], // WIMCC v SWM.Twinks
+  challenger: [{ id: "tb-challenger-1", pid: -48001, time: WEEK8, home: 15017, away: 15050, best_of: 3, note: "Tiebreaker for 4th seed" }], // Castaway Baes v Get Ganked Challenger 2
+  ad2l: [{ id: "tb-champion-1", pid: -48002, time: WEEK8, home: 13679, away: 14997, best_of: 3, note: "Tiebreaker for 8th seed" }], // WIMCC v SWM.Twinks
   heroic: [
-    { id: "tb-heroic-1", time: WEEK8, home: 14948, away: 15027, best_of: 1, note: "Play-in" }, // Josh A. Suicidal Thoughts v A femboy + 4 Mejicanos
-    { id: "tb-heroic-2", time: WEEK8, home: null, away: 14571, best_of: 1, after: "tb-heroic-1", note: "Play-in winner v Team Awesome, for Heroic's 8th seed" },
+    { id: "tb-heroic-1", pid: -48003, time: WEEK8, home: 14948, away: 15027, best_of: 1, note: "Play-in" }, // Josh A. Suicidal Thoughts v A femboy + 4 Mejicanos
+    { id: "tb-heroic-2", pid: -48004, time: WEEK8, home: null, away: 14571, best_of: 1, after: "tb-heroic-1", note: "Play-in winner v Team Awesome, for Heroic's 8th seed" },
   ],
 };
 // A league's series plus its announced ones that PlayOn hasn't posted yet (no PlayOn series

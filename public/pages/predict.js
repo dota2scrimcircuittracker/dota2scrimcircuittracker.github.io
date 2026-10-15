@@ -2,7 +2,7 @@
 import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
-import { isPostseason, playoffs } from "../lib/divisions.js";
+import { isPostseason, playoffs, ANNOUNCED, withAnnounced } from "../lib/divisions.js";
 import { postseason, bracketPoints } from "../lib/playoffs.js";
 import { listPredictions, listBrackets, saveBracket, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
@@ -68,6 +68,21 @@ export async function renderPredict(src) {
   const uids = await myUids();
   const name = storedName();
   const teamName = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
+  // Week 8 tiebreakers the admins announced before PlayOn posts them (lib/divisions.js
+  // ANNOUNCED) join the slate under their stand-in id (`pid`). Once the sync brings PlayOn's
+  // own series between the same teams, picks made on the stand-in count for it.
+  const inDiv = (a) => a.home != null && teamName[a.home] && teamName[a.away];
+  const announced = (ANNOUNCED[src.key] ?? []).filter(inDiv);
+  const unposted = withAnnounced(src.key, d.series);
+  const tbRole = new Map(), alias = new Map(), pending = [];
+  for (const a of announced) {
+    const role = { label: `Week 8 · ${a.note}`, bestOf: a.best_of };
+    if (unposted.includes(a)) { pending.push({ ...a, id: a.pid }); tbRole.set(a.pid, role); continue; }
+    const real = d.series.find((s) => Math.abs((s.time ?? 0) - a.time) < 4 * 86400 && [a.home, a.away].every((t) => s.home === t || s.away === t));
+    if (real) { alias.set(a.pid, real.id); tbRole.set(real.id, role); }
+  }
+  if (preds && alias.size) preds = preds.map((p) => (alias.has(p.series_id) ? { ...p, series_id: alias.get(p.series_id) } : p));
+  const slate = [...d.series, ...pending];
   const params = tune(d.teams, d.series);
   const bt = backtest(d.teams, d.series, params);
   const ratings = fitRatings(d.teams, d.series, params);
@@ -82,14 +97,14 @@ export async function renderPredict(src) {
   const split = !!DIVISIONS[src.key]?.views;
   const ps = postseason(full.teams, full.series, fullRatings, { split });
   const bracketLocked = ps.lock != null && now >= ps.lock * 1000;
-  const roleOf = (s) => ps.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
+  const roleOf = (s) => tbRole.get(s.id) ?? ps.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
 
   // This week's slate: the earliest night still to be played. A series whose result never
   // came (a 0–0 between teams that dropped out) stops counting 3 days after its start, so
   // it can't hold the page on a dead week; a forfeit against the bye-week placeholder isn't
   // a match to call.
   const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
-  const upcoming = d.series.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
+  const upcoming = slate.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
   const night = upcoming.length ? Math.min(...upcoming.map((s) => s.time)) : null;
   const week = upcoming.filter((s) => s.time === night);
   const mine = (sid) => (preds ?? []).filter((p) => p.series_id === sid && uids.includes(p.uid)).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
@@ -190,13 +205,13 @@ export async function renderPredict(src) {
 
   const st = preds ? standings(preds, d.series, bt) : [];
   const playedNights = [...new Set(d.series.filter(isPlayed).map((s) => s.time))].sort((a, b) => b - a);
-  const valid = preds ? validPicks(preds, d.series) : [];
+  const valid = preds ? validPicks(preds, slate) : [];
   const myKey = nameKey(name);
 
   // Leaderboard: standings plus everyone's picks for the coming night, one column per
   // series. People with picks this week but nothing scored yet still get a row.
   const board = new Map(st.map((r) => [r.model ? "\u0000model" : nameKey(r.name), { ...r, now: {} }]));
-  const unplayed = new Set(d.series.filter((s) => !isPlayed(s)).map((s) => s.id));
+  const unplayed = new Set(slate.filter((s) => !isPlayed(s)).map((s) => s.id));
   for (const p of valid) {
     if (!unplayed.has(p.series_id)) continue;
     const k = nameKey(p.name);
