@@ -4,7 +4,7 @@ import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, collectionState, collect
 import { isThemedPack, parsePack, themedLabel, oddsText, ODDS_ROWS } from '../lib/pack-types.js';
 import { TIERS, itemByKey } from '../lib/cosmetics-catalog.js';
 import { signatureHtml, renderedName, signatureSize } from '../lib/signatures.js';
-import { createPlayerCards, PAINT_FILTER, wirePlayerCards } from './player-card.js';
+import { createPlayerCards, PAINT_FILTER, wirePlayerCards, fitDesignCards } from './player-card.js';
 import { startSteamSignIn, steamName } from './me.js';
 import { HERO_META } from '../lib/hero-meta.js';
 import { cardArtOptions, CARD_STYLES, defaultCardCrop, cardArtwork, screenArt, SCREEN_COUNT } from '../lib/card-art.js';
@@ -246,7 +246,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar"><label class="particle-speed-control">Particle speed <output data-particle-speed-value>${equipment.particleSpeed}%</output><input type="range" data-particle-speed min="50" max="200" step="10" value="${equipment.particleSpeed}" ${editable?'':'disabled'}></label><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
     wireCardSlots();
     if(editable)mountNameEditor(body.querySelector('[data-name-editor]'),{state,inGame:name,action,onSaved:next=>{state=next;draw();say(shownNickname(next)?`Showing ${shownNickname(next)} on your cards and profile.`:'Showing your in-game name.');}});
-    const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');
+    const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');fitDesignCards(card);
     card.querySelectorAll('button').forEach(b=>b.remove());
     const update=()=>{applyEquipment(card,equipment,shownName());wireSignature();say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');};
     const speedControl=body.querySelector('.particle-speed-control'),speedInput=body.querySelector('[data-particle-speed]');
@@ -422,9 +422,9 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
         const wheel=document.createElement('div'),dot=document.createElement('button');
         wheel.className='sig-wheel part-wheel';dot.type='button';dot.className='sig-wheel-handle';dot.setAttribute('aria-label',`Rotate ${label}`);dot.title='Drag to rotate (Shift snaps to 15°)';
         wheel.append(dot);front.append(wheel);
-        const place=()=>{const fr=front.getBoundingClientRect(),b=el.getBoundingClientRect(),d=Math.max(64,Math.max(b.width,b.height)+28);
+        const place=()=>{const fr=front.getBoundingClientRect(),b=el.getBoundingClientRect(),d=Math.max(64,Math.max(b.width,b.height)/(front.currentCSSZoom||1)+28);
           wheel.style.width=wheel.style.height=d+'px';wheel.style.setProperty('--wheel-r',d/2+'px');
-          wheel.style.left=(b.left+b.width/2-fr.left)+'px';wheel.style.top=(b.top+b.height/2-fr.top)+'px';dot.style.setProperty('--wheel-angle',(p.rot??0)+'deg');};
+          const z=front.currentCSSZoom||1;wheel.style.left=(b.left+b.width/2-fr.left)/z+'px';wheel.style.top=(b.top+b.height/2-fr.top)/z+'px';dot.style.setProperty('--wheel-angle',(p.rot??0)+'deg');};
         place();partWheelPlace=place;
         dot.onpointerdown=e=>{
           e.preventDefault();e.stopPropagation();dot.setPointerCapture(e.pointerId);wheel.classList.add('turning');
@@ -677,6 +677,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     // settings get a column of their own beside them (below).
     section.innerHTML=`<div class="profile-collection-main"><div class="profile-collection-head"><h3>Card collection</h3>${data.unavailable?'<p>Collection service is currently unavailable.</p>':`<strong>${count} / ${COLLECTION_TOTAL} discovered</strong><progress value="${count}" max="${COLLECTION_TOTAL}" aria-label="Collection completion"></progress>`}<button type="button" data-profile-collection>View collection & cards</button>${preferences.shuffleCards?'<p>Saved cards are on shuffle for other viewers.</p>':''}</div><div class="profile-collection-card profile-card-designs">${PAINT_FILTER}${showcase||cardHtml}</div></div>`;
     section.querySelector('[data-profile-collection]').onclick=()=>openCollection({tab:'collection',viewAccount:account,cardHtml,name});
+    fitDesignCards(section);
     wirePlayerCards(section.querySelector('.profile-collection-card'));
     if(showcase)mountRatings(section,account).catch(()=>{});
     steamAccount().catch(()=>null).then(async viewer=>{
@@ -776,7 +777,7 @@ async function drawGallery(body,{viewer,signIn}) {
     body.querySelector('[data-gallery-unrated]')?.addEventListener('change',e=>{unrated=e.target.checked;page=0;draw();});
     body.querySelector('[data-signin]')?.addEventListener('click',signIn);
     body.querySelectorAll('.gallery-grid figcaption a').forEach(a=>a.addEventListener('click',()=>body.closest('dialog.collection-dialog')?.close()));
-    const grid=body.querySelector('.gallery-grid');wirePlayerCards(grid);paginate();
+    const grid=body.querySelector('.gallery-grid');wirePlayerCards(grid);fitDesignCards(grid);paginate();
     // A vote updates that card's numbers in place; the order holds until the sort or filter changes.
     for(const c of shown)mountRating(grid.querySelector(`[data-gallery="${c.account}:${c.slot}"]`),c.account,c,{viewer,votes,onVote:next=>Object.assign(c,next)});
   };

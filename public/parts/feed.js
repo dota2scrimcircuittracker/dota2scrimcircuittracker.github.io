@@ -16,7 +16,7 @@ import { heroImg } from '../lib/hero-meta.js';
 import { composerHtml, wireComposer, shrinkImage, base64 } from './feed-compose.js';
 import { dotaEmoticonSrc, dotaEmoticonLabel, emoticonParts, emoticonCompletion, insertEmoticon } from '../lib/dota-emoticons.js';
 import { isAdmin } from '../lib/pack-gifts.js';
-import { createPlayerCards, PAINT_FILTER, wirePlayerCards } from './player-card.js';
+import { createPlayerCards, PAINT_FILTER, wirePlayerCards, fitDesignCards } from './player-card.js';
 import { steamName } from './me.js';
 import { mentionParts, mentionDirectory } from '../lib/mentions.js';
 import { wireMentions, mentionsOf, forgetMentions } from './feed-mentions.js';
@@ -408,6 +408,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       list.insertAdjacentHTML(pinned ? 'afterbegin' : 'beforeend', postHtml(p, pinned));
     }
     wirePlayerCards(list, { openOnCard: true });
+    list.querySelectorAll('.feed-card').forEach(fitDesignCards);
     mountCardRatings();
     fitAllReacts();
   }

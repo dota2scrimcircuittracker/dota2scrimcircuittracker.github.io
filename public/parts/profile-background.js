@@ -149,11 +149,15 @@ export function openBackgroundEditor({state,name,onSaved}) {
   // The preview copies this page's shape: the head's and the window's width to height.
   const head=document.querySelector('.pp-head'),ratio=(w,h,fallback)=>w>0&&h>0?w/h:fallback;
   const headRatio=ratio(head?.offsetWidth,head?.offsetHeight,6),pageRatio=ratio(innerWidth,innerHeight,16/9);
+  // For a whole-page background the preview also copies where things sit in the window: the sticky
+  // header (it covers the top of the background), and the head's place under it, in % of the window.
+  const pct=(n,of)=>Math.max(0,Math.min(100,n/of*100)).toFixed(2),hb=head?.getBoundingClientRect(),bar=document.querySelector('header');
+  const pageGeo=`--bar:${pct(bar?.offsetHeight??0,innerHeight)}%;--head-top:${pct(hb?(hb.top+scrollY):innerHeight*.3,innerHeight)}%;--head-h:${pct(head?.offsetHeight??innerHeight*.25,innerHeight)}%;--head-side:${pct(hb?.left??0,innerWidth)}%`;
   const dialog=document.createElement('dialog');dialog.className='collection-dialog pbg-editor';dialog.setAttribute('aria-labelledby','pbg-title');
   dialog.innerHTML=`<div class="collection-head"><div><small>YOUR PROFILE</small><h2 id="pbg-title">Profile background</h2></div><div class="collection-head-actions"><button type="button" data-close aria-label="Close">×</button></div></div>
     <div class="collection-body"><div class="pbg-grid">
       <div class="pbg-preview-col"><div class="pbg-preview-heading"><strong>Live preview</strong><span>Drag the image to choose which part shows.</span></div>
-        <div class="pbg-preview" style="--head-ratio:${headRatio.toFixed(2)};aspect-ratio:${pageRatio.toFixed(2)}" data-pbg-preview></div>
+        <div class="pbg-preview" style="--head-ratio:${headRatio.toFixed(2)};${pageGeo};aspect-ratio:${pageRatio.toFixed(2)}" data-pbg-preview></div>
         <fieldset class="image-choice-group pbg-screens"><legend>Background</legend><div class="pbg-screen-grid">${[{id:null,label:'None'},...owned].map(s=>`<button type="button" data-bg="${s.id??''}" title="${esc(s.label)}">${s.src?artHtml(s,'plain',' loading="lazy"'):'<span class="image-choice-empty">None</span>'}<strong>${esc(s.label)}</strong></button>`).join('')}</div>${owned.length?'':'<p>Open loading screen packs to collect backgrounds.</p>'}</fieldset></div>
       <div class="pbg-controls">
         <fieldset class="pbg-place"><legend>Where</legend><div><button type="button" data-place="head">Behind your name</button><button type="button" data-place="page">Whole page</button></div></fieldset>
@@ -172,7 +176,7 @@ export function openBackgroundEditor({state,name,onSaved}) {
   const draw=()=>{
     const shown=bg&&{...bg,place,sig};
     preview.dataset.place=place;
-    preview.innerHTML=`${place==='page'?layerHtml(shown,name):''}<div class="pbg-mock-head${bg?.text?.startsWith('#')?' pbg-text':''}"${bg?.text?.startsWith('#')?` style="--pbg-text:${bg.text}"`:''}>${place==='head'?layerHtml(shown,name):''}<span class="pbg-mock-kicker">Players › ${esc(name)}</span><b>${esc(name)}</b><span class="pbg-mock-tabs">Stats · Heroes · Combat · Games</span></div><div class="pbg-mock-body"><i></i><i></i><i></i><i class="wide"></i></div>`;
+    preview.innerHTML=`${place==='page'?layerHtml(shown,name)+'<div class="pbg-mock-bar"></div>':''}<div class="pbg-mock-head${bg?.text?.startsWith('#')?' pbg-text':''}"${bg?.text?.startsWith('#')?` style="--pbg-text:${bg.text}"`:''}>${place==='head'?layerHtml(shown,name):''}<span class="pbg-mock-kicker">Players › ${esc(name)}</span><b>${esc(name)}</b><span class="pbg-mock-tabs">Stats · Heroes · Combat · Games</span></div><div class="pbg-mock-body"><i></i><i></i><i></i><i class="wide"></i></div>`;
     $$('[data-place]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.place===place)));
     $$('[data-bg]').forEach(b=>b.setAttribute('aria-pressed',String((bg?.id??'')===b.dataset.bg)));
     $$('[data-slider]').forEach(input=>{const k=input.dataset.slider;input.disabled=!bg;input.value=bg?.[k]??fresh(null)[k];$(`[data-out="${k}"]`).textContent=bg?(k==='zoom'?`${Number(bg[k]).toFixed(2)}×`:`${Math.round(bg[k])}${k==='dim'?'%':k==='hue'?'°':''}`):'';});

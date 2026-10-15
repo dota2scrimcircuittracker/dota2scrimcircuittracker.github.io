@@ -201,6 +201,38 @@ export function flipPlayerCard(c, on) {
   if (fp) fp.tabIndex = on ? -1 : 0;
   if (bp) bp.tabIndex = on ? 0 : -1;
 }
+// Design cards (the Customize preview, the Gallery, profile slots, the Feed, the full-size view)
+// are laid out at the preview's width and zoomed to the size their page gives them, so each is the
+// preview scaled. Laid out at their own width, the card's px and clamp() sizes give a smaller card a
+// different shape (FB-26XITV). The size is measured with the zoom off, then the card goes to
+// CARD_DESIGN_WIDTH (CSS .ft-fit) zoomed to it; a resize of the card's box measures again.
+export const CARD_DESIGN_WIDTH = 280;
+function fitCard(card) {
+  card.classList.remove("ft-fit");
+  card.style.removeProperty("zoom");
+  const w = card.offsetWidth;
+  if (!w) return; // hidden (another page of the Gallery): measured when it shows
+  card.classList.add("ft-fit");
+  card.style.zoom = (w / CARD_DESIGN_WIDTH).toFixed(4);
+}
+const fitBoxes = new ResizeObserver((entries) => {
+  for (const { target } of entries) {
+    const cards = [...(target._fitCards ?? [])].filter((c) => c.isConnected);
+    if (!cards.length) { fitBoxes.unobserve(target); continue; }
+    target._fitCards = new Set(cards);
+    cards.forEach(fitCard);
+  }
+});
+export function fitDesignCards(host) {
+  if (!host) return;
+  const cards = host.matches?.(".ft-card") ? [host] : host.querySelectorAll(".ft-card");
+  for (const card of cards) {
+    const box = card.parentElement;
+    fitCard(card);
+    (box._fitCards ??= new Set()).add(card);
+    fitBoxes.observe(box);
+  }
+}
 // A card full size: a copy in a dialog that fills the screen, still flips, Esc or × to close.
 export function showBigCard(c) {
   const dlg = document.createElement("dialog");
@@ -218,6 +250,7 @@ export function showBigCard(c) {
   dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
   dlg.addEventListener("close", () => { if (!dlg.open) dlg.remove(); });
   dlg.showModal();
+  if (c.classList.contains("ft-fit")) fitDesignCards(copy);
   copy.querySelector(".ft-turn")?.focus();
 }
 const wired = new WeakSet();
