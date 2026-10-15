@@ -140,7 +140,7 @@ export class CosmeticsVault {
         // Fav's pinned post leads the first page of the whole Feed and is left out of the rest.
         if(pinId){
           if(who==null&&before===Infinity&&!offset){const p=await this.postById(pinId);if(p&&FEED_TYPES[type].match(p))pinned={...p,pinned:true};}
-          posts=posts.filter(p=>p.id!==pinId);
+          if(who==null)posts=posts.filter(p=>p.id!==pinId);
         }
         if(sort==='top'&&range!=='all')posts=posts.filter(p=>p.at>=Date.now()-FEED_RANGES[range].ms);
         if(sort==='new')posts=posts.filter(p=>p.at<before).sort((a,b)=>b.at-a.at);
