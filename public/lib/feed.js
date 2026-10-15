@@ -352,11 +352,25 @@ export function setFeedAuto(state, { cards, rarities, screens } = {}) {
   return { ...state, feedAuto: { cards, rarities: PULL_RARITIES.filter((r) => rarities.includes(r)), screens } };
 }
 // What a freshly opened pack posts: the cards of the rarities switched on, and the loading screens
-// when those are on. Null when there's nothing to post.
+// when those are on. A copy of a card the player already had is never posted, only its first pull.
+// Null when there's nothing to post.
 export function pullPost(rewards, screens, auto, rarityOf) {
-  const items = (rewards ?? []).map((r) => r.key).filter((k) => auto.rarities.includes(rarityOf(k)));
+  const items = (rewards ?? []).filter((r) => !r.duplicate).map((r) => r.key).filter((k) => auto.rarities.includes(rarityOf(k)));
   const shown = auto.screens ? [...(screens ?? [])] : [];
   return items.length || shown.length ? { items, ...(shown.length ? { screens: shown } : {}) } : null;
+}
+
+// Pull posts made before copies were skipped: keep each player's first post of a card, drop the
+// later ones (a pull left with only repeats disappears; screens-only pulls stay).
+export function dedupePulls(pulls) {
+  const seen = new Set();
+  const keep = [];
+  for (const p of [...pulls].sort((a, b) => a.at - b.at)) {
+    const items = (p.items ?? []).filter((k) => !seen.has(`${p.account}:${k}`));
+    items.forEach((k) => seen.add(`${p.account}:${k}`));
+    if (items.length || p.screens?.length) keep.push({ ...p, items });
+  }
+  return keep;
 }
 
 // Bans: Fav stops a player posting, commenting or reacting, any mix of the three. Stored on the

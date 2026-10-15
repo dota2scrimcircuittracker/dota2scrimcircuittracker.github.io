@@ -4,7 +4,7 @@ import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-cata
 import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
 import { checkImages } from './image-check.js';
-import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
+import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
 
 // A player's Fantasy entries from Firestore. The collection is public to read (firebase/scrimleague.rules),
@@ -161,7 +161,7 @@ export class CosmeticsVault {
       } else {
         const rows=who==null?[...await this.ctx.storage.list({prefix:'post:'})]:[...await this.ctx.storage.list({prefix:`post:c:${who}:`}),...await this.ctx.storage.list({prefix:`post:u:${who}:`})];
         const cards=rows.map(([k,v])=>({id:k.slice(5),...v}));
-        const pulls=[...(await this.ctx.storage.list({prefix:'pull:'}))].map(([k,v])=>({id:`p:${k.slice(5)}`,kind:'pull',...v})).filter(p=>who==null||String(p.account)===who);
+        const pulls=dedupePulls([...(await this.ctx.storage.list({prefix:'pull:'}))].map(([k,v])=>({id:`p:${k.slice(5)}`,kind:'pull',...v}))).filter(p=>who==null||String(p.account)===who);
         posts=[...cards,...pulls].filter(p=>feedShows(type,exclude,p));
         if(from)posts=posts.filter(p=>from.has(String(p.account)));
         // Fav's pinned post leads the first page of the whole Feed and is left out of the rest.

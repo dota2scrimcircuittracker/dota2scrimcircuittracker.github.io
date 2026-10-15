@@ -369,6 +369,9 @@ test('auto-post settings: defaults, checking, and what a pack posts',async()=>{
   assert.deepEqual(pullPost(rewards,['scr:1'],{cards:true,rarities:['common'],screens:true},k=>rarity[k]),{items:['a'],screens:['scr:1']});
   assert.deepEqual(pullPost([],['scr:1','scr:2'],{cards:true,rarities:[],screens:true},k=>rarity[k]),{items:[],screens:['scr:1','scr:2']});
   assert.equal(pullPost(rewards,['scr:1'],{cards:true,rarities:[],screens:false},k=>rarity[k]),null);
+  // A copy of a card already owned doesn't post.
+  assert.equal(pullPost([{key:'c',duplicate:true}],[],feedAutoOf({}),k=>rarity[k]),null);
+  assert.deepEqual(pullPost([{key:'c',duplicate:true},{key:'c'}],[],feedAutoOf({}),k=>rarity[k]),{items:['c']});
 });
 test('vault: auto-post settings decide card and pull posts; a profile reads one player\'s feed',async()=>{
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).sort(([a],[b])=>a<b?-1:1))};storage.transaction=fn=>fn(storage);
@@ -389,7 +392,7 @@ test('vault: auto-post settings decide card and pull posts; a profile reads one 
   await act('101',{action:'feed-auto',cards:true,rarities:['common','rare','epic','legendary'],screens:true});
   const opened=await act('101',{action:'open',packIndex:0});
   const pull=[...rows].find(([k])=>k.startsWith('pull:'))[1];
-  assert.deepEqual(pull.items,opened.rewards.map(r=>r.key));assert.deepEqual(pull.screens??[],opened.screens);
+  assert.deepEqual(pull.items,opened.rewards.filter(r=>!r.duplicate).map(r=>r.key));assert.deepEqual(pull.screens??[],opened.screens);
   assert.equal((await act('101',{action:'feed-auto',cards:true,rarities:'all',screens:true})).status,400);
   // 202's card posts by default; ?account keeps one player's posts.
   await act('202',{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:80}});
@@ -445,4 +448,9 @@ test('a comment can be a picture or GIF alone; the bytes are checked',()=>{
   assert.equal(comment.image.type,'image/gif');
   assert.throws(()=>addComment([],{account:'1',text:'',at:5}),/Write a comment/);
   assert.throws(()=>addComment([],{account:'1',text:'hi',at:5,image:Uint8Array.from([60,115,118,103])}),/JPEG, PNG, GIF or WebP/);
+});
+test('dedupePulls keeps a player\'s first post of each card',async()=>{
+  const {dedupePulls}=await import('../public/lib/feed.js');
+  const out=dedupePulls([{id:'p:2',account:'1',at:2,items:['a']},{id:'p:1',account:'1',at:1,items:['a']},{id:'p:3',account:'2',at:3,items:['a']},{id:'p:4',account:'1',at:4,items:['a','b']}]);
+  assert.deepEqual(out.map(p=>[p.id,p.items]),[['p:1',['a']],['p:3',['a']],['p:4',['b']]]);
 });
