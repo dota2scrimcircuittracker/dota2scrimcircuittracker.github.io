@@ -2722,7 +2722,7 @@ button.ga-go:hover:not(:disabled) { background: var(--accent); color: var(--on-a
 .pbg-layer.pbg-fixed { position: fixed; z-index: -1; }
 /* The head's text in the colour picked in the background editor (--pbg-text), with a shadow so it
    reads over the art. Unpicked tabs stay a step fainter than the picked one. */
-.pp-head.pbg-text :is(.kicker, .kicker a, .crumbs li::before, .crumbs [aria-current], .h1-name, .h1-name *, .pp-sub, .pp-sub *, .pp-tabs button) { color: var(--pbg-text); text-shadow: 0 1px 2px rgb(0 0 0 / .7), 0 0 10px rgb(0 0 0 / .45); }
+.pp-head.pbg-text :is(.kicker, .kicker a, .crumbs li::before, .crumbs [aria-current], .h1-name, .h1-name *, .pp-sub, .pp-sub *, .pp-follows, .pp-follows *, .pp-tabs button) { color: var(--pbg-text); text-shadow: 0 1px 2px rgb(0 0 0 / .7), 0 0 10px rgb(0 0 0 / .45); }
 .pp-head.pbg-text .pp-tabs button:not([aria-selected="true"]) { opacity: .72; }
 .pp-head.pbg-text .pp-tabs button:hover { opacity: 1; }
 /* Auto text: the site's colours with a shadow, and dark ink on the pieces over bright art
@@ -2748,6 +2748,8 @@ button.ga-go:hover:not(:disabled) { background: var(--accent); color: var(--on-a
 .pp-hero-img { width: 128px; aspect-ratio: 16 / 9; object-fit: cover; margin-bottom: 14px; border: 1px solid var(--seam-2); box-shadow: 0 18px 40px -18px #000; }
 @media (max-width: 760px) { .pp-hero-img { width: 96px; } }
 .pp-row .pp-sub { margin: 0 0 16px; color: var(--dust); max-width: none; }
+.pp-row .pp-follows { display: flex; gap: 14px; margin: 0 0 16px; color: var(--dust); font-size: 14px; }
+.pp-row .pp-follows strong { color: var(--bone); font-variant-numeric: tabular-nums; }
 .pp-row .pp-tabs { margin-left: auto; }
 .pp-tabs { display: flex; gap: 2px; flex-wrap: wrap; }
 .pp-tabs button {

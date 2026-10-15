@@ -1,4 +1,4 @@
-import { esc, SOURCES, allLoad, pageList, navigate } from '../core.js';
+import { esc, fmt, SOURCES, allLoad, pageList, navigate } from '../core.js';
 import { steamAccount, steamLoginUrl, listCards } from '../lib/store.js';
 import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
 import { isThemedPack, parsePack, themedLabel, oddsText, ODDS_ROWS } from '../lib/pack-types.js';
@@ -668,7 +668,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
   try {
     const [data,cards]=await Promise.all([publicCollection(account).catch(()=>({inventory:{},unavailable:true})),listCards().catch(()=>new Map())]);if(!section.isConnected)return;
     if(data.equipment)cards.set(account,{...cards.get(account),cosmetics:{...data.equipment,nickname:data.nickname??null}});
-    profileTitle(data.nickname,name);showProfileBackground(data.background,data.nickname??name);
+    profileTitle(data.nickname,name);profileFollows(data);showProfileBackground(data.background,data.nickname??name);
     const count=CATALOG.filter(i=>data.inventory[i.key]>0).length+new Set(data.screens??[]).size,renderer=createPlayerCards(matches,{cards,tiers:new Map(tier?[[String(account),tier]]:[])});
     const preferences=cardDesignState(data),player={account,name,team:team??'AD2L'};
     const cardHtml=PAINT_FILTER+renderer.card(player,null,{own:true,equipmentOverride:preferences.cardDesigns[preferences.primaryCard]});
@@ -821,6 +821,13 @@ export function mountNameEditor(host,{state,inGame,action=collectionAction,onSav
     catch(err){msg.textContent=err.message;}
     finally{form.querySelector('button').disabled=false;}
   };
+}
+// Followers and following counts beside the profile's name (Worker GET /collection/<account>).
+function profileFollows({followers,following}) {
+  const h1=document.querySelector('.pp-head .h1-name, .page-head .h1-name')?.closest('h1');if(!h1||followers==null)return;
+  const p=h1.parentElement.querySelector('.pp-follows')??document.createElement('p');p.className='pp-follows';
+  p.innerHTML=`<span><strong>${fmt(followers)}</strong> ${followers===1?'follower':'followers'}</span><span><strong>${fmt(following)}</strong> following</span>`;
+  if(!p.isConnected)h1.after(p);
 }
 // A profile's title: the nickname they show, then their in-game name in brackets.
 function profileTitle(nickname,inGame) {
