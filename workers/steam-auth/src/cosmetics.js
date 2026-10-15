@@ -345,6 +345,24 @@ export class CosmeticsVault {
           else{if(!await this.postById(post,txn))throw new Error('That post is gone.');await txn.put('feed-pin',post);}
           result={state:saved,post};
         }
+        // Fav sends a post (a poll, an update) to every player's notices. Pressing it again on the
+        // same post replaces the earlier one instead of stacking.
+        else if(body.action==='post-notify') {
+          if(!isAdmin(account))throw new Error('Only Fav can notify players.');
+          const post=String(body.post??'');
+          if(!isPostId(post))throw new Error('Choose a post.');
+          const stored=await this.postById(post,txn);
+          if(!stored)throw new Error('That post is gone.');
+          const text=String(body.text??'').trim().slice(0,120)||plainMentions(stored.text??'').slice(0,120)||'New from Fav',now=Date.now();
+          const notice={kind:'announce',post,from:account,fromName:'Fav',text,at:now};
+          let sent=0;
+          for(const [k,state] of await txn.list({prefix:'user:',limit:5000})) {
+            if(k.slice(5)===account)continue;
+            const kept={...state,notices:(state.notices??[]).filter(n=>!(n.kind==='announce'&&n.post===post))};
+            await txn.put(k,pushNotice(kept,notice));sent++;
+          }
+          result={state:saved,post,sent};
+        }
         // Fav bans a player from posting, commenting or reacting (body.scope, all three when left
         // out), for some days or until lifted.
         else if(body.action==='ban') {

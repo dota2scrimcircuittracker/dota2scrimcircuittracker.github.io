@@ -8,7 +8,7 @@ import { steamName } from './me.js';
 
 let shown = '';
 function showCommentNotice(state) {
-  const unread = unreadNotices(state).filter((n) => ['comment', 'reply', 'mention'].includes(n.kind));
+  const unread = unreadNotices(state).filter((n) => ['comment', 'reply', 'mention', 'announce'].includes(n.kind));
   const id = unread.map((n) => n.at).join(',');
   if (!unread.length) { document.querySelector('.comment-notice')?.remove(); shown = ''; return; }
   if (id === shown) return;
@@ -18,7 +18,7 @@ function showCommentNotice(state) {
   const box = document.createElement('aside');
   box.className = 'gift-notice comment-notice';
   box.setAttribute('role', 'status');
-  box.innerHTML = `<strong>${unread.length === 1 ? `${esc(from)} ${{ reply: 'replied to your comment', mention: 'mentioned you' }[last.kind] ?? 'commented on your post'}` : `${unread.length} new comments, replies and mentions`}</strong>
+  box.innerHTML = `<strong>${unread.length === 1 ? `${esc(from)} ${{ reply: 'replied to your comment', mention: 'mentioned you', announce: 'posted an update' }[last.kind] ?? 'commented on your post'}` : `${unread.length} new notifications`}</strong>
     <q>${esc(last.text)}</q>
     <div><button type="button" data-notice-open>View</button><button type="button" class="link-btn" data-notice-dismiss>Dismiss</button></div>`;
   document.body.append(box);

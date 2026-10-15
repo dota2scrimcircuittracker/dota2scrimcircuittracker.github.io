@@ -73,6 +73,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     if (me == null) return '';
     const other = String(p.account) !== me, out = [];
     if (admin && account == null) out.push(`<button type="button" class="link-btn" data-pin-post="${p.pinned ? 'off' : 'on'}">${p.pinned ? 'Unpin' : 'Pin'}</button>`);
+    if (admin && account == null) out.push('<button type="button" class="link-btn" data-notify-post title="Send this post to every player as a notification">Notify</button>');
     if (canRemovePost(p.id, me, admin)) out.push('<button type="button" class="link-btn" data-remove-post>Delete</button>');
     if (other && account == null) out.push(`<button type="button" class="link-btn" data-unfollow="${esc(p.account)}" title="Hide ${esc(nameOf(p.account))}'s posts from your Feed">Unfollow</button>`);
     if (other && admin) out.push(`<button type="button" class="link-btn feed-ban" data-ban="${esc(p.account)}" data-ban-from="post">Ban</button>`);
@@ -584,6 +585,16 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       pin.disabled = true;
       try { await action('post-pin', { post: id, pinned: pin.dataset.pinPost === 'on' }); } catch (err) { pin.disabled = false; fail(article, err.message); return; }
       return changeView();
+    }
+    const notify = e.target.closest('[data-notify-post]');
+    if (notify) {
+      if (!confirm('Send this post to every player as a notification?')) return;
+      notify.disabled = true;
+      try {
+        const r = await action('post-notify', { post: id });
+        notify.textContent = `Sent${r?.sent != null ? ` (${r.sent})` : ''}`;
+      } catch (err) { notify.disabled = false; fail(article, err.message); }
+      return;
     }
     if (e.target.closest('[data-remove-post]')) {
       if (!confirm('Delete this post? Its images, reactions and comments go too.')) return;
