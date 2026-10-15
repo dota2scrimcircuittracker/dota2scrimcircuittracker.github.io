@@ -1,13 +1,14 @@
 import { esc, SOURCES, allLoad, pageList } from '../core.js';
 import { steamAccount, steamLoginUrl, listCards } from '../lib/store.js';
 import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
+import { isThemedPack, parsePack, themedLabel, oddsText, ODDS_ROWS } from '../lib/pack-types.js';
 import { TIERS, itemByKey } from '../lib/cosmetics-catalog.js';
 import { signatureHtml, renderedName, signatureSize } from '../lib/signatures.js';
 import { createPlayerCards, PAINT_FILTER, wirePlayerCards } from './player-card.js';
 import { startSteamSignIn, steamName } from './me.js';
 import { HERO_META } from '../lib/hero-meta.js';
 import { cardArtOptions, CARD_STYLES, defaultCardCrop, cardArtwork, screenArt, SCREEN_COUNT } from '../lib/card-art.js';
-import { cardDesignState, shownNickname, RECYCLE_COST } from '../lib/cosmetics-engine.js';
+import { cardDesignState, cardSlotName, shownNickname, RECYCLE_COST, MAX_EMBLEMS } from '../lib/cosmetics-engine.js';
 import { availablePackOffers, completedPackOffers, markPackOfferClaimed } from '../lib/bonus-offers.js';
 import { startFeedback } from '../lib/feedback.js';
 import { showProfileBackground, mountBackgroundButton, letterCaseHtml, drawLetterCase } from './profile-background.js';
@@ -52,7 +53,7 @@ const screenDexHtml=(owned,status,hero,preview,empty='<p>No loading screens matc
 // (pages/gallery.js), whose own sub-tab bar (`tabBar`, the site's tabs, [data-tab] buttons)
 // switches the sections. onTab hears each tab change so the address can follow it.
 // focus: a Feed post to pin at the top (from a comment notice).
-export async function openCollection({tab='packs',viewAccount=null,cardHtml=null,name=null,adapter=null,page=null,tabBar=null,onTab=null,focus=null}={}) {
+export async function openCollection({tab='packs',viewAccount=null,cardHtml=null,name=null,adapter=null,page=null,tabBar=null,onTab=null,focus=null,slot=null}={}) {
   if(tab==='log')tab='feed'; // the Feed replaced the Log
   const own=adapter?.account??await steamAccount().catch(()=>null), target=viewAccount??own, editable=target!=null&&target===own;
   name=name??steamName(target)??'Your Name';
@@ -101,7 +102,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   dialog.addEventListener('close',()=>{if(dialog.open)return;/* feedback mode reopening it */if(dialog._revealTimer)clearTimeout(dialog._revealTimer);clearInterval(dialog._packTimer);dialog.remove();});
   tabsHost.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;onTab?.(tab);draw();});
   try {
-    if(editable) {const data=adapter?{state:adapter.state}:await action('session');if(data.serverNow)clockOffset=data.serverNow-Date.now();state=data.state;selectedSlot=state.primaryCard??0;inventory=state.inventory;equipment=selectedEquipment();initialEquipment=JSON.stringify(equipment);}
+    if(editable) {const data=adapter?{state:adapter.state}:await action('session');if(data.serverNow)clockOffset=data.serverNow-Date.now();state=data.state;selectedSlot=slot??state.primaryCard??0;inventory=state.inventory;equipment=selectedEquipment();initialEquipment=JSON.stringify(equipment);}
     else if(target!=null) {const data=await publicCollection(target);publicDesigns=data;selectedSlot=data.primaryCard??0;inventory=data.inventory;equipment={...DEFAULT_EQUIPMENT,...data.equipment};}
   } catch(e){say(e.message);}
   // Use the site's existing shared card, including its artwork choices and crop.
@@ -120,14 +121,15 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   const signIn=()=>{closeView();startSteamSignIn();};
   function cardSlotsHtml() {
     const prefs=designs();
-    return `<div class="card-slots" aria-label="Saved card designs">${prefs.cardDesigns.map((design,i)=>`<button type="button" data-card-slot="${i}" aria-pressed="${i===selectedSlot}">Card ${i+1}<small>${i===prefs.primaryCard?'Primary':design?'Saved':editable?'Create design':'Empty'}</small></button>`).join('')}</div>${editable?`<div class="card-preferences"><button type="button" data-primary ${selectedSlot===prefs.primaryCard||!prefs.cardDesigns[selectedSlot]?'disabled':''}>${selectedSlot===prefs.primaryCard?'Primary card':'Make primary'}</button><label><input type="checkbox" data-shuffle ${prefs.shuffleCards?'checked':''}> Shuffle saved cards for other viewers</label></div>`:''}`;
+    return `<div class="card-slots" aria-label="Saved card designs">${prefs.cardDesigns.map((design,i)=>`<button type="button" data-card-slot="${i}" aria-pressed="${i===selectedSlot}">${esc(cardSlotName(prefs,i))}<small>${i===prefs.primaryCard?'Primary':design?'Saved':editable?'Create design':'Empty'}</small></button>`).join('')}</div>${editable?`<div class="card-preferences"><form class="card-slot-name" data-slot-name><label>Design name <input name="name" maxlength="${MAX_NAME}" placeholder="Card ${selectedSlot+1}" value="${esc(prefs.cardNames[selectedSlot]??'')}"></label><button type="submit">Save name</button></form><button type="button" data-primary ${selectedSlot===prefs.primaryCard||!prefs.cardDesigns[selectedSlot]?'disabled':''}>${selectedSlot===prefs.primaryCard?'Primary card':'Make primary'}</button><label><input type="checkbox" data-shuffle ${prefs.shuffleCards?'checked':''}> Shuffle saved cards for other viewers</label></div>`:''}`;
   }
   function wireCardSlots() {
     body.querySelectorAll('[data-card-slot]').forEach(b=>{b.disabled=busy||(!editable&&!designs().cardDesigns[Number(b.dataset.cardSlot)]);b.onclick=()=>{
       previewItem=null;selectedSlot=Number(b.dataset.cardSlot);equipment=structuredClone(selectedEquipment());initialEquipment=JSON.stringify(equipment);
       if(editable&&!designs().cardDesigns[selectedSlot])tab='customize';draw();
     };});
-    body.querySelector('[data-primary]')?.addEventListener('click',async()=>{const data=await run('card-settings',{primaryCard:selectedSlot});if(data){draw();say(`Card ${selectedSlot+1} is now primary.`);}});
+    body.querySelector('[data-primary]')?.addEventListener('click',async()=>{const data=await run('card-settings',{primaryCard:selectedSlot});if(data){draw();say(`${cardSlotName(designs(),selectedSlot)} is now primary.`);}});
+    body.querySelector('[data-slot-name]')?.addEventListener('submit',async e=>{e.preventDefault();const name=e.target.elements.name.value;const data=await run('card-name',{cardSlot:selectedSlot,name});if(data){draw();say(name.trim()?`Named it ${cardSlotName(designs(),selectedSlot)}.`:`Back to ${cardSlotName(designs(),selectedSlot)}.`);}});
     body.querySelector('[data-shuffle]')?.addEventListener('change',async e=>{const enabled=e.target.checked;const data=await run('card-settings',{shuffleCards:enabled});draw();if(data)say(enabled?'Other viewers will see a shuffled saved design.':'Other viewers will see your primary card.');});
   }
   function draw() {
@@ -142,7 +144,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const done=completedPackOffers(state),steps=[['feedback','Send Feedback','Use the Feedback button in the top bar.'],['tour','Take the New here? tour','Finish the basic site tour.'],['discord','Join the Discord','Use the Discord link in the footer.']].filter(([s])=>!done.has(s));
     const offerGuide=steps.length?`<aside class="pack-offer-guide"><strong>Earn ${steps.length===1?'1 more bonus pack':`up to ${steps.length} bonus packs`}</strong><span>Complete each action once. Every one gives you an extra pack.</span><div class="pack-offer-steps" style="--steps:${steps.length}">${steps.map(([,t,d],i)=>`<div><b>${i+1}</b><strong>${t}</strong><small>${d}</small></div>`).join('')}</div></aside>`:'';
     const offerLabel=offers.map(s=>s==='feedback'?'feedback':s==='tour'?'the basic site tour':'joining Discord').join(' · ');
-    body.innerHTML=`<div class="pack-intro"><div class="gift-hero">${gift}</div><h3>${editable?`${packs.length} packs ready`:'Collect your first cards'}</h3><p>Three cards in every pack. Any mix of borders, finishes, signature styles and legendary name rendering. Plus two loading screens you don't have yet, to use as card art.</p><p class="pack-odds">69% Common · 17% Rare · 10% Epic · 4% Legendary <small>Odds per card in a normal pack.</small></p><p>Three welcome packs when you first connect Steam. Earn one normal pack every eight hours, stored up to three. Upgrade packs are stored separately.</p>${offerLabel?`<aside class="pack-offer" role="status"><strong>Bonus pack unlocked</strong><span>You completed ${offerLabel}. Claim your one-time extra pack.</span><button type="button" data-claim-bonus>Claim bonus pack</button></aside>`:''}</div>${editable?`<div class="pack-list">${packs.map((min,i)=>`<button type="button" data-open="${i}" class="pack-box available" style="--rarity:${min==='screens'?SCREEN_PACK_COLOR:colors[min]}">${gift}<strong>${min==='screens'?'Loading screen pack':min==='common'?'Normal / welcome pack':`${min} upgrade pack`}</strong><small>${min==='screens'?'5 new loading screens':'3 cards + 2 screens'}</small></button>`).join('')}${normal<3?`<div class="pack-box charging" style="--rarity:${colors.common}">${gift}<strong>Next pack</strong><b data-pack-timer>--:--:--</b><small>${normal} / 3 normal packs stored</small></div>`:''}</div>`:'<button type="button" data-signin>Connect Steam</button>'}${editable?'<p class="pack-countdown" data-pack-countdown></p>':''}<div class="pack-results" aria-live="polite"></div>`;
+    body.innerHTML=`<div class="pack-intro"><div class="gift-hero">${gift}</div><h3>${editable?`${packs.length} packs ready`:'Collect your first cards'}</h3><p>Three cards in every pack. Any mix of borders, finishes, signature styles and legendary name rendering. Plus two loading screens you don't have yet, to use as card art.</p><p class="pack-odds">69% Common · 17% Rare · 10% Epic · 4% Legendary <small>Odds per card in a normal pack.</small></p><details class="pack-odds-all"><summary>Odds for every pack</summary><table><thead><tr><th>Pack</th><th>Each item is</th></tr></thead><tbody>${ODDS_ROWS.map(([p,n,what])=>`<tr><td>${n}<small>${what}</small></td><td>${oddsText(p)}</td></tr>`).join('')}</tbody></table><small>A pack's rarity is its minimum. Where a kind has no items at a rarity, those rolls move up to the next one it has.</small></details><p>Three welcome packs when you first connect Steam. Earn one normal pack every eight hours, stored up to three. Upgrade packs are stored separately.</p>${offerLabel?`<aside class="pack-offer" role="status"><strong>Bonus pack unlocked</strong><span>You completed ${offerLabel}. Claim your one-time extra pack.</span><button type="button" data-claim-bonus>Claim bonus pack</button></aside>`:''}</div>${editable?`<div class="pack-list">${packs.map((min,i)=>`<button type="button" data-open="${i}" class="pack-box available" style="--rarity:${min==='screens'?SCREEN_PACK_COLOR:colors[parsePack(min).tier??min]}">${gift}<strong>${min==='screens'?'Loading screen pack':isThemedPack(min)?themedLabel(min):min==='common'?'Normal / welcome pack':`${min} upgrade pack`}</strong><small>${min==='screens'?'5 new loading screens':isThemedPack(min)?'3 '+parsePack(min).kind+' items':'3 cards + 2 screens'}</small>${min==='screens'?'':`<small class="pack-box-odds">${oddsText(min)}</small>`}</button>`).join('')}${normal<3?`<div class="pack-box charging" style="--rarity:${colors.common}">${gift}<strong>Next pack</strong><b data-pack-timer>--:--:--</b><small>${normal} / 3 normal packs stored</small></div>`:''}</div>`:'<button type="button" data-signin>Connect Steam</button>'}${editable?'<p class="pack-countdown" data-pack-countdown></p>':''}<div class="pack-results" aria-live="polite"></div>`;
     body.querySelector('.pack-intro')?.insertAdjacentHTML('beforeend',offerGuide);
     body.querySelector('[data-signin]')?.addEventListener('click',signIn);
     body.querySelector('[data-claim-bonus]')?.addEventListener('click',async()=>{const source=offers[0],data=await run('claim-bonus',{source});if(data){try{localStorage.removeItem(`ad2l-pack-offer:${source}`);}catch{}markPackOfferClaimed(source);drawPacks();say(data.alreadyClaimed?'This bonus was already claimed. Your collection is up to date.':'Bonus pack added to your collection.');}});
@@ -241,7 +243,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const template=document.createElement('template');template.innerHTML=cardHtml;
     const effectiveHero=base.hero||Number(template.content.querySelector('.ft-card').dataset.autoHero);
     const artOptions=cardArtOptions(effectiveHero,state?.screens??(String(base.art??'').startsWith('scr:')?[base.art]:[]));
-    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror</button> <button type="button" data-crop-turn>Turn 180°</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label></section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar"><label class="particle-speed-control">Particle speed <output data-particle-speed-value>${equipment.particleSpeed}%</output><input type="range" data-particle-speed min="50" max="200" step="10" value="${equipment.particleSpeed}" ${editable?'':'disabled'}></label><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
+    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar"><label class="particle-speed-control">Particle speed <output data-particle-speed-value>${equipment.particleSpeed}%</output><input type="range" data-particle-speed min="50" max="200" step="10" value="${equipment.particleSpeed}" ${editable?'':'disabled'}></label><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
     wireCardSlots();
     if(editable)mountNameEditor(body.querySelector('[data-name-editor]'),{state,inGame:name,action,onSaved:next=>{state=next;draw();say(shownNickname(next)?`Showing ${shownNickname(next)} on your cards and profile.`:'Showing your in-game name.');}});
     const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');
@@ -268,7 +270,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       const host=body.querySelector('[data-image-gallery]'),scrolls=[...host.querySelectorAll('.image-choice-strip')].map(el=>el.scrollLeft);
       const currentArt=cardArtwork(effectiveHero,base);
       const thumbnail=(art,style)=>art?`<span class="ft-art-thumb ${esc(art.cls??'')}" data-style="${esc(style)}"><span class="ft-art"><img src="${esc(art.src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span></span>`:'<span class="image-choice-empty">Choose a hero</span>';
-      host.innerHTML=`<fieldset class="image-choice-group"><legend>Background</legend><div class="image-choice-strip">${artOptions.map(art=>`<button type="button" data-image-choice="art" data-choice="${esc(art.id??'')}" aria-pressed="${(base.art??null)===art.id}" ${editable?'':'disabled'}>${thumbnail(art,currentArt?.style??'stencil')}<strong>${esc(art.label)}</strong></button>`).join('')||'<p>Choose a hero to see backgrounds.</p>'}</div></fieldset><fieldset class="image-choice-group"><legend>Image style</legend><div class="image-choice-strip">${[[null,'Site default'],...CARD_STYLES].map(([id,label])=>`<button type="button" data-image-choice="style" data-choice="${id??''}" aria-pressed="${(base.style??null)===id}" ${editable?'':'disabled'}>${thumbnail(currentArt,id??cardArtwork(effectiveHero,{art:base.art})?.style??'stencil')}<strong>${label}</strong></button>`).join('')}</div></fieldset>`;
+      host.innerHTML=`<fieldset class="image-choice-group"><legend>Background</legend><div class="image-choice-strip">${artOptions.filter(art=>art.id!=null).map(art=>`<button type="button" data-image-choice="art" data-choice="${esc(art.id??'')}" aria-pressed="${(base.art??null)===art.id}" ${editable?'':'disabled'}>${thumbnail(art,currentArt?.style??'stencil')}<strong>${esc(art.label)}</strong></button>`).join('')||'<p>Choose a hero to see backgrounds.</p>'}</div></fieldset><fieldset class="image-choice-group"><legend>Image style</legend><div class="image-choice-strip">${[[null,'Site default'],...CARD_STYLES].map(([id,label])=>`<button type="button" data-image-choice="style" data-choice="${id??''}" aria-pressed="${(base.style??null)===id}" ${editable?'':'disabled'}>${thumbnail(currentArt,id??cardArtwork(effectiveHero,{art:base.art})?.style??'stencil')}<strong>${label}</strong></button>`).join('')}</div></fieldset>`;
       host.querySelectorAll('.image-choice-strip').forEach((el,i)=>el.scrollLeft=scrolls[i]??0);
       host.querySelectorAll('[data-image-choice]').forEach(button=>button.onclick=()=>{
         const type=button.dataset.imageChoice;base[type]=button.dataset.choice||null;
@@ -287,12 +289,12 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelectorAll('[data-crop]').forEach(input=>input.oninput=()=>{base.crop??=defaultCardCrop(cardArtwork(effectiveHero,base));base.crop[input.dataset.crop]=Number(input.value);update();});
     const cropOf=()=>base.crop??=defaultCardCrop(cardArtwork(effectiveHero,base));
     body.querySelector('[data-crop-flip]').onclick=()=>{const c=cropOf();c.flip=!c.flip;update();};
-    body.querySelector('[data-crop-turn]').onclick=()=>{const c=cropOf();c.rot=((c.rot??0)+180>180)?(c.rot??0)-180:(c.rot??0)+180;body.querySelector('[data-crop="rot"]').value=c.rot;update();};
+    body.querySelector('[data-crop-turn]').onclick=()=>{const c=cropOf();c.flip=!c.flip;c.rot=((c.rot??0)+180>180)?(c.rot??0)-180:(c.rot??0)+180;body.querySelector('[data-crop="rot"]').value=c.rot;update();};
     body.querySelectorAll('[data-position]').forEach(input=>input.oninput=()=>{equipment[input.dataset.position]=Number(input.value);syncControls();update();});
     const syncControls=()=>body.querySelectorAll('[data-position]').forEach(input=>{input.value=equipment[input.dataset.position];body.querySelector(`[data-value="${input.dataset.position}"]`).textContent=Math.round(equipment[input.dataset.position]);});
     const front=card.querySelector('.ft-front');let pan=null;
     front.onpointerdown=e=>{
-      if(!editable||busy||!effectiveHero||e.button!==0||e.target.closest('.card-autograph,[data-part],a,button'))return;
+      if(!editable||busy||!effectiveHero||e.button!==0||e.target.closest('.card-autograph,[data-part],.cosmetic-emblem,.sig-wheel,a,button'))return;
       const rect=front.getBoundingClientRect();
       pan={id:e.pointerId,x:e.clientX,y:e.clientY,width:rect.width,height:rect.height,crop:{...(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))}};
       front.setPointerCapture(e.pointerId);front.classList.add('panning');e.preventDefault();
@@ -300,9 +302,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     front.onpointermove=e=>{
       if(!pan||e.pointerId!==pan.id)return;
       const dx=e.clientX-pan.x,dy=e.clientY-pan.y;if(Math.abs(dx)+Math.abs(dy)<2)return;
-      const clamp=n=>Math.round(Math.max(0,Math.min(100,n))*10)/10;
-      base.crop={...pan.crop,x:clamp(pan.crop.x-dx/pan.width*100),y:clamp(pan.crop.y-dy/pan.height*100)};
-      card.classList.add('ft-custom-crop');card.style.setProperty('--art-x',`${base.crop.x}%`);card.style.setProperty('--art-y',`${base.crop.y}%`);card.style.setProperty('--art-zoom',base.crop.zoom);
+      base.crop=nudgeCrop(pan.crop,dx,dy,pan.width,pan.height,card.querySelector('.ft-art img'));
+      card.classList.add('ft-custom-crop');for(const k of ['x','y']){card.style.setProperty(`--art-${k}`,`${base.crop[k]}%`);card.style.setProperty(`--art-${k}f`,base.crop[k]/100);}card.style.setProperty('--art-zoom',base.crop.zoom);
       body.querySelectorAll('[data-crop]').forEach(input=>input.value=base.crop[input.dataset.crop]??0);say('Unsaved card changes');
     };
     const stopPan=e=>{if(pan?.id!==e.pointerId)return;pan=null;front.classList.remove('panning');if(front.hasPointerCapture(e.pointerId))front.releasePointerCapture(e.pointerId);};
@@ -392,9 +393,177 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       const k=el.dataset.part,rect=front.getBoundingClientRect(),box=el.getBoundingClientRect();
       const p=partOf(k),off={x:e.clientX-(box.left+box.width/2),y:e.clientY-(box.top+box.height/2)};
       const at=ev=>{p.x=Math.round(Math.max(0,Math.min(100,(ev.clientX-off.x-rect.left)/rect.width*100))*10)/10;p.y=Math.round(Math.max(0,Math.min(100,(ev.clientY-off.y-rect.top)/rect.height*100))*10)/10;applyLayout(card,equipment.layout,name);say('Unsaved card changes');};
-      const move=ev=>at(ev),up=()=>{removeEventListener('pointermove',move);removeEventListener('pointerup',up);update();};
+      const start={x:e.clientX,y:e.clientY};let moved=false;
+      const move=ev=>{if(!moved&&Math.hypot(ev.clientX-start.x,ev.clientY-start.y)<4)return;moved=true;at(ev);};
+      const up=()=>{removeEventListener('pointermove',move);removeEventListener('pointerup',up);if(moved)update();selectPart(k);};
       addEventListener('pointermove',move);addEventListener('pointerup',up);
     },true);
+    // Clicking a part opens its menu at the top of the right-hand column: remove, size, rotate, layer.
+    const panel=q('[data-part-panel]');
+    function selectPart(k) {
+      front.querySelectorAll('.part-selected').forEach(n=>n.classList.remove('part-selected'));
+      front.querySelector(`[data-part="${k}"]`)?.classList.add('part-selected');
+      const label=FRONT_PARTS.find(([key])=>key===k)[1],p=partOf(k);
+      panel.hidden=false;
+      panel.innerHTML=`<strong>${esc(label)}</strong><button type="button" data-pp-show>${p.show?'Remove from card':'Put back on card'}</button><label>Size <output>${p.size}%</output><input type="range" data-pp="size" min="40" max="250" value="${p.size}"></label><label>Rotation <output>${p.rot??0}°</output><input type="range" data-pp="rot" min="-180" max="180" value="${p.rot??0}"></label><label>Layer <output>${p.z??0}</output><input type="range" data-pp="z" min="-10" max="10" value="${p.z??0}"></label><div><button type="button" data-pp-back>Send back</button> <button type="button" data-pp-forward>Bring forward</button> <button type="button" data-pp-reset>Reset</button> <button type="button" data-pp-close>Close</button></div>`;
+      const sync=()=>{const c=body.querySelector(`[data-part-show="${k}"]`),r=body.querySelector(`[data-part-size="${k}"]`);if(c)c.checked=p.show;if(r)r.value=p.size;};
+      panel.querySelector('[data-pp-show]').onclick=()=>{p.show=!p.show;update();selectPart(k);sync();};
+      panel.querySelectorAll('[data-pp]').forEach(r=>r.oninput=()=>{p[r.dataset.pp]=Number(r.value);r.previousElementSibling.textContent=r.dataset.pp==='size'?`${r.value}%`:r.dataset.pp==='rot'?`${r.value}°`:r.value;update();sync();partWheelPlace?.();});
+      const nudge=d=>{p.z=Math.max(-10,Math.min(10,(p.z??0)+d));update();selectPart(k);};
+      panel.querySelector('[data-pp-back]').onclick=()=>nudge(-1);
+      panel.querySelector('[data-pp-forward]').onclick=()=>nudge(1);
+      panel.querySelector('[data-pp-reset]').onclick=()=>{delete layoutOf().front[k];update();selectPart(k);sync();};
+      panel.querySelector('[data-pp-close]').onclick=()=>{panel.hidden=true;clearPart();};
+      panel.scrollIntoView({block:'nearest'});
+      // The same rotation ring the signature has, round the selected part.
+      front.querySelectorAll('.part-wheel').forEach(w=>w.remove());
+      const el=front.querySelector(`[data-part="${k}"]`);
+      if(editable&&el&&p.show){
+        const wheel=document.createElement('div'),dot=document.createElement('button');
+        wheel.className='sig-wheel part-wheel';dot.type='button';dot.className='sig-wheel-handle';dot.setAttribute('aria-label',`Rotate ${label}`);dot.title='Drag to rotate (Shift snaps to 15°)';
+        wheel.append(dot);front.append(wheel);
+        const place=()=>{const fr=front.getBoundingClientRect(),b=el.getBoundingClientRect(),d=Math.max(64,Math.max(b.width,b.height)+28);
+          wheel.style.width=wheel.style.height=d+'px';wheel.style.setProperty('--wheel-r',d/2+'px');
+          wheel.style.left=(b.left+b.width/2-fr.left)+'px';wheel.style.top=(b.top+b.height/2-fr.top)+'px';dot.style.setProperty('--wheel-angle',(p.rot??0)+'deg');};
+        place();partWheelPlace=place;
+        dot.onpointerdown=e=>{
+          e.preventDefault();e.stopPropagation();dot.setPointerCapture(e.pointerId);wheel.classList.add('turning');
+          dot.onpointermove=ev=>{
+            const r=wheel.getBoundingClientRect();let a=Math.atan2(ev.clientY-(r.top+r.height/2),ev.clientX-(r.left+r.width/2))*180/Math.PI;
+            if(ev.shiftKey)a=Math.round(a/15)*15;else for(const t of [-180,-90,0,90,180])if(Math.abs(a-t)<3)a=t;
+            p.rot=Math.round(a);applyLayout(card,equipment.layout,name);dot.style.setProperty('--wheel-angle',p.rot+'deg');
+            const ri=panel.querySelector('[data-pp="rot"]');if(ri){ri.value=p.rot;ri.previousElementSibling.textContent=p.rot+'°';}say('Unsaved card changes');
+          };
+          dot.onpointerup=dot.onpointercancel=()=>{dot.onpointermove=null;wheel.classList.remove('turning');update();};
+        };
+      }
+    }
+    // Border symbols: drag one anywhere on the card; clicking it opens its menu (size, add another, remove).
+    // The first drag turns the default top symbol into a placed one (equipment.emblems).
+    const emblemEls=()=>[...front.querySelectorAll('.cosmetic-emblem')];
+    const emblemsOf=()=>{
+      if(!equipment.emblems){
+        const r=front.getBoundingClientRect(),b=emblemEls()[0]?.getBoundingClientRect(),pct=(v,n)=>Math.round(v/n*1000)/10;
+        equipment.emblems=[{x:b?pct(b.left+b.width/2-r.left,r.width):50,y:b?pct(b.top+b.height/2-r.top,r.height):4,size:100}];update();
+      }
+      return equipment.emblems;
+    };
+    function selectEmblem(i) {
+      clearPart();const list=emblemsOf(),m=list[i];if(!m)return;
+      const mark=()=>emblemEls().forEach((n,j)=>n.classList.toggle('part-selected',j===i));mark();
+      panel.hidden=false;
+      panel.innerHTML=`<strong>Border symbol ${i+1} of ${list.length}</strong><label>Size <output>${m.size}%</output><input type="range" data-em-size min="50" max="300" value="${m.size}"></label><div><button type="button" data-em-add ${list.length>=MAX_EMBLEMS?'disabled':''}>Add another</button> <button type="button" data-em-remove>Remove</button> <button type="button" data-em-close>Close</button></div><small>Drag a symbol to move it. Up to ${MAX_EMBLEMS}.</small>`;
+      panel.querySelector('[data-em-size]').oninput=e=>{m.size=Number(e.target.value);e.target.previousElementSibling.textContent=`${m.size}%`;update();mark();};
+      panel.querySelector('[data-em-add]').onclick=()=>{list.push({x:Math.min(95,m.x+8),y:Math.min(95,m.y+8),size:m.size});update();selectEmblem(list.length-1);};
+      panel.querySelector('[data-em-remove]').onclick=()=>{
+        if(list.length>1)list.splice(i,1);
+        else {delete equipment.emblems;equipment.emblem=false;const box=q('[data-emblem]');if(box)box.checked=false;}
+        update();panel.hidden=true;
+      };
+      panel.querySelector('[data-em-close]').onclick=()=>{panel.hidden=true;clearPart();};
+    }
+    // "Add a symbol" turns symbols back on if they were off, then adds one in the middle of the card.
+    q('[data-emblem-add]')?.addEventListener('click',()=>{
+      if(equipment.emblem===false){delete equipment.emblems;equipment.emblem=true;const box=q('[data-emblem]');if(box)box.checked=true;update();}
+      const list=emblemsOf();
+      if(list.length>=MAX_EMBLEMS)return say(`Up to ${MAX_EMBLEMS} border symbols.`);
+      list.push({x:50,y:50,size:100});update();selectEmblem(list.length-1);
+    });
+    let emblemClick=false; // the click after a symbol drag lands on the card once the symbols redraw: skip it
+    front.addEventListener('pointerdown',e=>{
+      const el=e.target.closest('.cosmetic-emblem');emblemClick=!!el;if(!el||!editable||e.button!==0)return;
+      e.preventDefault();e.stopPropagation();
+      const i=emblemEls().indexOf(el),m=emblemsOf()[i];if(!m)return;
+      const rect=front.getBoundingClientRect(),start={x:e.clientX,y:e.clientY,mx:m.x,my:m.y};let moved=false;
+      const move=ev=>{
+        if(!moved&&Math.hypot(ev.clientX-start.x,ev.clientY-start.y)<4)return;moved=true;
+        m.x=Math.round(Math.max(0,Math.min(100,start.mx+(ev.clientX-start.x)/rect.width*100))*10)/10;
+        m.y=Math.round(Math.max(0,Math.min(100,start.my+(ev.clientY-start.y)/rect.height*100))*10)/10;
+        const n=emblemEls()[i];if(n){n.style.left=`${m.x}%`;n.style.top=`${m.y}%`;}say('Unsaved card changes');
+      };
+      const up=()=>{removeEventListener('pointermove',move);removeEventListener('pointerup',up);update();selectEmblem(i);};
+      addEventListener('pointermove',move);addEventListener('pointerup',up);
+    },true);
+    let partWheelPlace=null;
+    const clearPart=()=>{front.querySelectorAll('.part-wheel').forEach(w=>w.remove());front.querySelectorAll('.part-selected').forEach(n=>n.classList.remove('part-selected'));partWheelPlace=null;};
+    // Framing view: opened with the Artwork menu, it gets its own column on the far right and shows the whole
+    // picture (rotation, mirror, zoom and hue applied) under a fixed card-shaped box. Dragging the picture there
+    // reframes the card live. It stays open while other menus are used and closes only with its own button.
+    const host=card.querySelector('.ft-art'),cardImg=()=>card.querySelector('.ft-art img');
+    const cropNow=()=>{const b=equipment.baseCard;return b.crop??defaultCardCrop(cardArtwork(b.hero||Number(card.dataset.autoHero),b));};
+    const setCrop=c=>{
+      equipment.baseCard.crop=c;card.classList.add('ft-custom-crop');
+      for(const [k,v] of [['x',`${c.x}%`],['y',`${c.y}%`],['xf',c.x/100],['yf',c.y/100],['zoom',c.zoom],['rot',`${c.rot??0}deg`],['flip',c.flip?-1:1]])card.style.setProperty(`--art-${k}`,v);
+      body.querySelectorAll('[data-crop]').forEach(input=>input.value=c[input.dataset.crop]??0);say('Unsaved card changes');
+    };
+    let framing=null;
+    const stopFraming=()=>{framing?.observer.disconnect();framing?.stage.remove();framing=null;};
+    function startFraming(sync) {
+      if(framing?.stage.isConnected){framing.sync=sync;framing.draw();return;}
+      stopFraming();const editorGrid=q('.card-editor');if(!host||!editorGrid)return;
+      const stage=document.createElement('div');stage.className='art-stage';
+      stage.innerHTML='<div class="art-stage-head"><strong>Framing</strong><button type="button" data-stage-close aria-label="Close framing view">Close</button></div><div class="art-stage-view"><img alt="" draggable="false"><div class="art-stage-box"></div></div><small>Drag the picture under the box. The card updates as you go.</small>';
+      editorGrid.append(stage);stage.querySelector('[data-stage-close]').onclick=stopFraming;
+      const view=stage.querySelector('.art-stage-view'),pic=view.querySelector('img'),box=view.querySelector('.art-stage-box');
+      const draw=()=>{
+        const src=cardImg(),W=host.offsetWidth,H=host.offsetHeight;if(!src||!W||!H)return;
+        if(pic.src!==src.src)pic.src=src.src;
+        const nw=src.naturalWidth,nh=src.naturalHeight,vw=view.clientWidth,vh=vw*H/W;view.style.height=`${vh}px`;if(!nw||!nh||!vw)return;
+        const sc=.55*vw/W,bw=W*sc,bh=H*sc,bx=(vw-bw)/2,by=(vh-bh)/2,c=cropNow(),k=Math.max(W/nw,H/nh),iw=nw*k*sc,ih=nh*k*sc;
+        const filter=getComputedStyle(src).filter;
+        box.style.cssText=`left:${bx}px;top:${by}px;width:${bw}px;height:${bh}px`;
+        // Same geometry as the card's object-position + transform-origin, drawn unclipped.
+        pic.style.cssText=`width:${iw}px;height:${ih}px;left:${bx-c.x/100*(iw-bw)}px;top:${by-c.y/100*(ih-bh)}px;transform-origin:${c.x/100*iw}px ${c.y/100*ih}px;transform:scale(${c.zoom}) rotate(${c.rot??0}deg) scaleX(${c.flip?-1:1});filter:${filter==='none'?'':filter} hue-rotate(${Number(equipment.hue)||0}deg)`;
+        framing.scale=sc;
+      };
+      pic.onload=draw;
+      view.onpointerdown=e=>{
+        if(e.button!==0)return;e.preventDefault();view.setPointerCapture(e.pointerId);view.classList.add('panning');
+        const start={x:e.clientX,y:e.clientY,crop:{...cropNow()}};
+        view.onpointermove=ev=>{const s=framing?.scale;if(s)setCrop(nudgeCrop(start.crop,(ev.clientX-start.x)/s,(ev.clientY-start.y)/s,host.offsetWidth,host.offsetHeight,cardImg()));};
+        view.onpointerup=view.onpointercancel=()=>{view.onpointermove=null;view.classList.remove('panning');};
+      };
+      const observer=new MutationObserver(()=>{draw();framing?.sync();});
+      observer.observe(card,{attributes:true,subtree:true,attributeFilter:['style','class','data-style','src']});
+      framing={stage,observer,sync,draw,scale:0};draw();
+    }
+    // Artwork menu in the same right-hand slot: hue, framing sliders and mirrors. It opens when the art is clicked or
+    // rotated, along with the framing stage. Horizontal and Vertical move the picture straight across and up/down
+    // on screen at any rotation; the rest drive the Artwork section's own inputs.
+    function openArtPanel() {
+      clearPart();
+      const real=k=>q(k==='hue'?'[data-hue]':`[data-crop="${k}"]`);if(!real('x'))return;
+      const valueOf=k=>k==='hue'?Number(equipment.hue)||0:cropNow()[k]??0;
+      const row=([k,label,min,max,step])=>`<label>${label} <output>${valueOf(k)}</output><input type="range" data-art="${k}" min="${min}" max="${max}" step="${step}" value="${valueOf(k)}" data-last="${valueOf(k)}"></label>`;
+      panel.hidden=false;
+      panel.innerHTML=`<strong>Artwork</strong>${[['hue','Hue',0,360,1],['x','Horizontal',0,100,1],['y','Vertical',0,100,1],['zoom','Zoom',1,3,.01],['rot','Rotation',-180,180,1]].map(row).join('')}<div><button type="button" data-art-flip>Mirror left/right</button> <button type="button" data-art-turn>Mirror top/bottom</button> <button type="button" data-art-close>Close</button></div><small>Drag the picture on the card or in the framing view.</small>`;
+      let held=null;
+      const sync=()=>panel.querySelectorAll('[data-art]').forEach(i=>{if(i===held)return;const v=valueOf(i.dataset.art);i.value=i.dataset.last=v;i.previousElementSibling.textContent=v;});
+      panel.querySelectorAll('[data-art]').forEach(i=>i.oninput=()=>{
+        const k=i.dataset.art;held=i;queueMicrotask(()=>{held=null;});i.previousElementSibling.textContent=i.value;
+        if(k==='x'||k==='y'){
+          const d=Number(i.value)-Number(i.dataset.last),W=host.offsetWidth,H=host.offsetHeight;i.dataset.last=i.value;
+          setCrop(nudgeCrop(cropNow(),k==='x'?-d*W/100:0,k==='y'?-d*H/100:0,W,H,cardImg()));
+        } else {const r=real(k);r.value=i.value;r.dispatchEvent(new Event('input'));}
+      });
+      panel.querySelector('[data-art-flip]').onclick=()=>{q('[data-crop-flip]').click();};
+      panel.querySelector('[data-art-turn]').onclick=()=>{q('[data-crop-turn]').click();openArtPanel();};
+      panel.querySelector('[data-art-close]').onclick=()=>{panel.hidden=true;};
+      startFraming(sync);
+    }
+    q('[data-crop="rot"]').addEventListener('input',()=>{if(panel.hidden||!panel.querySelector('[data-art]'))openArtPanel();});
+    q('[data-crop-turn]').addEventListener('click',()=>{if(panel.hidden||!panel.querySelector('[data-art]'))openArtPanel();});
+    // The artwork and signature have their own sections: a click opens the matching one.
+    front.addEventListener('click',e=>{
+      if(emblemClick||e.target.closest('.part-wheel,.cosmetic-emblem')){emblemClick=false;return;}
+      if(e.target.closest('[data-part]')){card.classList.remove('sig-selected');return;}
+      clearPart();panel.hidden=true;
+      const open=sel=>{const d=q(sel);if(d){d.open=true;d.scrollIntoView({block:'nearest'});}};
+      const onSig=!!e.target.closest('.sig-wheel,.card-autograph');
+      card.classList.toggle('sig-selected',onSig);
+      if(onSig)open('.card-settings:has([data-position])');
+      else openArtPanel();
+    });
   }
   // Recycle: your spare copies (all but the last of each) as cards, dragged (or clicked) into a
   // ten-slot bin. The bin takes one rarity, set by the first card in it.
@@ -473,6 +642,21 @@ export async function mountGift() {
     try {const {state}=await collectionAction('session');updateGift(state);}catch {button.title='Packs and collection · service unavailable';}
   }
 }
+// Move the card art (dx,dy) screen pixels in its W×H window and return the new crop. The picture's position and
+// transform-origin both move with x/y, so solve J·Δ=(dx,dy) for the framing change Δ (J: how the picture moves per
+// 1%); that keeps it under the pointer even when rotated, mirrored or zoomed.
+function nudgeCrop(crop,dx,dy,W,H,img) {
+  const clamp=n=>Math.round(Math.max(0,Math.min(100,n))*10)/10,nw=img?.naturalWidth,nh=img?.naturalHeight;
+  let px=-dx/W*100,py=-dy/H*100;
+  if(nw&&nh){
+    const k=Math.max(W/nw,H/nh),ox=nw*k-W,oy=nh*k-H,s=crop.zoom,r=(crop.rot??0)*Math.PI/180,f=crop.flip?-1:1;
+    const m=[[s*Math.cos(r)*f,-s*Math.sin(r)],[s*Math.sin(r)*f,s*Math.cos(r)]];
+    const j=[[W/100+m[0][0]*(-ox-W)/100,m[0][1]*(-oy-H)/100],[m[1][0]*(-ox-W)/100,H/100+m[1][1]*(-oy-H)/100]];
+    const det=j[0][0]*j[1][1]-j[0][1]*j[1][0];
+    if(Math.abs(det)>1e-3*(W/100)*(H/100)){px=(j[1][1]*dx-j[0][1]*dy)/det;py=(-j[1][0]*dx+j[0][0]*dy)/det;}
+  }
+  return {...crop,x:clamp(crop.x+px),y:clamp(crop.y+py)};
+}
 function updateGift(state) {const b=document.getElementById('collection-gift');if(b){const offer=availablePackOffers(state).length>0,packs=state?.packs.length??0;b.querySelector('span').textContent=packs||'';b.classList.toggle('has-offer',offer);b.setAttribute('aria-label',offer?`Bonus pack offer available; ${packs} packs available`:`Packs and collection: ${packs} packs available`);}}
 addEventListener('collection-change',e=>updateGift(e.detail.state));
 addEventListener('pack-offer-change',()=>updateGift(collectionState()));
@@ -488,17 +672,40 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     const count=CATALOG.filter(i=>data.inventory[i.key]>0).length+new Set(data.screens??[]).size,renderer=createPlayerCards(matches,{cards,tiers:new Map(tier?[[String(account),tier]]:[])});
     const preferences=cardDesignState(data),player={account,name,team:team??'AD2L'};
     const cardHtml=PAINT_FILTER+renderer.card(player,null,{own:true,equipmentOverride:preferences.cardDesigns[preferences.primaryCard]});
-    const showcase=preferences.cardDesigns.map((equipment,i)=>equipment?`<figure>${renderer.card(player,null,{own:true,equipmentOverride:equipment}).replace('data-pick=',`data-design-slot="${i}" data-pick=`)}<figcaption>Card ${i+1}${i===preferences.primaryCard?' · Primary':''}</figcaption></figure>`:'').join('');
-    section.innerHTML=`<div class="profile-collection-card profile-card-designs">${PAINT_FILTER}${showcase||cardHtml}</div><div><h3>Card collection</h3>${preferences.shuffleCards?'<p>Saved cards are on shuffle for other viewers.</p>':''}${data.unavailable?'<p>Collection service is currently unavailable.</p>':`<strong>${count} / ${COLLECTION_TOTAL} discovered</strong><progress value="${count}" max="${COLLECTION_TOTAL}" aria-label="Collection completion"></progress>`}<button type="button" data-profile-collection>View collection & cards</button></div>`;
+    const showcase=preferences.cardDesigns.map((equipment,i)=>equipment?`<figure>${renderer.card(player,null,{own:true,equipmentOverride:equipment}).replace('data-pick=',`data-design-slot="${i}" data-pick=`)}<figcaption>${esc(cardSlotName(preferences,i))}${i===preferences.primaryCard?' · Primary':''}</figcaption></figure>`:'').join('');
+    // The collection's heading, count and button sit above the cards; your own name and background
+    // settings get a column of their own beside them (below).
+    section.innerHTML=`<div class="profile-collection-main"><div class="profile-collection-head"><h3>Card collection</h3>${data.unavailable?'<p>Collection service is currently unavailable.</p>':`<strong>${count} / ${COLLECTION_TOTAL} discovered</strong><progress value="${count}" max="${COLLECTION_TOTAL}" aria-label="Collection completion"></progress>`}<button type="button" data-profile-collection>View collection & cards</button>${preferences.shuffleCards?'<p>Saved cards are on shuffle for other viewers.</p>':''}</div><div class="profile-collection-card profile-card-designs">${PAINT_FILTER}${showcase||cardHtml}</div></div>`;
     section.querySelector('[data-profile-collection]').onclick=()=>openCollection({tab:'collection',viewAccount:account,cardHtml,name});
     wirePlayerCards(section.querySelector('.profile-collection-card'));
     if(showcase)mountRatings(section,account).catch(()=>{});
     steamAccount().catch(()=>null).then(async viewer=>{
-      if(String(viewer)!==String(account)||!section.isConnected)return;
+      if(!section.isConnected)return;
+      // Anyone else's profile: their achievement progress and claims, in the same column.
+      if(String(viewer)!==String(account)){
+        if(data.unavailable)return;
+        const ach=document.createElement('div');section.append(ach);
+        import('./achievements.js').then(m=>m.mountAchievementSummary(ach,account,false)).catch(()=>ach.remove());
+        return;
+      }
+      // Achievement progress is its own column right of the collection (parts/achievements.js, loaded on demand).
+      const ach=document.createElement('div');section.append(ach);
+      import('./achievements.js').then(m=>m.mountAchievementSummary(ach,account)).catch(()=>ach.remove());
+      // Your empty card slots show as outlines with an Add button that opens that slot in Customize.
+      const designsBox=section.querySelector('.profile-card-designs');
+      preferences.cardDesigns.forEach((design,i)=>{
+        if(design||!designsBox)return;
+        const fig=document.createElement('figure');fig.className='card-slot-empty';fig.dataset.emptySlot=i;
+        fig.innerHTML=`<button type="button" aria-label="Add a design to ${esc(cardSlotName(preferences,i))}"><span aria-hidden="true">+</span>Add card</button><figcaption>${esc(cardSlotName(preferences,i))}</figcaption>`;
+        fig.querySelector('button').onclick=()=>openCollection({tab:'customize',slot:i,name});
+        const after=[...designsBox.querySelectorAll(':scope>figure')].find(f=>Number(f.querySelector('[data-design-slot]')?.dataset.designSlot??f.dataset.emptySlot)>i);
+        designsBox.insertBefore(fig,after??null);
+      });
       const state=collectionState()??(await collectionAction('session')).state;
-      const host=document.createElement('div');section.lastElementChild.append(host);
+      const info=document.createElement('div');info.className='profile-collection-info';section.querySelector('.profile-collection-main').after(info);
+      const host=document.createElement('div');info.append(host);
       mountNameEditor(host,{state,inGame:name,onSaved:next=>profileTitle(next.showNickname?next.nickname:null,name)});
-      const bg=document.createElement('div');section.lastElementChild.append(bg);mountBackgroundButton(bg,{state,name:shownNickname(state)??name});
+      const bg=document.createElement('div');info.append(bg);mountBackgroundButton(bg,{state,name:shownNickname(state)??name});
     }).catch(()=>{});
   } catch {if(section.isConnected)section.innerHTML='<h3>Card collection</h3><p>Collection service is unavailable. Try again shortly.</p><button type="button">View designs</button>';section.querySelector('button')?.addEventListener('click',()=>openCollection({tab:'collection',viewAccount:account,name}));}
 }
@@ -562,7 +769,7 @@ async function drawGallery(body,{viewer,signIn}) {
       ${PAINT_FILTER}<div class="gallery-grid">${shown.map(c=>{
         const r=roster.get(c.account),player={account:Number(c.account),name:nameOf(c),team:r?.team??'AD2L'};
         const link=`${SOURCES[r?.league]?.root??'#/all'}/player/${c.account}`; // every Steam player has a profile (parts/scouted.js)
-        return `<figure data-gallery="${c.account}:${c.slot}"${isNew(c)?' class="gallery-new"':''}>${renderer.card(player,null,{own:true,equipmentOverride:c.design}).replace('data-pick=',`data-design-slot="${c.slot}" data-pick=`)}<figcaption>${isNew(c)?'<span class="gallery-new-tag">New</span> ':''}${link?`<a href="${link}">${esc(player.name)}</a>`:esc(player.name)} · Card ${c.slot+1}${c.primary?' · Primary':''}</figcaption></figure>`;
+        return `<figure data-gallery="${c.account}:${c.slot}"${isNew(c)?' class="gallery-new"':''}>${renderer.card(player,null,{own:true,equipmentOverride:c.design}).replace('data-pick=',`data-design-slot="${c.slot}" data-pick=`)}<figcaption>${isNew(c)?'<span class="gallery-new-tag">New</span> ':''}${link?`<a href="${link}">${esc(player.name)}</a>`:esc(player.name)} · ${esc(c.name??`Card ${c.slot+1}`)}${c.primary?' · Primary':''}</figcaption></figure>`;
       }).join('')||`<p>${unrated?"You've rated every card here.":'No custom cards yet.'}</p>`}</div>`;
     body.querySelector('[data-gallery-sort]').value=sort;
     body.querySelector('[data-gallery-sort]').onchange=e=>{sort=e.target.value;page=0;try {localStorage.setItem('gallery-sort',sort);} catch {}draw();};

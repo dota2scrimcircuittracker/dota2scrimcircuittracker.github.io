@@ -22,3 +22,6 @@ public/firebase-config.js
 
 # Deploy build: public/ plus link-preview pages (scripts/deploy/share-pages.js).
 _site/
+
+firebase-debug.log
+workers/steam-auth/.wrangler/

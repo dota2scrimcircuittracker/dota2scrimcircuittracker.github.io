@@ -50,6 +50,10 @@ export async function collectionAction(action,details={}) {
 export async function publicCollection(account) {
   const r=await fetch(`${COLLECTION_API}/collection/${account}`);if(!r.ok)throw new Error('Could not load this collection.');return r.json();
 }
+// Anyone's achievement progress and claims (lib/achievements.js), for their profile.
+export async function publicAchievements(account) {
+  const r=await fetch(`${COLLECTION_API}/achievements/${account}`);if(!r.ok)throw new Error('Achievements are unavailable. Try again shortly.');return r.json();
+}
 // Each saved design's rating counts (lib/card-ratings.js); rating one is the 'rate' action.
 export async function cardRatings(account) {
   const r=await fetch(`${COLLECTION_API}/ratings/${account}`);if(!r.ok)throw new Error('Ratings unavailable.');return (await r.json()).cards;
@@ -59,8 +63,8 @@ export async function galleryCards() {
   const r=await fetch(`${COLLECTION_API}/gallery`);if(!r.ok)throw new Error('Cards unavailable.');return (await r.json()).cards;
 }
 // The Feed (lib/feed.js): a page of posts older than before (ms), or the single post.
-export async function feedPosts({before=null,post=null,account=null,type='all',sort='new',range='all',offset=0}={}) {
-  const params=new URLSearchParams({...(before?{before}:{}),...(account!=null?{account}:{}),...(type!=='all'?{type}:{}),...(sort!=='new'?{sort}:{}),...(sort==='top'&&range!=='all'?{range}:{}),...(offset?{offset}:{})}).toString();
+export async function feedPosts({before=null,post=null,account=null,type=[],exclude=[],sort='new',range='all',offset=0,from=null}={}) {
+  const params=new URLSearchParams({...(from?{from:from.join(',')}:{}),...(before?{before}:{}),...(account!=null?{account}:{}),...(type.length?{type:[].concat(type).join(',')}:{}),...(exclude.length?{exclude:[].concat(exclude).join(',')}:{}),...(sort!=='new'?{sort}:{}),...(sort==='top'&&range!=='all'?{range}:{}),...(offset?{offset}:{})}).toString();
   const q=post?`?post=${encodeURIComponent(post)}`:params?`?${params}`:'';
   const r=await fetch(`${COLLECTION_API}/feed${q}`);if(!r.ok)throw new Error('Feed unavailable.');return r.json();
 }
@@ -109,7 +113,7 @@ export function cosmeticLayers(e,name) {
   const equipment={...DEFAULT_EQUIPMENT,...e}, border=itemByKey(`border:${equipment.border}`);
   const symbol=equipment.emblem===false?'':border?.symbol??'';
   const particles=PARTICLE_FINISHES.includes(equipment.finish)?`<span class="particles" aria-hidden="true">${Array.from({length:24},(_,i)=>`<i style="--i:${i};left:${(i*43+13)%100}%;top:${(i*29+7)%100}%;animation-delay:-${i*.39}s"></i>`).join('')}</span>`:'';
-  return `<span class="cosmetic-overlay" aria-hidden="true"></span>${particles}${symbol?`<span class="cosmetic-emblem" aria-hidden="true">${symbol}</span>`:''}${signatureHtml(equipment,name)}`;
+  return `<span class="cosmetic-overlay" aria-hidden="true"></span>${particles}${!symbol?'':Array.isArray(equipment.emblems)&&equipment.emblems.length?equipment.emblems.map(m=>`<span class="cosmetic-emblem placed" aria-hidden="true" style="left:${Number(m.x)}%;top:${Number(m.y)}%;--emblem-size:${(Number(m.size)||100)/100}">${symbol}</span>`).join(''):`<span class="cosmetic-emblem" aria-hidden="true">${symbol}</span>`}${signatureHtml(equipment,name)}`;
 }
 export function applyEquipment(card,e,name) {
   if(!card)return;
@@ -125,9 +129,12 @@ export function applyEquipment(card,e,name) {
       for(const c of art.cls?.split(' ')??[])if(c)card.classList.add(c);
       card.dataset.style=art.style;
       const host=card.querySelector('.ft-art');let img=host.querySelector('img');
-      if(!img){img=document.createElement('img');img.alt='';host.append(img);}img.src=art.src;img.dataset.wide=heroImg(heroById(hero)?.name)??'';
+      if(!img){img=document.createElement('img');img.alt='';host.append(img);}img.src=art.src;
+      // The picture's aspect lets a rotated crop show the whole image under the frame, not a clipped card-shaped piece.
+      const aspect=()=>{if(img.naturalWidth)card.style.setProperty('--art-ar',img.naturalWidth/img.naturalHeight);};img.addEventListener('load',aspect);aspect();
+      img.dataset.wide=heroImg(heroById(hero)?.name)??'';
       card.classList.toggle('ft-custom-crop',!!art.crop);
-      if(art.crop){for(const k of ['x','y'])card.style.setProperty(`--art-${k}`,`${art.crop[k]}%`);card.style.setProperty('--art-zoom',art.crop.zoom);card.style.setProperty('--art-rot',`${art.crop.rot??0}deg`);card.style.setProperty('--art-flip',art.crop.flip?-1:1);}
+      if(art.crop){for(const k of ['x','y']){card.style.setProperty(`--art-${k}`,`${art.crop[k]}%`);card.style.setProperty(`--art-${k}f`,art.crop[k]/100);}card.style.setProperty('--art-zoom',art.crop.zoom);card.style.setProperty('--art-rot',`${art.crop.rot??0}deg`);card.style.setProperty('--art-flip',art.crop.flip?-1:1);}
       const label=card.querySelector('.ft-sig');if(label)label.textContent=heroById(hero)?.name??'';
       // The Dota Plus badge belongs to the shown hero: redraw it (the page's observer fills it in).
       const plus=card.querySelector('.ft-plus');

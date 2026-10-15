@@ -3,12 +3,14 @@
 // The recipient's state keeps unseen gifts in `gifts` until they dismiss the notice.
 // A gift is one of: packs (any card rarity, or a loading screen pack), copies of one card item
 // (border, finish, signature, name rendering), or one loading screen.
+import { NORMAL_PACK_CAP, PACK_INTERVAL_MS } from './cosmetics-engine.js';
 import { TIERS, itemByKey } from './cosmetics-catalog.js';
+import { THEMED_PACKS, isThemedPack, themedLabel } from './pack-types.js';
 import { SCREEN_ART } from './screen-art-data.js';
 
 export const ADMIN_ACCOUNT = '173365627';
 export const MAX_GIFT_PACKS = 10;
-export const GIFT_PACKS = [...TIERS, 'screens'];
+export const GIFT_PACKS = [...TIERS, ...THEMED_PACKS, 'screens'];
 const MAX_NOTE = 120;
 export const isAdmin = account => String(account ?? '') === ADMIN_ACCOUNT;
 
@@ -39,6 +41,24 @@ export function giftPacks(state, { kind = 'pack', tier = 'common', item = null, 
   return next;
 }
 
+// One player sending another a pack from their own inventory: the pack leaves the sender's list and
+// joins the recipient's, with a notice (gifts) naming who sent it. Unlike Fav's gifts nothing is
+// created, so the only limits are what the sender holds and how many they send a day. Returns
+// { sender, recipient, pack }; the Worker writes both in one transaction.
+export const MAX_SENT_PER_DAY = 5;
+export function sendPack(sender, recipient, { index, from, fromName = null, note = '' }, now = Date.now()) {
+  const text = String(note ?? '').replace(/\s+/g, ' ').trim();
+  if ([...text].length > MAX_NOTE || /[\u0000-\u001f\u007f<>]/.test(text)) throw new Error(`Notes are up to ${MAX_NOTE} characters, plain text.`);
+  if (!Number.isInteger(index) || index < 0 || index >= (sender.packs ?? []).length) throw new Error('Choose one of your packs to send.');
+  const recent = (sender.sentPackAt ?? []).filter((t) => now - t < 864e5);
+  if (recent.length >= MAX_SENT_PER_DAY) throw new Error(`You can send ${MAX_SENT_PER_DAY} packs a day. Try again tomorrow.`);
+  const pack = sender.packs[index], packs = sender.packs.filter((_, i) => i !== index);
+  const left = { ...sender, packs, packsSent: (sender.packsSent ?? 0) + 1, sentPackAt: [...recent, now] };
+  if (left.nextPackAt == null && packs.filter((p) => p === 'common').length < NORMAL_PACK_CAP) left.nextPackAt = now + PACK_INTERVAL_MS;
+  const record = { kind: 'pack', tier: pack, count: 1, note: text || null, at: now, from: String(from), fromName: fromName ?? null };
+  return { sender: left, recipient: { ...recipient, packs: [...(recipient.packs ?? []), pack], gifts: [...(recipient.gifts ?? []), record].slice(-20) }, pack };
+}
+
 export function clearGifts(state) {
   const { gifts, ...rest } = state;
   return rest;
@@ -54,6 +74,6 @@ export function giftLabel({ kind = 'pack', tier, item, count = 1 }) {
     const it = itemByKey(item), name = `${it?.name ?? 'card'} ${ITEM_TYPES[it?.type] ?? 'item'}`;
     return count === 1 ? `the ${name}` : `${count} × the ${name}`;
   }
-  const name = tier === 'screens' ? 'loading screen pack' : `${capital(tier)} pack`;
+  const name = tier === 'screens' ? 'loading screen pack' : isThemedPack(tier) ? themedLabel(tier).toLowerCase() : `${capital(tier)} pack`;
   return count === 1 ? article(name) : `${count} ${name}s`;
 }

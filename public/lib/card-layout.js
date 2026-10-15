@@ -45,7 +45,7 @@ export function validLayout(raw) {
     const p = front[key];
     if (p == null) continue;
     if (typeof p !== 'object' || Array.isArray(p)) throw new Error('Choose a valid card layout.');
-    const part = { show: p.show ?? shownByDefault(key), x: null, y: null, size: 100 };
+    const part = { show: p.show ?? shownByDefault(key), x: null, y: null, size: 100, rot: 0, z: 0 };
     if (p.show != null && typeof p.show !== 'boolean') throw new Error('Choose a valid card layout.');
     if (p.x != null || p.y != null) {
       if (!num(p.x, 0, 100) || !num(p.y, 0, 100)) throw new Error('Card text must stay on the card.');
@@ -55,7 +55,15 @@ export function validLayout(raw) {
       if (!num(p.size, 40, 250)) throw new Error('Choose a valid text size.');
       part.size = Math.round(p.size);
     }
-    if (part.show !== shownByDefault(key) || part.x != null || part.size !== 100) out.front[key] = part;
+    if (p.rot != null) {
+      if (!num(p.rot, -180, 180)) throw new Error('Choose a valid rotation.');
+      part.rot = Math.round(p.rot);
+    }
+    if (p.z != null) {
+      if (!num(p.z, -10, 10)) throw new Error('Choose a valid layer.');
+      part.z = Math.round(p.z);
+    }
+    if (part.show !== shownByDefault(key) || part.x != null || part.size !== 100 || part.rot !== 0 || part.z !== 0) out.front[key] = part;
   }
   const back = raw.back ?? {};
   if (typeof back !== 'object' || Array.isArray(back)) throw new Error('Choose a valid card layout.');
@@ -80,7 +88,7 @@ export function partState(layout, key) {
   const p = layout?.front?.[key];
   const placed = p?.x != null;
   const size = key === 'name' ? (p?.size ?? 100) * (layout?.nameSize ?? 100) / 100 : (p?.size ?? 100);
-  const style = `${placed ? `left:${p.x}%;top:${p.y}%;` : ''}${size !== 100 ? `--part-size:${size / 100};` : ''}`;
+  const style = `${placed ? `left:${p.x}%;top:${p.y}%;` : ''}${size !== 100 ? `--part-size:${size / 100};` : ''}${p?.rot ? `--part-rot:${p.rot}deg;` : ''}${p?.z ? `--part-z:${p.z};` : ''}`;
   return { show: p?.show ?? shownByDefault(key), placed, style };
 }
 
@@ -100,7 +108,7 @@ export function applyLayout(card, layout, playerName) {
     const s = partState(layout, key);
     el.hidden = !s.show;
     el.classList.toggle('ft-placed', s.placed);
-    el.style.left = ''; el.style.top = ''; el.style.removeProperty('--part-size');
+    el.style.left = ''; el.style.top = ''; el.style.removeProperty('--part-size'); el.style.removeProperty('--part-rot'); el.style.removeProperty('--part-z');
     if (s.style) el.style.cssText += s.style;
     // Plate parts go back to the plate in default order, placed ones sit on the face itself.
     if (['name', 'record', 'team', 'hero'].includes(key)) {

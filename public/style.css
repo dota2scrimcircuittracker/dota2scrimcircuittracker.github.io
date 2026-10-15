@@ -4775,8 +4775,14 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .profile-tickets small { color: var(--dim); font: 500 11px var(--mono); }
 /* Layouts (lib/card-layout.js): a part's size, parts placed anywhere on the face, hidden parts and stats. */
 .ft-card [data-part] { zoom: var(--part-size, 1); }
+.ft-card [data-part]:not(.ft-placed) { rotate: var(--part-rot, 0deg); }
+.ft-card [data-part]:not(.ft-placed)[style*="--part-z"] { position: relative; z-index: var(--part-z); }
+.card-editor .ft-front [data-part] { cursor: pointer; }
+.part-panel { display: grid; gap: .6rem; padding: .8rem; border: 1px solid #e8b84a; border-radius: 8px; }
+.part-panel[hidden] { display: none; }
+.part-panel label { display: grid; gap: .2rem; }
 .ft-card .ft-bname .ft-name { zoom: var(--name-size, 1); }
-.ft-card .ft-front > .ft-placed { position: absolute; z-index: 6; zoom: 1; transform: translate(-50%, -50%) scale(var(--part-size, 1)); max-width: calc(96% / var(--part-size, 1)); margin: 0; white-space: nowrap; }
+.ft-card .ft-front > .ft-placed { position: absolute; z-index: calc(6 + var(--part-z, 0)); zoom: 1; transform: translate(-50%, -50%) rotate(var(--part-rot, 0deg)) scale(var(--part-size, 1)); max-width: calc(96% / var(--part-size, 1)); margin: 0; white-space: nowrap; }
 .ft-card [data-part][hidden], .ft-stats > span[hidden] { display: none; }
 .ft-no-posbars .ft-posbars, .ft-no-posbars .ft-label:has(+ .ft-posbars),
 .ft-no-heroes .ft-heroes, .ft-no-heroes .ft-label:has(+ .ft-heroes) { display: none; }
@@ -5019,6 +5025,14 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 
 /* Saved art framing applies identically to full-size and miniature cards. */
 .ft-card.ft-custom-crop .ft-front .ft-art img { height: 100%; object-position: var(--art-x) var(--art-y); transform-origin: var(--art-x) var(--art-y); transform: scale(var(--art-zoom)) rotate(var(--art-rot, 0deg)) scaleX(var(--art-flip, 1)); transition: none; }
+/* Once the picture's aspect is known, size it to cover the window without clipping it, so rotating shows more of
+   the picture instead of a card-shaped piece with dark corners. Same anchor as object-position above. */
+.ft-card.ft-custom-crop .ft-front .ft-art { container-type: size; }
+.ft-card.ft-custom-crop[style*="--art-ar"] .ft-front .ft-art img {
+  --w: max(100cqw, calc(var(--art-ar) * 100cqh)); --h: max(100cqh, calc(100cqw / var(--art-ar)));
+  position: absolute; max-width: none; width: var(--w); height: var(--h); object-fit: fill;
+  left: calc((100cqw - var(--w)) * var(--art-xf, .5)); top: calc((100cqh - var(--h)) * var(--art-yf, .5));
+}
 .ft-mine-card .ft-front { touch-action: none; user-select: none; }
 .ft-mine-card .ft-front .ft-art img { -webkit-user-drag: none; }
 .ft-mine-card .ft-card.own .ft-front { cursor: grab; }
@@ -5063,3 +5077,37 @@ i.plus b { position: absolute; left: 0; right: 0; bottom: -.04em; text-align: ce
 .ga-art i.plus { position: absolute; z-index: 2; left: 6px; bottom: 6px; font-size: 34px; margin: 0; }
 .pf i.plus { position: absolute; right: -6px; bottom: 0; font-size: 18px; margin: 0; }
 .card.hl i.plus { position: absolute; right: 8px; bottom: 6px; font-size: 30px; margin: 0; }
+
+/* Fantasy scoring popup (reuses dialog.tier-modal) */
+.ft-how { font-size: 14px; margin: 0 0 14px; }
+dialog.fp-modal { width: min(760px, 94vw); }
+.fp-body { padding: 16px 18px 22px; display: grid; grid-auto-rows: max-content; gap: 12px; align-content: start; }
+.fp-body h4 { margin: 14px 0 0; font: 800 20px/1 var(--display); letter-spacing: .03em; text-transform: uppercase; color: var(--bone); }
+.fp-body p { margin: 0; max-width: 62ch; color: var(--dust); font-size: 14px; line-height: 1.55; }
+.fp-formula { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 400 12px/1 var(--mono); }
+.fp-formula span { padding: 8px 10px; border: 1px solid var(--seam-2); background: var(--stone-2); white-space: nowrap; }
+.fp-formula b { color: var(--accent); font-weight: 600; }
+.fp-formula i { font-style: normal; color: var(--dim); }
+.fp-lede { color: var(--dust); }
+.fp-wrap { border: 1px solid var(--seam); background: var(--stone-2); overflow-x: auto; }
+.fp-grid { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 520px; font-variant-numeric: tabular-nums; }
+.fp-grid th, .fp-grid td { padding: 0; }
+.fp-grid thead th { font: 600 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dust); padding: 10px 6px 8px; text-align: center; }
+.fp-grid thead th small { display: block; font-weight: 400; letter-spacing: .02em; text-transform: none; color: var(--dim); margin-top: 3px; }
+.fp-grid .fp-l { text-align: left; padding-left: 10px; }
+.fp-grid th.fp-stat { text-align: left; font: 500 13px/1.25 var(--body); padding: 8px 10px; color: var(--bone); white-space: nowrap; }
+.fp-grid tr.fp-group th { text-align: left; font: 600 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); padding: 14px 10px 4px; }
+.fp-grid td.fp-c { text-align: center; font: 600 14px/1 var(--mono); height: 36px; min-width: 56px; border-radius: 4px; background: var(--stone); cursor: default; }
+.fp-grid td.fp-zero { color: var(--dim); font-weight: 400; background: transparent; }
+.fp-grid tfoot th, .fp-grid tfoot td { padding: 10px 6px; border-top: 1px solid var(--seam-2); font: 600 12px/1 var(--mono); text-align: center; color: var(--dust); }
+.fp-grid tfoot td.fp-c { height: auto; background: transparent; font-size: 12px; }
+.fp-mults { display: grid; gap: 16px; border: 1px solid var(--seam); background: var(--stone-2); padding: 16px; }
+.fp-mult { display: grid; gap: 6px; }
+.fp-mult h5 { margin: 0; font: 700 14px/1.2 var(--body); color: var(--bone); }
+.fp-mult h5 span { margin-left: 10px; font: 600 12px/1.3 var(--mono); color: var(--accent); }
+.fp-mult p { font-size: 13px; }
+.fp-track { position: relative; height: 24px; }
+.fp-track i { position: absolute; display: block; }
+.fp-rail { left: 0; right: 0; top: 11px; height: 2px; background: var(--seam-2); }
+.fp-one { top: 2px; bottom: 2px; width: 2px; background: var(--bone); opacity: .55; }
+.fp-seg { top: 6px; height: 12px; border-radius: 4px; background: var(--accent); }

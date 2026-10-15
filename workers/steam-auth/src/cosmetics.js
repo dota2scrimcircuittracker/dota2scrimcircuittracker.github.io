@@ -1,11 +1,23 @@
-import { grantLogin, applyPackGrants, rollPack, recycleCards, saveCardDesign, setCardPreferences, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
+import { grantLogin, applyPackGrants, rollPack, recycleCards, saveCardDesign, setCardPreferences, setCardName, CARD_SLOTS, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
 import { designKey, castVote, tally } from '../../../public/lib/card-ratings.js';
 import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-catalog.js';
-import { isAdmin, giftPacks, clearGifts } from '../../../public/lib/pack-gifts.js';
+import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
+import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
 import { checkImages } from './image-check.js';
-import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, setFollow, setBan, isBanned, feedTypeOf, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
+import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
 
+// A player's Fantasy entries from Firestore. The collection is public to read (firebase/scrimleague.rules),
+// so no credentials: this asks for just their documents. Throws if Firestore can't be reached.
+const FIRESTORE_DATA='https://firestore.googleapis.com/v1/projects/pistachio-kitchen/databases/(default)/documents/scrimLeague/data';
+export async function firestoreWhere(collectionId,field,value,fetcher=fetch) {
+  const r=await fetcher(`${FIRESTORE_DATA}:runQuery`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({structuredQuery:{from:[{collectionId}],where:{fieldFilter:{field:{fieldPath:field},op:'EQUAL',value}},limit:500}})});
+  if(!r.ok)throw new Error('League data is unavailable. Try again shortly.');
+  return (await r.json()).filter(row=>row.document).map(row=>row.document.fields??{});
+}
+export const fantasyEntries=async(account,fetcher=fetch)=>(await firestoreWhere('fantasy','account',{integerValue:String(account)},fetcher)).map(f=>({week:f.week?.stringValue}));
+// Predictions and brackets made while signed in are saved under uid "steam:<account>" (lib/store.js).
+export const madeCount=async(collectionId,account,fetcher=fetch)=>(await firestoreWhere(collectionId,'uid',{stringValue:`steam:${account}`},fetcher)).length;
 const json=(value,status=200)=>Response.json(value,{status});
 const secureRandom=()=>crypto.getRandomValues(new Uint32Array(1))[0]/4294967296;
 // Feed post images arrive as base64; anything that doesn't decode is refused.
@@ -75,6 +87,19 @@ export class CosmeticsVault {
     const toState=await txn.get(`user:${to}`);
     if(toState)await txn.put(`user:${to}`,pushNotice(toState,notice));
   }
+  // What the achievements (lib/achievements.js) count, read from what the vault stores.
+  async achievementFacts(txn,account,saved) {
+    const posts=(await txn.list({prefix:`post:u:${account}:`})).size;
+    let rated=0,legendaryVotes=0,comments=0;
+    // Comments on other players' posts only, so commenting on your own can't farm it.
+    for(const [k,list] of await txn.list({prefix:'comments:',limit:20000}))if(!k.startsWith(`comments:u:${account}:`))comments+=(list??[]).filter(c=>String(c.account)===String(account)&&!c.removed).length;
+    for(const [k,v] of await txn.list({prefix:'votes:',limit:20000}))if(v?.[account]&&!k.startsWith(`votes:${account}:`))rated++;
+    // Followers: other players whose own following list has this account.
+    let followers=0;
+    for(const [k,u] of await txn.list({prefix:'user:',limit:20000}))if(k!==`user:${account}`&&(u?.following??[]).includes(String(account)))followers++;
+    for(const d of cardDesignState(saved).cardDesigns)if(d)legendaryVotes=Math.max(legendaryVotes,tally(await txn.get(`votes:${account}:${designKey(d)}`)).counts.legendary);
+    return {...fantasyFacts(await fantasyEntries(account).catch(()=>null)),predictions:await madeCount('predictions',account).catch(()=>0),brackets:await madeCount('brackets',account).catch(()=>0),heroGrids:saved.achievementEvents?.heroGrid?1:0,packsSent:saved.packsSent??0,drafts:saved.achievementEvents?.draft?1:0,posts,comments,follows:(saved.following??[]).length,followers,rated,cards:(saved.cardDesigns??[]).filter(Boolean).length,legendaryVotes,nickname:saved.nickname?1:0,background:saved.profileBackground?1:0,signature:saved.profileBackground?.sig?1:0};
+  }
   async fetch(req) {
     const url=new URL(req.url);
     if(url.pathname==='/appearances') {
@@ -90,7 +115,7 @@ export class CosmeticsVault {
         prefs.cardDesigns.forEach((design,slot)=>{
           if(isPlainDesign(design))return;
           const key=designKey(design);
-          cards.push({account,slot,key,design,primary:slot===prefs.primaryCard,at:state.cardSavedAt?.[slot]??null,nickname:shownNickname(state),...tally(votes.get(`votes:${account}:${key}`))});
+          cards.push({account,slot,key,design,name:prefs.cardNames[slot],primary:slot===prefs.primaryCard,at:state.cardSavedAt?.[slot]??null,nickname:shownNickname(state),...tally(votes.get(`votes:${account}:${key}`))});
         });
       }
       return json({cards});
@@ -125,8 +150,9 @@ export class CosmeticsVault {
     if(url.pathname==='/feed') {
       await this.backfillPulls();await this.backfillPosts();
       const one=url.searchParams.get('post'),before=Number(url.searchParams.get('before'))||Infinity,who=url.searchParams.get('account');
-      const type=feedTypeOf(url.searchParams.get('type')),sort=feedSortOf(url.searchParams.get('sort')),offset=Math.max(0,Math.floor(Number(url.searchParams.get('offset'))||0));
+      const type=feedTypesOf(url.searchParams.get('type')),exclude=feedExcludesOf(url.searchParams.get('exclude')),sort=feedSortOf(url.searchParams.get('sort')),offset=Math.max(0,Math.floor(Number(url.searchParams.get('offset'))||0));
       if(who!=null&&!/^\d{1,10}$/.test(who))return json({error:'Invalid account.'},400);
+      const from=url.searchParams.get('from')==null?null:new Set(url.searchParams.get('from').split(',').filter(a=>/^\d{1,10}$/.test(a)).slice(0,150));
       const range=feedRangeOf(url.searchParams.get('range')),pinId=await this.ctx.storage.get('feed-pin');
       let posts,pinned=null;
       if(one) {
@@ -136,10 +162,11 @@ export class CosmeticsVault {
         const rows=who==null?[...await this.ctx.storage.list({prefix:'post:'})]:[...await this.ctx.storage.list({prefix:`post:c:${who}:`}),...await this.ctx.storage.list({prefix:`post:u:${who}:`})];
         const cards=rows.map(([k,v])=>({id:k.slice(5),...v}));
         const pulls=[...(await this.ctx.storage.list({prefix:'pull:'}))].map(([k,v])=>({id:`p:${k.slice(5)}`,kind:'pull',...v})).filter(p=>who==null||String(p.account)===who);
-        posts=[...cards,...pulls].filter(FEED_TYPES[type].match);
+        posts=[...cards,...pulls].filter(p=>feedShows(type,exclude,p));
+        if(from)posts=posts.filter(p=>from.has(String(p.account)));
         // Fav's pinned post leads the first page of the whole Feed and is left out of the rest.
         if(pinId){
-          if(who==null&&before===Infinity&&!offset){const p=await this.postById(pinId);if(p&&FEED_TYPES[type].match(p))pinned={...p,pinned:true};}
+          if(who==null&&!from&&before===Infinity&&!offset){const p=await this.postById(pinId);if(p&&feedShows(type,exclude,p))pinned={...p,pinned:true};}
           if(who==null)posts=posts.filter(p=>p.id!==pinId);
         }
         if(sort==='top'&&range!=='all')posts=posts.filter(p=>p.at>=Date.now()-FEED_RANGES[range].ms);
@@ -174,9 +201,19 @@ export class CosmeticsVault {
       }));
       return json({cards});
     }
+    // Anyone's achievement progress, for their profile. Counting scans the whole vault, so each
+    // account's answer is kept for 5 minutes.
+    if(req.method==='GET' && url.pathname==='/achievements') {
+      const cached=(this.achievementCache??=new Map()).get(account);
+      if(cached&&cached.at>Date.now()-300000)return json(cached.value);
+      const saved=await this.ctx.storage.get(`user:${account}`);
+      const value=saved?{facts:await this.achievementFacts(this.ctx.storage,account,saved),claims:saved.achievementClaims??{}}:{facts:{},claims:{}};
+      this.achievementCache.set(account,{at:Date.now(),value});
+      return json(value);
+    }
     if(req.method==='GET') {
       const state=await this.ctx.storage.get(`user:${account}`);
-      return json({inventory:state?.inventory??{},screens:state?.screens??[],equipment:state?.equipment??null,nickname:shownNickname(state),background:state?.profileBackground??null,...(state?cardDesignState(state):{})});
+      return json({inventory:state?.inventory??{},screens:state?.screens??[],achievements:state?.achievementClaims??{},equipment:state?.equipment??null,nickname:shownNickname(state),background:state?.profileBackground??null,...(state?cardDesignState(state):{})});
     }
     let body;try {body=await req.json();} catch {return json({error:'Invalid request.'},400);}
     // Which designs this player has rated, and how: "<owner>:<design key>" → rating. A read, so
@@ -185,6 +222,12 @@ export class CosmeticsVault {
       const mine={};
       for(const [k,v] of await this.ctx.storage.list({prefix:'votes:',limit:20000}))if(v?.[account])mine[k.slice(6)]=v[account];
       return json({votes:mine});
+    }
+    // The facts behind this player's achievements. A read, so no receipt.
+    if(body.action==='achievements') {
+      const saved=await this.ctx.storage.get(`user:${account}`);
+      if(!saved)return json({facts:{},claims:{}});
+      return json({facts:await this.achievementFacts(this.ctx.storage,account,saved),claims:saved.achievementClaims??{}});
     }
     // Fav's list of players banned from the Feed (lib/feed.js setBan), with their shown nicknames.
     if(body.action==='feed-bans') {
@@ -224,21 +267,33 @@ export class CosmeticsVault {
           claims[body.source]=true;
           result={state:{...saved,packs:[...(saved.packs??[]),'common'],bonusPackClaims:claims},source:body.source};
         }
+        // Something the browser did that the Worker can't see (lib/achievement-events.js). Only your own
+        // account is credited, once each.
+        else if(body.action==='record-event') {
+          if(!['heroGrid','draft'].includes(body.event))throw new Error('Unknown event.');
+          result={state:saved.achievementEvents?.[body.event]?saved:{...saved,achievementEvents:{...(saved.achievementEvents??{}),[body.event]:Date.now()}}};
+        }
+        else if(body.action==='claim-achievement')result={state:claimAchievement(saved,String(body.id??''),await this.achievementFacts(txn,account,saved)),id:String(body.id)};
         else if(body.action==='recycle') result=recycleCards(saved,body.selections);
         // cardSavedAt: when each card's design last changed (the Gallery's Newest sort).
         else if(body.action==='equip') {
           const slot=body.cardSlot??saved.primaryCard??0,before=cardDesignState(saved).cardDesigns[slot];
-          const next=saveCardDesign(saved,body.equipment,body.cardSlot),savedAt=[...(saved.cardSavedAt??[null,null,null])];
+          const next=saveCardDesign(saved,body.equipment,body.cardSlot),savedAt=Array.from({length:CARD_SLOTS},(_,i)=>saved.cardSavedAt?.[i]??null);
           const design=next.cardDesigns[slot],changed=!before||designKey(before)!==designKey(design);
-          let posts=saved.lastPosts??[null,null,null];
+          let posts=Array.from({length:CARD_SLOTS},(_,i)=>saved.lastPosts?.[i]??null);
           if(changed) {
             const now=Date.now();savedAt[slot]=now;
             // A changed design goes in the Feed (lib/feed.js cardPostId), unless the player turned
             // card posts off.
             if(!isPlainDesign(design)&&feedAutoOf(saved).cards) {
               const lastId=posts[slot],last=lastId&&await txn.get(`post:${lastId}`);
-              const touched=!!lastId&&(Object.keys(await txn.get(`react:${lastId}`)??{}).length>0||(await txn.get(`comments:${lastId}`)??[]).length>0);
-              const id=cardPostId(account,slot,now,last&&{id:lastId,at:last.at,touched});
+              const id=cardPostId(account,slot,now,last&&{id:lastId,at:last.at});
+              // Past the window the old post is replaced, with its reactions and comments.
+              if(lastId&&id!==lastId) {
+                for(const c of await txn.get(`comments:${lastId}`)??[])if(c.image)await txn.delete(`cmedia:${lastId}:${c.id}`);
+                for(const k of [`post:${lastId}`,`react:${lastId}`,`comments:${lastId}`])await txn.delete(k);
+                if(await txn.get('feed-pin')===lastId)await txn.delete('feed-pin');
+              }
               await txn.put(`post:${id}`,{kind:'card',account,slot,design,at:now});
               posts=posts.map((p,i)=>i===slot?id:p);
             }
@@ -246,6 +301,7 @@ export class CosmeticsVault {
           result={state:{...next,cardSavedAt:savedAt,lastPosts:posts}};
         }
         else if(body.action==='card-settings')result={state:setCardPreferences(saved,body)};
+        else if(body.action==='card-name')result={state:setCardName(saved,body.cardSlot,body.name)};
         else if(body.action==='nickname')result={state:setNickname(saved,body)};
         else if(body.action==='profile-background')result={state:setProfileBackground(saved,body)};
         else if(body.action==='gift') {
@@ -257,6 +313,17 @@ export class CosmeticsVault {
           const targetKey=`user:${target}`,given=giftPacks((target===account?saved:await txn.get(targetKey))??grantLogin(null),body);
           if(target===account)result={state:given,gift:{target,kind:body.kind??'pack',tier:body.tier,item:body.item,count:body.count}};
           else {await txn.put(targetKey,given);result={state:saved,gift:{target,kind:body.kind??'pack',tier:body.tier,item:body.item,count:body.count}};}
+        }
+        // A player sending another a pack from their own inventory (lib/pack-gifts.js sendPack).
+        else if(body.action==='send-pack') {
+          const target=String(body.target??'');
+          if(!/^\d{1,10}$/.test(target))throw new Error('Choose a player.');
+          if(target===account)throw new Error("You can't send a pack to yourself.");
+          const to=await txn.get(`user:${target}`);
+          if(!to)throw new Error("That player hasn't connected Steam yet.");
+          const sent=sendPack(grantLogin(saved),to,{index:body.packIndex,from:account,fromName:shownNickname(saved),note:body.note});
+          await txn.put(`user:${target}`,sent.recipient);
+          result={state:sent.sender,sent:{target,pack:sent.pack}};
         }
         else if(body.action==='gifts-seen')result={state:clearGifts(saved)};
         // The Feed (lib/feed.js): reactions and comments on any post, replies and reactions on its
@@ -375,6 +442,7 @@ export class CosmeticsVault {
           result={state:saved,bans};
         }
         else if(body.action==='follow')result={state:setFollow(saved,account,body.target,body.follow!==false)};
+        else if(body.action==='block')result={state:setBlock(saved,account,body.target,body.block!==false)};
         else if(body.action==='feed-auto')result={state:setFeedAuto(saved,body)};
         else if(body.action==='notices-seen')result={state:markNoticesSeen(saved,Date.now())};
         else if(body.action==='rate') {
@@ -431,6 +499,8 @@ export async function cosmeticsRequest(req,env,allowedOrigins) {
   }
   const publicAccount=/^\/cosmetics\/collection\/(\d{1,10})$/.exec(url.pathname)?.[1];
   if(req.method==='GET' && publicAccount) return respond(await vault.fetch(`https://vault/collection?account=${publicAccount}`));
+  const achAccount=/^\/cosmetics\/achievements\/(\d{1,10})$/.exec(url.pathname)?.[1];
+  if(req.method==='GET' && achAccount) return respond(await vault.fetch(`https://vault/achievements?account=${achAccount}`));
   const ratedAccount=/^\/cosmetics\/ratings\/(\d{1,10})$/.exec(url.pathname)?.[1];
   if(req.method==='GET' && ratedAccount) return respond(await vault.fetch(`https://vault/ratings?account=${ratedAccount}`));
   // Feed posts carry images, so they go to their own path with a larger size limit.

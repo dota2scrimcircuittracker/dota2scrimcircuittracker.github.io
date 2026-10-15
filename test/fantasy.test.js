@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { weekKey, fantasyWeeks, openWeek, pickable, checkPicks, pickPoints, scoreEntry, leaderboard, fantasyPoints, playoffWeeks, testWeek, TEST_WEEK, weekBoard, weekGames, GAMES_COUNTED } from "../public/lib/fantasy.js";
+import { weekKey, fantasyWeeks, openWeek, pickable, checkPicks, pickPoints, scoreEntry, leaderboard, playoffWeeks, testWeek, TEST_WEEK, weekBoard, weekGames, GAMES_COUNTED } from "../public/lib/fantasy.js";
 
 const T = (iso) => Date.parse(iso) / 1000;
 const series = [
@@ -37,22 +37,30 @@ test("only teams playing that week can be picked, and never yourself", () => {
 const d = JSON.parse(fs.readFileSync(new URL("../public/data/ad2l.json", import.meta.url)));
 const weeks = fantasyWeeks(d.series);
 
-test("raw fantasy points have fixed weights, no position or population curve", () => {
-  const p = { kills: 10, deaths: 2, last_hits: 200, denies: 10, gpm: 500, tf_part: 0.5,
-    obs_placed: 2, camps_stacked: 2, runes: [2, 2], first_blood: 1, roshan_kills: 1, stuns: 10 };
-  const f = fantasyPoints(p);
-  assert.equal(f.points, 17);
-  assert.equal(f.parts.find((x) => x.label === "Deaths").points, 2.4);
-  assert.equal(fantasyPoints({ deaths: 20 }).points, 0);
+// A player with at least three games in the Champion file, and those games.
+const byPlayer = new Map();
+for (const g of d.games) for (const p of g.players ?? []) if (p.account_id) (byPlayer.get(p.account_id) ?? byPlayer.set(p.account_id, []).get(p.account_id)).push(g);
+const [acct, acctGames] = [...byPlayer].find(([, gs]) => gs.length >= 3);
+
+test("a game scores on the tier model's stat points, read as the slot's position, with no curve", () => {
+  const one = pickPoints(acct, 1, [acctGames[0]], d.games), g = one.games[0];
+  assert.ok(Number.isFinite(g.score));
+  assert.ok(g.stats.length > 0);
+  // The stats' points add up to the stat points before the multipliers.
+  assert.ok(Math.abs(g.stats.reduce((t, x) => t + x.points, 0) - g.stat_points) < 1e-6);
+  assert.ok(g.stats.every((x) => x.score >= 0 && x.score <= 100));
+  // Each slot is its own position: the same game reads differently as a pos 5.
+  assert.notEqual(pickPoints(acct, 5, [acctGames[0]], d.games).games[0].stats.map((x) => x.metric).join(), g.stats.map((x) => x.metric).join());
 });
 
-test("a pick counts its best two raw-stat games and exposes every contribution", () => {
-  const games = [0, 10, 20].map((kills, i) => ({ id: i, start_time: i + 1, players: [{ account_id: 1, kills }] }));
-  const result = pickPoints(1, games);
-  assert.equal(result.points, 15);
-  assert.deepEqual(result.games.map((g) => g.counted), [false, true, true]);
-  assert.equal(result.games[2].parts.find((x) => x.label === "Kills").points, 6);
-  assert.equal(pickPoints(999, games).points, 0);
+test("a pick counts its best two games added together", () => {
+  const games = acctGames.slice(0, 3);
+  const result = pickPoints(acct, 3, games, d.games);
+  assert.equal(result.games.length, 3);
+  const top = result.games.map((g) => g.score).sort((a, b) => b - a);
+  assert.equal(result.points, Math.round((top[0] + top[1]) * 10) / 10);
+  assert.equal(result.games.filter((g) => g.counted).length, GAMES_COUNTED);
+  assert.equal(pickPoints(999, 3, games, d.games).points, 0);
 });
 
 test("the first week pools tiebreakers and later weeks only include the playoff bracket", () => {
@@ -100,19 +108,16 @@ test("announced series join the week until PlayOn posts its own", async () => {
   assert.equal(weekGames([g], w).length, 1);
 });
 test("captain doubles one pick's best-two-game total and legacy entries retain their score", () => {
-  const week={key:'2026-10-12',lock:100,seriesIds:new Set(['captain-test']),teams:new Set()};
-  const picks=[11,12,13,14,15];
-  const entry={account:99,picks,week:week.key,updatedAt:new Date(90000)};
-  const games=[0,10,20].map((kills,i)=>({id:i,series_id:'captain-test',start_time:101+i,players:picks.map(account_id=>({account_id,kills}))}));
-  const original=scoreEntry(entry,week,games),result=scoreEntry({...entry,captain:12},week,games);
-  assert.equal(original.points,75);
-  assert.equal(result.points,90);
-  assert.equal(result.picks[1].points,30);
-  assert.equal(result.picks[1].basePoints,15);
-  assert.equal(result.picks.filter(p=>p.captain).length,1);
-  assert.deepEqual(result.picks[1].games.map(g=>g.counted),[false,true,true]);
-  assert.equal(weekBoard([{...entry,captain:12}],week,games)[0].points,90);
-  assert.equal(leaderboard([{...entry,captain:12}],[week],games,101)[0].points,90);
-  assert.equal(scoreEntry({...entry,captain:99},week,games),null);
-  assert.equal(scoreEntry({...entry,captain:'12'},week,games),null);
+  const w = weeks.find((x) => weekGames(d.games, x).length);
+  const picks = d.teams.filter((t) => w.teams.has(t.id)).flatMap((t) => t.players.map((p) => p.account_id)).slice(0, 5);
+  const entry = { account: 99, picks, week: w.key, updatedAt: new Date((w.lock - 60) * 1000) };
+  const original = scoreEntry(entry, w, d.games), result = scoreEntry({ ...entry, captain: picks[1] }, w, d.games);
+  const base = original.picks[1].points;
+  assert.equal(result.picks[1].basePoints, base);
+  assert.equal(result.picks[1].points, Math.round(base * 2 * 10) / 10);
+  assert.equal(result.picks.filter((p) => p.captain).length, 1);
+  assert.equal(result.points, Math.round((original.points + base) * 10) / 10);
+  assert.equal(weekBoard([{ ...entry, captain: picks[1] }], w, d.games)[0].points, result.points);
+  assert.equal(scoreEntry({ ...entry, captain: 99 }, w, d.games), null);
+  assert.equal(scoreEntry({ ...entry, captain: "12" }, w, d.games), null);
 });

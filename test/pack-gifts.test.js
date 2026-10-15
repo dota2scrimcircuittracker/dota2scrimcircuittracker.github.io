@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {giftPacks,clearGifts,giftLabel,isAdmin,ADMIN_ACCOUNT} from '../public/lib/pack-gifts.js';
+import {giftPacks,clearGifts,giftLabel,isAdmin,ADMIN_ACCOUNT,sendPack,MAX_SENT_PER_DAY} from '../public/lib/pack-gifts.js';
 import {grantLogin,rollPack} from '../public/lib/cosmetics-engine.js';
 import {SCREEN_ART} from '../public/lib/screen-art-data.js';
 import {CATALOG} from '../public/lib/cosmetics-catalog.js';
@@ -74,4 +74,46 @@ test('gift labels read naturally',()=>{
   assert.equal(giftLabel({tier:'epic',count:1}),'an Epic pack');
   assert.equal(giftLabel({tier:'common',count:1}),'a Common pack');
   assert.equal(giftLabel({tier:'rare',count:3}),'3 Rare packs');
+});
+
+test('sendPack moves one pack from the sender to the recipient with a notice',()=>{
+  const sender={packs:['common','rare:border','screens'],gifts:[]},recipient={packs:['epic'],gifts:[]};
+  const sent=sendPack(sender,recipient,{index:1,from:'101',fromName:'Ann',note:' have this '},1000);
+  assert.deepEqual(sent.sender.packs,['common','screens']);
+  assert.deepEqual(sent.recipient.packs,['epic','rare:border']);
+  assert.equal(sent.sender.packsSent,1);
+  assert.deepEqual(sent.recipient.gifts[0],{kind:'pack',tier:'rare:border',count:1,note:'have this',at:1000,from:'101',fromName:'Ann'});
+  assert.equal(giftLabel(sent.recipient.gifts[0]),'a rare border pack');
+  assert.deepEqual(sender.packs,['common','rare:border','screens']);
+});
+test('sendPack only sends packs you hold, and at most a few a day',()=>{
+  const recipient={packs:[]};
+  assert.throws(()=>sendPack({packs:[]},recipient,{index:0,from:'1'}),/Choose one of your packs/);
+  assert.throws(()=>sendPack({packs:['common']},recipient,{index:1,from:'1'}),/Choose one of your packs/);
+  assert.throws(()=>sendPack({packs:['common']},recipient,{index:0.5,from:'1'}),/Choose one of your packs/);
+  assert.throws(()=>sendPack({packs:['common']},recipient,{index:0,from:'1',note:'<b>'}),/plain text/);
+  let state={packs:Array(MAX_SENT_PER_DAY+1).fill('rare')},got=recipient,now=5000;
+  for(let i=0;i<MAX_SENT_PER_DAY;i++){const r=sendPack(state,got,{index:0,from:'1'},now+i);state=r.sender;got=r.recipient;}
+  assert.throws(()=>sendPack(state,got,{index:0,from:'1'},now+10),/a day/);
+  assert.equal(sendPack(state,got,{index:0,from:'1'},now+864e5+10).sender.packs.length,0);
+});
+test('vault: players send packs from their own inventory; never to themselves or an unknown player',async()=>{
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)))};
+  storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});
+  const request=(account,body)=>vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify(body)}));
+  await request('101',{action:'session'});await request('102',{action:'session'});
+  const before=rows.get('user:101').packs.length;
+  assert.equal((await request('101',{action:'send-pack',target:'101',packIndex:0,requestId:'self-send-request-12345'})).status,400);
+  assert.equal((await request('101',{action:'send-pack',target:'999',packIndex:0,requestId:'nobody-request-1234567'})).status,400);
+  assert.equal((await request('101',{action:'send-pack',target:'102',packIndex:99,requestId:'bad-index-request-12345'})).status,400);
+  const send={action:'send-pack',target:'102',packIndex:0,note:'gg',requestId:'send-pack-request-12345'};
+  assert.equal((await request('101',send)).status,200);
+  await request('101',send); // a retry changes nothing
+  assert.equal(rows.get('user:101').packs.length,before-1);
+  assert.equal(rows.get('user:102').packs.length,before+1);
+  assert.equal(rows.get('user:101').packsSent,1);
+  assert.equal(rows.get('user:102').gifts.at(-1).from,'101');
+  const facts=await (await request('101',{action:'achievements'})).json();
+  assert.equal(facts.facts.packsSent,1);
 });

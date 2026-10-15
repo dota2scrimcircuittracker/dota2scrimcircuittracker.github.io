@@ -9,6 +9,13 @@ import { BACK_STATS, backStats, partState } from '../lib/card-layout.js';
 import { plusSlot } from "../lib/hero-levels.js";
 import { tierList, tierModel, LIVE } from "../lib/tiers.js";
 
+// A custom-cropped card needs its picture's aspect so a rotated crop shows the whole image under the frame
+// instead of a clipped card-shaped piece (style.css .ft-custom-crop). Cards are HTML strings, so catch every load.
+document.addEventListener("load", (e) => {
+  const img = e.target, card = img.closest?.(".ft-card.ft-custom-crop");
+  if (img.tagName === "IMG" && card && img.closest(".ft-art") && img.naturalWidth) card.style.setProperty("--art-ar", img.naturalWidth / img.naturalHeight);
+}, true);
+
 // The cards' hero art filters. Each hero has its own art and style (lib/hero-art.js, picked by
 // Fav; styles in style.css .ft-card[data-style]). The default, stencil, is a print to match the
 // display type: a hard posterize (#ft-paint) flattens the art into a few flat inks with rigid
@@ -106,7 +113,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
     const st = stats.get(p.account), t = tier ?? tierOf(p.account), top = st?.top ?? [], g = st?.games ?? 0;
     const face = heroById(ov?.hero)?.name ?? top[0]?.hero, faceRec = face && st?.heroes.get(face);
     const ha = face && cardArtwork(face, ov), art = ha?.src ?? (face && heroVert(face)), wide = face && heroImg(face);
-    const cropStyle = ha?.crop ? `--art-x:${ha.crop.x}%;--art-y:${ha.crop.y}%;--art-zoom:${ha.crop.zoom};--art-rot:${ha.crop.rot ?? 0}deg;--art-flip:${ha.crop.flip ? -1 : 1};` : "";
+    const cropStyle = ha?.crop ? `--art-x:${ha.crop.x}%;--art-y:${ha.crop.y}%;--art-xf:${ha.crop.x / 100};--art-yf:${ha.crop.y / 100};--art-zoom:${ha.crop.zoom};--art-rot:${ha.crop.rot ?? 0}deg;--art-flip:${ha.crop.flip ? -1 : 1};` : "";
     const appearance=cosmeticAttributes(equipment).replace('style="',`style="${cropStyle}${equipment?.layout?.nameSize && equipment.layout.nameSize !== 100 ? `--name-size:${equipment.layout.nameSize / 100};` : ""}`);
     const avg = (v) => (g ? v / g : 0), one = (v) => (g ? avg(v).toFixed(1) : "—");
     const role = roleOf(p.account, ov), set = ov?.pos != null;

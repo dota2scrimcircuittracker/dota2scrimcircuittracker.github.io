@@ -1,6 +1,7 @@
 // Drafter: draft Captains Mode for any two AD2L teams with the draft model (lib/cmdraft.js,
 // Project Sybil's model) scoring every hero at every step. Start from an upcoming series, any
 // two teams, or a past game's draft (rewind to any step and branch). Loaded on first visit.
+import { recordAchievementEvent } from "../lib/achievement-events.js";
 import { esc, app, pageHead, portrait, pct, profileLinks, myTeam, DIVISIONS, ALL_DIVS, divLite, divData, gameWeeker, tabInUrl, setRoutedAt } from "../core.js";
 import { DRAFTER_MODES as MODES } from "../lib/pagetabs.js";
 import { sideOf as teamSide } from "../lib/teams.js";
@@ -194,6 +195,7 @@ export async function renderDrafter(src) {
     const c = context();
     opts.innerHTML = s.original ? gameLinksHtml() : optsHtml();
     const n = s.done.length, over = n >= s.order.length;
+    if (over && !s.original) recordAchievementEvent("draft"); // a draft you finished, not a past game replayed
     const state = stateAt(n), gone = new Set(s.done);
     const toX = (p) => (s.radiant === "X" ? p : 1 - p);
     const pX = toX(draftProbability(c, state));

@@ -13,6 +13,7 @@
 // In the Drafter the grid is the hero picker: wireHeroGrid's controller takes the draft's state
 // (heroes gone, the model's value for each, which ones fit an open position), and a click on a
 // hero outside editing plays it.
+import { recordAchievementEvent } from "../lib/achievement-events.js";
 import {
   heroSources, templateRows, placeRows, placedConfig, freezeLayout, freeSpot, fitIcons, snap, configName, mergeGrid,
   addToBox, dropFromBox, placeHero, colOf, sourceLabel, atDepth, DEPTHS, TEMPLATES, SOURCES, COLS, CANVAS_W, MIN_W, MIN_H, LABEL_H,
@@ -99,6 +100,7 @@ function openMenu(hero, x, y) {
   const done = (t, b) => {
     try { localStorage.setItem(PICK_KEY, t.id); } catch {}
     dispatchEvent(new CustomEvent("herogrid-saved", { detail: t.id }));
+    recordAchievementEvent("heroGrid");
     const msg = menu.querySelector(".hgm-msg");
     msg.innerHTML = `Added ${esc(hero)} to <b>${esc(t.name)}</b> · ${esc(boxName(b))}. Team pages' grids open on it.`;
     body.hidden = true;

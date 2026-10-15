@@ -49,7 +49,7 @@ export const REPOST_WINDOW = 30 * 60 * 1000;
 // The shortest gap between one player's comments.
 export const COMMENT_GAP = 3000;
 
-const POST_RE = /^(c:\d{1,10}:[0-2]:\d{1,15}|u:\d{1,10}:\d{1,15}|p:\d{15}:\d{1,10}:[\w-]{16,80})$/;
+const POST_RE = /^(c:\d{1,10}:[0-4]:\d{1,15}|u:\d{1,10}:\d{1,15}|p:\d{15}:\d{1,10}:[\w-]{16,80})$/;
 export const isPostId = (id) => typeof id === 'string' && POST_RE.test(id);
 export function postOwner(id) {
   if (!isPostId(id)) throw new Error('Choose a post.');
@@ -98,6 +98,26 @@ export const FEED_TYPES = Object.freeze({
   cards: { label: 'Card designs', match: (p) => p.kind === 'card' },
   pulls: { label: 'Pack pulls', match: (p) => p.kind === 'pull' },
 });
+// The Feed's Exclude filter: kinds of post to hide. 'none' is the empty choice.
+export const FEED_EXCLUDES = Object.freeze({
+  none: { label: 'Nothing' },
+  pulls: { label: 'Pack pulls' },
+  cards: { label: 'Card designs' },
+  clips: { label: 'Clips' },
+  games: { label: 'Games' },
+  images: { label: 'Screenshots' },
+  polls: { label: 'Polls' },
+});
+// Show and Exclude take several kinds at once: an array or a comma list on the wire, only valid
+// keys kept (the 'all' and 'none' placeholders drop out). Show with none ticked means everything.
+const feedKinds = (v, table, skip) => [...new Set((Array.isArray(v) ? v : String(v ?? '').split(',')).filter((k) => k !== skip && Object.hasOwn(table, k)))];
+export const feedTypesOf = (v) => feedKinds(v, FEED_TYPES, 'all');
+export const feedExcludesOf = (v) => feedKinds(v, FEED_EXCLUDES, 'none');
+// Whether a post passes: it matches any ticked Show kind, and none of the Exclude kinds.
+export const feedShows = (types, excludes, p) => {
+  const shown = feedTypesOf(types);
+  return (!shown.length || shown.some((k) => FEED_TYPES[k].match(p))) && !feedExcludesOf(excludes).some((k) => FEED_TYPES[k].match(p));
+};
 // Newest first; Top by score; Trending by score that fades with age (half after about a day).
 export const FEED_SORTS = Object.freeze({ new: 'Newest', trending: 'Trending', top: 'Top' });
 // How far back Top looks: the longest age of a post it ranks (ms), or none for all time.
@@ -179,10 +199,10 @@ export const pushNotice = (state, notice) => ({ ...state, notices: [...(state.no
 export const unreadNotices = (state) => (state?.notices ?? []).filter((n) => n.at > (state.noticesSeenAt ?? 0));
 export const markNoticesSeen = (state, now) => ({ ...state, noticesSeenAt: now });
 
-// Which post a freshly saved card goes in: the slot's last post when it is recent and untouched,
-// else a new one.
+// Which post a freshly saved card goes in: the slot's last post when it is recent (it keeps its
+// reactions and comments), else a new one that replaces it.
 export function cardPostId(account, slot, now, last) {
-  if (last && now - last.at < REPOST_WINDOW && !last.touched) return last.id;
+  if (last && now - last.at < REPOST_WINDOW) return last.id;
   return `c:${account}:${slot}:${now}`;
 }
 
@@ -361,15 +381,33 @@ export const isBanned = (bans, account, now, kind = null) => {
   return !!b && (b.until == null || b.until > now) && (kind == null || banScope(b).includes(kind));
 };
 
-// Following: everyone in the league is followed to start with. Unfollowing a player hides their
-// posts (their own, saved cards and pulls) from your Feed; following again brings them back.
-// Stored on your collection as `unfollowed`, newest last.
-export const MAX_UNFOLLOWED = 500;
-export function setFollow(state, account, target, follow) {
+// Following is opt-in: you follow players from their posts, comments or profile, and the Feed
+// leads with them. Blocking hides a player's posts and comments from you and drops them from
+// your follows. Both are stored on your collection (`following`, `blocked`), newest last.
+export const MAX_FOLLOWING = 150;
+export const MAX_BLOCKED = 500;
+const playerId = (target) => {
   const who = String(target ?? '');
   if (!/^\d{1,10}$/.test(who)) throw new Error('Choose a player.');
-  if (who === String(account)) throw new Error("You can't unfollow yourself.");
-  const rest = (state.unfollowed ?? []).filter((a) => a !== who);
-  return { ...state, unfollowed: follow ? rest : [...rest, who].slice(-MAX_UNFOLLOWED) };
+  return who;
+};
+export function setFollow(state, account, target, follow) {
+  const who = playerId(target);
+  if (who === String(account)) throw new Error("You can't follow yourself.");
+  if (follow && (state.blocked ?? []).includes(who)) throw new Error('Unblock them to follow them.');
+  const rest = (state.following ?? []).filter((a) => a !== who);
+  if (follow && rest.length >= MAX_FOLLOWING) throw new Error(`You can follow up to ${MAX_FOLLOWING} players.`);
+  return { ...state, following: follow ? [...rest, who] : rest };
 }
-export const isFollowing = (state, target) => !(state?.unfollowed ?? []).includes(String(target));
+export const isFollowing = (state, target) => (state?.following ?? []).includes(String(target));
+export function setBlock(state, account, target, block) {
+  const who = playerId(target);
+  if (who === String(account)) throw new Error("You can't block yourself.");
+  const rest = (state.blocked ?? []).filter((a) => a !== who);
+  return {
+    ...state,
+    blocked: block ? [...rest, who].slice(-MAX_BLOCKED) : rest,
+    following: block ? (state.following ?? []).filter((a) => a !== who) : state.following,
+  };
+}
+export const isBlocked = (state, target) => (state?.blocked ?? []).includes(String(target));

@@ -20,6 +20,7 @@ import { compareHtml, wireCompare } from "../parts/compare.js";
 import { radarSvg, roleScores } from "../parts/radar.js";
 import { tagContext, gameTags, tagsHtml, tagCells } from "../lib/gametags.js";
 import { mountProfileCollection, mountProfileFeed } from '../parts/collection.js';
+import { mountProfileAchievements } from '../parts/achievements.js';
 import { mountProfileTickets } from '../parts/profile-tickets.js';
 import { mountGiftPanel } from '../parts/pack-gifts.js';
 import { plusSlot, startPlusLevels } from "../lib/hero-levels.js";
@@ -132,6 +133,8 @@ export async function renderPlayer(src, key) {
 `],
       // Their Feed posts, loaded when the tab opens (parts/collection.js mountProfileFeed).
       ["feed", /^\d+$/.test(key) ? `<div class="profile-feed-box"></div>` : ""],
+      // Achievements and their reward packs, loaded when the tab opens (parts/achievements.js).
+      ["achievements", /^\d+$/.test(key) ? `<div class="profile-ach-box"></div>` : ""],
   ]));
 
   // One compact header: back link and league on one line, then name, tier, team line and the
@@ -162,6 +165,7 @@ export async function renderPlayer(src, key) {
   if(/^\d+$/.test(key)) mountProfileCollection(app,{account:Number(key),name:inGameName,matches,team:roster?.team?.name??s.team,tier:tierOf}).catch(()=>{});
   if(/^\d+$/.test(key)) mountProfileTickets(app,key).catch(()=>{});
   if(/^\d+$/.test(key)) mountProfileFeed(app.querySelector(".profile-feed-box"),key).catch(()=>{});
+  if(/^\d+$/.test(key)) mountProfileAchievements(app.querySelector(".profile-ach-box"),key).catch(()=>{});
   if(/^\d+$/.test(key)) mountGiftPanel(app,key,s.name).catch(()=>{});
   wireItemHeroes();
   wireCharts(app);

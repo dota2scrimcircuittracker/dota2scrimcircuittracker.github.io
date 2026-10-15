@@ -9,7 +9,7 @@ import { designKey } from '../lib/card-ratings.js';
 import { mountRating } from './card-rating.js';
 import { shownNickname } from '../lib/cosmetics-engine.js';
 import { itemByKey } from '../lib/cosmetics-catalog.js';
-import { REACTIONS, REACTION_ART, topReaction, rankedReactions, reactionTally, commentThreads, MAX_COMMENT, clipEmbed, clipLink, canRemovePost, feedAutoOf, PULL_RARITIES, BAN_SCOPES, BAN_LABELS, banScope, FEED_TYPES, FEED_SORTS, FEED_RANGES, pollOpen, pollTimeLeft } from '../lib/feed.js';
+import { REACTIONS, REACTION_ART, topReaction, rankedReactions, reactionTally, commentThreads, MAX_COMMENT, clipEmbed, clipLink, canRemovePost, feedAutoOf, PULL_RARITIES, BAN_SCOPES, BAN_LABELS, banScope, FEED_TYPES, FEED_EXCLUDES, feedTypesOf, feedExcludesOf, FEED_SORTS, FEED_RANGES, pollOpen, pollTimeLeft } from '../lib/feed.js';
 import { screenArt } from '../lib/card-art.js';
 import { playerLine, gameAchievements } from '../lib/highlights.js';
 import { heroImg } from '../lib/hero-meta.js';
@@ -32,11 +32,33 @@ const autoFormHtml = (auto) => `<form class="feed-auto"><fieldset><legend>Auto-p
   <small class="feed-auto-note" role="status" aria-live="polite">Changes apply to new posts. Old posts stay until you delete them.</small></fieldset></form>`;
 
 // The kind of post and the order the Feed shows; kept while you browse, so a redraw keeps them.
-const view = { type: 'all', sort: 'trending', range: 'all' };
-const viewBarHtml = () => `<div class="feed-view" role="group" aria-label="Filter and sort the feed">
-  <label class="feed-view-type">Show <select name="type">${Object.entries(FEED_TYPES).map(([k, t]) => `<option value="${k}"${view.type === k ? ' selected' : ''}>${t.label}</option>`).join('')}</select></label>
+const SCOPES = { following: 'Following', all: 'Everyone' };
+// Your choices are kept in this browser (localStorage), so they are still set next visit.
+const VIEW_KEY = 'feed-view';
+const view = (() => {
+  const v = { type: [], exclude: [], sort: 'trending', range: 'all', scope: null };
+  try {
+    const s = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}');
+    v.type = feedTypesOf(s.type); v.exclude = feedExcludesOf(s.exclude);
+    if (Object.hasOwn(FEED_SORTS, s.sort)) v.sort = s.sort;
+    if (Object.hasOwn(FEED_RANGES, s.range)) v.range = s.range;
+    if (Object.hasOwn(SCOPES, s.scope)) v.scope = s.scope;
+  } catch { /* no storage: defaults */ }
+  return v;
+})();
+// A profile's Feed always shows everyone, so it leaves the saved Following/Everyone choice alone.
+const saveView = (scoped) => {
+  try {
+    const kept = scoped ? view.scope : JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}').scope;
+    localStorage.setItem(VIEW_KEY, JSON.stringify({ ...view, scope: kept }));
+  } catch { /* no storage */ }
+};
+const viewBarHtml = (scoped = false) => `<div class="feed-view" role="group" aria-label="Filter and sort the feed">
+  ${scoped ? `<div class="feed-view-scope" role="radiogroup" aria-label="Whose posts">${Object.entries(SCOPES).map(([k, label]) => `<button type="button" role="radio" data-feed-scope="${k}" aria-checked="${view.scope === k}">${label}</button>`).join('')}</div>` : ''}
   <div class="feed-view-sort" role="radiogroup" aria-label="Sort">${Object.entries(FEED_SORTS).map(([k, label]) => `<button type="button" role="radio" data-feed-sort="${k}" aria-checked="${view.sort === k}">${label}</button>`).join('')}</div>
   <label class="feed-view-type feed-view-range"${view.sort === 'top' ? '' : ' hidden'}>Top of <select name="range">${Object.entries(FEED_RANGES).map(([k, r]) => `<option value="${k}"${view.range === k ? ' selected' : ''}>${r.label}</option>`).join('')}</select></label>
+  <fieldset class="feed-view-pick" data-feed-pick="type"><legend>Show</legend>${Object.entries(FEED_TYPES).filter(([k]) => k !== 'all').map(([k, t]) => `<label><input type="checkbox" value="${k}"${view.type.includes(k) ? ' checked' : ''}> ${t.label}</label>`).join('')}<small>Nothing ticked shows everything.</small></fieldset>
+  <fieldset class="feed-view-pick" data-feed-pick="exclude"><legend>Exclude</legend>${Object.entries(FEED_EXCLUDES).filter(([k]) => k !== 'none').map(([k, t]) => `<label><input type="checkbox" value="${k}"${view.exclude.includes(k) ? ' checked' : ''}> ${t.label}</label>`).join('')}</fieldset>
 </div>`;
 
 // account: one player's Feed (their profile's Feed tab, collection.js mountProfileFeed): only their
@@ -45,8 +67,18 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   const token = {}; body._feedToken = token;
   body.innerHTML = '<p>Loading feed…</p>';
   let first, focused = null, teams, matches, overrides;
+  // Who you follow and block lives on your collection (lib/feed.js setFollow, setBlock).
+  if (viewer != null && !collectionState()) await action('session').catch(() => null);
+  if (!body.isConnected || body._feedToken !== token) return;
+  const following = new Set((viewer != null && collectionState()?.following) || []);
+  const blocked = new Set((viewer != null && collectionState()?.blocked) || []);
+  // The main Feed opens on the players you follow, once you follow someone; a profile shows its player.
+  const scoped = account == null && viewer != null;
+  if (!scoped) view.scope = 'all';
+  else if (view.scope == null || (view.scope === 'following' && !following.size)) view.scope = following.size ? 'following' : 'all';
+  const feedArgs = (more = {}) => ({ account, ...view, ...(view.scope === 'following' && scoped ? { from: [...following] } : {}), ...more });
   try {
-    [first, focused, teams, matches, overrides] = await Promise.all([feedPosts({ account, ...view }), focus ? feedPosts({ post: focus }).catch(() => null) : null,
+    [first, focused, teams, matches, overrides] = await Promise.all([feedPosts(feedArgs()), focus ? feedPosts({ post: focus }).catch(() => null) : null,
       SOURCES.all.data().then((d) => d.teams).catch(() => []), allLoad().catch(() => []), listCards().catch(() => new Map())]);
   } catch (e) { body.innerHTML = `<p>${esc(e.message)}</p>`; return; }
   if (!body.isConnected || body._feedToken !== token || body.dataset.collectionView !== 'feed') return;
@@ -63,19 +95,16 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   const who = (a) => `<a href="${SOURCES[roster.get(String(a))?.league]?.root ?? '#/all'}/player/${a}">${esc(nameOf(a))}</a>`;
   const when = (at) => `<time datetime="${new Date(at).toISOString()}" title="${new Date(at).toLocaleString()}">${ago(at)}</time>`;
   const posts = new Map();
-  // Players you unfollowed (lib/feed.js setFollow): their posts stay out of your Feed.
-  if (me != null && !collectionState()) await action('session').catch(() => null);
-  if (!body.isConnected || body._feedToken !== token) return;
-  // A profile's Feed shows that player whether you follow them or not.
-  const unfollowed = new Set((account == null && me != null && collectionState()?.unfollowed) || []);
-  // A post's header buttons: Delete (yours, or any for Fav), Unfollow, and Ban for Fav.
+  // A post's header buttons: Delete (yours, or any for Fav), Follow, Block, and Ban for Fav.
+  const followBtn = (a) => `<button type="button" class="link-btn" data-follow-toggle="${esc(a)}" aria-pressed="${following.has(String(a))}">${following.has(String(a)) ? 'Following' : 'Follow'}</button>`;
+  const blockBtn = (a) => `<button type="button" class="link-btn" data-block="${esc(a)}" title="Hide ${esc(nameOf(a))}'s posts and comments from you">Block</button>`;
   const toolsHtml = (p) => {
     if (me == null) return '';
     const other = String(p.account) !== me, out = [];
     if (admin && account == null) out.push(`<button type="button" class="link-btn" data-pin-post="${p.pinned ? 'off' : 'on'}">${p.pinned ? 'Unpin' : 'Pin'}</button>`);
     if (admin && account == null) out.push('<button type="button" class="link-btn" data-notify-post title="Send this post to every player as a notification">Notify</button>');
     if (canRemovePost(p.id, me, admin)) out.push('<button type="button" class="link-btn" data-remove-post>Delete</button>');
-    if (other && account == null) out.push(`<button type="button" class="link-btn" data-unfollow="${esc(p.account)}" title="Hide ${esc(nameOf(p.account))}'s posts from your Feed">Unfollow</button>`);
+    if (other) out.push(followBtn(p.account), blockBtn(p.account));
     if (other && admin) out.push(`<button type="button" class="link-btn feed-ban" data-ban="${esc(p.account)}" data-ban-from="post">Ban</button>`);
     return out.length ? ` <span class="feed-tools">${out.join('')}</span>` : '';
   };
@@ -147,15 +176,38 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   const commentTextHtml = (text) => mentionParts(text).map((part) => typeof part === 'string' ? emoteHtml(part) : mentionHtml(part)).join('');
   // Threads are one level deep (lib/feed.js commentThreads): replies sit under their comment. A
   // removed comment that still has replies shows as a placeholder.
+  // Remove and Ban live behind a three-dot menu so a comment line stays quiet.
+  const commentMenuHtml = (p, c) => {
+    const items = [];
+    if (me != null && (c.account === me || p.account === me || admin)) items.push('<button type="button" class="link-btn" data-remove>Remove</button>');
+    if (me != null && c.account !== me) items.push(followBtn(c.account), blockBtn(c.account));
+    if (admin && c.account !== me) items.push(`<button type="button" class="link-btn feed-ban" data-ban="${esc(c.account)}" data-ban-from="comment">Ban</button>`);
+    return items.length ? ` <span class="feed-comment-more"><button type="button" class="link-btn feed-more-btn" data-comment-more aria-label="More actions" aria-haspopup="menu" aria-expanded="false">&#8943;</button><span class="feed-more-menu" role="menu" hidden>${items.join('')}</span></span>` : '';
+  };
   const commentLineHtml = (p, c) => c.removed ? `<div class="feed-comment feed-comment-removed"><em>Comment removed</em></div>`
-    : `<div class="feed-comment">${who(c.account)} ${c.text ? `<span class="feed-text">${commentTextHtml(c.text)}</span>` : ''} ${when(c.at)}${c.image ? `<button type="button" class="feed-comment-image" data-zoom="${esc(feedCommentMediaUrl(p.id, c.id))}" aria-label="Open image"><img src="${esc(feedCommentMediaUrl(p.id, c.id))}" alt="" loading="lazy"></button>` : ''}${commentReactHtml(p, c)}${me != null ? ` <button type="button" class="link-btn" data-reply-to="${esc(c.id)}">Reply</button>` : ''}${me != null && (c.account === me || p.account === me || admin) ? ' <button type="button" class="link-btn" data-remove>Remove</button>' : ''}${admin && c.account !== me ? ` <button type="button" class="link-btn feed-ban" data-ban="${esc(c.account)}" data-ban-from="comment">Ban</button>` : ''}</div>`;
+    : `<div class="feed-comment">${who(c.account)} ${c.text ? `<span class="feed-text">${commentTextHtml(c.text)}</span>` : ''} ${when(c.at)}${c.image ? `<button type="button" class="feed-comment-image" data-zoom="${esc(feedCommentMediaUrl(p.id, c.id))}" aria-label="Open image"><img src="${esc(feedCommentMediaUrl(p.id, c.id))}" alt="" loading="lazy"></button>` : ''}${commentReactHtml(p, c)}${me != null ? ` <button type="button" class="link-btn feed-reply-btn" data-reply-to="${esc(c.id)}" aria-label="Reply" title="Reply"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M6.5 3 2 7.5 6.5 12M2.5 7.5H10a4 4 0 0 1 4 4V13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : ''}${commentMenuHtml(p, c)}</div>`;
+  // Three or more comments show only the top one (most reactions, oldest on a tie) until "Load more".
+  const expandedComments = new Set();
+  const reactionCount = (c) => Object.values(reactionTally(c.reactions)).reduce((n, l) => n + l.length, 0);
+  const shownComments = (p) => p.comments.filter((c) => !blocked.has(String(c.account)));
+  const topComment = (p) => shownComments(p).filter((c) => !c.removed).reduce((best, c) => !best || reactionCount(c) > reactionCount(best) ? c : best, null);
   const threadsHtml = (p) => {
-    const threads = commentThreads(p.comments);
-    return threads.length ? `<ol>${threads.map((c) => `<li data-comment="${esc(c.id)}">${commentLineHtml(p, c)}${c.replies.length ? `<ol class="feed-replies">${c.replies.map((r) => `<li data-comment="${esc(r.id)}">${commentLineHtml(p, r)}</li>`).join('')}</ol>` : ''}</li>`).join('')}</ol>` : '';
+    const live = shownComments(p).filter((c) => !c.removed);
+    if (live.length >= 3 && !expandedComments.has(p.id)) {
+      const top = topComment(p);
+      return `<ol><li data-comment="${esc(top.id)}">${commentLineHtml(p, top)}</li></ol><button type="button" class="feed-load-more" data-load-comments>Load ${live.length - 1} more comments</button>`;
+    }
+    const threads = commentThreads(shownComments(p));
+    const html = threads.length ? `<ol>${threads.map((c) => `<li data-comment="${esc(c.id)}">${commentLineHtml(p, c)}${c.replies.length ? `<ol class="feed-replies">${c.replies.map((r) => `<li data-comment="${esc(r.id)}">${commentLineHtml(p, r)}</li>`).join('')}</ol>` : ''}</li>`).join('')}</ol>` : '';
+    return live.length >= 3 ? `${html}<button type="button" class="feed-load-more" data-collapse-comments>Show fewer comments</button>` : html;
   };
   const replyFormHtml = (reply = null) => `<form class="feed-reply${reply ? ' feed-reply-thread' : ''}"${reply ? ` data-reply="${esc(reply.id)}"` : ''}><div class="feed-reply-compose"><input name="text" maxlength="${MAX_COMMENT}" placeholder="${reply ? `Reply to ${esc(nameOf(reply.account))}` : 'Add a comment'} · @ to mention, : for emoticons" aria-label="${reply ? 'Write a reply' : 'Add a comment'}" aria-autocomplete="list" aria-expanded="false" autocomplete="off"><div class="feed-emote-suggest" role="listbox" aria-label="Dota emoticon suggestions" hidden></div></div><label class="feed-reply-image" title="Add an image or GIF"><input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" hidden>Image</label><button type="submit">${reply ? 'Reply' : 'Post'}</button><span class="feed-reply-picked" hidden><img alt=""><button type="button" data-unpick-reply aria-label="Remove image">×</button></span></form>`;
-  const commentsHtml = (p) => `<div class="feed-threads">${threadsHtml(p)}</div>
+  const commentsHtml = (p) => {
+    const n = shownComments(p).filter((c) => !c.removed).length;
+    return `<h4 class="feed-comments-head">Comments${n ? ` <span>${n}</span>` : ''}</h4>
+    <div class="feed-threads">${threadsHtml(p)}</div>
     ${me == null ? '<p class="feed-signin"><button type="button" class="linkish" data-signin>Sign in with Steam</button> to react and comment.</p>' : replyFormHtml()}`;
+  };
   const badgesHtml = (list) => list.map((a) => `<span class="feed-badge feed-badge-${a.tier}" title="${esc(a.tip)}">${esc(a.label)}</span>`).join('');
   const byId = new Map(matches.map((m) => [String(m.id), m]));
   // A highlighted game: the poster's hero and line, the result, and the badges it earned.
@@ -261,9 +313,10 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   }
 
   const mine = account != null && account === me;
-  body.innerHTML = `${account == null ? `<div class="feed-head"><h3>Feed</h3><p>Posts, clips and highlights from players, plus new cards and epic or legendary pulls from around the league. Tap the reaction to love a post, or hold for Dota reactions.</p></div>
-    ${me == null ? '<p class="feed-compose-signin"><button type="button" class="linkish" data-signin>Sign in with Steam</button> to post screenshots, clips and your best games.</p>' : composerHtml(matches, me)}`
-    : `<div class="feed-head"><h3>${mine ? 'Your feed' : `${esc(nameOf(account))}'s feed`}</h3><p>${mine ? 'Your posts, card designs and pack pulls. Delete any of them here.' : `Posts, card designs and pack pulls by ${esc(nameOf(account))}.`} <a href="${SOURCES[roster.get(account)?.league]?.root ?? '#/all'}/cards">${mine ? 'Write a post in Cards › Feed' : 'The whole league in Cards › Feed'}</a></p></div>
+  // The post box and the filters share the sticky right-hand column (.feed-side).
+  const composeHtml = account != null ? '' : me == null ? '<p class="feed-compose-signin"><button type="button" class="linkish" data-signin>Sign in with Steam</button> to post screenshots, clips and your best games.</p>' : composerHtml(matches, me);
+  body.innerHTML = `${account == null ? ''
+    : `<div class="feed-head"><h3>${mine ? 'Your feed' : `${esc(nameOf(account))}'s feed`}</h3><p>${mine ? 'Your posts, card designs and pack pulls. Delete any of them here.' : `Posts, card designs and pack pulls by ${esc(nameOf(account))}.`} <a href="${SOURCES[roster.get(account)?.league]?.root ?? '#/all'}/cards">${mine ? 'Write a post in Cards › Feed' : 'The whole league in Cards › Feed'}</a></p>${me != null && !mine ? `<p class="feed-profile-actions">${followBtn(account)} ${blockBtn(account)}</p>` : ''}</div>
     ${mine ? autoFormHtml(feedAutoOf(collectionState())) : ''}`}
     <div class="feed-hidden"></div>${admin ? `<div class="feed-bans"></div>
     <dialog class="feed-ban-dialog" aria-label="Ban a player"><form method="dialog">
@@ -273,8 +326,9 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       <p class="feed-ban-note" role="alert"></p>
       <div class="feed-ban-buttons"><button value="cancel" formnovalidate>Cancel</button><button value="ban" class="feed-ban-go">Ban</button></div>
     </form></dialog>` : ''}
-    ${viewBarHtml()}${PAINT_FILTER}<div class="feed-list"></div><div class="feed-more" aria-live="polite"></div>
+    <aside class="feed-side">${composeHtml}${viewBarHtml(scoped)}</aside>${PAINT_FILTER}<div class="feed-list"></div><div class="feed-more" aria-live="polite"></div>
     <dialog class="feed-zoom" aria-label="Image"><form method="dialog"><button aria-label="Close">×</button></form><img alt=""></dialog>`;
+  body.classList.add('feed-body');
   const list = body.querySelector('.feed-list'), moreBox = body.querySelector('.feed-more');
   // Your auto-post settings save as soon as a box changes (lib/feed.js setFeedAuto).
   const autoForm = body.querySelector('.feed-auto');
@@ -301,10 +355,10 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   } });
   // oldest pages Newest by time; served pages Top and Trending by how many posts came so far.
   let oldest = Infinity, served = 0, more = false, loading = false, viewToken = 0;
-  // The players you unfollowed, each with a Follow button to bring them back.
+  // The players you blocked, each with an Unblock button to bring them back.
   const hiddenBox = body.querySelector('.feed-hidden');
   const drawHidden = () => {
-    hiddenBox.innerHTML = unfollowed.size ? `<details><summary>${unfollowed.size} unfollowed player${unfollowed.size === 1 ? '' : 's'} hidden from your Feed</summary><ul>${[...unfollowed].map((a) => `<li>${who(a)} <button type="button" class="link-btn" data-follow="${esc(a)}">Follow</button></li>`).join('')}</ul></details>` : '';
+    hiddenBox.innerHTML = blocked.size ? `<details><summary>${blocked.size} blocked player${blocked.size === 1 ? '' : 's'} hidden from you</summary><ul>${[...blocked].map((a) => `<li>${who(a)} <button type="button" class="link-btn" data-unblock="${esc(a)}">Unblock</button></li>`).join('')}</ul></details>` : '';
   };
   drawHidden();
   // Fav: who is banned from the Feed and from what, with Change and Unban.
@@ -348,7 +402,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     if (!pinned) served += batch.filter((p) => !p.pinned).length;
     for (const p of batch) {
       if (!pinned && !p.pinned) oldest = Math.min(oldest, p.at);
-      if (!pinned && !p.pinned && unfollowed.has(String(p.account))) continue;
+      if (blocked.has(String(p.account))) continue;
       if (posts.has(p.id) && !pinned) continue;
       posts.set(p.id, p);
       list.insertAdjacentHTML(pinned ? 'afterbegin' : 'beforeend', postHtml(p, pinned));
@@ -357,13 +411,13 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     mountCardRatings();
     fitAllReacts();
   }
-  const drawMore = () => { moreBox.innerHTML = more ? '<button type="button" data-more>Load more</button>' : posts.size ? `<p>${view.sort === 'new' ? 'You reached the start of the feed.' : 'That is every post.'}</p>` : view.type !== 'all' ? `<p>No ${esc(FEED_TYPES[view.type].label.toLowerCase())} yet.</p>` : account != null ? '<p>No posts yet.</p>' : '<p>Nothing here yet. Write the first post, save a card design or open a pack.</p>'; };
+  const drawMore = () => { moreBox.innerHTML = more ? '<button type="button" data-more>Load more</button>' : !posts.size && view.scope === 'following' && scoped ? `<p>${following.size ? 'No posts from the players you follow yet.' : 'You are not following anyone yet.'} Follow players from their posts, comments or profile, or switch to Everyone.</p>` : posts.size ? `<p>${view.sort === 'new' ? 'You reached the start of the feed.' : 'That is every post.'}</p>` : view.type !== 'all' ? `<p>No ${esc(FEED_TYPES[view.type].label.toLowerCase())} yet.</p>` : account != null ? '<p>No posts yet.</p>' : '<p>Nothing here yet. Write the first post, save a card design or open a pack.</p>'; };
   async function loadMore() {
     if (loading || !more) return;
     loading = true; moreBox.innerHTML = '<p>Loading…</p>';
     const mark = viewToken;
     try {
-      const page = await feedPosts({ account, ...view, ...(view.sort === 'new' ? { before: Number.isFinite(oldest) ? oldest : null } : { offset: served }) });
+      const page = await feedPosts(feedArgs(view.sort === 'new' ? { before: Number.isFinite(oldest) ? oldest : null } : { offset: served }));
       if (mark !== viewToken) return;
       Object.assign(nicknames, page.nicknames); more = page.more; add(page.posts);
     }
@@ -372,19 +426,22 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   }
   // A new filter or sort starts the list again from its first page.
   async function changeView() {
-    const mark = ++viewToken;
+    const mark = ++viewToken; saveView(scoped);
+    body.querySelectorAll('[data-feed-scope]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.feedScope === view.scope)));
     body.querySelectorAll('[data-feed-sort]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.feedSort === view.sort)));
     body.querySelector('.feed-view-range').hidden = view.sort !== 'top';
     list.innerHTML = ''; posts.clear(); oldest = Infinity; served = 0; more = false; loading = true;
     moreBox.innerHTML = '<p>Loading…</p>';
     try {
-      const page = await feedPosts({ account, ...view });
+      const page = await feedPosts(feedArgs());
       if (mark !== viewToken || !body.isConnected) return;
       Object.assign(nicknames, page.nicknames); more = page.more; add(page.posts);
     } catch (e) { if (mark === viewToken) { moreBox.innerHTML = `<p>${esc(e.message)}</p>`; loading = false; } return; }
     loading = false; drawMore();
   }
-  body.querySelector('.feed-view select[name=type]').onchange = (e) => { view.type = e.target.value; changeView(); };
+  body.querySelectorAll('.feed-view [data-feed-pick]').forEach((box) => {
+    box.onchange = () => { view[box.dataset.feedPick] = [...box.querySelectorAll('input:checked')].map((i) => i.value); changeView(); };
+  });
   body.querySelector('.feed-view select[name=range]').onchange = (e) => { view.range = e.target.value; changeView(); };
   if (focused?.posts?.[0]) add(focused.posts, true);
   more = first.more; add(first.posts); drawMore();
@@ -544,7 +601,10 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     }
     if (!e.target.closest('.feed-reply-compose')) closeSuggestions();
     if (!e.target.closest('.feed-react-control')) closePickers();
+    if (!e.target.closest('.feed-comment-more')) body.querySelectorAll('.feed-more-menu:not([hidden])').forEach((m) => { m.hidden = true; m.previousElementSibling.setAttribute('aria-expanded', 'false'); });
     if (e.target.closest('[data-more]')) return loadMore();
+    const scopeBtn = e.target.closest('[data-feed-scope]');
+    if (scopeBtn) { if (view.scope !== scopeBtn.dataset.feedScope) { view.scope = scopeBtn.dataset.feedScope; changeView(); } return; }
     const sortBtn = e.target.closest('[data-feed-sort]');
     if (sortBtn) { if (view.sort !== sortBtn.dataset.feedSort) { view.sort = sortBtn.dataset.feedSort; changeView(); } return; }
     const reactsMore = e.target.closest('[data-reacts-more]');
@@ -556,18 +616,26 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       try { await action('ban', { target: unban.dataset.unban, banned: false }); } catch (err) { bansBox.insertAdjacentHTML('beforeend', `<p>${esc(err.message)}</p>`); return; }
       return drawBans();
     }
-    const unfollow = e.target.closest('[data-unfollow]'), follow = e.target.closest('[data-follow]');
-    if (unfollow || follow) {
-      const target = (unfollow ?? follow).dataset[unfollow ? 'unfollow' : 'follow'];
-      (unfollow ?? follow).disabled = true;
-      try { await action('follow', { target, follow: !!follow }); }
-      catch (err) { (unfollow ?? follow).disabled = false; const a = e.target.closest('[data-post]'); if (a) fail(a, err.message); return; }
-      // Following again redraws the Feed so their posts come back in place.
-      if (follow) return drawFeed(body, { viewer, signIn, action, swatch, colors, typeLabel, ago });
-      unfollowed.add(target); drawHidden();
-      list.querySelectorAll(`[data-account="${CSS.escape(target)}"]:not(.feed-pinned)`).forEach((a) => a.remove());
-      if (!list.childElementCount) loadMore();
-      return;
+    const toggle = e.target.closest('[data-follow-toggle]'), block = e.target.closest('[data-block]'), unblock = e.target.closest('[data-unblock]');
+    if (toggle || block || unblock) {
+      const btn = toggle ?? block ?? unblock, target = btn.dataset.followToggle ?? btn.dataset.block ?? btn.dataset.unblock;
+      if (block && !confirm(`Block ${nameOf(target)}? Their posts and comments are hidden from you. You can unblock them from the Feed.`)) return;
+      btn.disabled = true;
+      try {
+        if (toggle) await action('follow', { target, follow: !following.has(target) });
+        else await action('block', { target, block: !!block });
+      } catch (err) { btn.disabled = false; const a = e.target.closest('[data-post]'); if (a) fail(a, err.message); return; }
+      btn.disabled = false;
+      const st = collectionState();
+      following.clear(); (st?.following ?? []).forEach((a) => following.add(a));
+      blocked.clear(); (st?.blocked ?? []).forEach((a) => blocked.add(a));
+      if (toggle) {
+        const on = following.has(target);
+        body.querySelectorAll(`[data-follow-toggle="${CSS.escape(target)}"]`).forEach((b) => { b.textContent = on ? 'Following' : 'Follow'; b.setAttribute('aria-pressed', String(on)); });
+        return;
+      }
+      // Blocking or unblocking redraws so their posts and comments go or return in place.
+      return drawFeed(body, { viewer, signIn, action, swatch, colors, typeLabel, ago, focus, account });
     }
     if (e.target.closest('a[href]')) { body.closest('dialog.collection-dialog')?.close(); return; }
     const zoom = e.target.closest('[data-zoom]');
@@ -634,6 +702,15 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       thread.querySelector(':scope > .feed-reply-thread')?.remove();
       thread.insertAdjacentHTML('beforeend', replyFormHtml(c));
       thread.querySelector(':scope > .feed-reply-thread input').focus();
+      return;
+    }
+    if (e.target.closest('[data-collapse-comments]')) { expandedComments.delete(id); return refresh(id, 'comments'); }
+    if (e.target.closest('[data-load-comments]')) { expandedComments.add(id); return refresh(id, 'comments'); }
+    const more = e.target.closest('[data-comment-more]');
+    if (more) {
+      const menu = more.nextElementSibling, open = menu.hidden;
+      article.querySelectorAll('.feed-more-menu').forEach((m) => { m.hidden = true; m.previousElementSibling.setAttribute('aria-expanded', 'false'); });
+      menu.hidden = !open; more.setAttribute('aria-expanded', String(open));
       return;
     }
     const remove = e.target.closest('[data-remove]');

@@ -9,7 +9,8 @@ import {CosmeticsVault} from '../workers/steam-auth/src/cosmetics.js';
 test('post ids name their owner; anything else is refused',()=>{
   assert.equal(postOwner('c:101:2:1700000000000'),'101');
   assert.equal(postOwner('p:001700000000000:202:a-unique-request-12345'),'202');
-  for(const bad of ['c:101:3:1','x:1:1:1','p:1:202:short','c:101:0:1:extra',null])assert.equal(isPostId(bad),false);
+  assert.equal(isPostId('c:101:4:1'),true);
+  for(const bad of ['c:101:5:1','x:1:1:1','p:1:202:short','c:101:0:1:extra',null])assert.equal(isPostId(bad),false);
   assert.throws(()=>postOwner('nope'),/Choose a post/);
 });
 test('reactions toggle per player and emoji; tally lists who picked each',()=>{
@@ -59,15 +60,14 @@ test('notices keep the newest and count unread until seen',()=>{
   assert.equal(unreadNotices(s).length,MAX_NOTICES);
   assert.equal(unreadNotices(markNoticesSeen(s,30)).length,MAX_NOTICES-25);
 });
-test('a quick re-save updates its untouched post; otherwise a new post',()=>{
-  const last={id:'c:1:0:100',at:100,touched:false};
+test('a quick re-save updates its post, reactions and comments kept; otherwise a new post',()=>{
+  const last={id:'c:1:0:100',at:100};
   assert.equal(cardPostId('1',0,200,last),'c:1:0:100');
-  assert.equal(cardPostId('1',0,200,{...last,touched:true}),'c:1:0:200');
   assert.equal(cardPostId('1',0,100+REPOST_WINDOW,last),`c:1:0:${100+REPOST_WINDOW}`);
   assert.equal(cardPostId('1',0,200,null),'c:1:0:200');
 });
 test('vault: saved cards post to the feed; reactions, comments, notices and removal',async()=>{
-  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)))};storage.transaction=fn=>fn(storage);
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)))};storage.transaction=fn=>fn(storage);
   const vault=new CosmeticsVault({storage});
   let n=0;const act=(account,body)=>vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`feed-test-request-${String(++n).padStart(4,'0')}`,...body})})).then(async r=>({status:r.status,...await r.json()}));
   const retry=(account,requestId,body)=>vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId,...body})})).then(async r=>({status:r.status,...await r.json()}));
@@ -90,9 +90,9 @@ test('vault: saved cards post to the feed; reactions, comments, notices and remo
   await act('101',{action:'comment',post,text:'thanks'});
   const owner=rows.get('user:101');assert.equal(owner.notices.length,1);assert.equal(owner.notices[0].from,'202');assert.equal(owner.notices[0].post,post);
   assert.equal(unreadNotices((await act('101',{action:'notices-seen'})).state).length,0);
-  // A post with reactions or comments stays; the next save is a new post.
+  // A quick re-save keeps the post with its reactions and comments.
   await act('101',{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:120}});
-  posts=(await feed()).posts;assert.equal(posts.length,2);
+  posts=(await feed()).posts;assert.equal(posts.length,1);assert.equal(posts[0].id,post);assert.equal(posts[0].design.hue,120);
   const one=(await feed(`?post=${post}`)).posts[0];assert.equal(one.comments.length,2);assert.deepEqual(one.reactions,{'🔥':['202']});
   // Removal: not someone else's comment on another's post; the owner may.
   const theirs=one.comments.find(x=>x.account==='202').id;
@@ -100,6 +100,11 @@ test('vault: saved cards post to the feed; reactions, comments, notices and remo
   assert.match((await act('303',{action:'comment-delete',post,comment:theirs})).error,/Only the writer/);
   assert.equal((await act('101',{action:'comment-delete',post,comment:theirs})).comments.length,1);
   assert.match((await act('202',{action:'react',post:'c:999:0:5',emoji:'🔥'})).error,/gone/);
+  // Past the window a save replaces the old post and drops its reactions and comments.
+  rows.set(`post:${post}`,{...rows.get(`post:${post}`),at:Date.now()-REPOST_WINDOW-1000});
+  await act('101',{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:160}});
+  posts=(await feed()).posts;assert.equal(posts.length,1);assert.notEqual(posts[0].id,post);
+  assert.equal(rows.has(`post:${post}`),false);assert.equal(rows.has(`react:${post}`),false);assert.equal(rows.has(`comments:${post}`),false);
 });
 
 test('player posts: text tidied, clips parsed, images checked by their bytes',async()=>{
@@ -151,14 +156,24 @@ test('vault: player posts with images; owner removes them and their images',asyn
   assert.equal([...rows.keys()].some(k=>k.includes(id)),false);
   assert.equal((await vault.fetch(new Request(`https://vault/media?post=${encodeURIComponent(id)}&n=0`))).status,404);
 });
-test('follow: everyone to start; unfollow hides a player until followed again',async()=>{
+test('follow: opt-in; follow and unfollow toggle, never yourself',async()=>{
   const {setFollow,isFollowing}=await import('../public/lib/feed.js');
-  let s={};assert.equal(isFollowing(s,'5'),true);
-  s=setFollow(s,'1','5',false);assert.equal(isFollowing(s,'5'),false);assert.deepEqual(s.unfollowed,['5']);
-  s=setFollow(s,'1','5',false);assert.deepEqual(s.unfollowed,['5']);
-  s=setFollow(s,'1','5',true);assert.equal(isFollowing(s,5),true);
-  assert.throws(()=>setFollow(s,'1','1',false),/yourself/);
-  assert.throws(()=>setFollow(s,'1','x',false),/Choose a player/);
+  let s={};assert.equal(isFollowing(s,'5'),false);
+  s=setFollow(s,'1','5',true);assert.equal(isFollowing(s,'5'),true);assert.deepEqual(s.following,['5']);
+  s=setFollow(s,'1','5',true);assert.deepEqual(s.following,['5']);
+  s=setFollow(s,'1','5',false);assert.equal(isFollowing(s,5),false);
+  assert.throws(()=>setFollow(s,'1','1',true),/yourself/);
+  assert.throws(()=>setFollow(s,'1','x',true),/Choose a player/);
+});
+test('block: hides a player, drops the follow, and must be lifted to follow again',async()=>{
+  const {setFollow,setBlock,isBlocked,isFollowing}=await import('../public/lib/feed.js');
+  let s=setFollow({},'1','5',true);
+  s=setBlock(s,'1','5',true);assert.equal(isBlocked(s,'5'),true);assert.equal(isFollowing(s,'5'),false);
+  assert.throws(()=>setFollow(s,'1','5',true),/Unblock/);
+  s=setBlock(s,'1','5',false);assert.equal(isBlocked(s,5),false);
+  s=setFollow(s,'1','5',true);assert.equal(isFollowing(s,'5'),true);
+  assert.throws(()=>setBlock(s,'1','1',true),/yourself/);
+  assert.throws(()=>setBlock(s,'1','x',true),/Choose a player/);
 });
 test('moderation: the word filter catches disguised slurs, not ordinary words',async()=>{
   const {blockedTerm}=await import('../public/lib/moderation.js');
@@ -279,7 +294,7 @@ test('vault: replies notify the comment writer; comment reactions are stored and
 });
 
 test('feed sorts: score counts reactors and comments; trending fades with age',async()=>{
-  const {postScore,sortFeed,trendScore,feedTypeOf,feedSortOf,FEED_TYPES}=await import('../public/lib/feed.js');
+  const {postScore,sortFeed,trendScore,feedTypeOf,feedSortOf,FEED_TYPES,feedShows,feedTypesOf}=await import('../public/lib/feed.js');
   assert.equal(postScore({1:['❤️','🔥'],2:['❤️'],3:[]},[{text:'gg'},{removed:true}]),4);
   assert.equal(postScore(undefined,undefined),0);
   const h=3600000,now=100*h,posts=[{id:'old',at:now-72*h,score:9},{id:'new',at:now-h,score:3},{id:'quiet',at:now,score:0}];
@@ -292,6 +307,8 @@ test('feed sorts: score counts reactors and comments; trending fades with age',a
   assert.equal(feedTypeOf('clips'),'clips');assert.equal(feedTypeOf('constructor'),'all');assert.equal(feedSortOf('x'),'new');
   assert.equal(FEED_TYPES.clips.match({kind:'user',clip:{}}),true);assert.equal(FEED_TYPES.clips.match({kind:'user'}),false);
   assert.equal(FEED_TYPES.pulls.match({kind:'pull'}),true);
+  assert.equal(feedShows([],['pulls'],{kind:'pull'}),false);assert.equal(feedShows([],['pulls'],{kind:'card'}),true);assert.equal(feedShows(['posts'],['clips'],{kind:'user',clip:{}}),false);assert.equal(feedShows('x','y',{kind:'pull'}),true);
+  assert.equal(feedShows('cards,pulls','',{kind:'pull'}),true);assert.equal(feedShows('cards,pulls','',{kind:'user'}),false);assert.deepEqual(feedTypesOf(['all','clips','clips','constructor']),['clips']);
 });
 test('vault: the feed filters by kind and pages Top by score',async()=>{
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)))};storage.transaction=fn=>fn(storage);

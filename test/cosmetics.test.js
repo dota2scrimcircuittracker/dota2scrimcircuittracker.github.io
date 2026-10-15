@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {CATALOG,TIERS,PACK_ODDS,DEFAULT_EQUIPMENT} from '../public/lib/cosmetics-catalog.js';
-import {grantLogin,rollPack,recycleCards,equipCosmetics,saveCardDesign,setCardPreferences,cardDesignState,cardAppearance,selectedCardDesign,setProfileBackground,profileBackgroundOf} from '../public/lib/cosmetics-engine.js';
+import {grantLogin,rollPack,recycleCards,equipCosmetics,saveCardDesign,setCardPreferences,setCardName,cardSlotName,CARD_SLOTS,cardDesignState,cardAppearance,selectedCardDesign,setProfileBackground,profileBackgroundOf} from '../public/lib/cosmetics-engine.js';
 import {japaneseName,cyrillicName,greekName,runicName,koreanName,chineseName,thaiName,renderedName,signatureHtml} from '../public/lib/signatures.js';
 import {CosmeticsVault,cosmeticsRequest} from '../workers/steam-auth/src/cosmetics.js';
 
@@ -84,9 +84,9 @@ test('base card artwork and hue are validated and preserved when swapping cosmet
   const swapped=equipCosmetics(saved,{});assert.deepEqual(swapped.equipment.baseCard,saved.equipment.baseCard);assert.equal(swapped.equipment.hue,120);
   for(const raw of [{hue:361},{hue:'30'},{particleSpeed:49},{particleSpeed:201},{particleSpeed:'100'},{baseCard:{hero:9999}},{baseCard:{hero:74,art:'bad'}},{baseCard:{hero:74,style:'bad'}},{baseCard:{hero:74,crop:{x:101,y:0,zoom:1}}}])assert.throws(()=>equipCosmetics(state,raw));
 });
-test('three saved designs preserve the existing card; primary and viewer shuffle use only saved slots',()=>{
+test('five saved designs preserve the existing card; primary and viewer shuffle use only saved slots',()=>{
   const original=grantLogin(null),legacyEquipment=structuredClone(original.equipment);
-  assert.deepEqual(cardDesignState(original).cardDesigns,[legacyEquipment,null,null]);
+  assert.deepEqual(cardDesignState(original).cardDesigns,[legacyEquipment,null,null,null,null]);
   let state=saveCardDesign(original,{hue:120,baseCard:{hero:74,art:'vert'}},1);
   assert.deepEqual(state.equipment,legacyEquipment);assert.equal(state.cardDesigns[1].hue,120);
   assert.deepEqual(original.equipment,legacyEquipment);assert.equal(original.cardDesigns,undefined);
@@ -101,10 +101,20 @@ test('three saved designs preserve the existing card; primary and viewer shuffle
   assert.equal(selectedCardDesign(cardAppearance(state),false,.99).hue,240);
   state=setCardPreferences(state,{shuffleCards:false});
   assert.equal(selectedCardDesign(cardAppearance(state),false,.99).hue,120);
-  for(const slot of [-1,3,1.5])assert.throws(()=>saveCardDesign(state,{},slot));
+  state=saveCardDesign(state,{hue:60,baseCard:{hero:21,art:'vert'}},4);assert.equal(state.cardDesigns[4].hue,60);
+  for(const slot of [-1,CARD_SLOTS,1.5])assert.throws(()=>saveCardDesign(state,{},slot));
   assert.throws(()=>saveCardDesign(state,{border:'rose'},2),/Collect/);
   assert.throws(()=>setCardPreferences(state,{shuffleCards:'yes'}));
   assert.deepEqual(state.packs,original.packs);assert.deepEqual(state.inventory,original.inventory);
+});
+test('card slots take a name, or fall back to Card N',()=>{
+  let state=grantLogin(null);
+  assert.equal(cardSlotName(cardDesignState(state),3),'Card 4');
+  state=setCardName(state,3,'  Night   shift ');
+  assert.equal(cardSlotName(cardDesignState(state),3),'Night shift');
+  assert.equal(cardDesignState(state).cardNames.length,CARD_SLOTS);
+  assert.equal(cardSlotName(cardDesignState(setCardName(state,3,'')),3),'Card 4');
+  for(const [slot,name] of [[5,'x'],[-1,'x'],[0,'<b>'],[0,'x'.repeat(25)]])assert.throws(()=>setCardName(state,slot,name));
 });
 test('vault persists grants, ignores replayed opens and rejects forged equip',async()=>{
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)))};storage.transaction=fn=>fn(storage);
@@ -236,4 +246,12 @@ test('pictures only go through /cosmetics/post, so the image filter cannot be sk
     assert.equal((await send('/cosmetics',{action:'comment',post:'u:1:1',text:'hi',requestId:'aaaaaaaaaaaaaaad'})).status,200);
     assert.equal(vaultCalls,2);
   } finally {globalThis.fetch=original;}
+});
+test('placed border symbols are validated, kept across saves, and reset with null',()=>{
+  const state=grantLogin(null);
+  const saved=equipCosmetics(state,{emblems:[{x:10,y:20,size:150},{x:90.04,y:80}]});
+  assert.deepEqual(saved.equipment.emblems,[{x:10,y:20,size:150},{x:90,y:80,size:100}]);
+  assert.deepEqual(equipCosmetics(saved,{hue:40}).equipment.emblems,saved.equipment.emblems);
+  assert.equal(equipCosmetics(saved,{emblems:null}).equipment.emblems,undefined);
+  for(const emblems of [[],[{x:101,y:0}],[{x:0,y:0,size:20}],Array.from({length:13},()=>({x:1,y:1})),'x',[null]])assert.throws(()=>equipCosmetics(state,{emblems}));
 });

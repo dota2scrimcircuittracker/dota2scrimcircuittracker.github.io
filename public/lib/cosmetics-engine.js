@@ -1,4 +1,5 @@
 import { CATALOG, TIERS, PACK_ODDS, DEFAULT_EQUIPMENT, itemByKey } from './cosmetics-catalog.js';
+import { PACK_KIND_TYPES, parsePack, isThemedPack } from './pack-types.js';
 import { heroById } from './hero-meta.js';
 import { CARD_ART } from './card-art-data.js';
 import { SCREEN_ART } from './screen-art-data.js';
@@ -9,9 +10,22 @@ import { LETTER_CASES } from './signatures.js';
 
 export const PACK_INTERVAL_MS=8*60*60*1000;
 export const NORMAL_PACK_CAP=3;
+// How many card designs a player can save.
+export const CARD_SLOTS=5;
+const slotList=list=>Array.from({length:CARD_SLOTS},(_,i)=>list?.[i]??null);
 export function cardDesignState(state) {
-  const designs=Array.from({length:3},(_,i)=>state.cardDesigns?.[i]??(i===0?state.equipment:null));
-  return {cardDesigns:designs,primaryCard:state.primaryCard??0,shuffleCards:state.shuffleCards??false};
+  const designs=Array.from({length:CARD_SLOTS},(_,i)=>state.cardDesigns?.[i]??(i===0?state.equipment:null));
+  return {cardDesigns:designs,cardNames:slotList(state.cardNames),primaryCard:state.primaryCard??0,shuffleCards:state.shuffleCards??false};
+}
+// What a saved card is called in the slot list and under it on the profile: its name, else "Card 2".
+export const cardSlotName=(prefs,slot)=>prefs?.cardNames?.[slot]??`Card ${slot+1}`;
+// Names one of your card slots (null or blank clears it, back to "Card 2"). Same rules as nicknames.
+export function setCardName(state,slot,raw) {
+  if(!Number.isInteger(slot)||slot<0||slot>=CARD_SLOTS)throw new Error('Choose one of your cards.');
+  const name=raw==null?'':String(raw).replace(/\s+/g,' ').trim();
+  if(name&&([...name].length>MAX_NAME||/[\u0000-\u001f\u007f<>]/.test(name)))throw new Error(`Card names are 1 to ${MAX_NAME} characters, plain text.`);
+  const cardNames=slotList(state.cardNames);cardNames[slot]=name||null;
+  return {...state,cardNames};
 }
 // The public look of a player's cards; nickname is the name they chose to show, else null.
 export function cardAppearance(state) {
@@ -67,7 +81,7 @@ export function setProfileBackground(state,{background=null}={}) {
   return {...state,profileBackground:bg};
 }
 export function saveCardDesign(state,raw,slot=state.primaryCard??0) {
-  if(!Number.isInteger(slot)||slot<0||slot>2)throw new Error('Choose one of your three cards.');
+  if(!Number.isInteger(slot)||slot<0||slot>=CARD_SLOTS)throw new Error('Choose one of your cards.');
   const preferences=cardDesignState(state);
   const validated=equipCosmetics({...state,equipment:preferences.cardDesigns[slot]??state.equipment},raw).equipment;
   preferences.cardDesigns[slot]=validated;
@@ -75,7 +89,7 @@ export function saveCardDesign(state,raw,slot=state.primaryCard??0) {
 }
 export function setCardPreferences(state,{primaryCard=state.primaryCard??0,shuffleCards=state.shuffleCards??false}) {
   const preferences=cardDesignState(state);
-  if(!Number.isInteger(primaryCard)||primaryCard<0||primaryCard>2||!preferences.cardDesigns[primaryCard])throw new Error('Save this card before making it primary.');
+  if(!Number.isInteger(primaryCard)||primaryCard<0||primaryCard>=CARD_SLOTS||!preferences.cardDesigns[primaryCard])throw new Error('Save this card before making it primary.');
   if(typeof shuffleCards!=='boolean')throw new Error('Choose a valid shuffle setting.');
   return {...state,...preferences,primaryCard,shuffleCards,equipment:preferences.cardDesigns[primaryCard]};
 }
@@ -99,8 +113,29 @@ export function grantLogin(saved, now = new Date()) {
   }
   return state;
 }
+// A themed pack (lib/pack-types.js): three items of its kind, rolled with the same odds as a normal
+// pack of that rarity or better (the floor's rarities, weighted by PACK_ODDS). A roll that lands on
+// a rarity the kind has no items in moves up to the next rarity it has (signatures have no commons),
+// so legendary stays as rare as in a normal pack. No bonus screens, and no effect on the
+// normal-pack timer.
+function rollThemedPack(state, packIndex, random) {
+  const {tier,kind}=parsePack(state.packs[packIndex]), types=PACK_KIND_TYPES[kind], next=structuredClone(state), rewards=[];
+  const groups=TIERS.slice(TIERS.indexOf(tier)).map(rarity=>({rarity,weight:PACK_ODDS[rarity],items:CATALOG.filter(i=>types.includes(i.type)&&i.rarity===rarity)}));
+  if(!groups.some(g=>g.items.length)) throw new Error('That pack has nothing to give.');
+  for(let n=0;n<3;n++) {
+    let r=random()*groups.reduce((s,g)=>s+g.weight,0), at=groups.length-1;
+    for(let i=0;i<groups.length;i++) {r-=groups[i].weight;if(r<0){at=i;break;}}
+    const group=groups.slice(at).find(g=>g.items.length)??groups.findLast(g=>g.items.length);
+    const item=group.items[Math.min(group.items.length-1,Math.floor(random()*group.items.length))];
+    rewards.push({key:item.key,duplicate:(next.inventory[item.key]??0)>0});
+    next.inventory[item.key]=(next.inventory[item.key]??0)+1;
+  }
+  next.packs.splice(packIndex,1);
+  return {state:next,rewards,screens:[]};
+}
 export function rollPack(state, packIndex, random = Math.random, now = new Date()) {
   if(!Number.isInteger(packIndex) || packIndex<0 || packIndex>=state.packs.length) throw new Error('Choose an available pack.');
+  if(isThemedPack(state.packs[packIndex])) return rollThemedPack(state,packIndex,random);
   const next=grantLogin(state,now), min=TIERS.indexOf(next.packs[packIndex]), rewards=[];
   if(next.packs[packIndex]==='screens') {
     // A loading screen pack: five screens the player doesn't have, no cards.
@@ -148,6 +183,7 @@ export function recycleCards(state, selections) {
   next.packs.push(TIERS[tier+1]);
   return {state:next,minimum:TIERS[tier+1]};
 }
+export const MAX_EMBLEMS=12;
 export function equipCosmetics(state, raw) {
   if(!raw || typeof raw!=='object') throw new Error('Choose your card cosmetics.');
   const equipment={...DEFAULT_EQUIPMENT};
@@ -174,6 +210,17 @@ export function equipCosmetics(state, raw) {
   const emblem=raw.emblem??state.equipment?.emblem??true;
   if(typeof emblem!=='boolean')throw new Error('Choose whether to show the border symbol.');
   if(!emblem)equipment.emblem=false;
+  // Border symbols the owner placed: 1 to MAX_EMBLEMS, each at x/y % of the card with a size %. Absent (or null)
+  // means the one default symbol at the top.
+  const emblems=raw.emblems!==undefined?raw.emblems:state.equipment?.emblems??null;
+  if(emblems!=null) {
+    if(!Array.isArray(emblems)||emblems.length<1||emblems.length>MAX_EMBLEMS)throw new Error(`Place 1 to ${MAX_EMBLEMS} border symbols.`);
+    equipment.emblems=emblems.map(m=>{
+      const {x,y,size=100}=m&&typeof m==='object'?m:{};
+      if(![x,y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=100)||typeof size!=='number'||!Number.isFinite(size)||size<50||size>300)throw new Error('Invalid border symbol position or size.');
+      return {x:Math.round(x*10)/10,y:Math.round(y*10)/10,size:Math.round(size)};
+    });
+  }
   const base=raw.baseCard??state.equipment?.baseCard;
   if(base!=null) {
     if(typeof base!=='object'||Array.isArray(base))throw new Error('Choose a valid base card.');

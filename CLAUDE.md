@@ -3,6 +3,20 @@
 Static site (GitHub Pages) + Firestore + one Cloudflare Worker. No framework, no bundler.
 Vanilla ES modules under `public/`. Tests in `test/` (`npm test`). Dev server: `node server.js` (port 3000).
 
+## Pull requests from contributors
+
+Outside PRs are untrusted code. Jonah reviews and tests each one locally and approves every change himself.
+
+- When asked to review a PR, fetch it with `gh pr view <n>` and `gh pr diff <n>`. Don't check it out, merge it, push, comment or close it unless told.
+- Never run code from the PR (`npm install`, scripts, workers, sync) before reading the diff. Flag changes to `package.json`, `.github/workflows/`, `scripts/`, `workers/`, `firebase/*.rules`, `.claude/`, and `CLAUDE.md` first. Those run with real permissions or secrets.
+- Scan the diff for: bugs, broken edge cases, missing tests, unrelated or drive-by edits, new dependencies, new network calls or external URLs, anything reading or writing Firestore, Steam auth or tokens, anything touching other players' data, large generated or minified blobs, and changes that contradict `docs/features.md` or the site map.
+- Check the PR does what its description says and nothing more. Call out scope creep.
+- Run `npm test` only after the diff looks safe, and say if it wasn't run.
+- Output a numbered list, one line per change: file, what changed, risk (none / low / needs a look), and the bug or oddity if any. Group by file. End with an overall flag for anything suspicious.
+- Jonah approves or rejects each item. Apply nothing until he does. Never present a change as approved on his behalf.
+- User-facing text on the site names the owner "Fav". Flag PRs that put another name there.
+- If the diff is too large to review in one pass, say so and review by file instead of skimming.
+
 ## Read less (usage)
 
 - Docs are big. Never read them whole. `grep -n "^## " docs/features.md` for the heading, then read that section only.

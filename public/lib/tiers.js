@@ -828,12 +828,20 @@ export function gameRatings(m, matches, { model = null } = {}) {
 // scores a pick against its slot's position, whatever they played). `models`: a tierModels set
 // (any version); opponent strength from all of `matches`. null when they're not in the game.
 export function gameScoreAt(m, matches, key, pos, models) {
+  return gamePointsAt(m, matches, key, pos, models)?.score ?? null;
+}
+// The same, with the working: { score, stats: [{ metric, label, score (0-100), max, points }],
+// stat_points, mult: { survival, consistency, opponents, winning }, win_points }. The score is the
+// tier score before the rating curve (no bell curve).
+export function gamePointsAt(m, matches, key, pos, models) {
   const model = models[pos];
   const teams = leagueTeams.get(matches) ?? leagueTeams.set(matches, teamGames(matches.flatMap(gameRows))).get(matches);
   const rows = gameRows(m).filter((r) => keyOf(r.p) === String(key));
   if (!rows.length) return null;
   for (const r of rows) { r.pos = pos; r.role = pos <= 3 ? "core" : "support"; scoreRow(r, model); }
-  return scorePlayers(rows, model, { teams })[0].score;
+  const p = scorePlayers(rows, model, { teams })[0];
+  const stats = (p.roles[0]?.stats ?? []).map((s) => ({ metric: s.metric, label: METRICS[s.metric]?.label ?? s.metric, score: s.score, max: s.max, points: s.points }));
+  return { score: p.score, stats, stat_points: p.stat_points, mult: p.mult, win_points: p.win_points };
 }
 
 // OpenDota rank_tier (tens = medal, ones = stars) -> label.

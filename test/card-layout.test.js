@@ -13,8 +13,8 @@ test('a layout keeps the owner name, sizes, placements and back choices',()=>{
   const l=validLayout({name:"  God's   Silliest Goose ",nameSize:70,front:{record:{show:false},name:{x:50,y:26.25,size:120},tier:{size:100}},back:{stats:['games','dewards'],heroes:false}});
   assert.equal(l.name,"God's Silliest Goose");
   assert.equal(l.nameSize,70);
-  assert.deepEqual(l.front.record,{show:false,x:null,y:null,size:100});
-  assert.deepEqual(l.front.name,{show:true,x:50,y:26.3,size:120});
+  assert.deepEqual(l.front.record,{show:false,x:null,y:null,size:100,rot:0,z:0});
+  assert.deepEqual(l.front.name,{show:true,x:50,y:26.3,size:120,rot:0,z:0});
   assert.equal(l.front.tier,undefined); // nothing changed, nothing stored
   assert.deepEqual(l.back,{stats:['games','dewards'],positions:true,heroes:false});
   assert.equal(partState(l,'name').style,'left:50%;top:26.3%;--part-size:0.84;');
@@ -40,7 +40,14 @@ test('the Dota Plus badge is off until the owner turns it on',()=>{
   assert.equal(partState(null,'plus').show,false);
   assert.equal(validLayout({front:{plus:{show:false}}}).front.plus,undefined); // the default, nothing stored
   const on=validLayout({front:{plus:{show:true}}});
-  assert.deepEqual(on.front.plus,{show:true,x:null,y:null,size:100});
+  assert.deepEqual(on.front.plus,{show:true,x:null,y:null,size:100,rot:0,z:0});
   assert.equal(partState(on,'plus').show,true);
   assert.equal(partState(validLayout({front:{plus:{size:150}}}),'plus').show,false);
+});
+
+test('rotation and layer are kept and bounded',()=>{
+  const l=validLayout({front:{name:{rot:45,z:3}}});
+  assert.equal(l.front.name.rot,45);assert.equal(l.front.name.z,3);
+  assert.throws(()=>validLayout({front:{name:{rot:200}}}));
+  assert.throws(()=>validLayout({front:{name:{z:11}}}));
 });

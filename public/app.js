@@ -433,6 +433,7 @@ function renderHub() {
     <h1 class="hub-title">Pick a league</h1>
     <nav class="hub-list">${order.map(link).join("")}</nav>
     <a class="hub-all" href="#/all/" data-league="all"><b>All divisions</b><span>Every AD2L division's teams, games, players and heroes in one view</span></a>
+    <a class="hub-all" href="#/gallery"><b>Gallery</b><span>The feed, custom cards, your packs and your collection</span></a>
   </section>`;
 }
 
@@ -465,12 +466,21 @@ export function route() {
   if (h === "#/" || /^#\/ad2l\/?$/.test(h)) return routeHub();
   if (h === "#/privacy") return routePrivacy();
   if (h === "#/stats") return routeStats();
+  // #/gallery[/<sub-tab>]: the Gallery without a league in the address. It opens inside the league
+  // you were last in (remembered below); with none yet it gets the picker's plain header.
+  const gal = /^#\/gallery(?:\/([^/]*))?$/.exec(h);
+  if (gal) {
+    const last = lastLeague();
+    if (!last) return routeGallery(gal[1]);
+    h = `${last.root}/gallery${gal[1] ? `/${gal[1]}` : ""}`;
+  }
   // #/<division>/..., or #/<division>/<view>/... for a sub-division.
   const [, slug, view] = /^#\/([a-z0-9]+)(?:\/([a-z])(?=\/|$))?/.exec(h) ?? [];
   const key = bySlug[slug];
   const src = !key ? SOURCES.scrim : view && SOURCES[`${key}_${view}`] || SOURCES[key];
   const isAd2l = src.ad2l, r = src.root;
   document.body.dataset.league = src.key;
+  try { localStorage.setItem("lastLeague", src.key); } catch { /* not remembered */ }
   const divLabel = DIVISIONS[src.key]?.views ? (src.view ? `Division ${src.view.toUpperCase()}` : "Combined") : "";
   const leagueTitle = src.all ? `AD2L ${SEASON.name} · All Divisions` : isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""}` : "Scrim League";
   // In the playoffs (lib/divisions.js SEASON.phase) every AD2L league gets a stamp over its name.
@@ -519,7 +529,7 @@ export function route() {
     else if (new RegExp(`^${r}/edit/[0-9a-f]{32}$`).test(h)) { section = "week"; page = async () => (await uploadPage()).renderEdit(h.slice(`${r}/edit/`.length), src.key); }
     else if (h.startsWith(`${r}/upload`)) { section = "upload"; page = async () => { const { endEdit, upload, checkDraft, renderUpload } = await uploadPage(); endEdit(); upload.league = src.key; await src.data().catch(() => null); await divUploaded(src.key); if (upload.draft) upload.check = checkDraft(upload.draft); return renderUpload(); }; }
     else if (h.startsWith(`${r}/search`)) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }
-    else if (/^\/(cards|gallery)(\/|$)/.test(h.slice(r.length))) { section = "gallery"; page = async () => (await galleryPage()).renderGallery(src, h.slice(r.length).split("/")[2]); }
+    else if (/^\/(cards|gallery)(\/|$)/.test(h.slice(r.length))) { section = "gallery"; page = async () => (await galleryPage()).renderGallery(src, h.slice(r.length).split("/")[2], !!gal); }
     else if (/^(\/(standings|matches|crosstable|race)?)?\/?$/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
     else page = () => renderNotFound(src);
   } else {
@@ -548,7 +558,7 @@ export function route() {
     else if (p.startsWith("/hero/")) { section = "heroes"; tm = true; page = () => renderHero(t, p.slice("/hero/".length)); }
     else if (p.startsWith("/heroes")) { section = "heroes"; tm = true; page = () => renderHeroes(t); }
     else if (p.startsWith("/search")) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }
-    else if (/^\/(cards|gallery)(\/|$)/.test(p)) { section = "gallery"; page = async () => (await galleryPage()).renderGallery(src, p.split("/")[2]); }
+    else if (/^\/(cards|gallery)(\/|$)/.test(p)) { section = "gallery"; page = async () => (await galleryPage()).renderGallery(src, p.split("/")[2], !!gal); }
     // Teams: the table, the matches and the team grid. /teams and /matches were their own pages once.
     else if (/^(\/(standings|matches|teams)?)?\/?$/.test(p)) { section = "standings"; tm = true; page = () => renderMatches(t); }
     else page = () => renderNotFound(src);
@@ -619,6 +629,23 @@ function routeStats() {
   document.getElementById("div-switch").hidden = true;
   timeBar(null, false);
   return import("./pages/stats.js").then((m) => m.renderStats());
+}
+
+// The league you were last in (set in route()), or null when none is remembered yet.
+function lastLeague() {
+  try { return SOURCES[localStorage.getItem("lastLeague")] ?? null; } catch { return null; }
+}
+
+// Gallery before any league is picked: site-wide header, no tabs.
+function routeGallery(segment) {
+  footSync(null);
+  document.body.dataset.league = "hub";
+  document.title = "Gallery · AD2L Stat Tracker";
+  document.getElementById("league-name").innerHTML = "AD2L<b>Stat Tracker</b>";
+  document.getElementById("nav").innerHTML = "";
+  document.getElementById("div-switch").hidden = true;
+  timeBar(null, false);
+  return import("./pages/gallery.js").then((m) => m.renderGallery({ kicker: "AD2L Stat Tracker" }, segment, true));
 }
 
 // The picker page: no tabs, no time machine, and the menu opens each league's first page.

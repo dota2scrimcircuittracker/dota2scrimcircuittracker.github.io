@@ -4,7 +4,7 @@ import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
 import { isPostseason, playoffs } from "../lib/divisions.js";
 import { postseason, bracketPoints } from "../lib/playoffs.js";
-import { listPredictions, listBrackets, saveBracket, currentUid, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
+import { listPredictions, listBrackets, saveBracket, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
 import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, DIVISIONS, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
@@ -65,7 +65,7 @@ export async function renderPredict(src) {
       }
     }
   } catch (e) { console.warn(e); }
-  const uid = await currentUid();
+  const uids = await myUids();
   const name = storedName();
   const teamName = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const params = tune(d.teams, d.series);
@@ -92,7 +92,7 @@ export async function renderPredict(src) {
   const upcoming = d.series.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
   const night = upcoming.length ? Math.min(...upcoming.map((s) => s.time)) : null;
   const week = upcoming.filter((s) => s.time === night);
-  const mine = (sid) => (preds ?? []).filter((p) => p.series_id === sid && p.uid === uid).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
+  const mine = (sid) => (preds ?? []).filter((p) => p.series_id === sid && uids.includes(p.uid)).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
   const label = (s, o) => (isPostseason(s) ? `${esc(teamName[o === "home" ? s.home : s.away])} wins` : o === "tie" ? "1–1" : `${esc(teamName[o === "home" ? s.home : s.away])} 2–0`);
 
   // The model's full draft for a series, in Captains Mode order, for either team on first
@@ -330,13 +330,13 @@ export async function renderPredict(src) {
     ${boardHtml ? `<details class="how pb-fold" id="pb-fold"><summary id="pb-sum">Your picks</summary><section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading…</p></section></details>` : ""}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
   const tabs = playerTabs(pageTabs(PREDICT_TABS, src, [
+    ["fantasy", `<section class="ft" id="ft-host"><div class="panel empty">Loading…</div></section>`],
     ["calls", callsHtml],
     ["board", boardTab],
     ["bracket", `<section class="po" id="po-bracket"></section>`],
     ["odds", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
-    ["fantasy", `<section class="ft" id="ft-host"><div class="panel empty">Loading…</div></section>`],
-  ]), { store: "predictTab", label: "Predict sections" });
-  app.innerHTML = `${pageHead(kicker, "Predictions", "", tabs.bar)}
+  ]), { store: "predictTab", label: "Fantasy sections" });
+  app.innerHTML = `${pageHead(kicker, "Fantasy", "", tabs.bar)}
     ${nameBarHtml(name)}
     ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
     <div id="pred-msg"></div>

@@ -15,6 +15,8 @@ const fmt = (n) => Number(n).toLocaleString("en-US");
 const SAVED = (range) => `stats-last:${range}`;
 const saveLast = (range, data) => { try { localStorage.setItem(SAVED(range), JSON.stringify({ at: Date.now(), data })); } catch {} };
 const loadLast = (range) => { try { return JSON.parse(localStorage.getItem(SAVED(range))); } catch { return null; } };
+// This range's saved answer, else the newest saved one of any other range.
+const loadAny = (range) => loadLast(range) ?? RANGES.map(([k]) => loadLast(k)).filter((x) => x?.data).sort((a, b) => b.at - a.at)[0] ?? null;
 
 
 // Thin bar per hour; every bar has a title with day, hour and number.
@@ -72,7 +74,7 @@ export function mountStats(box, getStats) {
   const draw = () => {
     if (!data) return;
     const paths = data.paths.filter((p) => !filter || `${p.path} ${p.title}`.toLowerCase().includes(filter));
-    body.innerHTML = `${stale ? `<p class="stats-stale">GoatCounter didn't answer (${esc(stale.error)}). Showing the last counts that loaded, from ${esc(new Date(stale.at).toLocaleString())}.</p>` : ""}
+    body.innerHTML = `${stale ? `<p class="stats-stale">Failed to pull additional data. Showing the last counts that loaded, from ${esc(new Date(stale.at).toLocaleString())} (${esc(data.range.start.slice(0, 10))} → ${esc(data.range.end.slice(0, 10))}).</p>` : ""}
       <div class="stats-totals">
         <div><b>${fmt(data.total - data.events)}</b><span>visits</span></div>
         <div><b>${fmt(data.paths.filter((p) => !p.event).length)}</b><span>pages and routes</span></div>
@@ -107,8 +109,8 @@ export function mountStats(box, getStats) {
       saveLast(range, data);
     } catch (e) {
       if (asked !== range) return;
-      const last = loadLast(range);
-      if (!last?.data) { body.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+      const last = loadAny(range);
+      if (!last?.data) { body.innerHTML = `<p class="err">Failed to pull additional data.</p>`; return; }
       data = last.data; stale = { at: last.at, error: e.message };
     }
     draw();

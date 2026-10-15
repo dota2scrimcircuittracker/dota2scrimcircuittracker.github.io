@@ -202,10 +202,17 @@
 [data-finish=voidstorm] .cosmetic-overlay{animation-duration:calc(3.6s/var(--particle-speed,1))}
 [data-finish=sandstorm] .cosmetic-overlay{animation-duration:calc(3.2s/var(--particle-speed,1))}
 
-[data-card-editor] .sig-wheel{position:absolute;width:96px;height:96px;--wheel-r:48px;transform:translate(-50%,-50%);border:1.5px dashed rgba(255,216,121,.55);border-radius:50%;z-index:9;pointer-events:none;opacity:.45;transition:opacity .15s}
-[data-card-editor] .ft-front:hover .sig-wheel,[data-card-editor] .sig-wheel.turning{opacity:1}
+[data-card-editor] .sig-wheel{position:absolute;width:96px;height:96px;--wheel-r:48px;transform:translate(-50%,-50%);border:1.5px dashed rgba(255,216,121,.55);border-radius:50%;z-index:9;pointer-events:none;opacity:0;transition:opacity .15s}
+[data-card-editor] .ft-card.sig-selected .sig-wheel,[data-card-editor] .sig-wheel.turning,[data-card-editor] .part-wheel{opacity:1}
 [data-card-editor] .sig-wheel-handle{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;padding:0;border-radius:50%;border:2px solid #17120a;background:#ffd879;cursor:grab;pointer-events:auto;touch-action:none;transform:rotate(var(--wheel-angle,0deg)) translateX(var(--wheel-r,48px))}
 [data-card-editor] .sig-wheel.turning .sig-wheel-handle{cursor:grabbing}
+[data-card-editor] .ft-card:not(.sig-selected) .sig-wheel:not(.part-wheel) button{pointer-events:none}
 [data-card-editor] .sig-size-handle{position:absolute;left:14.6%;top:85.4%;width:16px;height:16px;margin:-8px 0 0 -8px;padding:0;border-radius:3px;border:2px solid #17120a;background:#8fd0ff;cursor:nwse-resize;pointer-events:auto;touch-action:none}
 /* Paints made of two gradients need the clip repeated for the second one, or it is cut off under the card fill. */
 :is([data-texture=ember],[data-texture=lava],[data-texture=vines],[data-texture=solar]){--frame-layers:padding-box,border-box,border-box}
+
+[data-card-editor] .part-wheel .sig-wheel-handle::after{content:'';position:absolute;inset:-12px;border-radius:50%}
+/* Border symbols the owner placed (equipment.emblems): centred on their x/y, scaled by their size. */
+.cosmetic-emblem.placed,.ft-card .cosmetic-emblem.placed{transform:translate(-50%,-50%);font-size:calc(18px * var(--emblem-size,1))}
+[data-card-editor] .cosmetic-emblem{pointer-events:auto;cursor:grab;touch-action:none;user-select:none}
+[data-card-editor] .cosmetic-emblem.part-selected{outline:1px dashed #eac47e;outline-offset:2px}

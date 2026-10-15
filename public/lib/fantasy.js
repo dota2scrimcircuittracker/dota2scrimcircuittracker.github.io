@@ -1,10 +1,11 @@
 import { withAnnounced, isPostseason } from "./divisions.js";
+import { tierModels, gamePointsAt, LIVE } from "./tiers.js";
 
 // Fantasy league, one per AD2L division, over the playoffs. Each week you pick five of that
 // league's rostered players, one per position (slot 1–5), from teams with a series that week;
-// picks lock at the week's first series start. A pick scores fantasy points: raw stat points per
-// game (FANTASY_POINTS, no curve and no comparison with other players), and only their best two
-// games of the week count (a Bo3: the best two of three). You can't pick yourself; your teammates
+// picks lock at the week's first series start. A pick scores the tier model's game score (no bell
+// curve) with every game read as the slot's position, and only their best two games of the week
+// count, added together (a Bo3: the best two of three). You can't pick yourself; your teammates
 // are fine. The leaderboard is the playoffs so far.
 // The test week (TEST_WEEK): week 8's tiebreakers, one Fantasy across every division that plays
 // one, stored under the league key "all".
@@ -18,29 +19,20 @@ export const GAMES_COUNTED = 2;
 // ANNOUNCED), picked and scored as one league. New season: null.
 export const TEST_WEEK = { key: "2026-10-12", league: "all", leagues: ["challenger", "ad2l", "heroic"] };
 
-// Fantasy points for one game: raw numbers times a fixed value each (the pro fantasy scheme),
-// added up. [label, points per unit, what one unit is, value from the game's player row]
-export const FANTASY_POINTS = [
-  ["Kills", 0.3, "kill", (p) => p.kills ?? 0],
-  ["Deaths", -0.3, "death, from a 3 point start (never below 0)", (p) => p.deaths ?? 0],
-  ["Last hits and denies", 0.003, "creep", (p) => (p.last_hits ?? 0) + (p.denies ?? 0)],
-  ["GPM", 0.002, "gold per minute", (p) => p.gpm ?? 0],
-  ["Teamfights", 3, "share of the team's kills taken part in", (p) => p.tf_part ?? 0],
-  ["Observer wards", 0.5, "ward placed", (p) => p.obs_placed ?? 0],
-  ["Camps stacked", 0.5, "stack", (p) => p.camps_stacked ?? 0],
-  ["Runes", 0.25, "rune", (p) => (Array.isArray(p.runes) ? p.runes.reduce((t, n) => t + n, 0) : 0)],
-  ["First blood", 4, "first blood", (p) => (p.first_blood ? 1 : 0)],
-  ["Roshan", 1, "Roshan kill", (p) => p.roshan_kills ?? 0],
-  ["Stuns", 0.05, "second of stun", (p) => p.stuns ?? 0],
-];
+// A game's fantasy score is the playoff tier model's score for it, before the rating curve: the
+// pick's stat points in the slot's position (whatever they played) x survival x consistency x
+// opponents, plus winning. Each division is scored against its own games. Models are made once
+// per game list.
 const round1 = (x) => Math.round(x * 10) / 10;
-// One player row's points: { points, parts: [{ label, value, points }] }.
-export function fantasyPoints(p) {
-  const parts = FANTASY_POINTS.map(([label, per, , get]) => {
-    const value = get(p);
-    return { label, value, points: label === "Deaths" ? Math.max(0, 3 + per * value) : per * value };
-  });
-  return { points: round1(parts.reduce((t, x) => t + x.points, 0)), parts };
+const ctxMemo = new WeakMap();
+function leagueCtx(matches, league) {
+  const all = ctxMemo.get(matches) ?? ctxMemo.set(matches, new Map()).get(matches);
+  const k = league ?? "";
+  if (!all.has(k)) {
+    const games = matches.filter((m) => (m.league ?? "") === k);
+    all.set(k, { games, models: tierModels(games, { version: LIVE }) });
+  }
+  return all.get(k);
 }
 
 // Weeks run Monday 00:00 UTC to the next Monday; a week's key is that Monday's date, so it's the
@@ -106,14 +98,14 @@ export const weekGames = (matches, week) => matches.filter((m) => (!week.league 
   && (week.seriesIds.has(m.series_id)
   || (m.start_time && weekKey(m.start_time) === week.key && week.teams.has(m.team_a_id) && week.teams.has(m.team_b_id))));
 
-// One pick's week: each game it played scored in fantasy points, and the best GAMES_COUNTED added
-// up. { points, games: [{ id, match, time, score, parts, counted }] } (games oldest first).
-export function pickPoints(account, games) {
+// One pick's week: each game it played scored as `pos`, and the best GAMES_COUNTED added up.
+// { points, games: [{ id, match, time, score, stats, mult, counted }] } (games oldest first).
+// `matches`: every game loaded (the models come from them, per division).
+export function pickPoints(account, pos, games, matches) {
   const scored = games.flatMap((m) => {
-    const p = (m.players ?? []).find((x) => x.account_id === account);
-    if (!p) return [];
-    const f = fantasyPoints(p);
-    return [{ id: m.id, match: m, time: m.start_time ?? 0, score: f.points, parts: f.parts }];
+    const { games: league, models } = leagueCtx(matches, m.league);
+    const g = gamePointsAt(m, league, account, pos, models);
+    return g ? [{ id: m.id, match: m, time: m.start_time ?? 0, score: g.score, stats: g.stats, stat_points: g.stat_points, mult: g.mult, win_points: g.win_points }] : [];
   }).sort((a, b) => a.time - b.time);
   const best = new Set([...scored].sort((a, b) => b.score - a.score).slice(0, GAMES_COUNTED).map((g) => g.id));
   for (const g of scored) g.counted = best.has(g.id);
@@ -129,7 +121,7 @@ export function scoreEntry(entry, week, matches) {
   if(entry.captain!=null&&(!Number.isInteger(entry.captain)||!entry.picks.includes(entry.captain)))return null;
   const games = weekGames(matches, week);
   const picks = entry.picks.map((account, i) => {
-    const result=pickPoints(account,games),captain=account===entry.captain;
+    const result=pickPoints(account,SLOTS[i],games,matches),captain=account===entry.captain;
     return {account,pos:SLOTS[i],...result,captain,basePoints:result.points,points:round1(result.points*(captain?2:1))};
   });
   return { points: round1(picks.reduce((t, p) => t + p.points, 0)), picks };

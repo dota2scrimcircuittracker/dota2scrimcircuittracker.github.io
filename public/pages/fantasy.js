@@ -1,7 +1,8 @@
 // Fantasy (AD2L divisions), the Predict page's Fantasy tab: this week's five picks and the season
 // leaderboard. Rules and scoring in lib/fantasy.js; Steam sign-in through workers/steam-auth
 // (lib/store.js, parts/me.js). Loaded when the tab is first shown.
-import { SLOTS, GAMES_COUNTED, weekKey, TEST_WEEK, FANTASY_POINTS, playoffWeeks, testWeek, openWeek, pickable, checkPicks, scoreEntry, leaderboard, weekBoard } from "../lib/fantasy.js";
+import { SLOTS, GAMES_COUNTED, weekKey, TEST_WEEK, playoffWeeks, testWeek, openWeek, pickable, checkPicks, scoreEntry, leaderboard, weekBoard } from "../lib/fantasy.js";
+import { VERSIONS, LIVE, METRICS, survivalRange } from "../lib/tiers.js";
 import { createPlayerCards, liveTiers, PAINT_FILTER, flipPlayerCard, showBigCard } from "../parts/player-card.js";
 import { listFantasy, saveFantasy, listCards, steamAccount, steamSignOut } from "../lib/store.js";
 import { esc, playerLink, SOURCES } from "../core.js";
@@ -21,6 +22,65 @@ const nowSec = () => localParam("fantasy_now") || Date.now() / 1000;
 // own card). Display only: saving still needs their Steam sign-in.
 
 const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// The "How are fantasy points scored?" popup, drawn from the live tier model's numbers so it
+// can't drift from the scoring.
+const POS_COL = { 1: "Carry", 2: "Mid", 3: "Offlane", 4: "Soft support", 5: "Hard support" };
+const GROUPS = [
+  ["Farm and levels", ["gpm", "xpm"]],
+  ["Fighting", ["dmg", "kills", "assists", "stuns", "soak", "tower"]],
+  ["Laning", ["lane", "lanewin"]],
+  ["Map and utility", ["vispct", "dewards", "stacks", "smokes", "sentries", "dust", "heal"]],
+];
+function scoringDialog(shared) {
+  const v = VERSIONS[LIVE], W = v.weights, MAX = 22;
+  const shade = (n) => `color-mix(in srgb, var(--accent) ${Math.round(12 + (n / MAX) * 78)}%, var(--stone-2))`;
+  const cell = (k, pos) => {
+    const val = W[pos][k] ?? 0, tip = `Pos ${pos} (${POS_COL[pos]}): ${METRICS[k].label}, ${val} of 100 points`;
+    return val ? `<td class="fp-c" title="${tip}" style="background:${shade(val)};color:${val / MAX >= 0.55 ? "var(--on-accent)" : "var(--bone)"}">${val}</td>` : `<td class="fp-c fp-zero" title="${METRICS[k].label} isn't scored for pos ${pos}">·</td>`;
+  };
+  const rows = GROUPS.map(([g, ks]) => `<tr class="fp-group"><th colspan="6" scope="rowgroup">${g}</th></tr>${ks.filter((k) => [1, 2, 3, 4, 5].some((n) => W[n][k])).map((k) =>
+    `<tr><th scope="row" class="fp-stat">${esc(METRICS[k].label)}</th>${[1, 2, 3, 4, 5].map((n) => cell(k, n)).join("")}</tr>`).join("")}`).join("");
+  const totals = [1, 2, 3, 4, 5].map((n) => `<td class="fp-c">${Object.values(W[n]).reduce((a, b) => a + b, 0)}</td>`).join("");
+  const LO = 0.85, HI = 1.1, at = (x) => ((x - LO) / (HI - LO)) * 100;
+  const M = [
+    ["Survival", survivalRange(v, 1), "Deaths, time dead and damage taken per life, against your position. It can only cost points."],
+    ["Survival, pos 3 and 4", survivalRange(v, 3), "Initiators absorb pressure and die doing it, so they lose at most 10%."],
+    ["Consistency", v.mult.consistency, "How often your games land near the top at your position. A steady player earns points back."],
+    ["Opponents", v.mult.opponents, "How strong the team you played is. The division's strongest team is the top of the range."],
+  ];
+  const mults = M.map(([name, [a, b], text]) => `<div class="fp-mult"><h5>${name}<span>×${a.toFixed(2)} to ×${b.toFixed(2)}</span></h5>
+    <div class="fp-track" role="img" aria-label="${name}: ×${a} to ×${b}"><i class="fp-rail"></i><i class="fp-seg" style="left:${at(a)}%;width:${at(b) - at(a)}%"></i><i class="fp-one" style="left:calc(${at(1)}% - 1px)"></i></div><p>${text}</p></div>`).join("");
+  const [wl, wh] = v.winning_flat;
+  return `<dialog class="tier-modal fp-modal" id="ft-how-modal" style="--tc:var(--accent)" aria-labelledby="fp-title">
+    <div class="tm-head"><div class="tm-title"><h3 id="fp-title">How fantasy points are scored</h3><small>The tier list model, with the raw score: no bell curve.</small></div><button type="button" class="tm-close" aria-label="Close">×</button></div>
+    <div class="tm-body fp-body">
+      <p class="fp-lede">Every stat is compared with players at the <b>same position in the division</b>, so a pos 5 is never judged on farm against a pos 1. Each pick is scored as the position of the slot you put them in.</p>
+      <div class="fp-formula" aria-label="Stat points times survival times consistency times opponents, plus winning, is the game score.">
+        <span><b>Stat points</b> /100</span><i>×</i><span>Survival</span><i>×</i><span>Consistency</span><i>×</i><span>Opponents</span><i>+</i><span>Winning</span><i>=</i><span><b>Game score</b></span>
+      </div>
+      <div class="fp-formula"><span>Best <b>${GAMES_COUNTED}</b> games of the week, added</span><i>→</i><span>Captain <b>×2</b></span><i>→</i><span><b>Fantasy points</b></span></div>
+      <h4>1. Stat points, by position</h4>
+      <p>Each position splits 100 points across the stats that matter for its job. A stat is scored 0–100 against the division (100 = the best at your position), and you earn that share of its points.</p>
+      <div class="fp-wrap"><table class="fp-grid"><thead><tr><th class="fp-l">Stat</th>${[1, 2, 3, 4, 5].map((n) => `<th>Pos ${n}<small>${POS_COL[n]}</small></th>`).join("")}</tr></thead><tbody>${rows}</tbody><tfoot><tr><th scope="row" class="fp-l">Total</th>${totals}</tr></tfoot></table></div>
+      <h4>2. Multipliers</h4>
+      <p>Three multipliers scale the stat points. Drawn to scale; the line marks ×1.00, no change.</p>
+      <div class="fp-mults">${mults}</div>
+      <h4>3. Winning</h4>
+      <p>Flat points added after the multipliers, from ${wl} to +${wh}: win rate and win speed. The same record is worth the same to every player, whatever their stats.</p>
+      <h4>4. Your week</h4>
+      <p>Each pick's week is their best ${GAMES_COUNTED} game scores added together. In a Bo3 that's the best two of three; a bad game costs nothing. Your captain's week score counts double.</p>
+      <p>${shared ? "This first test week combines Challenger, Champion, and Heroic/Aegis tiebreakers." : "After the test week, picks are limited to this division's playoff bracket."} You can't pick yourself. Picks lock at the first series start.</p>
+    </div></dialog>`;
+}
+function wireScoringDialog(host) {
+  const dlg = host.querySelector("#ft-how-modal"), open = host.querySelector("#ft-how");
+  if (!dlg || !open) return;
+  new MutationObserver(() => document.documentElement.classList.toggle("modal-open", dlg.open)).observe(dlg, { attributes: true, attributeFilter: ["open"] });
+  open.onclick = () => { dlg.showModal(); dlg.querySelector(".tm-body").scrollTop = 0; };
+  dlg.querySelector(".tm-close").onclick = () => dlg.close();
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+}
 
 export async function mountFantasy(host, viewSrc, scope = null) {
   const src = SOURCES[viewSrc.key]; // Heroic A/B views play the whole league's game
@@ -115,8 +175,9 @@ export async function mountFantasy(host, viewSrc, scope = null) {
       ${scored ? lineup.map((p) => `<div class="ft-wk"><h3>${pLink(p.account)}${p.captain?' · Captain 2×':''} · ${p.points.toFixed(1)} fantasy points</h3>${p.captain?`<p class="ft-note">${p.basePoints.toFixed(1)} base points × 2. Game contributions below show points before the captain bonus.</p>`:''}
         ${p.games.length ? p.games.map((g) => `<details><summary>${esc(at(g.time))} · ${g.score.toFixed(1)} points · ${g.counted ? "Counted" : "Dropped"}</summary>
           <a href="${esc((sourceOf.get(p.account) ?? src).link(g.match))}">View game</a>
-          <div class="table-wrap"><table class="ft-table"><thead><tr><th>Stat</th><th class="num">Value</th><th class="num">Fantasy points</th></tr></thead>
-          <tbody>${g.parts.map((x) => `<tr><td>${esc(x.label)}</td><td class="num">${Number(x.value.toFixed(3))}</td><td class="num">${x.points.toFixed(3)}</td></tr>`).join("")}</tbody></table></div></details>`).join("") : `<p class="ft-note">No games recorded this week.</p>`}</div>`).join("")
+          <div class="table-wrap"><table class="ft-table"><thead><tr><th>Stat</th><th class="num">Out of 100</th><th class="num">Points</th></tr></thead>
+          <tbody>${g.stats.map((x) => `<tr><td>${esc(x.label)}</td><td class="num">${x.score.toFixed(0)}</td><td class="num">${x.points.toFixed(1)} / ${x.max.toFixed(0)}</td></tr>`).join("")}
+          <tr><td colspan="2">Stat points × survival ${g.mult.survival.toFixed(2)} × consistency ${g.mult.consistency.toFixed(2)} × opponents ${g.mult.opponents.toFixed(2)}${g.win_points ? ` ${g.win_points >= 0 ? "+" : "−"} winning ${Math.abs(g.win_points).toFixed(1)}` : ""}</td><td class="num">${g.score.toFixed(1)}</td></tr></tbody></table></div></details>`).join("") : `<p class="ft-note">No games recorded this week.</p>`}</div>`).join("")
         : `<p class="ft-note">${week.lock > now ? "Scoring starts when picks lock." : "Saved after the lock or invalid; this entry does not count."}</p>`}
     </details>`;
   };
@@ -140,13 +201,12 @@ export async function mountFantasy(host, viewSrc, scope = null) {
   }).join("") : "";
   host.innerHTML = `${PAINT_FILTER}
     <div class="ft-sign"><label>Fantasy <select id="ft-scope">${TEST_WEEK ? `<option value="all"${shared ? " selected" : ""}>Cross-division tiebreaker test</option>` : ""}<option value="${src.key}"${!shared ? " selected" : ""}>${esc(src.division)} playoffs</option></select></label>
-    <details class="ft-rules"><summary>ⓘ Fantasy scoring and rules</summary><p>Five players, one per position. ${shared ? "This first test week combines Challenger, Champion, and Heroic/Aegis tiebreakers." : "After the test week, picks are limited to this division's playoff bracket."} You can't pick yourself. Picks lock at the first series start.</p>
-      <p>Fantasy points are raw stat points, with no curve or comparison to other players. Each pick counts their best ${GAMES_COUNTED} games of the week. Choose one captain from your five picks to double their weekly points. Position does not change the score. Missing stats count as zero; scores update as games are synced.</p>
-      <ul>${FANTASY_POINTS.map(([label, per, unit]) => `<li>${esc(label)}: ${per} per ${esc(unit)}</li>`).join("")}</ul></details></div>
-    <div class="ft-sign">${signIn}</div>${mineHtml}${picker}
+    <button type="button" class="linkish ft-how" id="ft-how">ⓘ How are fantasy points scored?</button></div>
+    ${me == null ? `<div class="ft-sign">${signIn}</div>` : ""}${picker}
     <section class="ft-last"><h2>Player lineups</h2>${lineupsHtml}</section>
     <section class="ft-board-wrap"><h2>${shared ? "Test week" : "Playoff"} leaderboard</h2>${boardHtml}</section>
-    <section class="ft-board-wrap"><h2>Weekly leaderboards</h2>${weeklyBoards || `<p class="ft-note">Scores appear after picks lock.</p>`}</section>`;
+    <section class="ft-board-wrap"><h2>Weekly leaderboards</h2>${weeklyBoards || `<p class="ft-note">Scores appear after picks lock.</p>`}</section>${scoringDialog(shared)}`;
+  wireScoringDialog(host);
   host.querySelector("#ft-scope").addEventListener("change", (e) => mountFantasy(host, viewSrc, e.target.value));
 
   const rerender = () => mountFantasy(host, viewSrc, scope);

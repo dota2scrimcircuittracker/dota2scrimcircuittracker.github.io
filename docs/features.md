@@ -683,7 +683,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   changed until the week's first series starts (weeks run Monday to Monday UTC). The database
   stamps each save with server time; a save after the lock never counts.
 - **Card customization**: the Fantasy tab links to Collection customization. Hero, role,
-  artwork, filters, framing, borders and signatures are managed there with three saved designs,
+  artwork, filters, framing, borders and signatures are managed there with five saved designs (each can be named),
   a primary card and optional shuffle. Fantasy uses the shared card renderer. Layout settings:
   your own card name and its size; each front part shown or hidden, sized, and dragged anywhere;
   up to eight back stats in any order; the back's position bars and top heroes on or off.
@@ -698,6 +698,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   pack pulls by rarity (common, rare, epic, legendary; epic and legendary to start) and loading
   screens (off to start). Changes apply to new posts; old ones stay until you delete them, and
   you can delete any of your own there.
+- **Achievements**: an **Achievements** tab on every Steam player's profile (`lib/achievements.js`, `parts/achievements.js`). Each achievement pays one pack when claimed (post on the Feed, rate cards, save card designs, legendary votes on a card, nickname, profile background). Your own profile shows progress and a Claim button; others' show their progress and claims (read-only, `GET /cosmetics/achievements/<account>`, cached 5 minutes). Beside the card collection, a summary lists the six closest to done; on someone else's profile it also lists what they've claimed, newest first. The Worker counts progress and grants the pack (`claim-achievement`). League results, best bracket and Fantasy win are listed as Coming soon.
 - **Card ratings**: on a profile, each saved design shows how players rated it (common, rare,
   epic, legendary) and the community's pick. Signed in, you get one vote per card (changeable),
   never on your own. Votes belong to the design: changing the card starts it at none, and
@@ -763,9 +764,11 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   Castaway Baes v Get Ganked Challenger 2 (Bo3, 4th seed), Champion WIMCC v SWM.Twinks (Bo3, 8th
   seed), Heroic Josh A. Suicidal Thoughts v A femboy + 4 Mejicanos (Bo1), the winner v Team
   Awesome (Bo1, 8th seed). This first test week pools these divisions into one shared game available from every division. Afterward, only the selected division’s playoff bracket is eligible. The shared test remains available for review.
-- **Scoring**: raw stats multiplied by fixed fantasy weights, with no curve or comparison
-  against other players. Best two games per pick count; a pick who does not play scores 0.
-  The scoring and rules info bubble lists every weight. Missing stats count as zero.
+- **Scoring**: the live tier model's game score (`gamePointsAt` in `lib/tiers.js`), before the
+  rating curve: stat points at the slot's position × survival × consistency × opponents + winning,
+  each division against its own games. Best two games per pick are added; a pick who does not
+  play scores 0. The "How are fantasy points scored?" popup draws the position grid and
+  multipliers from the live model's numbers.
 - **Player lineups**: open any saved entrant and week to see their five player cards, points
   per pick, and weekly score breakdown. The breakdown lists each game's stat contributions,
   counted or dropped status, and a link to the game. Unlocked weeks display pending scores.

@@ -56,7 +56,8 @@ export async function steamIdToken() {
 // Fantasy entries (lib/fantasy.js): one per person per league per week, id
 // "<league>_<week>_<account>", written through the Steam session so the rules can tie it to the
 // account. updatedAt is the server's clock; scoring ignores entries saved after the week's lock.
-const fantasyColl = collection(getFirestore(fantasyApp), "scrimLeague", "data", "fantasy");
+const fantasyDb = getFirestore(fantasyApp);
+const fantasyColl = collection(fantasyDb, "scrimLeague", "data", "fantasy");
 export async function listFantasy(league) {
   const snap = await getDocs(query(collection(db, "scrimLeague", "data", "fantasy"), where("league", "==", league), limit(5000)));
   return snap.docs.map((d) => ({ id: d.id, ...d.data(), updatedAt: d.data().updatedAt?.toDate?.() ?? null }));
@@ -213,6 +214,20 @@ export async function getMatch(id, league = "scrim") {
 // One document per browser per series (id "<series>_<uid>"); saving again changes the pick.
 // updatedAt is the server's clock, which is what scoring checks against the series start.
 const predictions = collection(db, "scrimLeague", "data", "predictions");
+// Predictions and brackets are saved as the Steam account when one is signed in (uid "steam:<id>",
+// through the Steam session, which the rules already accept), so the achievements can tie them to
+// the player; otherwise as this browser's anonymous session, as before. myUids lists both, so a
+// signed-in player still sees the picks they made before signing in.
+async function predictorSession() {
+  await fantasyReady;
+  if (fantasyAuth.currentUser) return { predictions: collection(fantasyDb, "scrimLeague", "data", "predictions"), brackets: collection(fantasyDb, "scrimLeague", "data", "brackets"), uid: fantasyAuth.currentUser.uid };
+  await signedIn();
+  return { predictions, brackets, uid: auth.currentUser.uid };
+}
+export async function myUids() {
+  await Promise.all([authReady, fantasyReady]);
+  return [auth.currentUser?.uid, fantasyAuth.currentUser?.uid].filter(Boolean);
+}
 
 export async function listPredictions() {
   const snap = await getDocs(query(predictions, limit(5000)));
@@ -222,13 +237,13 @@ export async function listPredictions() {
 // league "ad2l" (Champion), "heroic", "conqueror", "warrior", "challenger", "voyager" or "explorer": seriesId is a PlayOn series (number); "scrim": a
 // fixture's document ID.
 export async function savePrediction(seriesId, pick, name, league = "ad2l") {
-  await signedIn();
-  const uid = auth.currentUser.uid;
-  await setDoc(doc(predictions, `${seriesId}_${uid}`), {
+  const { predictions: col, uid } = await predictorSession();
+  await setDoc(doc(col, `${seriesId}_${uid}`), {
     v: 1, league, series_id: seriesId, pick, name: name.trim().slice(0, 24), uid, updatedAt: serverTimestamp(),
   });
   return uid;
-}
+}
+
 
 // ---------- brackets ----------
 // A person's playoff bracket picks (tiebreaker and bracket winners, from Predict's Bracket tab),
@@ -240,12 +255,12 @@ export async function listBrackets() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data(), updatedAt: d.data().updatedAt?.toDate?.() ?? null }));
 }
 export async function saveBracket(league, picks, name) {
-  await signedIn();
-  const uid = auth.currentUser.uid;
-  await setDoc(doc(brackets, `${league}_${uid}`), {
+  const { brackets: col, uid } = await predictorSession();
+  await setDoc(doc(col, `${league}_${uid}`), {
     v: 1, league, name: name.trim().slice(0, 24), uid, picks: JSON.stringify(picks), updatedAt: serverTimestamp(),
   });
-}
+}
+
 
 // ---------- scrim fixtures ----------
 // Upcoming scrims anyone can put on the schedule: two team names, a start time and the
