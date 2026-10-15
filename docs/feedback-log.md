@@ -21,3 +21,5 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-OZE8KI · 2026-10-14 · No action needed: not a real request.
 - FB-DVDYDF · 2026-10-14 · No action needed: not a real request.
 - FB-LFVIGF · 2026-10-14 · No action needed: compliment on the font.
+- FB-ZWEEBB · 2026-10-15 · Background preview now shows the sticky header, so a signature it covers on the page shows covered in the preview too
+- FB-26XITV · 2026-10-15 · Gallery, feed and profile cards are now the Customize preview scaled, so the Pos pill and everything else match

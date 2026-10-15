@@ -414,7 +414,7 @@ button.feed-poll-choice:focus-visible{outline:2px solid #eac47e;outline-offset:2
 .profile-collection-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:0 0 14px}.profile-collection-head h3{margin:0}.profile-collection-head strong{font-size:13px}
 .profile-collection-head progress{flex:0 1 180px;margin:0}.profile-collection-head button{padding:6px 12px;font-size:12px}.profile-collection-head p{flex-basis:100%;margin:0;font-size:12px}
 .profile-collection .profile-collection-info .name-editor{margin-top:0}
-/* Whole-page preview: the window's shape, with the sticky header and the head where the page puts them. */
-.pbg-preview[data-place=page]{padding:0}.pbg-preview[data-place=page] .pbg-mock-head{position:absolute;top:var(--head-top);height:var(--head-h);left:var(--head-side);right:var(--head-side);aspect-ratio:auto;border-radius:0}.pbg-preview[data-place=page] .pbg-mock-body{position:absolute;top:calc(var(--head-top) + var(--head-h) + 2%);left:var(--head-side);right:var(--head-side);bottom:0}.pbg-mock-bar{position:absolute;z-index:1;top:0;left:0;right:0;height:var(--bar);background:rgba(12,11,10,.94);border-bottom:1px solid #2c2731;pointer-events:none}
 /* Design cards laid out at the Customize preview's width and zoomed to their box (fitDesignCards in parts/player-card.js). */
 .ft-card.ft-fit{width:280px!important;max-width:none!important}
+/* The background preview on a profile: the page in miniature (miniPage in parts/profile-background.js). */
+.pbg-preview.is-mini{padding:0;display:block}

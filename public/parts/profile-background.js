@@ -99,15 +99,19 @@ function autoInk(targets,layer,bg) {
 // changes or settles (its entry animation, the fonts), on resize and (whole-page backgrounds,
 // which stay put) on scroll. Returns the stop function.
 let stopAutoText=null;
+// The head's pieces of text that auto text marks. The team, captain and rank line has text between
+// its links: each bare bit gets a span first.
+function headTextPieces(head) {
+  head.querySelectorAll('.pp-sub').forEach(p=>[...p.childNodes].forEach(n=>{if(n.nodeType===3&&n.textContent.trim()){const s=document.createElement('span');n.replaceWith(s);s.append(n);}}));
+  return head.querySelectorAll('.kicker li, .h1-name, .pp-sub > *, .pp-tabs button');
+}
 function watchAutoText(head,bg) {
   const layer=bg.place==='head'?head.querySelector(':scope > .pbg-layer'):head.parentElement.querySelector(':scope > .pbg-layer'),img=layer?.querySelector('.ft-art img');
   if(!img)return null;
   let frame=0;
   const run=()=>{
     frame=0;if(!head.isConnected)return;
-    // The team, captain and rank line has text between its links: each bare bit gets a span.
-    head.querySelectorAll('.pp-sub').forEach(p=>[...p.childNodes].forEach(n=>{if(n.nodeType===3&&n.textContent.trim()){const s=document.createElement('span');n.replaceWith(s);s.append(n);}}));
-    autoInk(head.querySelectorAll('.kicker li, .h1-name, .pp-sub > *, .pp-tabs button'),layer,bg);
+    autoInk(headTextPieces(head),layer,bg);
   };
   const queue=()=>{frame||=setTimeout(run,60);};
   if(img.complete)queue();else img.addEventListener('load',queue,{once:true});
@@ -133,6 +137,36 @@ export function mountBackgroundButton(host,{state,name}) {
   host.querySelector('[data-pbg-open]').onclick=()=>openBackgroundEditor({state,name,onSaved:next=>{state=next;}});
 }
 
+// The editor's preview on a profile: this page in miniature. A copy of the site header and the
+// page's main at the window's size, in a shadow root with the page's own stylesheets (so the
+// dialog's styles stay out), zoomed to fit the preview. drawMini puts the background into the copy
+// as showProfileBackground puts it on the page.
+const MINI_CSS=`:host{position:absolute;left:0;top:0}
+.pbg-mini{position:relative;isolation:isolate;overflow:hidden;contain:paint;background:var(--ink);color:var(--bone);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased;text-align:left}
+.pbg-mini *{animation:none!important;transition:none!important}
+.pbg-mini>*{pointer-events:none}
+.pbg-mini .pbg-layer.pbg-fixed{position:absolute}
+.pbg-mini .pbg-sig .card-autograph{pointer-events:auto;cursor:move}`;
+function miniPage(head) {
+  const W=document.documentElement.clientWidth,H=document.documentElement.clientHeight;
+  const host=document.createElement('div');host.className='pbg-mini-host';host.setAttribute('aria-hidden','true');
+  const root=host.attachShadow({mode:'open'});
+  const links=[...document.querySelectorAll('link[rel="stylesheet"]')].map(l=>`<link rel="stylesheet" href="${esc(l.href)}">`).join('');
+  root.innerHTML=`${links}<style>${MINI_CSS}</style><div class="pbg-mini" style="width:${W}px;height:${H}px"></div>`;
+  const frame=root.querySelector('.pbg-mini');
+  for(const el of [document.querySelector('body > header'),head.closest('main')??head])if(el)frame.append(el.cloneNode(true));
+  frame.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+  frame.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').forEach(el=>el.tabIndex=-1);
+  frame.querySelectorAll('video, audio').forEach(el=>{el.removeAttribute('autoplay');el.pause?.();});
+  frame.querySelectorAll('.pbg-layer, dialog').forEach(el=>el.remove());
+  const copy=frame.querySelector('.pp-head');
+  if(!copy)return null;
+  copy.classList.remove('has-bg');textColour(copy,null);
+  copy.querySelectorAll('.pbg-ink-dark').forEach(el=>el.classList.remove('pbg-ink-dark'));
+  const ready=Promise.all([...root.querySelectorAll('link')].map(l=>new Promise(done=>{l.onload=l.onerror=done;})));
+  return {host,frame,head:copy,W,H,ready};
+}
+
 const SLIDERS=[['x','Horizontal',0,100,1],['y','Vertical',0,100,1],['zoom','Zoom',1,3,.01],['dim','Dim',0,90,1],['hue','Hue',0,360,1]];
 const SIG_SLIDERS=[['size','Size',2,12,.5],['rotation','Rotation',-180,180,1]];
 // The editor: a live preview shaped like this page (drag it to frame the image), where it goes,
@@ -148,16 +182,14 @@ export function openBackgroundEditor({state,name,onSaved}) {
   const sigItems=Object.fromEntries(['autograph','translation'].map(t=>[t,CATALOG.filter(i=>i.type===t&&state.inventory?.[i.key]>0)]));
   // The preview copies this page's shape: the head's and the window's width to height.
   const head=document.querySelector('.pp-head'),ratio=(w,h,fallback)=>w>0&&h>0?w/h:fallback;
-  const headRatio=ratio(head?.offsetWidth,head?.offsetHeight,6),pageRatio=ratio(innerWidth,innerHeight,16/9);
-  // For a whole-page background the preview also copies where things sit in the window: the sticky
-  // header (it covers the top of the background), and the head's place under it, in % of the window.
-  const pct=(n,of)=>Math.max(0,Math.min(100,n/of*100)).toFixed(2),hb=head?.getBoundingClientRect(),bar=document.querySelector('header');
-  const pageGeo=`--bar:${pct(bar?.offsetHeight??0,innerHeight)}%;--head-top:${pct(hb?(hb.top+scrollY):innerHeight*.3,innerHeight)}%;--head-h:${pct(head?.offsetHeight??innerHeight*.25,innerHeight)}%;--head-side:${pct(hb?.left??0,innerWidth)}%`;
+  const headRatio=ratio(head?.offsetWidth,head?.offsetHeight,6),pageRatio=ratio(document.documentElement.clientWidth,document.documentElement.clientHeight,16/9);
+  // On a profile it's the page itself in miniature (miniPage); elsewhere, a sketch of one.
+  const mini=head&&miniPage(head);
   const dialog=document.createElement('dialog');dialog.className='collection-dialog pbg-editor';dialog.setAttribute('aria-labelledby','pbg-title');
   dialog.innerHTML=`<div class="collection-head"><div><small>YOUR PROFILE</small><h2 id="pbg-title">Profile background</h2></div><div class="collection-head-actions"><button type="button" data-close aria-label="Close">×</button></div></div>
     <div class="collection-body"><div class="pbg-grid">
       <div class="pbg-preview-col"><div class="pbg-preview-heading"><strong>Live preview</strong><span>Drag the image to choose which part shows.</span></div>
-        <div class="pbg-preview" style="--head-ratio:${headRatio.toFixed(2)};${pageGeo};aspect-ratio:${pageRatio.toFixed(2)}" data-pbg-preview></div>
+        <div class="pbg-preview" style="--head-ratio:${headRatio.toFixed(2)};aspect-ratio:${pageRatio.toFixed(2)}" data-pbg-preview></div>
         <fieldset class="image-choice-group pbg-screens"><legend>Background</legend><div class="pbg-screen-grid">${[{id:null,label:'None'},...owned].map(s=>`<button type="button" data-bg="${s.id??''}" title="${esc(s.label)}">${s.src?artHtml(s,'plain',' loading="lazy"'):'<span class="image-choice-empty">None</span>'}<strong>${esc(s.label)}</strong></button>`).join('')}</div>${owned.length?'':'<p>Open loading screen packs to collect backgrounds.</p>'}</fieldset></div>
       <div class="pbg-controls">
         <fieldset class="pbg-place"><legend>Where</legend><div><button type="button" data-place="head">Behind your name</button><button type="button" data-place="page">Whole page</button></div></fieldset>
@@ -172,11 +204,18 @@ export function openBackgroundEditor({state,name,onSaved}) {
     </div></div><p class="collection-message" role="status" aria-live="polite"></p>`;
   dialog.insertAdjacentHTML('afterbegin',PAINT_FILTER);document.body.append(dialog);
   const $=s=>dialog.querySelector(s),$$=s=>dialog.querySelectorAll(s),preview=$('[data-pbg-preview]'),say=t=>$('.collection-message').textContent=t;
+  if(mini){
+    preview.classList.add('is-mini');preview.append(mini.host);mini.host.style.visibility='hidden';
+    const fit=()=>{const z=Math.min(preview.clientWidth/mini.W,preview.clientHeight/mini.H);if(z>0)mini.host.style.zoom=z.toFixed(4);};
+    new ResizeObserver(fit).observe(preview);
+    mini.ready.then(()=>{fit();mini.host.style.visibility='';draw();});
+  }
   const fresh=id=>profileBackgroundOf({id,place});
   const draw=()=>{
     const shown=bg&&{...bg,place,sig};
     preview.dataset.place=place;
-    preview.innerHTML=`${place==='page'?layerHtml(shown,name)+'<div class="pbg-mock-bar"></div>':''}<div class="pbg-mock-head${bg?.text?.startsWith('#')?' pbg-text':''}"${bg?.text?.startsWith('#')?` style="--pbg-text:${bg.text}"`:''}>${place==='head'?layerHtml(shown,name):''}<span class="pbg-mock-kicker">Players › ${esc(name)}</span><b>${esc(name)}</b><span class="pbg-mock-tabs">Stats · Heroes · Combat · Games</span></div><div class="pbg-mock-body"><i></i><i></i><i></i><i class="wide"></i></div>`;
+    if(mini)drawMini(shown);
+    else preview.innerHTML=`${place==='page'?layerHtml(shown,name):''}<div class="pbg-mock-head${bg?.text?.startsWith('#')?' pbg-text':''}"${bg?.text?.startsWith('#')?` style="--pbg-text:${bg.text}"`:''}>${place==='head'?layerHtml(shown,name):''}<span class="pbg-mock-kicker">Players › ${esc(name)}</span><b>${esc(name)}</b><span class="pbg-mock-tabs">Stats · Heroes · Combat · Games</span></div><div class="pbg-mock-body"><i></i><i></i><i></i><i class="wide"></i></div>`;
     $$('[data-place]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.place===place)));
     $$('[data-bg]').forEach(b=>b.setAttribute('aria-pressed',String((bg?.id??'')===b.dataset.bg)));
     $$('[data-slider]').forEach(input=>{const k=input.dataset.slider;input.disabled=!bg;input.value=bg?.[k]??fresh(null)[k];$(`[data-out="${k}"]`).textContent=bg?(k==='zoom'?`${Number(bg[k]).toFixed(2)}×`:`${Math.round(bg[k])}${k==='dim'?'%':k==='hue'?'°':''}`):'';});
@@ -184,14 +223,29 @@ export function openBackgroundEditor({state,name,onSaved}) {
     const pick=$('[data-text-pick]'),custom=!!bg?.text?.startsWith('#')&&!TEXT_COLOURS.some(([c])=>c===bg.text);
     pick.disabled=!bg;pick.closest('label').classList.toggle('on',custom);if(bg?.text?.startsWith('#'))pick.value=bg.text;
     // Auto in the preview: its kicker, name and tabs, once the art has loaded.
-    const mock=preview.querySelector('.pbg-mock-head');mock.classList.toggle('pbg-auto',bg?.text==='auto');
-    if(bg?.text==='auto'){
+    const mock=preview.querySelector('.pbg-mock-head');mock?.classList.toggle('pbg-auto',bg?.text==='auto');
+    if(mock&&bg?.text==='auto'){
       const layer=preview.querySelector('.pbg-layer'),img=layer?.querySelector('img'),mark=()=>autoInk(mock.querySelectorAll('.pbg-mock-kicker, b, .pbg-mock-tabs'),layer,shown);
       if(img)img.complete?mark():img.addEventListener('load',mark,{once:true});
     }
     drawStyles();drawSig();
     $('[data-reset]').disabled=!bg;
   };
+  // The miniature: the background drawn into the page's copy the way the page draws it.
+  function drawMini(shown) {
+    const {frame,head:copy}=mini,art=shown&&screenArt(shown.id);
+    frame.querySelectorAll('.pbg-layer').forEach(el=>el.remove());
+    copy.querySelectorAll('.pbg-ink-dark').forEach(el=>el.classList.remove('pbg-ink-dark'));
+    copy.classList.toggle('has-bg',!!art&&place==='head');
+    textColour(copy,art&&shown.text);
+    if(!art)return;
+    if(place==='head')copy.insertAdjacentHTML('afterbegin',layerHtml(shown,name));
+    else frame.insertAdjacentHTML('afterbegin',layerHtml(shown,name,' pbg-fixed'));
+    if(shown.text==='auto'){
+      const layer=frame.querySelector('.pbg-layer'),img=layer?.querySelector('img'),mark=()=>autoInk(headTextPieces(copy),layer,shown);
+      if(img)img.complete?mark():img.addEventListener('load',mark,{once:true});
+    }
+  }
   // The style strip: the chosen screen in each style, redrawn only when the screen changes.
   let stylesFor;
   function drawStyles() {
@@ -239,8 +293,8 @@ export function openBackgroundEditor({state,name,onSaved}) {
   // move it instead.
   preview.onpointerdown=e=>{
     if(!bg)return;
-    const target=place==='head'?preview.querySelector('.pbg-mock-head'):preview,rect=target.getBoundingClientRect();
-    const onSig=!!(sig&&e.target.closest('.card-autograph'));
+    const target=place==='head'?(mini?mini.head:preview.querySelector('.pbg-mock-head')):preview,rect=target.getBoundingClientRect();
+    const onSig=!!(sig&&e.composedPath()[0]?.closest?.('.card-autograph'));
     const start={x:e.clientX,y:e.clientY,bx:onSig?sig.x:bg.x,by:onSig?sig.y:bg.y};preview.setPointerCapture(e.pointerId);preview.classList.add('dragging');
     const clamp=n=>Math.max(0,Math.min(100,Math.round(n)));
     preview.onpointermove=m=>{
