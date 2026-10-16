@@ -1,7 +1,7 @@
 import { esc, fmt, SOURCES, allLoad, pageList, navigate } from '../core.js';
 import { divisionTiers } from './tiers.js';
 import { steamAccount, steamLoginUrl, listCards } from '../lib/store.js';
-import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, particleLayerHtml, isCanvasFinish, isFxBorder, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
+import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, particleLayerHtml, hasParticleAmount, isFxBorder, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
 import { isThemedPack, parsePack, themedLabel, oddsText, ODDS_ROWS } from '../lib/pack-types.js';
 import { TIERS, itemByKey } from '../lib/cosmetics-catalog.js';
 import { signatureHtml, renderedName, signatureSize } from '../lib/signatures.js';
@@ -251,7 +251,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     card.querySelectorAll('button').forEach(b=>b.remove());
     const update=()=>{applyEquipment(card,equipment,shownName());wireSignature();say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');};
     // Per-card tuning sliders, each shown only when what's equipped uses it.
-    const tuneShown={particleSpeed:()=>PARTICLE_FINISHES.includes(equipment.finish),particleAmount:()=>isCanvasFinish(equipment.finish),borderSpeed:()=>isFxBorder(equipment.border)};
+    const tuneShown={particleSpeed:()=>PARTICLE_FINISHES.includes(equipment.finish),particleAmount:()=>hasParticleAmount(equipment.finish),borderSpeed:()=>isFxBorder(equipment.border)};
     const syncTuneControls=()=>body.querySelectorAll('[data-tune]').forEach(input=>{const k=input.dataset.tune;input.closest('[data-tune-control]').hidden=!tuneShown[k]();input.value=equipment[k];body.querySelector(`[data-tune-value="${k}"]`).textContent=`${equipment[k]}%`;});
     body.querySelectorAll('[data-tune]').forEach(input=>{input.oninput=()=>{equipment[input.dataset.tune]=Number(input.value);syncTuneControls();update();};});syncTuneControls();
     wireLayout(card,update);

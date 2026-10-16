@@ -8,13 +8,16 @@ import { cardAppearance, selectedCardDesign, shownNickname } from './cosmetics-e
 import { CANVAS_FINISHES } from './card-fx.js';
 // Finishes with a speed setting: the particle ones, plus fx- finishes that animate (lib/card-fx.js, cosmetics-fx.css).
 export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight','fx-drift','fx-sheen','fx-waves',...Object.keys(CANVAS_FINISHES)]);
-// Finishes drawn on a canvas have a particle amount setting too; fx- borders have a border speed.
+// Finishes drawn on a canvas; fx- borders have a border speed.
 export const isCanvasFinish=id=>id in CANVAS_FINISHES;
+// Finishes with a particle amount setting: every particle finish except fx-sheen and fx-waves, which draw no particles.
+export const hasParticleAmount=id=>PARTICLE_FINISHES.includes(id)&&id!=='fx-sheen'&&id!=='fx-waves';
 export const isFxBorder=id=>typeof id==='string'&&id.startsWith('fx-');
 const tuning=e=>({speed:(e.particleSpeed??DEFAULT_EQUIPMENT.particleSpeed)/100,amount:(e.particleAmount??DEFAULT_EQUIPMENT.particleAmount)/100,border:(e.borderSpeed??DEFAULT_EQUIPMENT.borderSpeed)/100});
 // The layer a finish draws its particles in: a canvas, or a set of small elements the stylesheet animates.
 export function particleLayerHtml(finish,e={},count=24) {
   if(isCanvasFinish(finish)) {const t=tuning(e);return `<span class="particles" aria-hidden="true"><canvas class="fx-canvas" data-fx="${CANVAS_FINISHES[finish]}" data-amt="${t.amount}" data-spd="${t.speed}"></canvas></span>`;}
+  if(hasParticleAmount(finish))count=Math.round(count*tuning(e).amount);
   return PARTICLE_FINISHES.includes(finish)?`<span class="particles" aria-hidden="true">${Array.from({length:count},(_,i)=>`<i style="--i:${i};left:${(i*43+13)%100}%;top:${(i*29+7)%100}%;animation-delay:-${i*.39}s"></i>`).join('')}</span>`:'';
 }
 import { syncPackOfferClaims } from './bonus-offers.js';
