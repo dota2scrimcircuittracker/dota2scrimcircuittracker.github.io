@@ -418,3 +418,13 @@ button.feed-poll-choice:focus-visible{outline:2px solid #eac47e;outline-offset:2
 .ft-card.ft-fit{width:280px!important;max-width:none!important}
 /* The background preview on a profile: the page in miniature (miniPage in parts/profile-background.js). */
 .pbg-preview.is-mini{padding:0;display:block}
+/* Gallery on a phone in portrait: no intro line, and the six section tabs on one row, so the
+   packs start higher up the screen. Under 420px they wrap again rather than scroll out of sight. */
+@media (max-width:520px){
+  main:has(> .collection-host) .page-head .pp-sub{display:none}
+  main:has(> .collection-host) .pp-row h1{margin-bottom:6px}
+  main:has(> .collection-host) .pp-tabs{flex-wrap:nowrap}
+  main:has(> .collection-host) .pp-tabs button{flex:none;padding:12px 5px;letter-spacing:.03em}
+  main:has(> .collection-host) .pp-tabs button[aria-selected="true"]::after{left:5px;right:5px}
+}
+@media (max-width:420px){main:has(> .collection-host) .pp-tabs{flex-wrap:wrap}}
