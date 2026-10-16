@@ -293,11 +293,12 @@ export async function renderPredict(src) {
     <tbody>${finals.map((f, i) => `<tr class="${uids.includes(f.uid) ? "me" : ""}"><td class="rank${i < 3 && f.points ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
       <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" title="Open ${esc(f.name)}'s bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button></td>
       <td class="num"><button type="button" class="pb-final pb-score" data-final="${i}" title="Open ${esc(f.name)}'s bracket">${f.points}</button></td><td class="l">${champOf(f)}</td></tr>`).join("")}</tbody></table></div>` : "";
-  const groupHtml = groupBrackets.length ? `<details class="how"><summary>Group-stage brackets</summary><div class="table-wrap sticky-name"><table class="pred-board">
+  const groupTable = groupBrackets.length ? `<div class="table-wrap sticky-name"><table class="pred-board">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Bracket${info("bracket_pts")}</th></tr></thead>
     <tbody>${groupBrackets.map((g, i) => `<tr class="${g.k === myKey ? "me" : ""}"><td class="rank">${String(i + 1).padStart(2, "0")}</td><td class="l">${esc(g.name)}</td>
       <td class="num">${g.points}<span class="muted">/${ps.decided.length}</span></td></tr>`).join("")}</tbody></table></div>
-    <p class="table-note keep">Brackets saved from series calls before the playoffs started: 1 point per bracket match whose winner was picked.</p></details>` : "";
+    <p class="table-note keep">Brackets saved from series calls before the playoffs started: 1 point per bracket match whose winner was picked.</p>` : "";
+  const groupHtml = groupTable ? `<details class="how"><summary>Group-stage brackets</summary>${groupTable}</details>` : "";
   // One played night: each series' result and how the model, the crowd and you called it.
   const dayLabel = (t, month = "short") => new Date(t * 1000).toLocaleDateString(undefined, { weekday: "long", month, day: "numeric" });
   const nightTable = (t) => {
@@ -377,9 +378,10 @@ export async function renderPredict(src) {
   const boardTab = bracketsOpen ? `
     <h2>Bracket leaderboard</h2>
     ${finalsHtml ? `${finalsHtml}<p class="table-note keep">Points from submitted brackets${info("playoff_pts")}. <b>Click a name or score</b> to open their bracket.</p>` : `<div class="panel empty">No brackets submitted yet. <button type="button" class="linkish" data-tobracket>Make yours on the Bracket tab →</button></div>`}
+    <h2>Group-stage bracket leaderboard</h2>
+    ${groupTable || `<div class="panel empty">No group-stage brackets scored yet.</div>`}
     <h2>Series picks</h2>
-    ${seriesBoard}
-    ${groupHtml}` : `
+    ${seriesBoard}` : `
     <h2>Leaderboard</h2>
     ${seriesBoard}
     ${finalsHtml}
