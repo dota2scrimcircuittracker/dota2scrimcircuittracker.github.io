@@ -5212,3 +5212,8 @@ dialog.po-confirm { width: min(460px, 94vw); }
 .po-confirm-champ span { font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
 .po-confirm-champ b { color: var(--accent); }
 .po-confirm-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+/* Bracket leaderboard: a score opens that person's bracket in a pop-up. */
+button.pb-score { padding: 3px 10px; font: 700 15px var(--mono); color: var(--accent); background: transparent; border: 1px solid rgba(var(--accent-rgb), .5); }
+button.pb-score:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+dialog.pb-modal { width: min(1320px, 96vw); }
+.pb-modal .tm-body { padding: 10px 16px 18px; }

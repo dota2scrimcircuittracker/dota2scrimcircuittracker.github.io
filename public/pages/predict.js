@@ -286,13 +286,13 @@ export async function renderPredict(src) {
       <td class="num">${r.accuracy == null ? '<span class="muted">—</span>' : `${delta(k, r).acc}${pct(r.accuracy)}`}</td>
       ${week.map((s) => `<td class="l">${pickChip(s, r.now[s.id])}</td>`).join("")}</tr>`).join("")}</tbody>
   </table></div>` : "";
-  // The two bracket boards. Playoff brackets: click a name for the bracket they sent.
+  // The two bracket boards. Playoff brackets: a name or score opens the bracket they sent.
   const champOf = (f) => f.champions.map(([, c]) => esc(teamName[c] ?? "—")).join(" / ");
   const finalsHtml = finals.length ? `${bracketsOpen ? "" : `<h3 class="pb-sub">Playoff brackets</h3>`}<div class="table-wrap sticky-name"><table class="pred-board pb-brackets">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("playoff_pts")}</th><th scope="col" class="l">Champion pick</th></tr></thead>
     <tbody>${finals.map((f, i) => `<tr class="${uids.includes(f.uid) ? "me" : ""}"><td class="rank${i < 3 && f.points ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
-      <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" aria-pressed="false" title="See ${esc(f.name)}'s playoff bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button></td>
-      <td class="num"><b>${f.points}</b></td><td class="l">${champOf(f)}</td></tr>`).join("")}</tbody></table></div>` : "";
+      <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" title="Open ${esc(f.name)}'s bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button></td>
+      <td class="num"><button type="button" class="pb-final pb-score" data-final="${i}" title="Open ${esc(f.name)}'s bracket">${f.points}</button></td><td class="l">${champOf(f)}</td></tr>`).join("")}</tbody></table></div>` : "";
   const groupHtml = groupBrackets.length ? `<details class="how"><summary>Group-stage brackets</summary><div class="table-wrap sticky-name"><table class="pred-board">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Bracket${info("bracket_pts")}</th></tr></thead>
     <tbody>${groupBrackets.map((g, i) => `<tr class="${g.k === myKey ? "me" : ""}"><td class="rank">${String(i + 1).padStart(2, "0")}</td><td class="l">${esc(g.name)}</td>
@@ -376,7 +376,7 @@ export async function renderPredict(src) {
   // In the playoffs the bracket board comes first; series picks follow under their own heading.
   const boardTab = bracketsOpen ? `
     <h2>Bracket leaderboard</h2>
-    ${finalsHtml ? `${finalsHtml}<p class="table-note keep">Points from submitted brackets${info("playoff_pts")}. <b>Click a name</b> for the bracket they sent.</p>` : `<div class="panel empty">No brackets submitted yet. <button type="button" class="linkish" data-tobracket>Make yours on the Bracket tab →</button></div>`}
+    ${finalsHtml ? `${finalsHtml}<p class="table-note keep">Points from submitted brackets${info("playoff_pts")}. <b>Click a name or score</b> to open their bracket.</p>` : `<div class="panel empty">No brackets submitted yet. <button type="button" class="linkish" data-tobracket>Make yours on the Bracket tab →</button></div>`}
     <h2>Series picks</h2>
     ${seriesBoard}
     ${groupHtml}` : `
@@ -471,6 +471,21 @@ export async function renderPredict(src) {
   // Leaderboard: click a name for the bracket and final table their calls lead to. Fresh host
   // each time, since mountPlayoffs listens for clicks on its element.
   app.querySelectorAll("[data-tobracket]").forEach((b) => b.onclick = () => app.querySelector('.pp-tabs [data-tab="bracket"]')?.click());
+  // Bracket leaderboard: a name or score opens that person's submitted bracket in a pop-up.
+  app.querySelectorAll(".pb-final").forEach((b) => b.onclick = () => {
+    const f = finals[Number(b.dataset.final)];
+    document.getElementById("pb-bracket-modal")?.remove();
+    document.body.insertAdjacentHTML("beforeend", `<dialog class="tier-modal pb-modal" id="pb-bracket-modal" style="--tc:var(--accent)" aria-labelledby="pb-modal-h">
+      <div class="tm-head"><div class="tm-title"><h3 id="pb-modal-h">${esc(f.name)}'s bracket</h3><small>${f.points} points${f.submittedAt ? ` · submitted ${esc(f.submittedAt.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}` : ""}</small></div><button type="button" class="tm-close" aria-label="Close">×</button></div>
+      <div class="tm-body"><section class="po pb-host"></section></div></dialog>`);
+    const dlg = document.getElementById("pb-bracket-modal");
+    dlg.addEventListener("close", () => { dlg.remove(); document.documentElement.classList.remove("modal-open"); });
+    dlg.querySelector(".tm-close").onclick = () => dlg.close();
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    mountPlayoffs(dlg.querySelector(".pb-host"), src, full, fullRatings, new Map(), { watch: { name: f.name, final: f.picks } });
+    document.documentElement.classList.add("modal-open");
+    dlg.showModal();
+  });
   const view = document.getElementById("pb-view");
   if (view) {
     const fullValid = validPicks(preds ?? [], full.series);
@@ -496,15 +511,6 @@ export async function renderPredict(src) {
     };
     app.querySelectorAll(".pb-who").forEach((b) => b.onclick = () => show(b.dataset.who, true));
     // Playoff brackets: the bracket that person sent, scored against the real one.
-    app.querySelectorAll(".pb-final").forEach((b) => b.onclick = () => {
-      const f = finals[Number(b.dataset.final)];
-      app.querySelectorAll(".pb-who, .pb-final").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      view.innerHTML = `<h3 class="pb-view-h">${esc(f.name)}'s playoff bracket <span class="muted">· ${f.points} points</span></h3><div class="pb-host"></div>`;
-      mountPlayoffs(view.querySelector(".pb-host"), src, full, fullRatings, new Map(), { watch: { name: f.name, final: f.picks } });
-      document.getElementById("pb-sum").innerHTML = `${esc(f.name)}'s playoff bracket`;
-      const fold = document.getElementById("pb-fold");
-      fold.open = true; view.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    });
     // Last week's names (and "Your full pick history") open the Leaderboard on that person.
     app.querySelectorAll("[data-history]").forEach((b) => b.onclick = () => {
       app.querySelector('.pp-tabs [data-tab="board"]')?.click();
