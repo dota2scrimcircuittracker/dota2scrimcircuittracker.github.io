@@ -32,6 +32,9 @@ const predReq = (data, auth = { uid: "u1" }) => ({ auth, method: "create", path:
 const BR_PATH = "/databases/(default)/documents/scrimLeague/data/brackets/ad2l_u1";
 const bracket = (extra = {}) => ({ v: 1, league: "ad2l", name: "Rules Test", uid: "u1", picks: '{"tb:3-5":5,"pick":4}', updatedAt: NOW, ...extra });
 const brReq = (data, auth = { uid: "u1" }, path = BR_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
+const PB_PATH = "/databases/(default)/documents/scrimLeague/data/playoff_brackets/ad2l_u1";
+const pbracket = (extra = {}) => ({ v: 1, league: "ad2l", name: "Rules Test", uid: "u1", picks: '{"u1:1-4":4,"pick":4}', submittedAt: NOW, ...extra });
+const pbReq = (data, auth = { uid: "u1" }, path = PB_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
 const FAN_PATH = "/databases/(default)/documents/scrimLeague/data/fantasy/ad2l_2026-10-12_173365627";
 const STEAM = { uid: "steam:173365627", token: { steam: 173365627 } };
 const fantasy = (extra = {}) => ({ v: 1, league: "ad2l", week: "2026-10-12", account: 173365627, picks: [75379546, 192871338, 66653545, 349392031, 239724237], name: "Rules Test", uid: "steam:173365627", updatedAt: NOW, ...extra });
@@ -184,6 +187,13 @@ const cases = [
   ["prediction: valid", predReq(pred()), "ALLOW"],
   ["prediction: change own pick (update)", { ...predReq(pred({ pick: "tie" })), method: "update" }, "ALLOW"],
   ["bracket: own, valid", brReq(bracket()), "ALLOW"],
+  ["playoff bracket: own, valid", pbReq(pbracket()), "ALLOW"],
+  ["playoff bracket: not signed in", pbReq(pbracket(), null), "DENY"],
+  ["playoff bracket: id for another uid", pbReq(pbracket(), { uid: "u1" }, PB_PATH.replace("_u1", "_u2")), "DENY"],
+  ["playoff bracket: stale submittedAt", pbReq(pbracket({ submittedAt: "2026-01-01T00:00:00Z" })), "DENY"],
+  ["playoff bracket: extra field", pbReq(pbracket({ points: 999 })), "DENY"],
+  ["playoff bracket: resubmit (update) denied", upd(pbracket(), pbracket({ picks: "{}" }), { uid: "u1" }, PB_PATH), "DENY"],
+  ["playoff bracket: owner can't delete", { request: { auth: { uid: "u1" }, method: "delete", path: PB_PATH, time: NOW }, resource: { data: pbracket() } }, "DENY"],
   ["bracket: not signed in", brReq(bracket(), null), "DENY"],
   ["bracket: id for another uid", brReq(bracket(), { uid: "u1" }, BR_PATH.replace("_u1", "_u2")), "DENY"],
   ["bracket: id with another league", brReq(bracket({ league: "heroic" })), "DENY"],

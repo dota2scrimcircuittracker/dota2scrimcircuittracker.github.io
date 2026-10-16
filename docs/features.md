@@ -561,6 +561,18 @@ shrunk-resolution problem above, not a finding problem.
     later slot reads TBD until the match feeding it is picked. Clicking your own pick again
     clears it. A progress strip counts series, tiebreakers and bracket matches picked. Saved in localStorage per division, keyed by
     the two teams, so a pick sticks while that pairing exists.
+  - **Submitted playoff bracket**: once a division has no group series left and every week 8
+    tiebreaker is played (`lib/playoffs.js` seedsSettled), Your picks becomes one whole bracket to
+    submit. The week 8 panel goes; the final table folds under the bracket, which uses the Content
+    tab's framed look. Played bracket series are filled in for everyone. Submit needs a name and every
+    match picked, and asks "Are you sure?" first. Once sent it's final (Firestore
+    `playoff_brackets`, create only) and shows read-only, each match marked ✓/✗ against the real one,
+    with points. Deadline: `lib/divisions.js` bracketClose (Champion: week 9 start, since its first
+    bracket series was played early; others: their first scheduled bracket series, else week 9).
+    Scoring (survivalPoints): 10 per playoff week from week 2 that a team you had still in really
+    is, 5 if you had it upper and it's in the lower bracket, 10 more for your champion winning.
+    The Leaderboard lists submitted brackets by points (click a name for theirs); the old
+    autosaved brackets are scored as before under **Group-stage brackets**, apart from series points.
   - **Model's picks** (Bracket's other side): everything below.
   - **Seeding**: every way the open series go (3 results each, so 3^n outcomes), and in
     each every way its week 8 tiebreakers go; a grid of each team's share of each place plus

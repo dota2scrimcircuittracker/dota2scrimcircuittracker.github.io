@@ -11,7 +11,7 @@ import { bestLaner, loading, errorBox, weekOfFn } from "../parts/lanes.js";
 import { upNextHtml } from "./standings.js";
 import { tagContext, gameTags, tagsHtml } from "../lib/gametags.js";
 import { plusSlot } from "../lib/hero-levels.js";
-import { announcedRole, unpostedTime, withAnnounced, isPostseason, SEASON } from "../lib/divisions.js";
+import { announcedRole, postseasonRows, playedPostseason, SEASON } from "../lib/divisions.js";
 
 function weekHighlights(games, src, league = games) {
   const all = games.flatMap((m) => m.players.map((p) => ({ p, m })));
@@ -223,7 +223,7 @@ export async function renderWeek(src, back = 0) {
   }
   // From week 8 (the first postseason week) on: the playoffs so far.
   const showBracket = !!ad2l && !src.all && SEASON.regularEnd != null && weeks[back] >= postStart;
-  const prow = showBracket ? playoffsRows(src, ad2l) : [];
+  const prow = showBracket ? postseasonRows(src.key, ad2l) : [];
   app.innerHTML = `
     <div class="week-top">
       ${pageHead(src.kicker, "Content", `Week of ${shortDate(start)} – ${shortDate(end)} · ${inWeek.length} game${inWeek.length === 1 ? "" : "s"}${src.ad2l ? " · drafts in pick/ban order" : ""}`)}
@@ -241,42 +241,6 @@ export async function renderWeek(src, back = 0) {
   if (subtabsMoved()) sideBar([{ label: "Weeks", el: app.querySelector(".week-pick") }], () => `Week ${app.querySelector(".week-chip.on .wn")?.textContent ?? ""}`);
 }
 
-// The postseason as played so far: each tiebreaker and playoff series, final or still to play.
-// No predictions. Series PlayOn hasn't posted count from their games (the announced best-of,
-// else Bo3), so a tiebreaker shows its running score and "Live" while games are coming in.
-function playoffsRows(src, d) {
-  const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
-  const link = (id) => (name[id] ? teamLink(src, name[id], id) : "TBD");
-  const when = (t) => new Date(t * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const rows = [];
-  const covered = new Set();
-  for (const s of withAnnounced(src.key, d.series).filter((x) => x.time && (typeof x.id === "string" || isPostseason(x)))) {
-    if (!(name[s.home] || name[s.away])) continue;
-    const role = announcedRole(src.key, s), bestOf = role?.bestOf ?? 3;
-    const gs = typeof s.id === "string" ? d.games.filter((g) => g.series_id === s.id) : [];
-    gs.forEach((g) => covered.add(g.match_id));
-    const home = s.home ?? gs[0]?.team_a_id ?? null, away = s.away ?? (gs[0] && gs[0].team_a_id === home ? gs[0].team_b_id : gs[0]?.team_a_id) ?? null;
-    const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
-    const [sa, sb] = typeof s.id === "string" ? [wins(home), wins(away)] : [s.home_score ?? 0, s.away_score ?? 0];
-    rows.push({ unposted: typeof s.id === "string", t: s.time, label: role?.label ?? "Playoffs", bestOf, home, away, sa, sb, played: sa + sb > 0, done: Math.max(sa, sb) >= Math.ceil(bestOf / 2), last: Math.max(0, ...gs.map((g) => g.start_time ?? 0)), when: s.time });
-  }
-  // Games with no series at all (a playoff match PlayOn hasn't posted): grouped by the pair.
-  const loose = new Map();
-  for (const g of d.games) {
-    if (covered.has(g.match_id) || typeof g.series_id === "number" || unpostedTime(g) == null) continue;
-    const k = [g.team_a_id, g.team_b_id].sort().join("-");
-    (loose.get(k) ?? loose.set(k, []).get(k)).push(g);
-  }
-  for (const gs of loose.values()) {
-    const home = gs[0].team_a_id, away = gs[0].team_b_id;
-    const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
-    const [sa, sb] = [wins(home), wins(away)];
-    rows.push({ unposted: true, t: unpostedTime(gs[0]), label: "Playoffs", bestOf: 3, home, away, sa, sb, played: true, done: Math.max(sa, sb) >= 2, last: Math.max(...gs.map((g) => g.start_time ?? 0)), when: null });
-  }
-  const now = Date.now() / 1000;
-  for (const r of rows) r.live = r.played && !r.done && now - r.last < 6 * 3600;
-  return rows.sort((x, y) => x.t - y.t);
-}
 function playoffsHtml(src, d, rows) {
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const link = (id) => (name[id] ? teamLink(src, name[id], id) : "TBD");
@@ -301,8 +265,7 @@ async function mountBracket(src, d, rows) {
   const [{ mountPlayoffs }, { tune, fitRatings }] = await Promise.all([import("../parts/playoffs.js"), import("../lib/predict.js")]);
   const full = src.view ? await SOURCES[src.key].data() : d;
   const ratings = fitRatings(full.teams, full.series, tune(full.teams, full.series));
-  const made = rows.filter((r) => r.done && r.unposted).map((r, i) => ({ id: `unposted-${i}`, time: r.t, home: r.home, away: r.away, home_score: r.sa, away_score: r.sb }));
-  mountPlayoffs(document.getElementById("wk-bracket"), src, { ...full, series: [...full.series, ...made] }, ratings, new Map(), { status: { progress: rows.filter((r) => r.played && !r.done) } });
+  mountPlayoffs(document.getElementById("wk-bracket"), src, { ...full, series: [...full.series, ...playedPostseason(rows)] }, ratings, new Map(), { status: { progress: rows.filter((r) => r.played && !r.done) } });
 }
 
 // Weekly page: one series panel at a time. Arrow keys move between tabs; the "Next series"

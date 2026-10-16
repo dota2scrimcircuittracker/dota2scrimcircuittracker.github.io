@@ -5127,27 +5127,27 @@ dialog.fp-modal { width: min(760px, 94vw); }
   background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 9%, transparent), color-mix(in srgb, var(--bone) 3%, transparent) 55%), var(--stone);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), 0 14px 34px rgba(0, 0, 0, .35); }
 .wkb-box > h2 { margin-top: 0; }
-#wk-bracket .po-br-wrap { padding: 6px 6px 10px; }
-#wk-bracket .po-br { gap: 14px 44px; min-width: calc(22px + var(--weeks) * 210px); }
-#wk-bracket .po-wk { text-align: center; padding: 5px 8px; border: 1px solid var(--seam); border-radius: 4px; background: color-mix(in srgb, var(--bone) 4%, transparent); }
-#wk-bracket .po-lbl { padding: 0 4px; }
-#wk-bracket .po-col { position: relative; }
-#wk-bracket .po-m { position: relative; border: 1px solid color-mix(in srgb, var(--bone) 28%, var(--seam)); border-radius: 6px; background: var(--stone); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
-#wk-bracket .po-m.gf { border-color: var(--accent); box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent); }
-#wk-bracket .po-mh { border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--bone) 5%, transparent); }
-#wk-bracket .po-slot { border-bottom: 1px solid var(--seam); }
-#wk-bracket .po-slot:last-of-type { border-bottom: 0; }
-#wk-bracket .po-mp { border-radius: 0 0 6px 6px; background: color-mix(in srgb, var(--bone) 3%, transparent); }
-#wk-bracket .po-champ { border-radius: 6px; background: color-mix(in srgb, var(--accent) 10%, var(--stone)); margin-top: 10px; }
+:is(#wk-bracket, .po-final) .po-br-wrap { padding: 6px 6px 10px; }
+:is(#wk-bracket, .po-final) .po-br { gap: 14px 44px; min-width: calc(22px + var(--weeks) * 210px); }
+:is(#wk-bracket, .po-final) .po-wk { text-align: center; padding: 5px 8px; border: 1px solid var(--seam); border-radius: 4px; background: color-mix(in srgb, var(--bone) 4%, transparent); }
+:is(#wk-bracket, .po-final) .po-lbl { padding: 0 4px; }
+:is(#wk-bracket, .po-final) .po-col { position: relative; }
+:is(#wk-bracket, .po-final) .po-m { position: relative; border: 1px solid color-mix(in srgb, var(--bone) 28%, var(--seam)); border-radius: 6px; background: var(--stone); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
+:is(#wk-bracket, .po-final) .po-m.gf { border-color: var(--accent); box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+:is(#wk-bracket, .po-final) .po-mh { border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--bone) 5%, transparent); }
+:is(#wk-bracket, .po-final) .po-slot { border-bottom: 1px solid var(--seam); }
+:is(#wk-bracket, .po-final) .po-slot:last-of-type { border-bottom: 0; }
+:is(#wk-bracket, .po-final) .po-mp { border-radius: 0 0 6px 6px; background: color-mix(in srgb, var(--bone) 3%, transparent); }
+:is(#wk-bracket, .po-final) .po-champ { border-radius: 6px; background: color-mix(in srgb, var(--accent) 10%, var(--stone)); margin-top: 10px; }
 /* Connectors: a stub out of every match that has a later round, one into every match past round 1,
    and a rail joining the stubs of a column's stacked matches. */
-#wk-bracket .po-m:not(.gf)::after { content: ""; position: absolute; left: 100%; top: 50%; width: 22px; border-top: 2px solid var(--dim); }
-#wk-bracket .po-m:not([data-wk="1"])::before { content: ""; position: absolute; right: 100%; top: 50%; width: 22px; border-top: 2px solid var(--dim); }
-#wk-bracket .po-col:has(.po-m + .po-m)::after { content: ""; position: absolute; right: -22px; top: 25%; bottom: 25%; border-right: 2px solid var(--dim); }
-#wk-bracket .po-col.gf .po-m::before { width: 22px; }
+:is(#wk-bracket, .po-final) .po-m:not(.gf)::after { content: ""; position: absolute; left: 100%; top: 50%; width: 22px; border-top: 2px solid var(--dim); }
+:is(#wk-bracket, .po-final) .po-m:not([data-wk="1"])::before { content: ""; position: absolute; right: 100%; top: 50%; width: 22px; border-top: 2px solid var(--dim); }
+:is(#wk-bracket, .po-final) .po-col:has(.po-m + .po-m)::after { content: ""; position: absolute; right: -22px; top: 25%; bottom: 25%; border-right: 2px solid var(--dim); }
+:is(#wk-bracket, .po-final) .po-col.gf .po-m::before { width: 22px; }
 @media (max-width: 640px) { .wkb-box { padding: 12px; } }
-#wk-bracket .po-m.is-maybe { outline: 2px dashed var(--accent); outline-offset: 4px; }
-#wk-bracket .po-maybe { padding: 4px 8px 6px; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border-top: 1px dashed var(--accent); }
+:is(#wk-bracket, .po-final) .po-m.is-maybe { outline: 2px dashed var(--accent); outline-offset: 4px; }
+:is(#wk-bracket, .po-final) .po-maybe { padding: 4px 8px 6px; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border-top: 1px dashed var(--accent); }
 
 /* Fantasy table tab (pages/fantasy.js mountFantasyTable) */
 .fx-wrap { border: 1px solid var(--seam); border-radius: 6px; background: var(--stone); overflow-x: auto; }
@@ -5193,3 +5193,22 @@ dialog.fp-modal { width: min(760px, 94vw); }
 #fx-modal summary { cursor: pointer; font-weight: 600; color: var(--bone); }
 #fx-modal details > a { display: inline-block; margin: 6px 0; font-size: 13px; }
 @media (max-width: 1280px) { #fx-modal .tm-head { padding-top: 44px; } }
+
+/* Predict: the playoff bracket you submit once (same frame as the Content tab's). */
+.po-final .po-res { font-weight: 600; }
+.po-final .po-res.right { color: var(--jade); }
+.po-final .po-res.wrong { color: var(--ember); }
+.po-submit { flex: 1 1 260px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px; border: 1px solid rgba(var(--accent-rgb), .5); background: color-mix(in srgb, var(--accent) 7%, var(--stone)); }
+.po-submit .primary { font-size: 15px; padding: 10px 18px; }
+.po-submit-note { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--dust); }
+.po-submit .po-clear { margin-left: auto; }
+.po-earned { margin: -10px 0 18px; color: var(--dust); }
+.po-earned .po-pts { font: 700 13px var(--mono); color: var(--accent); }
+.pb-sub { margin: 26px 0 8px; }
+dialog.po-confirm { width: min(460px, 94vw); }
+.po-confirm .tm-body { padding: 14px 18px 18px; }
+.po-confirm-champ { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 6px; }
+.po-confirm-champ li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid rgba(var(--accent-rgb), .5); background: var(--stone-2); }
+.po-confirm-champ span { font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.po-confirm-champ b { color: var(--accent); }
+.po-confirm-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }

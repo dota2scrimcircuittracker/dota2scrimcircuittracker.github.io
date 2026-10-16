@@ -207,7 +207,8 @@ export const INFO = {
 
   // Predictions
   points: "Correct calls / series called.",
-  bracket_pts: "Playoffs: 1 point for each bracket match whose winner you picked, from the bracket you saved on the Bracket tab before the first bracket match. Week 8 tiebreakers count as series picks instead.",
+  bracket_pts: "Group-stage brackets: 1 point for each bracket match whose winner you picked, from the bracket saved from your series calls before the first bracket match.",
+  playoff_pts: "Submitted playoff brackets: 10 points for each playoff week a team you had still in really is still in (5 if it dropped to the lower bracket when you had it upper), plus 10 for your champion winning.",
   correct: "Share of calls that were right.",
   model_col: "What the model would have picked, using only results from before it. Where shown, the % is the chance it gave the actual result.",
   crowd_col: "The most-picked call, and how many people picked.",

@@ -66,8 +66,53 @@ export function unpostedTime(m) {
   for (const list of Object.values(ANNOUNCED)) { const a = list.find((x) => x.id === m.series_id); if (a) return a.time; }
   return UNPOSTED_WEEK[m.match_id ?? m.id] ?? null;
 }
+// When playoff bracket submissions close (unix seconds), per league. Champion played its first
+// bracket series early (week 8 night), so it's given to everyone and picks stay open until the
+// rest of upper round 1 in week 9. A league not listed closes at its first scheduled bracket
+// series, or at week 9's start (bracketClose) while none is scheduled.
+export const BRACKET_CLOSE = { ad2l: WEEK8 + 7 * 86400 };
+export const bracketClose = (key, firstBracketSeries) => BRACKET_CLOSE[key] ?? firstBracketSeries ?? WEEK8 + 7 * 86400;
 export const isPostseason = (s) => SEASON.regularEnd != null && (s.time ?? 0) > SEASON.regularEnd && !SEASON.regularIds.includes(s.id);
 export const groupStage = (series) => series.filter((s) => !isPostseason(s));
+
+// The postseason as played so far: each tiebreaker and playoff series, final or still to play.
+// No predictions. Series PlayOn hasn't posted count from their games (the announced best-of,
+// else Bo3), so a tiebreaker shows its running score and "Live" while games are coming in.
+export function postseasonRows(key, d) {
+  const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
+  const rows = [];
+  const covered = new Set();
+  for (const s of withAnnounced(key, d.series).filter((x) => x.time && (typeof x.id === "string" || isPostseason(x)))) {
+    if (!(name[s.home] || name[s.away])) continue;
+    const role = announcedRole(key, s), bestOf = role?.bestOf ?? 3;
+    const gs = typeof s.id === "string" ? d.games.filter((g) => g.series_id === s.id) : [];
+    gs.forEach((g) => covered.add(g.match_id));
+    const home = s.home ?? gs[0]?.team_a_id ?? null, away = s.away ?? (gs[0] && gs[0].team_a_id === home ? gs[0].team_b_id : gs[0]?.team_a_id) ?? null;
+    const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
+    const [sa, sb] = typeof s.id === "string" ? [wins(home), wins(away)] : [s.home_score ?? 0, s.away_score ?? 0];
+    rows.push({ unposted: typeof s.id === "string", t: s.time, label: role?.label ?? "Playoffs", bestOf, home, away, sa, sb, played: sa + sb > 0, done: Math.max(sa, sb) >= Math.ceil(bestOf / 2), last: Math.max(0, ...gs.map((g) => g.start_time ?? 0)), when: s.time });
+  }
+  // Games with no series at all (a playoff match PlayOn hasn't posted): grouped by the pair.
+  const loose = new Map();
+  for (const g of d.games) {
+    if (covered.has(g.match_id) || typeof g.series_id === "number" || unpostedTime(g) == null) continue;
+    const k = [g.team_a_id, g.team_b_id].sort().join("-");
+    (loose.get(k) ?? loose.set(k, []).get(k)).push(g);
+  }
+  for (const gs of loose.values()) {
+    const home = gs[0].team_a_id, away = gs[0].team_b_id;
+    const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
+    const [sa, sb] = [wins(home), wins(away)];
+    rows.push({ unposted: true, t: unpostedTime(gs[0]), label: "Playoffs", bestOf: 3, home, away, sa, sb, played: true, done: Math.max(sa, sb) >= 2, last: Math.max(...gs.map((g) => g.start_time ?? 0)), when: null });
+  }
+  const now = Date.now() / 1000;
+  for (const r of rows) r.live = r.played && !r.done && now - r.last < 6 * 3600;
+  return rows.sort((x, y) => x.t - y.t);
+}
+// Finished series from postseasonRows that PlayOn hasn't posted, as series (so the playoff
+// picture moves on before the sync brings them).
+export const playedPostseason = (rows) => rows.filter((r) => r.done && r.unposted).map((r, i) => ({ id: `unposted-${i}`, time: r.t, home: r.home, away: r.away, home_score: r.sa, away_score: r.sb }));
+
 
 // Menu order: lowest division first.
 // key: the id in data files (public/data/<key>.json), Firestore and predictions.

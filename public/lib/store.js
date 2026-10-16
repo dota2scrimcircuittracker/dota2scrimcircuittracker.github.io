@@ -220,9 +220,9 @@ const predictions = collection(db, "scrimLeague", "data", "predictions");
 // signed-in player still sees the picks they made before signing in.
 async function predictorSession() {
   await fantasyReady;
-  if (fantasyAuth.currentUser) return { predictions: collection(fantasyDb, "scrimLeague", "data", "predictions"), brackets: collection(fantasyDb, "scrimLeague", "data", "brackets"), uid: fantasyAuth.currentUser.uid };
+  if (fantasyAuth.currentUser) return { predictions: collection(fantasyDb, "scrimLeague", "data", "predictions"), brackets: collection(fantasyDb, "scrimLeague", "data", "brackets"), playoffBrackets: collection(fantasyDb, "scrimLeague", "data", "playoff_brackets"), uid: fantasyAuth.currentUser.uid };
   await signedIn();
-  return { predictions, brackets, uid: auth.currentUser.uid };
+  return { predictions, brackets, playoffBrackets, uid: auth.currentUser.uid };
 }
 export async function myUids() {
   await Promise.all([authReady, fantasyReady]);
@@ -242,7 +242,8 @@ export async function savePrediction(seriesId, pick, name, league = "ad2l") {
     v: 1, league, series_id: seriesId, pick, name: name.trim().slice(0, 24), uid, updatedAt: serverTimestamp(),
   });
   return uid;
-}
+}
+
 
 
 // ---------- brackets ----------
@@ -259,8 +260,24 @@ export async function saveBracket(league, picks, name) {
   await setDoc(doc(col, `${league}_${uid}`), {
     v: 1, league, name: name.trim().slice(0, 24), uid, picks: JSON.stringify(picks), updatedAt: serverTimestamp(),
   });
-}
+}
 
+
+// A whole playoff bracket, submitted once (the rules allow no update): one per person per league,
+// id "<league>_<uid>". Scored by lib/playoffs.js survivalPoints; one submitted after the league's
+// deadline (lib/divisions.js bracketClose) doesn't count.
+const playoffBrackets = collection(db, "scrimLeague", "data", "playoff_brackets");
+export async function listPlayoffBrackets() {
+  const snap = await getDocs(query(playoffBrackets, limit(500)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data(), submittedAt: d.data().submittedAt?.toDate?.() ?? null }));
+}
+export async function submitPlayoffBracket(league, picks, name) {
+  const { playoffBrackets: col, uid } = await predictorSession();
+  await setDoc(doc(col, `${league}_${uid}`), {
+    v: 1, league, name: name.trim().slice(0, 24), uid, picks: JSON.stringify(picks), submittedAt: serverTimestamp(),
+  });
+  return uid;
+}
 
 // ---------- scrim fixtures ----------
 // Upcoming scrims anyone can put on the schedule: two team names, a start time and the

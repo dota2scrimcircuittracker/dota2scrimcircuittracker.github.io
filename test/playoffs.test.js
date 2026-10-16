@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TBD, tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, possibilities, pathsTo, pathsToEvent, bestOfP, bestOfScores, likelyScore } from "../public/lib/playoffs.js";
+import { TBD, tiebreakFormat, resolveTable, bracket, pairWeek, projectSeries, playoffPicture, possibilities, pathsTo, pathsToEvent, bestOfP, bestOfScores, likelyScore, standings, survivalPoints } from "../public/lib/playoffs.js";
 
 // Higher id = stronger, so the model's winner is always the higher id.
 const rate = (ids) => new Map(ids.map((id) => [id, id / 10]));
@@ -266,4 +266,30 @@ test("blank bracket: only week 1 is set until picks fill it in", () => {
   m = Object.fromEntries(b.matches.map((x) => [x.id, x]));
   assert.deepEqual([m.uf.a, m.uf.b, m.uf.winner], [5, 7, TBD]);
   assert.ok(m.uf.open && m.l3.pending); // l3 still waits on the 6 v 7 lower match
+});
+
+// Submitted brackets: 10 per playoff week a picked team is still in, 5 when it's a tier lower.
+test("survival points: per week still in, half a tier lower", () => {
+  const seeds = [8, 7, 6, 5, 4, 3, 2, 1]; // seed k = team 9-k, the stronger
+  const r = rate(seeds);
+  // Picked: chalk, the stronger team wins every match. Real: seed 1 loses the upper final and
+  // then the lower final.
+  const pred = bracket(seeds, r);
+  const flip = (k, a, b) => (k.startsWith("uf:") ? 7 : k.startsWith("lf:") ? (a === 8 ? b : a) : undefined);
+  const real = bracket(seeds, r, flip);
+  for (const m of real.matches) m.real = true;
+  const P = standings(pred);
+  assert.deepEqual(P.get(8), { 2: "upper", 3: "upper", 4: "upper", 5: "upper", 6: "upper" });
+  const A = standings(real, (m) => m.real);
+  assert.equal(A.get(8)[4], "lower");
+  const { teams } = survivalPoints(pred, real);
+  // Seed 1: weeks 2–3 upper as picked (20), week 4 in the lower final (5), out of the final after.
+  assert.equal(teams.get(8), 25);
+  // Seed 2: picked to lose the upper final, win the lower final and lose the grand final; really
+  // wins it all. Weeks 2–3 upper as picked (20), weeks 4–5 picked lower, really upper (20), not
+  // picked champion (0).
+  assert.equal(teams.get(7), 40);
+  // Unplayed weeks don't score.
+  const early = bracket(seeds, r, undefined, { blank: true });
+  assert.equal(survivalPoints(pred, early).points, 0);
 });

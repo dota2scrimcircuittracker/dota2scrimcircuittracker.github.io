@@ -375,7 +375,9 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false }
 // `call` picks group-stage results and `choose` tiebreaker and bracket winners (a viewer's own
 // picks); whatever they leave open goes the model's way.
 // `blank`: bracket matches nobody picked stay open (see bracket).
-export function playoffPicture(teams, series, ratings, { split = false, call, choose: own, blank = false, version = HEROIC_DEFAULT } = {}) {
+// `asPicked`: the bracket exactly as `choose` picks it, played bracket matches ignored (a
+// submitted playoff bracket, kept as it was sent). Tiebreakers still take their results.
+export function playoffPicture(teams, series, ratings, { split = false, call, choose: own, blank = false, version = HEROIC_DEFAULT, asPicked = false } = {}) {
   const projected = projectSeries(teams, series, ratings, call);
   // Played postseason series settle their tiebreaker or bracket match, ahead of anyone's pick.
   const actual = postResults(series);
@@ -391,7 +393,8 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
       const table = resolveTable(ids, mine, ratings, lines.filter((l) => l.after < ids.length), choose);
       const seeds = table.rows.slice(0, 8).map((r) => r.id);
       for (const tb of table.tiebreakers) for (const m of tb.matches) actual.mark(m);
-      return { division: div, lines, ...table, bracket: split ? null : actual.markAll(bracket(seeds, ratings, actual.chooser(seeds, choose), { blank })) };
+      if (split) return { division: div, lines, ...table, bracket: null };
+      return { division: div, lines, ...table, bracket: asPicked ? bracket(seeds, ratings, own, { blank }) : actual.markAll(bracket(seeds, ratings, actual.chooser(seeds, choose), { blank })) };
     }),
   };
   if (split) {
@@ -404,7 +407,7 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
         seeds.push(id);
         if (id != null) labels.set(id, `${dv.division}${from + k + 1}`);
       }
-      return { name, labels, bracket: actual.markAll(bracket(seeds, ratings, choose, { fixed: true, blank })) };
+      return { name, labels, bracket: asPicked ? bracket(seeds, ratings, own, { fixed: true, blank }) : actual.markAll(bracket(seeds, ratings, choose, { fixed: true, blank })) };
     });
   }
   return out;
@@ -497,6 +500,75 @@ export function bracketPoints(picks, decided, bracketTeams = new Map()) {
     if (mine.some(([, w]) => w === m.winner)) points++;
   }
   return { points, of: decided.length };
+}
+
+// ---------- submitted playoff brackets ----------
+
+// Where each team stands going into each playoff week: Map team -> { [week]: "upper", "lower",
+// "out" or null (not known yet) } for weeks 2 to the grand final's, plus the week after it
+// (the champion, the only team still in). A team starts on the side of its first match, drops
+// to "lower" when it loses an upper match and is "out" when it loses a lower one or the grand
+// final. `decided(m)`: whether a match's result counts (played, or picked).
+export function standings(b, decided = (m) => m.winner !== TBD) {
+  const out = new Map();
+  if (!b) return out;
+  const last = Math.max(...b.matches.map((m) => m.week));
+  const teams = new Set(b.matches.flatMap((m) => [m.a, m.b]).filter((x) => x != null && x !== TBD));
+  for (const t of teams) {
+    const by = {};
+    for (let w = 2; w <= last + 1; w++) {
+      const ms = b.matches.filter((m) => m.week < w && (m.a === t || m.b === t)).sort((x, y) => x.week - y.week);
+      if (!ms.length || ms.some((m) => !m.bye && !decided(m))) { by[w] = null; continue; }
+      let side = ms[0].side;
+      for (const m of ms) if (!m.bye && m.loser === t) side = m.side === "upper" ? "lower" : "out";
+      by[w] = side;
+    }
+    out.set(t, by);
+  }
+  return out;
+}
+
+// A submitted bracket's points: each playoff week (from week 2, plus being champion) that a team
+// the person had still in is really still in scores ROUND_POINTS, or half that when it's there a
+// tier lower than they had it (they had it upper, it's in the lower bracket). A team doing better
+// than picked scores in full. Weeks not decided yet don't count. pred/actual: the person's
+// bracket (asPicked) and the bracket as played, matched by name for Heroic/Aegis.
+export const ROUND_POINTS = 10;
+export function survivalPoints(pred, actual) {
+  const P = standings(pred), A = standings(actual, (m) => m.real);
+  const teams = new Map();
+  let points = 0;
+  for (const [t, wk] of A) {
+    let pts = 0;
+    for (const [w, a] of Object.entries(wk)) {
+      const p = P.get(t)?.[w];
+      if (!a || a === "out" || !p || p === "out") continue;
+      pts += p === "upper" && a === "lower" ? ROUND_POINTS / 2 : ROUND_POINTS;
+    }
+    teams.set(t, pts);
+    points += pts;
+  }
+  return { points, teams };
+}
+
+// A picture's brackets as [name, bracket]: Aegis and Heroic, or each division's own.
+export const bracketsOf = (pic, split = false) => (split ? pic.brackets.map((b) => [b.name, b.bracket]) : pic.divisions.filter((dv) => dv.bracket).map((dv) => [dv.division, dv.bracket]));
+// Whether a league's seeds are settled: no group-stage series left and every week 8 tiebreaker
+// played. Then Predict's bracket is one to submit (see survivalPoints).
+export const seedsSettled = (pic) => !pic.series.some((s) => s.projected && !s.bye) && pic.divisions.every((dv) => dv.tiebreakers.every((tb) => tb.matches.every((m) => m.real)));
+// A submitted bracket (picks: match key -> winner) scored against the bracket as played: total
+// points, each team's, and the champion(s) it picked.
+export function playoffScore(teams, series, ratings, picks, { split = false, version = HEROIC_DEFAULT } = {}) {
+  const actual = bracketsOf(playoffPicture(teams, series, ratings, { split, version, blank: true }), split);
+  const mine = bracketsOf(playoffPicture(teams, series, ratings, { split, version, choose: (k) => picks[k], blank: true, asPicked: true }), split);
+  const byTeam = new Map();
+  let points = 0;
+  mine.forEach(([, b], i) => {
+    const r = survivalPoints(b, actual[i]?.[1]);
+    points += r.points;
+    for (const [t, x] of r.teams) byTeam.set(t, x);
+  });
+  return { points, teams: byTeam, champions: mine.map(([n, b]) => [n, b.champion]) };
 }
 
 // The dividing lines in a division's table.

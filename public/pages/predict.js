@@ -2,9 +2,9 @@
 import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
-import { isPostseason, playoffs, ANNOUNCED, withAnnounced } from "../lib/divisions.js";
-import { postseason, bracketPoints } from "../lib/playoffs.js";
-import { listPredictions, listBrackets, saveBracket, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
+import { isPostseason, playoffs, ANNOUNCED, withAnnounced, postseasonRows, playedPostseason, bracketClose } from "../lib/divisions.js";
+import { postseason, bracketPoints, playoffScore } from "../lib/playoffs.js";
+import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
 import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, DIVISIONS, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
@@ -92,11 +92,29 @@ export async function renderPredict(src) {
   // but its brackets mix both (ratings fitted to it, as on Combined). Postseason series
   // (lib/divisions.js) are best-of with no tie: their round, the bracket lock and the bracket
   // matches decided so far come from lib/playoffs.js postseason.
-  const full = src.view ? await SOURCES[src.key].data() : d;
-  const fullRatings = full === d ? ratings : fitRatings(full.teams, full.series, tune(full.teams, full.series));
+  // Playoff series PlayOn hasn't posted count from their uploaded games (as on Content).
+  const league = src.view ? await SOURCES[src.key].data() : d;
+  const fullRatings = league === d ? ratings : fitRatings(league.teams, league.series, tune(league.teams, league.series));
+  const full = { ...league, series: [...league.series, ...playedPostseason(postseasonRows(src.key, league))] };
   const split = !!DIVISIONS[src.key]?.views;
   const ps = postseason(full.teams, full.series, fullRatings, { split });
   const bracketLocked = ps.lock != null && now >= ps.lock * 1000;
+  // Submitted playoff brackets (one per person, final once sent). One sent after the league's
+  // deadline isn't scored or listed; the viewer's own is kept either way, to show it back.
+  const closes = bracketClose(src.key, ps.lock);
+  const finals = [];
+  let myFinal = null;
+  try {
+    for (const b of (await listPlayoffBrackets()).filter((x) => x.league === src.key)) {
+      let picks; try { picks = JSON.parse(b.picks); } catch { continue; }
+      if (!picks || typeof picks !== "object" || Array.isArray(picks)) continue;
+      const e = { name: b.name, uid: b.uid, submittedAt: b.submittedAt, picks: Object.fromEntries(Object.entries(picks).filter(([, v]) => Number.isInteger(v))) };
+      if (uids.includes(b.uid)) myFinal = e;
+      if (closes == null || !b.submittedAt || b.submittedAt.getTime() < closes * 1000) finals.push(e);
+    }
+  } catch (e) { console.warn(e); }
+  for (const f of finals) Object.assign(f, playoffScore(full.teams, full.series, fullRatings, f.picks, { split }));
+  finals.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
   const roleOf = (s) => tbRole.get(s.id) ?? ps.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
 
   // This week's slate: the earliest night still to be played. A series whose result never
@@ -222,17 +240,19 @@ export async function renderPredict(src) {
     if (!board.has("\u0000model")) board.set("\u0000model", { name: "The model", model: true, points: 0, picks: 0, accuracy: null, now: {} });
     for (const s of week) board.get("\u0000model").now[s.id] = callOf(s);
   }
-  // Bracket points (playoffs): 1 per decided bracket match whose winner the person picked, from a
-  // bracket saved before the lock (the first bracket match). The board ranks series points plus
-  // bracket points.
+  // Group-stage brackets (the old autosaved kind, made from series calls before the playoffs):
+  // 1 per decided bracket match whose winner the person picked, from a bracket saved before the
+  // lock (the first bracket match). Their own leaderboard, apart from series points and from
+  // submitted playoff brackets.
   const showBracket = ps.decided.length > 0;
+  const groupBrackets = [];
   if (showBracket) for (const [k, picks] of savedBrackets) {
     const at = savedAt.get(k);
     if (!at || ps.lock == null || at.getTime() >= ps.lock * 1000) continue;
-    if (!board.has(k)) board.set(k, { name: savedName.get(k), points: 0, picks: 0, accuracy: null, now: {} });
-    board.get(k).bracket = bracketPoints(picks, ps.decided, ps.bracketTeams).points;
+    groupBrackets.push({ k, name: savedName.get(k), points: bracketPoints(picks, ps.decided, ps.bracketTeams).points });
   }
-  const total = (r) => r.points + (r.bracket ?? 0);
+  groupBrackets.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  const total = (r) => r.points;
   // Change from last week: each row's score on the latest played night, and how their
   // accuracy moved against where it stood before that night (in points of %).
   const lastNightScore = new Map();
@@ -255,16 +275,27 @@ export async function renderPredict(src) {
   const boardRows = [...board.entries()].sort(([, a], [, b]) => total(b) - total(a) || b.points - a.points || (b.accuracy ?? -1) - (a.accuracy ?? -1) || a.name.localeCompare(b.name));
   const pickChip = (s, k) => (k ? `<span class="pk-chip ${k}" title="${label(s, k)}">${label(s, k)}</span>` : '<span class="muted">—</span>');
   const boardHtml = boardRows.length ? `<div class="table-wrap sticky-name"><table class="pred-board">
-    <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("points")}</th><th scope="col">Correct${info("correct")}</th>${showBracket ? `<th scope="col">Bracket${info("bracket_pts")}</th><th scope="col">Total</th>` : ""}
+    <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("points")}</th><th scope="col">Correct${info("correct")}</th>
       ${week.map((s) => `<th scope="col" class="l pb-series"><span class="a">${esc(teamName[s.home])}</span><span class="b">${esc(teamName[s.away])}</span></th>`).join("")}</tr></thead>
     <tbody>${boardRows.map(([k, r], i) => `<tr class="${k === myKey ? "me" : ""}">
       <td class="rank${i < 3 && r.picks ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
       <td class="l"><button type="button" class="linkish pb-who" data-who="${r.model ? "model" : esc(k)}" aria-pressed="false" title="See ${esc(r.name)}'s picks and bracket"><i class="pb-dot" aria-hidden="true"></i>${r.model ? `<b>${esc(r.name)}</b>` : esc(r.name)}</button>${r.model ? ' <span class="tag">replayed</span>' : ""}</td>
       <td class="num">${r.picks ? `${delta(k, r).pts}${r.points}<span class="muted">/${r.picks}</span>` : '<span class="muted">—</span>'}</td>
       <td class="num">${r.accuracy == null ? '<span class="muted">—</span>' : `${delta(k, r).acc}${pct(r.accuracy)}`}</td>
-      ${showBracket ? `<td class="num">${r.bracket == null ? '<span class="muted">—</span>' : `${r.bracket}<span class="muted">/${ps.decided.length}</span>`}</td><td class="num"><b>${total(r)}</b></td>` : ""}
       ${week.map((s) => `<td class="l">${pickChip(s, r.now[s.id])}</td>`).join("")}</tr>`).join("")}</tbody>
   </table></div>` : "";
+  // The two bracket boards. Playoff brackets: click a name for the bracket they sent.
+  const champOf = (f) => f.champions.map(([, c]) => esc(teamName[c] ?? "—")).join(" / ");
+  const finalsHtml = finals.length ? `<h3 class="pb-sub">Playoff brackets</h3><div class="table-wrap sticky-name"><table class="pred-board pb-brackets">
+    <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("playoff_pts")}</th><th scope="col" class="l">Champion pick</th></tr></thead>
+    <tbody>${finals.map((f, i) => `<tr class="${uids.includes(f.uid) ? "me" : ""}"><td class="rank${i < 3 && f.points ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
+      <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" aria-pressed="false" title="See ${esc(f.name)}'s playoff bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button></td>
+      <td class="num"><b>${f.points}</b></td><td class="l">${champOf(f)}</td></tr>`).join("")}</tbody></table></div>` : "";
+  const groupHtml = groupBrackets.length ? `<details class="how"><summary>Group-stage brackets</summary><div class="table-wrap sticky-name"><table class="pred-board">
+    <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Bracket${info("bracket_pts")}</th></tr></thead>
+    <tbody>${groupBrackets.map((g, i) => `<tr class="${g.k === myKey ? "me" : ""}"><td class="rank">${String(i + 1).padStart(2, "0")}</td><td class="l">${esc(g.name)}</td>
+      <td class="num">${g.points}<span class="muted">/${ps.decided.length}</span></td></tr>`).join("")}</tbody></table></div>
+    <p class="table-note keep">Brackets saved from series calls before the playoffs started: 1 point per bracket match whose winner was picked.</p></details>` : "";
   // One played night: each series' result and how the model, the crowd and you called it.
   const dayLabel = (t, month = "short") => new Date(t * 1000).toLocaleDateString(undefined, { weekday: "long", month, day: "numeric" });
   const nightTable = (t) => {
@@ -341,7 +372,9 @@ export async function renderPredict(src) {
     </details>`;
   const boardTab = `
     <h2>Leaderboard</h2>
-    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called.${showBracket ? " Bracket = bracket matches whose winner you picked, from a bracket saved before the playoffs started; Total ranks the board." : ""} Columns on the right are this week's picks. <b>Click a name</b> for their pick history and bracket.</p>` : `<div class="panel empty">No picks yet.</div>`}
+    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> for their pick history and bracket.</p>` : `<div class="panel empty">No picks yet.</div>`}
+    ${finalsHtml}
+    ${groupHtml}
     ${boardHtml ? `<details class="how pb-fold" id="pb-fold"><summary id="pb-sum">Your picks</summary><section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading…</p></section></details>` : ""}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
   const tabs = playerTabs(pageTabs(PREDICT_TABS, src, [
@@ -423,7 +456,8 @@ export async function renderPredict(src) {
   const poBracket = document.getElementById("po-bracket"), poOdds = document.getElementById("po-odds");
   if (!document.body.contains(poBracket)) return;
   const myCalls = new Map(full.series.filter((s) => !isPlayed(s)).map((s) => [s.id, mine(s.id)?.pick]).filter(([, k]) => k));
-  mountPlayoffs(poBracket, src, full, fullRatings, myCalls, { share: { name, saved: savedBrackets.get(myKey), save: (picks) => saveBracket(src.key, picks, name) }, locked: bracketLocked ? ps.lock : null });
+  mountPlayoffs(poBracket, src, full, fullRatings, myCalls, { share: { name, saved: savedBrackets.get(myKey), save: (picks) => saveBracket(src.key, picks, name) }, locked: bracketLocked ? ps.lock : null,
+    final: { closes, mine: myFinal, submit: (picks) => submitPlayoffBracket(src.key, picks, name) } });
 
   // Leaderboard: click a name for the bracket and final table their calls lead to. Fresh host
   // each time, since mountPlayoffs listens for clicks on its element.
@@ -451,6 +485,16 @@ export async function renderPredict(src) {
       if (scroll) { fold.open = true; view.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
     };
     app.querySelectorAll(".pb-who").forEach((b) => b.onclick = () => show(b.dataset.who, true));
+    // Playoff brackets: the bracket that person sent, scored against the real one.
+    app.querySelectorAll(".pb-final").forEach((b) => b.onclick = () => {
+      const f = finals[Number(b.dataset.final)];
+      app.querySelectorAll(".pb-who, .pb-final").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      view.innerHTML = `<h3 class="pb-view-h">${esc(f.name)}'s playoff bracket <span class="muted">· ${f.points} points</span></h3><div class="pb-host"></div>`;
+      mountPlayoffs(view.querySelector(".pb-host"), src, full, fullRatings, new Map(), { watch: { name: f.name, final: f.picks } });
+      document.getElementById("pb-sum").innerHTML = `${esc(f.name)}'s playoff bracket`;
+      const fold = document.getElementById("pb-fold");
+      fold.open = true; view.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
     // Last week's names (and "Your full pick history") open the Leaderboard on that person.
     app.querySelectorAll("[data-history]").forEach((b) => b.onclick = () => {
       app.querySelector('.pp-tabs [data-tab="board"]')?.click();

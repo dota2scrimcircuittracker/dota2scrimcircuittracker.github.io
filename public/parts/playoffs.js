@@ -6,7 +6,7 @@
 //    - Model's picks: the same with every call the model's.
 //  - Possibilities: every way the remaining series (and the tiebreakers they set up) can go,
 //    as each team's chance of each place; click a cell or team for what it takes.
-import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD, HEROIC_VERSIONS, HEROIC_DEFAULT } from "../lib/playoffs.js";
+import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD, HEROIC_VERSIONS, HEROIC_DEFAULT, bracketsOf, seedsSettled, playoffScore, ROUND_POINTS } from "../lib/playoffs.js";
 import { info } from "../lib/glossary.js";
 import { esc, pct, teamLink, DIVISIONS } from "../core.js";
 import { groupStage, REMOVED } from "../lib/divisions.js";
@@ -32,10 +32,14 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 // model's own picks.
 // share: { name, save(picks) } keeps the viewer's own picks on the Leaderboard (empty name: not
 // yet, the page asks for one).
+// final: once a league's seeds are settled (tiebreakers played), Your picks is one whole bracket
+// that's submitted once and is then final: { closes (unix seconds), mine: { picks, submittedAt }
+// or null, submit(picks) }. Played matches are filled in for everyone. watch.final: someone's
+// submitted bracket, shown read-only with its points.
 // locked: when the bracket locked (unix seconds; the first bracket match, lib/playoffs.js
 // postseason), or null. Locked, the viewer's bracket is the one saved on the Leaderboard, shown
 // read-only. Played postseason series show as results either way.
-export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view = "bracket", team = null, watch = null, share = null, locked = null, status = null } = {}) {
+export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view = "bracket", team = null, watch = null, share = null, locked = null, status = null, final = null } = {}) {
   const split = !!DIVISIONS[src.key]?.views;
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const link = (id) => (id == null ? '<span class="muted">bye</span>' : teamLink(src, name[id], id));
@@ -46,6 +50,12 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   // Heroic/Aegis: which reading of AD2L's week 8 (lib/playoffs.js HEROIC_VERSIONS).
   state.version = split && HEROIC_VERSIONS.some(([id]) => id === load(VERSION_KEY, "")) ? load(VERSION_KEY, "") : HEROIC_DEFAULT;
   const possCache = {};
+  // The submitted-bracket view, once the seeds are settled (see `final` above). A draft is kept
+  // in this browser until it's submitted, starting from any bracket picks made before.
+  const finalKey = `po-final:${src.key}`;
+  const ready = view === "bracket" && !status && !!(final || watch?.final) && seedsSettled(playoffPicture(d.teams, d.series, ratings, { split, version: state.version, blank: true }));
+  if (ready && !watch) state.fpicks = load(finalKey, null) ?? { ...load(pickKey, {}) };
+  const phase = () => (!ready ? null : watch ? "watch" : final.mine ? "sent" : Date.now() < (final.closes ?? Infinity) * 1000 ? "open" : "closed");
   const versionBar = () => split ? `<div class="pd-toggle po-versions" role="group" aria-label="Heroic week 8"><span class="pd-lbl">Heroic week 8</span>${HEROIC_VERSIONS.map(([id, label]) => `<button type="button" data-version="${id}" aria-pressed="${id === state.version}">${label}</button>`).join("")}</div>
     <p class="table-note keep">${state.version === "announced"
       ? "AD2L's week 8 announcement has no game for Heroic's upper bracket in Division A, so Abz Jr, Josh A. Chaos and cheerful (all on 7 wins) are ordered by SoS."
@@ -74,19 +84,27 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     if (view === "odds") { el.innerHTML = possHtml(); return; }
     if (view === "team") { el.innerHTML = teamHtml(); return; }
     const bar = `<div class="pd-toggle po-modes" role="group" aria-label="Whose bracket">${MODES.map(([id, label]) => `<button type="button" data-pomode="${id}" aria-pressed="${id === state.mode}">${label}</button>`).join("")}</div>`;
+    if (ready && (watch || state.mode === "mine")) { el.innerHTML = `${watch ? "" : bar}${versionBar()}${pictureHtml(true, phase())}`; return; }
     el.innerHTML = status ? pictureHtml(false) : `${watch ? "" : bar}${versionBar()}${pictureHtml(state.mode === "mine")}`;
   };
 
   // ---------- your picks / the model's picks ----------
 
-  const pictureHtml = (mine) => {
+  const pictureHtml = (mine, fin = null) => {
     // `mine` is a person's own series calls; `live` is the viewer clicking tiebreakers and the
     // bracket (not when watching someone else, whose bracket picks aren't saved).
-    const live = mine && !watch && !locked, frozen = mine && !watch && !!locked;
-    const p = playoffPicture(d.teams, d.series, ratings, status ? { split, version: state.version, blank: true } : live || frozen
+    // fin: the submitted-bracket phase ("open" to pick, "sent", "closed", "watch"; see `final`).
+    const live = fin ? fin === "open" : mine && !watch && !locked, frozen = fin ? fin === "sent" : mine && !watch && !!locked;
+    const finPicks = fin === "sent" ? final.mine.picks : fin === "watch" ? watch.final : null;
+    const p = fin ? playoffPicture(d.teams, d.series, ratings, fin === "open" ? { split, version: state.version, choose: (k) => state.fpicks[k], blank: true }
+        : finPicks ? { split, version: state.version, choose: (k) => finPicks[k], blank: true, asPicked: true } : { split, version: state.version, blank: true })
+      : playoffPicture(d.teams, d.series, ratings, status ? { split, version: state.version, blank: true } : live || frozen
       ? { split, version: state.version, call: (s) => myCalls.get(s.id), choose: (k) => state.picks[k], blank: true }
       : mine ? { split, version: state.version, call: (s) => myCalls.get(s.id), choose: watch?.picks ? (k) => state.picks[k] : undefined, blank: !!watch?.picks }
       : { split, version: state.version });
+    // A submitted bracket next to the bracket as played: each match's real result, and points.
+    const asPlayed = finPicks ? new Map(bracketsOf(playoffPicture(d.teams, d.series, ratings, { split, version: state.version, blank: true }), split).map(([n, b]) => [n, b])) : null;
+    const fscore = finPicks ? playoffScore(d.teams, d.series, ratings, finPicks, { split, version: state.version }) : null;
     // status: the bracket as played, no picks. A seed still riding on an unplayed tiebreaker is TBD,
     // and a match nobody has won shows its running score or "yet to play".
     const unresolved = new Set(status ? p.divisions.flatMap((dv) => dv.tiebreakers.filter((tb) => tb.matches.some((m) => !m.real)).flatMap((tb) => tb.teams)) : []);
@@ -150,6 +168,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const settledHtml = seedTies.length ? `<p class="po-settled"><b>Ties decided without playing</b> (seed order: SoS, head to head, highest common opponent, then a 1v1 mid for 1st or a coin flip for any other seed):
         ${seedTies.map((x) => `${ord(x.place)}: ${esc(name[x.above])} ahead of ${esc(name[x.below])} on ${esc(x.detail)}`).join(" · ")}.</p>` : "";
 
+      // Week 8 is over (no group series left, every tiebreaker played): just the table.
+      if (seedsSettled({ series: p.series, divisions: [dv] })) return `${dv.division ? `<h3 class="po-div">Division ${esc(dv.division)}</h3>` : ""}${table}`;
       // Table on the left, week 8 on the right (stacked on narrow screens).
       return `${dv.division ? `<h3 class="po-div">Division ${esc(dv.division)}</h3>` : ""}
         <div class="po-split">
@@ -162,17 +182,25 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         </div>`;
     };
     // Each division's own bracket (everything but Heroic/Aegis).
-    const divBracket = (dv) => (dv.bracket ? bracketHtml(dv.bracket, { seedOf: new Map(dv.rows.slice(0, 8).map((r) => [r.id, r.place])), teams: dv.rows.length, title: dv.division ? `Division ${dv.division} bracket` : "" }) : "");
+    const divBracket = (dv) => (dv.bracket ? bracketHtml(dv.bracket, { seedOf: new Map(dv.rows.slice(0, 8).map((r) => [r.id, r.place])), teams: dv.rows.length, title: dv.division ? `Division ${dv.division} bracket` : fin ? "" : "Bracket", bn: dv.division }) : "");
 
     // seedOf: team id → its seed label. title: a heading over the bracket (Aegis, Heroic).
-    const bracketHtml = (b, { seedOf, teams = 8, title = "Bracket" }) => {
+    // bn: the bracket's name in bracketsOf (to find it as played, for a submitted bracket).
+    const bracketHtml = (b, { seedOf, teams = 8, title = "Bracket", bn = "" }) => {
+      // A submitted bracket's match: how the real one went (matched by its place in the bracket).
+      const finLine = (m) => {
+        const a = asPlayed?.get(bn)?.matches.find((x) => x.id === m.id);
+        if (!a?.real) return `<div class="po-mp">Not played yet</div>`;
+        const right = a.winner === m.winner;
+        return `<div class="po-mp po-res ${right ? "right" : "wrong"}">${right ? "✓" : "✗"} ${esc(name[a.winner])} won ${sc(a)}${right ? "" : ` <span class="muted">v ${esc(name[a.loser])}</span>`}</div>`;
+      };
       const slot = (m, id) => {
         if (id === TBD) return `<div class="po-slot tbd"><span class="po-seed"></span><span>TBD</span></div>`;
         if (id == null) return `<div class="po-slot bye"><span class="po-seed"></span><span>bye</span></div>`;
         if (status && unresolved.has(id)) return `<div class="po-slot tbd" title="Decided by a week 8 tiebreaker"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span>TBD</span></div>`;
         const win = m.winner === id && !m.bye && (!status || m.real);
         if (live && !m.bye && !m.pending && !m.real) return `<button type="button" class="po-slot po-pick${win ? " win on" : ""}${m.mine ? " me" : ""}" data-k="${esc(m.key)}" data-w="${id}" aria-pressed="${win}"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span class="po-nm">${esc(name[id])}</span></button>`;
-        return `<div class="po-slot${win ? " win" : ""}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye || m.pending || m.open || (live && !m.real) || (status && !m.real) ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
+        return `<div class="po-slot${win ? " win" : ""}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye || m.pending || m.open || (live && !m.real) || (status && !m.real) || (fin && !m.real) ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
       };
       // Your picks: an open match says "pick", a picked one "your pick"; a match still waiting
       // on an earlier pick just shows TBD.
@@ -187,7 +215,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const box = (m) => { const why = maybeWhy(m); return `<div data-wk="${m.week}" class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}${why ? " is-maybe" : ""}">
           <div class="po-mh">${esc(m.label)} · ${m.side === "final" ? "Bo3 or Bo5" : bo(m.bestOf)}${!m.bye && (live || frozen || m.real) ? tag(m) : ""}</div>
           ${slot(m, m.a)}${slot(m, m.b)}
-          ${m.bye || m.pending ? "" : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? `<div class="po-mp">model: ${esc(name[m.model])} ${pct(m.mine && m.winner !== m.model ? 1 - m.p : m.p)}</div>`
+          ${m.bye || m.pending ? "" : finPicks ? finLine(m) : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : fin === "closed" ? `<div class="po-mp">Yet to play</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? `<div class="po-mp">model: ${esc(name[m.model])} ${pct(m.mine && m.winner !== m.model ? 1 - m.p : m.p)}</div>`
             : `<div class="po-mp">${esc(name[m.winner])} ${sc(m)} · ${pct(m.p)} to win${m.side === "final" ? " (as Bo5)" : ""}</div>
           <div class="po-odds">${scoreOdds(m)}</div>`}
           ${why ? `<div class="po-maybe">${why}</div>` : ""}
@@ -195,12 +223,12 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const weeks = Math.max(...b.matches.map((m) => m.week));
       const col = (side, w) => b.matches.filter((m) => m.side === side && m.week === w).map(box).join("");
       const gf = b.matches.find((m) => m.side === "final");
-      const pickChoice = live && !b.fixed ? `<div class="po-seedpick" role="group" aria-label="Seed 1 plays">
+      const pickChoice = live && !b.fixed && !b.matches.some((x) => (x.id === "u1" || x.id === "u2") && x.real) ? `<div class="po-seedpick" role="group" aria-label="Seed 1 plays">
           <span class="pd-lbl">Seed 1 picks</span>${[3, 4].map((k) => `<button type="button" data-k="pick" data-w="${k}" aria-pressed="${b.pick === k}">Seed ${k}</button>`).join("")}
           <span class="muted">${state.picks.pick ? "your pick" : `model's pick: the weaker one, seed ${b.modelPick}`}</span></div>` : "";
       const shape = b.fixed ? "" : teams < 8 ? `${teams} teams, so everyone makes it: ${teams <= 4 ? "all start in the upper bracket" : "seeds 5–6 start in the lower bracket"}. The rules only cover 8-team brackets, so this layout is a guess.` : "Lower round 1 is 5 v 8 and 6 v 7. The loser of seed 1's match plays the 6 v 7 winner, as in S47.";
       return `${title ? `<h4 class="po-h">${esc(title)}</h4>` : ""}
-        ${status ? "" : live ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${`Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
+        ${status || (fin && !live) ? "" : live ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${`Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
         ${shape ? `<p class="table-note keep">${shape}</p>` : ""}
         <div class="po-br-wrap"><div class="po-br" style="--weeks:${weeks}">
           ${Array.from({ length: weeks }, (_, i) => `<div class="po-wk" style="grid-column:${i + 2}">Playoff week ${i + 1}</div>`).join("")}
@@ -212,7 +240,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
 
     const removed = d.teams.filter((t) => REMOVED.has(t.id));
     const heroicNote = split ? `<p class="po-heroic">Top 8 of each division make the playoffs. <b>Aegis</b>: 1st and 2nd of each division start in the upper bracket, 3rd and 4th in the lower. <b>Heroic</b>: 5th and 6th start upper, 7th and 8th lower. Each is a double-elimination bracket.${removed.length ? ` ${removed.map((t) => `<b>${esc(t.name)}</b>`).join(", ")} ${removed.length === 1 ? "was" : "were"} removed from the league, so ${removed.length === 1 ? "it isn't" : "they aren't"} in the table below. ${removed.length === 1 ? "Its" : "Their"} results still count for the teams ${removed.length === 1 ? "it" : "they"} played.` : ""}</p>` : "";
-    const splitBrackets = (p.brackets ?? []).map((x) => bracketHtml(x.bracket, { seedOf: x.labels, title: `${x.name} bracket` })).join("");
+    const splitBrackets = (p.brackets ?? []).map((x) => bracketHtml(x.bracket, { seedOf: x.labels, title: `${x.name} bracket`, bn: x.name })).join("");
     const splitNote = splitBrackets ? `<p class="table-note keep">AD2L hasn't announced the cross-division matchups. Assumed: upper bracket A1 v B2 and B1 v A2, lower bracket A3 v B4 and B3 v A4 (Heroic the same with 5th–8th). The loser of A1's match plays the B3 v A4 winner, as in S47.</p>` : "";
     const lockedOn = locked ? new Date(locked * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
     const lead = frozen
@@ -245,6 +273,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     // tiebreakers, and the bracket it leads to.
     const bracketsHtml = brackets.length ? `${splitNote}${split ? splitBrackets : p.divisions.map(divBracket).join("")}` : "";
     if (status) return bracketsHtml ? `${splitNote}${split ? splitBrackets : p.divisions.map(divBracket).join("")}` : "";
+    if (fin) return finalLayout(fin, { p, brackets, brMatches, bracketsHtml, fscore, table: `${heroicNote}${p.divisions.map(divHtml).join("")}` });
     return `${lead}${progress}${notesHtml}
       <div class="po-two">
         <section class="po-pane" aria-label="Final table and week 8">${heroicNote}${p.divisions.map(divHtml).join("")}</section>
@@ -252,6 +281,87 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       </div>
       ${howHtml}`;
   };
+
+  // ---------- the submitted bracket ----------
+
+  const fmtWhen = (t) => new Date(t).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const finalLayout = (fin, { brackets, brMatches, bracketsHtml, fscore, table }) => {
+    const stat = (label, done, all) => `<div class="po-stat${all && done === all ? " full" : ""}"><span>${label}</span><b>${all ? `${done}<i>/${all}</i>` : "—"}</b></div>`;
+    const picked = brMatches.filter((m) => m.winner !== TBD).length, all = brMatches.length, full = picked === all;
+    const given = brackets.flatMap(([, b]) => b.matches.filter((m) => m.real)).length;
+    const closes = final?.closes ? fmtWhen(final.closes * 1000) : "";
+    const theirs = fin === "watch";
+    const champs = brackets.map(([n, b]) => `<div class="po-stat champ"><span>${n ? `${esc(n)} champion` : theirs ? "Their champion" : "Your champion"}</span><b>${b.champion === TBD ? '<i class="po-tbd">not picked yet</i>' : esc(name[b.champion] ?? "—")}</b></div>`).join("");
+    const lead = {
+      open: `<b>Brackets are open.</b> Pick a winner for every match, then submit. <b>You get one go:</b> once it's in, it's final. ${given ? `${given === 1 ? "The series already played is" : `The ${given} series already played are`} filled in for everyone. ` : ""}${closes ? `Submissions close ${esc(closes)}.` : ""}`,
+      sent: `<b>Your bracket is in</b>${final?.mine?.submittedAt ? ` (submitted ${esc(fmtWhen(final.mine.submittedAt))})` : ""} and it's final. Each match shows how the real one went.`,
+      closed: `<b>Submissions closed</b>${closes ? ` ${esc(closes)}` : ""} and you didn't submit a bracket. This is the bracket as played so far.`,
+      watch: `${esc(watch?.name ?? "")}'s submitted bracket. Each match shows how the real one went.`,
+    }[fin];
+    const why = !share?.name ? "Type your name above first." : !full ? `${all - picked} ${all - picked === 1 ? "match" : "matches"} left to pick.` : "Ready. One go, so check it first.";
+    const stats = fin === "open"
+      ? `${stat("Bracket picked", picked, all)}${champs}
+        <div class="po-submit"><button type="button" class="primary" data-submit ${full && share?.name ? "" : "disabled"}>Submit bracket</button><span class="po-submit-note">${why}</span>
+        ${Object.keys(state.fpicks).length ? `<button type="button" class="linkish po-clear" data-freset>Clear my picks</button>` : ""}</div>`
+      : fscore ? `<div class="po-stat full"><span>Points</span><b>${fscore.points}</b></div>${champs}` : "";
+    const earned = fscore ? [...fscore.teams].filter(([, x]) => x > 0).sort((a, b) => b[1] - a[1]) : [];
+    const breakdown = earned.length ? `<p class="po-earned"><b>Points by team:</b> ${earned.map(([t, x]) => `${esc(name[t])} <span class="po-pts">${x}</span>`).join(" · ")}</p>` : "";
+    const head = { open: "Your bracket", sent: "Your bracket", closed: "Bracket", watch: `${esc(watch?.name ?? "")}'s bracket` }[fin];
+    const note = { open: "click a team to send it through", sent: "submitted, final", closed: "results so far", watch: "submitted, final" }[fin];
+    return `<p class="po-lead keep">${lead}</p>
+      ${stats ? `<div class="po-progress">${stats}</div>` : ""}
+      <section class="wkb-box po-final"><h2>${head} <span class="h-note">${note}</span></h2>${bracketsHtml}</section>
+      ${breakdown}
+      <details class="how"><summary>How brackets score</summary>
+        <p>For every playoff week from week 2, each team you have still in the playoffs that really is still in scores <b>${ROUND_POINTS} points</b>. If you had it in the upper bracket and it's in the lower bracket, it scores <b>${ROUND_POINTS / 2}</b>. A team doing better than you picked still scores ${ROUND_POINTS}. Your champion winning the grand final is ${ROUND_POINTS} more.</p>
+        <p>So a team keeps scoring for the weeks it lasts, even after it drops to the lower bracket or goes out. Series played before brackets opened are the same for everyone. A bracket submitted after the deadline doesn't count.</p>
+      </details>
+      <details class="how"><summary>Final table</summary>${table}</details>`;
+  };
+  // Your draft as picks to submit: every decided match (played ones too) and seed 1's choice.
+  const draftPicks = () => {
+    const bs = bracketsOf(playoffPicture(d.teams, d.series, ratings, { split, version: state.version, choose: (k) => state.fpicks[k], blank: true }), split);
+    const picks = {};
+    for (const [, b] of bs) {
+      for (const m of b.matches) if (m.key && !m.bye && m.winner !== TBD && m.winner != null) picks[m.key] = m.winner;
+      if (!b.fixed) picks.pick = b.pick;
+    }
+    return { picks, champions: bs.map(([n, b]) => [n, b.champion]) };
+  };
+  function confirmSubmit() {
+    if (phase() !== "open") return keep(render);
+    const { picks, champions } = draftPicks();
+    document.getElementById("po-confirm")?.remove();
+    document.body.insertAdjacentHTML("beforeend", `<dialog class="tier-modal po-confirm" id="po-confirm" style="--tc:var(--accent)" aria-labelledby="po-confirm-h">
+      <div class="tm-head"><div class="tm-title"><h3 id="po-confirm-h">Submit your bracket?</h3><small>One per person · final once sent</small></div><button type="button" class="tm-close" data-no aria-label="Close">×</button></div>
+      <div class="tm-body">
+        <p>Are you sure? <b>You can't change it after you submit.</b></p>
+        <ul class="po-confirm-champ">${champions.map(([n, c]) => `<li><span>${n ? `${esc(n)} champion` : "Your champion"}</span><b>${esc(name[c] ?? "—")}</b></li>`).join("")}</ul>
+        <p class="notice err po-confirm-err" hidden></p>
+        <div class="po-confirm-btns"><button type="button" data-no>Go back</button><button type="button" class="primary" data-yes>Yes, submit it</button></div>
+      </div></dialog>`);
+    const dlg = document.getElementById("po-confirm");
+    dlg.addEventListener("close", () => dlg.remove());
+    dlg.querySelectorAll("[data-no]").forEach((b) => (b.onclick = () => dlg.close()));
+    dlg.querySelector("[data-yes]").onclick = async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true; btn.textContent = "Submitting…";
+      try {
+        await final.submit(picks);
+        final.mine = { picks, submittedAt: new Date() };
+        try { localStorage.removeItem(finalKey); } catch { /* private window */ }
+        dlg.close();
+        keep(render);
+      } catch (err) {
+        console.warn(err);
+        const m = dlg.querySelector(".po-confirm-err");
+        m.hidden = false;
+        m.textContent = /permission/i.test(err?.message ?? "") ? "Couldn't submit: you already have a bracket in, or submissions have closed." : `Couldn't submit: ${err?.message ?? err}`;
+        btn.disabled = false; btn.textContent = "Yes, submit it";
+      }
+    };
+    dlg.showModal();
+  }
 
   const howHtml = `<details class="how explain"><summary>How the tiebreakers work</summary>
       <p>The table counts game wins (a bye counts 1–0). <b>SoS</b> (strength of schedule) is the total wins of every opponent a team has played, counting an opponent twice if met twice. It uses the final table, so a result still to come changes the SoS of everyone who played either team.</p>
@@ -469,6 +579,15 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     const t = e.target.closest("button");
     if (!t || !el.contains(t)) return;
     if (t.dataset.pomode) { state.mode = t.dataset.pomode; save(MODE_KEY, state.mode); return keep(render); }
+    if (t.dataset.k && ready && !watch) {
+      if (phase() !== "open") return;
+      const k = t.dataset.k, w = Number(t.dataset.w);
+      if (state.fpicks[k] === w) delete state.fpicks[k]; else state.fpicks[k] = w;
+      save(finalKey, state.fpicks);
+      return keep(render);
+    }
+    if (t.hasAttribute("data-submit")) return confirmSubmit();
+    if (t.hasAttribute("data-freset")) { state.fpicks = {}; save(finalKey, state.fpicks); return keep(render); }
     if (t.dataset.k) {
       if (locked || watch) return;
       const k = t.dataset.k, w = Number(t.dataset.w);
@@ -506,7 +625,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     if (toDetail) el.querySelector(".po-need")?.scrollIntoView({ block: "nearest" });
   };
   render();
-  if (view === "bracket" && !watch && unsynced()) shareNow();
+  // Once the seeds are settled the old bracket (group-stage picks) stays as it was saved.
+  if (view === "bracket" && !watch && !ready && unsynced()) shareNow();
 }
 
 // The rules' week 8 table (AD2L S48 rules): [slots, teams (a number, or "n+"), the format].

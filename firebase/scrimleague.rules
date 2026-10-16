@@ -159,6 +159,27 @@
         && (request.auth.uid == resource.data.uid || request.auth.token.email == "jonahbyu@gmail.com");
     }
 
+    // Playoff brackets: a person's whole bracket, submitted once once a league's tiebreakers are
+    // played, id "<league>_<uid>". Create only: a submitted bracket is final, so no update, and
+    // only the admin can delete one (to let someone redo it). The site ignores one submitted
+    // after the league's deadline (lib/divisions.js bracketClose), checked against submittedAt.
+    match /scrimLeague/data/playoff_brackets/{bracketId} {
+      allow get: if true;
+      allow list: if request.query.limit <= 500;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['v', 'league', 'name', 'uid', 'picks', 'submittedAt'])
+        && request.resource.data.keys().size() == 6
+        && request.resource.data.v == 1
+        && request.resource.data.league in ['ad2l', 'heroic', 'conqueror', 'warrior', 'challenger', 'voyager', 'explorer']
+        && bracketId == request.resource.data.league + '_' + request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.picks is string && request.resource.data.picks.size() <= 3000
+        && request.resource.data.submittedAt == request.time;
+      allow delete: if request.auth != null && request.auth.token.email == "jonahbyu@gmail.com";
+    }
+
     // Fantasy entries: one per person per AD2L league per week, id "<league>_<week>_<account>".
     // Only a Steam sign-in (uid "steam:<account>", minted by workers/steam-auth with the account
     // as the `steam` claim) can write, and only its own entry. picks: five distinct account ids,
