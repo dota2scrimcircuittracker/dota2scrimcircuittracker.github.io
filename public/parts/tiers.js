@@ -241,10 +241,14 @@ export function tierSection(src, matches, model) {
   // The whole list per scoring version (the live one from `model`), made once each.
   const fulls = { [LIVE]: tierList(matches, { model, minGames: floorOf(src) }) };
   const full0 = fulls[LIVE];
-  const cardData = Promise.all([
-    listCards().catch(() => new Map()),
-    src.ad2l ? src.data().catch(() => ({ teams: [] })) : Promise.resolve({ teams: [] }),
-  ]).then(([cards, data]) => ({cards,renderer:createPlayerCards(matches, { cards, teams: data.teams, tiers: tierMap(full0) })}));
+  // Cards draw plain at first; the saved designs and cosmetics (Firestore and the collection
+  // Worker, slow to connect on a cold phone) redraw them when they arrive, so the list never waits.
+  const teams = src.ad2l ? src.data().then((d) => d.teams, () => []) : Promise.resolve([]);
+  let cardData = teams.then((teams) => ({ cards: new Map(), renderer: createPlayerCards(matches, { teams, tiers: tierMap(full0) }) }));
+  Promise.all([listCards(), teams]).then(([cards, teams]) => {
+    cardData = Promise.resolve({ cards, renderer: createPlayerCards(matches, { cards, teams, tiers: tierMap(full0) }) });
+    if (redrawTiers === draw) draw();
+  }, () => {});
   // Pos 1–5: the players whose main position it is (all their games), made once.
   const posLists = {};
   // Every league's games (for "All leagues"), loaded on first use, and the models made from them
