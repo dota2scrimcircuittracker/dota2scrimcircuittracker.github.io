@@ -6,15 +6,16 @@ import { hasDetails } from "../lib/stats.js";
 import { tierModel, tierModels, METRICS, tierList, ratingOf, TIERS, VERSIONS, LIVE, perPosition, PODIUM_STATS } from "../lib/tiers.js";
 import { info, tierInfo } from "../lib/glossary.js";
 import { radarSvg, roleScores } from "./radar.js";
-import { leagueSrc, floorOf, pct, esc, teamLink, playerLink, allLeagues, leagueShort } from "../core.js";
+import { leagueSrc, floorOf, pct, esc, teamLink, playerLink, allLeagues, leagueShort, DIVISIONS, SOURCES } from "../core.js";
 
 // ---------- Tier list ----------
 
 let tierRole = "pos1"; // the position shown: pos1 … pos5
-// What the shown position is rated against: by default that position in this league. `roles`:
-// every position (the all-roles model and curve); `leagues`: every league's games too. The
-// list still only shows this league's players at the position.
-const tierVs = { roles: false, leagues: false };
+// What the shown position is rated against. `roles` (the default): every position (the all-roles
+// model and curve), so each player's tier and rating are the ones on their profile and cards;
+// off, that position's own model in this league. `leagues`: every league's games too. The list
+// still only shows this league's players at the position.
+const tierVs = { roles: true, leagues: false };
 // Default to the live scoring model; older models remain available on the tier list.
 let tierVer = LIVE;
 const tierOpen = new Set(); // player keys whose card is expanded
@@ -32,6 +33,20 @@ export async function tierRef(src, pos = null, version = LIVE) {
   const m = refMemo.get(all) ?? refMemo.set(all, new Map()).get(all), k = `${min}|${pos ? "pos" : ""}|${version}`;
   const made = m.get(k) ?? m.set(k, pos ? tierModels(all.filter(hasDetails), { minGames: min, version }) : tierModel(all.filter(hasDetails), { minGames: min, version })).get(k);
   return pos ? made[pos] : made;
+}
+
+// A tier list's players as a Map: account id -> { tier, rating }, the shape cards take.
+export const tierMap = (...lists) => new Map(lists.flatMap((l) => l.tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { tier, rating: p.rating }]))));
+// Every AD2L player's tier and rating as their division's tier list has them (Combined, the live
+// model): the same tierList call as the Players tier list and the profile badge. Cards anywhere
+// (Feed, Gallery, Fantasy, the tier list's own) take their tier from here, so a card always shows
+// the tier on that player's profile. Made once.
+let everyTier = null;
+export function divisionTiers() {
+  return everyTier ??= Promise.all(Object.keys(DIVISIONS).map(async (key) => {
+    const src = SOURCES[key], matches = (await src.load()).filter(hasDetails);
+    return tierList(matches, { model: await tierRef(src), minGames: floorOf(src) });
+  })).then((lists) => tierMap(...lists)).catch((e) => { everyTier = null; throw e; });
 }
 
 // How each tier-list stat reads in a breakdown, and the raw number shown under a share.
@@ -229,7 +244,7 @@ export function tierSection(src, matches, model) {
   const cardData = Promise.all([
     listCards().catch(() => new Map()),
     src.ad2l ? src.data().catch(() => ({ teams: [] })) : Promise.resolve({ teams: [] }),
-  ]).then(([cards, data]) => ({cards,renderer:createPlayerCards(matches, { cards, teams: data.teams })}));
+  ]).then(([cards, data]) => ({cards,renderer:createPlayerCards(matches, { cards, teams: data.teams, tiers: tierMap(full0) })}));
   // Pos 1–5: the players whose main position it is (all their games), made once.
   const posLists = {};
   // Every league's games (for "All leagues"), loaded on first use, and the models made from them

@@ -3,6 +3,7 @@
 // newest first, loading more as you scroll. Signed-in players react with emojis and comment on
 // any post. collection.js passes in its swatch drawing and the viewer.
 import { esc, dur, SOURCES, allLoad } from '../core.js';
+import { divisionTiers } from './tiers.js';
 import { listCards } from '../lib/store.js';
 import { feedPosts, feedMediaUrl, feedCommentMediaUrl, createFeedComment, collectionState, cardRatings, myCardVotes } from '../lib/cosmetics.js';
 import { designKey } from '../lib/card-ratings.js';
@@ -85,7 +86,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   const me = viewer == null ? null : String(viewer), admin = isAdmin(viewer);
   const directory = mentionDirectory(teams);
   const roster = new Map(teams.flatMap((t) => t.players.map((p) => [String(p.account_id), { name: p.name, team: t.name, league: t.league }])));
-  const renderer = createPlayerCards(matches, { cards: overrides, teams });
+  const renderer = createPlayerCards(matches, { cards: overrides, teams, tiers: await divisionTiers().catch(() => new Map()) });
   const nicknames = { ...first.nicknames, ...focused?.nicknames };
   // Players on no roster go by their Steam name (lib/scout.js); later pages fall back to it as known.
   const shown = [...(first.posts ?? []), ...(focused?.posts ?? [])].flatMap((p) => [p.account, ...(p.comments ?? []).map((c) => c.account)]);

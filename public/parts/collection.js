@@ -1,4 +1,5 @@
 import { esc, fmt, SOURCES, allLoad, pageList, navigate } from '../core.js';
+import { divisionTiers } from './tiers.js';
 import { steamAccount, steamLoginUrl, listCards } from '../lib/store.js';
 import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
 import { isThemedPack, parsePack, themedLabel, oddsText, ODDS_ROWS } from '../lib/pack-types.js';
@@ -113,7 +114,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       // Your record, heroes and team from every division's games and rosters, as on Fantasy.
       const [cards,matches,teams]=target==null?[new Map(),[],[]]:await Promise.all([listCards().catch(()=>new Map()),allLoad().catch(()=>[]),SOURCES.all.data().then(d=>d.teams).catch(()=>[])]);
       const team=teams.find(t=>t.players.some(p=>p.account_id===Number(target)));
-      const renderer=createPlayerCards(matches,{cards,teams});
+      const renderer=createPlayerCards(matches,{cards,teams,tiers:await divisionTiers().catch(()=>new Map())});
       name=team?.players.find(p=>p.account_id===Number(target))?.name??name; // the name the site shows for you
       cardHtml=PAINT_FILTER+renderer.card({account:Number(target??0),name,team:team?.name??'AD2L'},null,{own:true});
     }
@@ -736,7 +737,7 @@ async function drawGallery(body,{viewer,signIn}) {
   } catch(e) {body.innerHTML=`<p>${esc(e.message)}</p>`;return;}
   if(!body.isConnected)return;
   const roster=new Map(teams.flatMap(t=>t.players.map(p=>[String(p.account_id),{name:p.name,team:t.name,league:t.league}])));
-  const renderer=createPlayerCards(matches,{cards:overrides,teams});
+  const renderer=createPlayerCards(matches,{cards:overrides,teams,tiers:await divisionTiers().catch(()=>new Map())});
   // Players on no roster go by their Steam name (lib/scout.js).
   const strangers=await strangerNames(cards.map(c=>String(c.account)).filter(a=>!roster.has(a))).catch(()=>new Map());if(!body.isConnected)return;
   const nameOf=c=>c.nickname??roster.get(c.account)?.name??strangers.get(String(c.account))??steamName(Number(c.account))??c.design.layout?.name??`Player ${c.account}`;

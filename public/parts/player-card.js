@@ -7,7 +7,6 @@ import { teamLogoHtml } from "../lib/team-logos.js";
 import { cosmeticAttributes, cosmeticLayers, playerEquipment, playerNickname } from '../lib/cosmetics.js';
 import { BACK_STATS, backStats, partState } from '../lib/card-layout.js';
 import { plusSlot } from "../lib/hero-levels.js";
-import { tierList, tierModel, LIVE } from "../lib/tiers.js";
 
 // A custom-cropped card needs its picture's aspect so a rotated crop shows the whole image under the frame
 // instead of a clipped card-shaped piece (style.css .ft-custom-crop). Cards are HTML strings, so catch every load.
@@ -97,13 +96,10 @@ const MEDALS = ["Herald", "Guardian", "Crusader", "Archon", "Legend", "Ancient",
 const medal = (t) => (!t ? "—" : t >= 80 ? "Immortal" : `${MEDALS[Math.floor(t / 10) - 1] ?? "—"} ${t % 10 || ""}`.trim());
 const kShort = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n)));
 
-// Every player's live tier and rating from these games, as on Fantasy (key: account id string).
-export const liveTiers = (matches) => new Map(tierList(matches, { model: tierModel(matches, { version: LIVE }) }).tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { tier, rating: p.rating }])));
-
-// Without `tiers`, each card's tier comes from liveTiers(matches), worked out on first need.
+// `tiers`: account id -> { tier, rating }, from divisionTiers() or tierMap() in parts/tiers.js (the
+// players' tier lists), so a card shows the tier on the player's profile. Without it, no tier.
 export function createPlayerCards(matches, { cards = new Map(), teams = [], tiers = null, locked = true } = {}) {
-  let tierMap = tiers;
-  const tierOf = (a) => (tierMap ??= liveTiers(matches)).get(String(a));
+  const tierOf = (a) => tiers?.get(String(a));
   const mainPos = mainPositions(matches), stats = cardStats(matches);
   const teamIdOf = new Map(teams.flatMap((t) => t.players.map((p) => [p.account_id, t.id])));
   const roleOf = (a, ov = cards.get(a)) => ov?.pos ?? mainPos.get(a);

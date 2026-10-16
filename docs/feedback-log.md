@@ -26,3 +26,4 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-MW2LQ6 · 2026-10-15 · Thanks! Praise for the packs page, nothing to change
 - FB-KYPCFM · 2026-10-15 · The hero tier list now has All and Pos 1-5 buttons to rank heroes by role
 - FB-PLLOSD · 2026-10-15 · Show the back now works on Customize even when the card can't be edited
+- FB-QSATLK · 2026-10-15 · Every card's tier now comes from the player's division tier list (playoff model), same as their profile badge; the tier list defaults to All roles.
