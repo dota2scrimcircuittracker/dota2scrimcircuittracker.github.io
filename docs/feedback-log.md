@@ -23,3 +23,6 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-LFVIGF · 2026-10-14 · No action needed: compliment on the font.
 - FB-ZWEEBB · 2026-10-15 · Background preview now shows the sticky header, so a signature it covers on the page shows covered in the preview too
 - FB-26XITV · 2026-10-15 · Gallery, feed and profile cards are now the Customize preview scaled, so the Pos pill and everything else match
+- FB-MW2LQ6 · 2026-10-15 · Thanks! Praise for the packs page, nothing to change
+- FB-KYPCFM · 2026-10-15 · The hero tier list now has All and Pos 1-5 buttons to rank heroes by role
+- FB-PLLOSD · 2026-10-15 · Show the back now works on Customize even when the card can't be edited

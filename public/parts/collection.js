@@ -353,7 +353,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelector('[data-save]').disabled=!editable;
     body.querySelector('[data-save]').onclick=async()=>{const data=await run('equip',{equipment},()=>{initialEquipment=JSON.stringify(equipment);document.querySelectorAll(`.ft-card[data-pick="${own}"]`).forEach(c=>applyEquipment(c,c.dataset.designSlot!=null?(state.cardDesigns?.[Number(c.dataset.designSlot)]??state.equipment):state.equipment,c.dataset.playerName??name));});if(data){equipment=selectedEquipment();initialEquipment=JSON.stringify(equipment);drawEditor();say(`Card ${selectedSlot+1} saved.`);}};
     body.querySelector('[data-reset]').onclick=()=>{Object.assign(equipment,{x:50,y:60,size:15,rotation:-7});syncControls();update();};
-    if(!editable)body.querySelectorAll('input,select,button').forEach(n=>n.disabled=true);
+    // Read-only: every control off but Show the back, which only looks.
+    if(!editable)body.querySelectorAll('input,select,button:not([data-layout-flip])').forEach(n=>n.disabled=true);
     update();
   }
   // Layout (lib/card-layout.js): the card's name and its size, each front part shown or hidden,
