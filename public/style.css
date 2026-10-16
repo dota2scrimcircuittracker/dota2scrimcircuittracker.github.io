@@ -4783,6 +4783,7 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .part-panel { display: grid; gap: .6rem; padding: .8rem; border: 1px solid #e8b84a; border-radius: 8px; }
 .part-panel[hidden] { display: none; }
 .part-panel label { display: grid; gap: .2rem; }
+.part-panel .pp-remove { color: #ff6b6b; }
 .ft-card .ft-bname .ft-name { zoom: var(--name-size, 1); }
 .ft-card .ft-front > .ft-placed { position: absolute; z-index: calc(6 + var(--part-z, 0)); zoom: 1; transform: translate(-50%, -50%) rotate(var(--part-rot, 0deg)) scale(var(--part-size, 1)); max-width: calc(96% / var(--part-size, 1)); margin: 0; white-space: nowrap; }
 .ft-card [data-part][hidden], .ft-stats > span[hidden] { display: none; }

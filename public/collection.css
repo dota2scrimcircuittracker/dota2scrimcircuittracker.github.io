@@ -428,3 +428,5 @@ button.feed-poll-choice:focus-visible{outline:2px solid #eac47e;outline-offset:2
   main:has(> .collection-host) .pp-tabs button[aria-selected="true"]::after{left:5px;right:5px}
 }
 @media (max-width:420px){main:has(> .collection-host) .pp-tabs{flex-wrap:wrap}}
+/* The open collection dialog is the only thing that scrolls; the page behind it stays put. */
+html:has(dialog.collection-dialog[open]){overflow:hidden}.collection-dialog{overscroll-behavior:contain}

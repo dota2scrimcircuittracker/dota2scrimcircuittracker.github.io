@@ -79,6 +79,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   body.innerHTML='<p>Loading collection…</p>';
   tabsHost.querySelectorAll('[data-tab]').forEach(b=>b.disabled=true);
   let equipment={...DEFAULT_EQUIPMENT,...state?.equipment}, initialEquipment=JSON.stringify(equipment);
+  // Customize undo history (Ctrl+Z / Ctrl+Y) for the card being edited. Changes in quick succession, like one slider drag, are one step.
+  let editHistory={slot:null,undo:[],redo:[],last:null,at:0},editorKeys=null;
   const say=text=>{
     message.textContent=text;
     if(['Your Steam session expired. Sign in again.','Sign in with Steam first.','Sign in with Steam to collect cards.'].includes(text)) {
@@ -137,6 +139,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body._feedToken=null; // cancel a Feed request that finishes after another tab was chosen
     body.dataset.collectionView=tab;body.classList.remove('feed-body'); // the Feed's two-column layout (parts/feed.js) is the Feed's alone
     tabsHost.querySelectorAll('[data-tab]').forEach(b=>{b.setAttribute(tabBar?'aria-selected':'aria-pressed',String(b.dataset.tab===tab));if(tabBar)b.tabIndex=b.dataset.tab===tab?0:-1;b.disabled=busy;});
+    if(tab!=='customize')editHistory.slot=null;
     if(tab==='packs')drawPacks();else if(tab==='collection')drawDex();else if(tab==='customize')drawEditor();else if(tab==='gallery')drawGallery(body,{viewer:own,signIn});else if(tab==='feed'){drawFeed(body,{viewer:own,signIn,action,swatch,colors,typeLabel,ago,focus});focus=null;}else drawRecycle();
   }
   function drawPacks() {
@@ -233,6 +236,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     return `<fieldset class="visual-text-options"><legend>${type==='autograph'?'Signature style':'Modifier'}</legend><div>${items.map(item=>`<button type="button" data-text-choice="${type}" data-choice="${item.id}" aria-pressed="${equipment[type]===item.id}" ${editable?'':'disabled'}><span data-text-choice-preview></span><strong>${esc(item.name)}</strong><small data-choice-status>${equipment[type]===item.id?'Selected':'Select'}</small></button>`).join('')}</div></fieldset>`;
   }
   function drawEditor() {
+    // Redrawing replaces the editor, which would otherwise jump the dialog (or page) back to the top.
+    const scroller=body.closest('dialog')??document.scrollingElement,keepY=scroller.scrollTop;
     const imageOpen=body.querySelector('[data-image-settings]')?.open??false;
     if(!equipment.baseCard) {
       const template=document.createElement('template');template.innerHTML=cardHtml;
@@ -240,6 +245,9 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       equipment.baseCard={hero:Number(card.dataset.cardHero)||null,pos:Number(card.dataset.cardPos)||null,art:card.dataset.cardArt||null,style:card.dataset.cardStyle||null,crop:JSON.parse(card.dataset.cardCrop||'null')};
       initialEquipment=JSON.stringify(equipment);
     }
+    if(editHistory.slot!==selectedSlot)editHistory={slot:selectedSlot,undo:[],redo:[],last:null,at:0};
+    const track=()=>{const h=editHistory,now=JSON.stringify(equipment);if(h.last!=null&&now!==h.last){if(Date.now()-h.at>600){h.undo.push(h.last);if(h.undo.length>100)h.undo.shift();}h.redo=[];h.at=Date.now();}h.last=now;};
+    track();
     const base=equipment.baseCard;
     const template=document.createElement('template');template.innerHTML=cardHtml;
     const effectiveHero=base.hero||Number(template.content.querySelector('.ft-card').dataset.autoHero);
@@ -249,12 +257,31 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     if(editable)mountNameEditor(body.querySelector('[data-name-editor]'),{state,inGame:name,action,onSaved:next=>{state=next;draw();say(shownNickname(next)?`Showing ${shownNickname(next)} on your cards and profile.`:'Showing your in-game name.');}});
     const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');fitDesignCards(card);
     card.querySelectorAll('button').forEach(b=>b.remove());
-    const update=()=>{applyEquipment(card,equipment,shownName());wireSignature();say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');};
+    const update=()=>{track();applyEquipment(card,equipment,shownName());wireSignature();say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');};
     // Per-card tuning sliders, each shown only when what's equipped uses it.
     const tuneShown={particleSpeed:()=>PARTICLE_FINISHES.includes(equipment.finish),particleAmount:()=>hasParticleAmount(equipment.finish),borderSpeed:()=>isFxBorder(equipment.border)};
     const syncTuneControls=()=>body.querySelectorAll('[data-tune]').forEach(input=>{const k=input.dataset.tune;input.closest('[data-tune-control]').hidden=!tuneShown[k]();input.value=equipment[k];body.querySelector(`[data-tune-value="${k}"]`).textContent=`${equipment[k]}%`;});
     body.querySelectorAll('[data-tune]').forEach(input=>{input.oninput=()=>{equipment[input.dataset.tune]=Number(input.value);syncTuneControls();update();};});syncTuneControls();
     wireLayout(card,update);
+    // Keys: Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Delete removes the selected part or symbol, Escape closes its menu.
+    const restore=(from,to)=>{
+      const h=editHistory;if(!h[from].length)return;
+      h[to].push(JSON.stringify(equipment));h.last=h[from].pop();h.at=0;equipment=JSON.parse(h.last);
+      drawEditor();
+      say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');
+    };
+    editorKeys?.abort();editorKeys=new AbortController();
+    const keys=editorKeys;
+    document.addEventListener('keydown',e=>{
+      if(!card.isConnected){keys.abort();return;}
+      const t=e.target,typing=t.closest?.('textarea,select,[contenteditable]')||(t.tagName==='INPUT'&&!['range','checkbox','radio','button','color'].includes(t.type));
+      if(typing||e.altKey||!editable)return;
+      const k=e.key.toLowerCase(),panel=body.querySelector('[data-part-panel]');
+      if(e.ctrlKey||e.metaKey){if(k==='z'||k==='y'){e.preventDefault();if(k==='y'||e.shiftKey)restore('redo','undo');else restore('undo','redo');}return;}
+      if(!panel||panel.hidden)return;
+      if(e.key==='Delete'||e.key==='Backspace'){const b=panel.querySelector('[data-pp-show].pp-remove,[data-em-remove]');if(b){e.preventDefault();b.click();}}
+      else if(e.key==='Escape')panel.querySelector('[data-pp-close],[data-em-close],[data-art-close]')?.click();
+    },{signal:keys.signal});
     const refreshTextChoices=()=>{body.querySelectorAll('[data-text-choice]').forEach(button=>{
       const type=button.dataset.textChoice,id=button.dataset.choice,selected=equipment[type]===id;
       button.setAttribute('aria-pressed',String(selected));button.querySelector('[data-choice-status]').textContent=selected?'Selected':'Select';
@@ -358,6 +385,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     // Read-only: every control off but Show the back, which only looks.
     if(!editable)body.querySelectorAll('input,select,button:not([data-layout-flip])').forEach(n=>n.disabled=true);
     update();
+    scroller.scrollTop=keepY;
   }
   // Layout (lib/card-layout.js): the card's name and its size, each front part shown or hidden,
   // sized and dragged anywhere, and the back's stats and sections.
@@ -406,9 +434,9 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     function selectPart(k) {
       front.querySelectorAll('.part-selected').forEach(n=>n.classList.remove('part-selected'));
       front.querySelector(`[data-part="${k}"]`)?.classList.add('part-selected');
-      const label=FRONT_PARTS.find(([key])=>key===k)[1],p=partOf(k);
-      panel.hidden=false;
-      panel.innerHTML=`<strong>${esc(label)}</strong><button type="button" data-pp-show>${p.show?'Remove from card':'Put back on card'}</button><label>Size <output>${p.size}%</output><input type="range" data-pp="size" min="40" max="250" value="${p.size}"></label><label>Rotation <output>${p.rot??0}°</output><input type="range" data-pp="rot" min="-180" max="180" value="${p.rot??0}"></label><label>Layer <output>${p.z??0}</output><input type="range" data-pp="z" min="-10" max="10" value="${p.z??0}"></label><div><button type="button" data-pp-back>Send back</button> <button type="button" data-pp-forward>Bring forward</button> <button type="button" data-pp-reset>Reset</button> <button type="button" data-pp-close>Close</button></div>`;
+      const label=FRONT_PARTS.find(([key])=>key===k)[1],p=partOf(k),opening=panel.hidden||panel.dataset.for!==k;
+      panel.hidden=false;panel.dataset.for=k;
+      panel.innerHTML=`<strong>${esc(label)}</strong><label>Size <output>${p.size}%</output><input type="range" data-pp="size" min="40" max="250" value="${p.size}"></label><label>Rotation <output>${p.rot??0}°</output><input type="range" data-pp="rot" min="-180" max="180" value="${p.rot??0}"></label><label>Layer <output>${p.z??0}</output><input type="range" data-pp="z" min="-10" max="10" value="${p.z??0}"></label><div><button type="button" data-pp-back>Send back</button> <button type="button" data-pp-forward>Bring forward</button> <button type="button" data-pp-reset>Reset</button> <button type="button" data-pp-show ${p.show?'class="pp-remove"':''}>${p.show?'Remove from card':'Put back on card'}</button> <button type="button" data-pp-close>Close</button></div>`;
       const sync=()=>{const c=body.querySelector(`[data-part-show="${k}"]`),r=body.querySelector(`[data-part-size="${k}"]`);if(c)c.checked=p.show;if(r)r.value=p.size;};
       panel.querySelector('[data-pp-show]').onclick=()=>{p.show=!p.show;update();selectPart(k);sync();};
       panel.querySelectorAll('[data-pp]').forEach(r=>r.oninput=()=>{p[r.dataset.pp]=Number(r.value);r.previousElementSibling.textContent=r.dataset.pp==='size'?`${r.value}%`:r.dataset.pp==='rot'?`${r.value}°`:r.value;update();sync();partWheelPlace?.();});
@@ -417,7 +445,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       panel.querySelector('[data-pp-forward]').onclick=()=>nudge(1);
       panel.querySelector('[data-pp-reset]').onclick=()=>{delete layoutOf().front[k];update();selectPart(k);sync();};
       panel.querySelector('[data-pp-close]').onclick=()=>{panel.hidden=true;clearPart();};
-      panel.scrollIntoView({block:'nearest'});
+      // Bring the menu into view only when it opens for a new part, not on every slider or button inside it.
+      if(opening)panel.scrollIntoView({block:'nearest'});
       // The same rotation ring the signature has, round the selected part.
       front.querySelectorAll('.part-wheel').forEach(w=>w.remove());
       const el=front.querySelector(`[data-part="${k}"]`);
@@ -454,8 +483,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     function selectEmblem(i) {
       clearPart();const list=emblemsOf(),m=list[i];if(!m)return;
       const mark=()=>emblemEls().forEach((n,j)=>n.classList.toggle('part-selected',j===i));mark();
-      panel.hidden=false;
-      panel.innerHTML=`<strong>Border symbol ${i+1} of ${list.length}</strong><label>Size <output>${m.size}%</output><input type="range" data-em-size min="50" max="300" value="${m.size}"></label><div><button type="button" data-em-add ${list.length>=MAX_EMBLEMS?'disabled':''}>Add another</button> <button type="button" data-em-remove>Remove</button> <button type="button" data-em-close>Close</button></div><small>Drag a symbol to move it. Up to ${MAX_EMBLEMS}.</small>`;
+      panel.hidden=false;panel.dataset.for="";
+      panel.innerHTML=`<strong>Border symbol ${i+1} of ${list.length}</strong><label>Size <output>${m.size}%</output><input type="range" data-em-size min="50" max="300" value="${m.size}"></label><div><button type="button" data-em-add ${list.length>=MAX_EMBLEMS?'disabled':''}>Add another</button> <button type="button" data-em-remove class="pp-remove">Remove</button> <button type="button" data-em-close>Close</button></div><small>Drag a symbol to move it. Up to ${MAX_EMBLEMS}.</small>`;
       panel.querySelector('[data-em-size]').oninput=e=>{m.size=Number(e.target.value);e.target.previousElementSibling.textContent=`${m.size}%`;update();mark();};
       panel.querySelector('[data-em-add]').onclick=()=>{list.push({x:Math.min(95,m.x+8),y:Math.min(95,m.y+8),size:m.size});update();selectEmblem(list.length-1);};
       panel.querySelector('[data-em-remove]').onclick=()=>{
@@ -495,7 +524,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const host=card.querySelector('.ft-art'),cardImg=()=>card.querySelector('.ft-art img');
     const cropNow=()=>{const b=equipment.baseCard;return b.crop??defaultCardCrop(cardArtwork(b.hero||Number(card.dataset.autoHero),b));};
     const setCrop=c=>{
-      equipment.baseCard.crop=c;card.classList.add('ft-custom-crop');
+      equipment.baseCard.crop=c;track();card.classList.add('ft-custom-crop');
       for(const [k,v] of [['x',`${c.x}%`],['y',`${c.y}%`],['xf',c.x/100],['yf',c.y/100],['zoom',c.zoom],['rot',`${c.rot??0}deg`],['flip',c.flip?-1:1]])card.style.setProperty(`--art-${k}`,v);
       body.querySelectorAll('[data-crop]').forEach(input=>input.value=c[input.dataset.crop]??0);say('Unsaved card changes');
     };
@@ -538,7 +567,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       const real=k=>q(k==='hue'?'[data-hue]':`[data-crop="${k}"]`);if(!real('x'))return;
       const valueOf=k=>k==='hue'?Number(equipment.hue)||0:cropNow()[k]??0;
       const row=([k,label,min,max,step])=>`<label>${label} <output>${valueOf(k)}</output><input type="range" data-art="${k}" min="${min}" max="${max}" step="${step}" value="${valueOf(k)}" data-last="${valueOf(k)}"></label>`;
-      panel.hidden=false;
+      panel.hidden=false;panel.dataset.for="";
       panel.innerHTML=`<strong>Artwork</strong>${[['hue','Hue',0,360,1],['x','Horizontal',0,100,1],['y','Vertical',0,100,1],['zoom','Zoom',1,3,.01],['rot','Rotation',-180,180,1]].map(row).join('')}<div><button type="button" data-art-flip>Mirror left/right</button> <button type="button" data-art-turn>Mirror top/bottom</button> <button type="button" data-art-close>Close</button></div><small>Drag the picture on the card or in the framing view.</small>`;
       let held=null;
       const sync=()=>panel.querySelectorAll('[data-art]').forEach(i=>{if(i===held)return;const v=valueOf(i.dataset.art);i.value=i.dataset.last=v;i.previousElementSibling.textContent=v;});
