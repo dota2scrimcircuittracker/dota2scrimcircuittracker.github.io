@@ -50,10 +50,13 @@ async function saveScout(account, profile) {
   return r.ok ? r.json() : saved;
 }
 
-// Every registered player: Map account (string) -> { name, avatar }. Loaded once.
-let players = null;
-export function steamPlayers() {
-  return players ??= fetch(`${SCOUT_API}/players`).then((r) => (r.ok ? r.json() : []))
+// Every registered player: Map account (string) -> { name, avatar }. Loaded once; `fresh` reloads
+// it when over a minute old, for players who signed up since. A failed load isn't kept.
+let players = null, playersAt = 0;
+export function steamPlayers({ fresh = false } = {}) {
+  if (fresh && Date.now() - playersAt > 60e3) players = null;
+  if (!players) playersAt = Date.now();
+  return players ??= fetch(`${SCOUT_API}/players`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then((rows) => new Map(rows.map((p) => [String(p.account), p])))
     .catch(() => { players = null; return new Map(); });
 }
@@ -74,7 +77,9 @@ export async function steamNames(accounts) {
 // Steam names for players on no roster: the Worker's registered names first, OpenDota for the
 // rest. Map account (string) -> name.
 export async function strangerNames(accounts) {
-  const known = await steamPlayers(), out = new Map();
+  let known = await steamPlayers();
+  if (accounts.some((a) => !known.get(String(a))?.name)) known = await steamPlayers({ fresh: true });
+  const out = new Map();
   for (const a of accounts.map(String)) if (known.get(a)?.name) out.set(a, known.get(a).name);
   for (const [a, n] of await steamNames(accounts.map(String).filter((a) => !out.has(a)))) out.set(a, n);
   return out;
