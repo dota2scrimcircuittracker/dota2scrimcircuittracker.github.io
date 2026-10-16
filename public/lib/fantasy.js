@@ -98,14 +98,60 @@ export const weekGames = (matches, week) => matches.filter((m) => (!week.league 
   && (week.seriesIds.has(m.series_id)
   || (m.start_time && weekKey(m.start_time) === week.key && week.teams.has(m.team_a_id) && week.teams.has(m.team_b_id))));
 
-// One pick's week: each game it played scored as `pos`, and the best GAMES_COUNTED added up.
-// { points, games: [{ id, match, time, score, stats, mult, counted }] } (games oldest first).
+// A team's roster as the games show it: the players who played for it and weren't stand-ins (the
+// sync flags anyone off the current roster), each with the positions they played. Map of
+// account -> { position: games }. Built once per game list.
+const rosterMemo = new WeakMap(), subMemo = new WeakMap();
+const teamKey = (m, side) => `${m.league ?? ""}|${side === "a" ? m.team_a_id : m.team_b_id}`;
+function rosterOf(matches, key) {
+  let all = rosterMemo.get(matches);
+  if (!all) {
+    all = new Map();
+    for (const m of matches) for (const p of m.players ?? []) {
+      if (p.standin || p.account_id == null) continue;
+      const t = all.get(teamKey(m, p.team)) ?? all.set(teamKey(m, p.team), new Map()).get(teamKey(m, p.team));
+      const pos = t.get(p.account_id) ?? t.set(p.account_id, {}).get(p.account_id);
+      if (p.position) pos[p.position] = (pos[p.position] ?? 0) + 1;
+    }
+    rosterMemo.set(matches, all);
+  }
+  return all.get(key) ?? new Map();
+}
+
+// Who stood in for whom in one game: Map of the absent rostered player's account -> the stand-in's
+// row. A side's absent players and its stand-ins pair off by the position the absent one mostly
+// plays, then, if one of each is left, together. Anything murkier stays unpaired.
+function subsOf(m, matches) {
+  let memo = subMemo.get(matches);
+  if (!memo) subMemo.set(matches, memo = new Map());
+  if (memo.has(m)) return memo.get(m);
+  const out = new Map();
+  for (const side of ["a", "b"]) {
+    const roster = rosterOf(matches, teamKey(m, side)), on = (m.players ?? []).filter((p) => p.team === side);
+    const left = on.filter((p) => p.standin), rest = [];
+    for (const [a, played] of roster) {
+      if (on.some((p) => p.account_id === a)) continue;
+      const main = Object.entries(played).sort((x, y) => y[1] - x[1])[0]?.[0], i = main ? left.findIndex((p) => String(p.position) === main) : -1;
+      if (i >= 0) out.set(a, left.splice(i, 1)[0]); else rest.push(a);
+    }
+    if (rest.length === 1 && left.length === 1) out.set(rest[0], left[0]);
+  }
+  memo.set(m, out);
+  return out;
+}
+
+// One pick's week: each game it played scored as `pos`, and the best GAMES_COUNTED added up. A game
+// the pick sat out while a stand-in took their place scores the stand-in (`sub`), so the pick isn't
+// left with a zero for a game their team played.
+// { points, games: [{ id, match, time, score, stats, mult, counted, account, sub }] } (games oldest first).
 // `matches`: every game loaded (the models come from them, per division).
 export function pickPoints(account, pos, games, matches) {
   const scored = games.flatMap((m) => {
     const { games: league, models } = leagueCtx(matches, m.league);
-    const g = gamePointsAt(m, league, account, pos, models);
-    return g ? [{ id: m.id, match: m, time: m.start_time ?? 0, score: g.score, stats: g.stats, stat_points: g.stat_points, mult: g.mult, win_points: g.win_points }] : [];
+    const sub = subsOf(m, matches).get(account) ?? null;
+    const who = sub ? sub.account_id : account;
+    const g = gamePointsAt(m, league, sub ? sub.player_key ?? sub.account_id : account, pos, models);
+    return g ? [{ id: m.id, match: m, time: m.start_time ?? 0, score: g.score, stats: g.stats, stat_points: g.stat_points, mult: g.mult, win_points: g.win_points, account: who, sub: sub ? { account: sub.account_id, name: sub.name } : null }] : [];
   }).sort((a, b) => a.time - b.time);
   const best = new Set([...scored].sort((a, b) => b.score - a.score).slice(0, GAMES_COUNTED).map((g) => g.id));
   for (const g of scored) g.counted = best.has(g.id);

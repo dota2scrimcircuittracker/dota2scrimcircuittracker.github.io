@@ -121,3 +121,21 @@ test("captain doubles one pick's best-two-game total and legacy entries retain t
   assert.equal(scoreEntry({ ...entry, captain: 99 }, w, d.games), null);
   assert.equal(scoreEntry({ ...entry, captain: "12" }, w, d.games), null);
 });
+
+test("a game the pick sat out is scored on the stand-in who took their place", () => {
+  const cev = 223376902, tommy = 449211082, demon = 298148498;
+  const game = (id) => d.games.find((g) => g.id === id);
+  // One stand-in for one absent player: Tommy played Cev's game.
+  const one = pickPoints(cev, 2, [game("9046965419")], d.games).games[0];
+  assert.equal(one.account, tommy);
+  assert.equal(one.sub.name, "TommyRugs");
+  assert.ok(one.score > 0);
+  // Two absent, two stand-ins: paired by the position the absent player mainly plays.
+  assert.equal(pickPoints(cev, 2, [game("9046933180")], d.games).games[0].account, demon);
+  // A game Cev played himself isn't swapped.
+  const own = pickPoints(cev, 2, [game("9014809494")], d.games).games[0];
+  assert.equal(own.account, cev);
+  assert.equal(own.sub, null);
+  // A player with no stand-in in a game they missed still scores nothing for it.
+  assert.equal(pickPoints(999, 2, [game("9046965419")], d.games).games.length, 0);
+});

@@ -181,7 +181,7 @@ export async function mountFantasy(host, viewSrc, scope = null) {
     }).join("")}</div>
     <details class="ft-breakdown"><summary>Weekly score breakdown${scored ? ` · ${scored.points.toFixed(1)} fantasy points` : (week.lock > now ? " · pending" : " · not counted")}</summary>
       ${scored ? lineup.map((p) => `<div class="ft-wk"><h3>${pLink(p.account)}${p.captain?' · Captain 2×':''} · ${p.points.toFixed(1)} fantasy points</h3>${p.captain?`<p class="ft-note">${p.basePoints.toFixed(1)} base points × 2. Game contributions below show points before the captain bonus.</p>`:''}
-        ${p.games.length ? p.games.map((g) => `<details><summary>${esc(at(g.time))} · ${g.score.toFixed(1)} points · ${g.counted ? "Counted" : "Dropped"}</summary>
+        ${p.games.length ? p.games.map((g) => `<details><summary>${esc(at(g.time))} · ${g.score.toFixed(1)} points · ${g.counted ? "Counted" : "Dropped"}${g.sub ? ` · ${esc(g.sub.name)} subbed for ${esc(nameOf(p.account))}` : ""}</summary>
           <a href="${esc((sourceOf.get(p.account) ?? src).link(g.match))}">View game</a>
           <div class="table-wrap"><table class="ft-table"><thead><tr><th>Stat</th><th class="num">Actual</th><th class="num">Out of 100</th><th class="num">Points</th></tr></thead>
           <tbody>${g.stats.map((x) => `<tr><td>${esc(x.label)}</td><td class="num">${statActual(x)}</td><td class="num">${x.score.toFixed(0)}</td><td class="num">${x.points.toFixed(1)} / ${x.max.toFixed(0)}</td></tr>`).join("")}
@@ -392,7 +392,7 @@ export async function mountFantasyTable(host, viewSrc, scope = null, weekIdx = n
     if (!pos) return [];
     const r = pickPoints(p.account, pos, games, matches);
     if (!r.games.length) return [];
-    const mine = r.games.map((g) => ({ g, row: g.match.players.find((x) => (x.account_id ?? x.player_key) === p.account || String(x.player_key) === String(p.account)) })).filter((x) => x.row);
+    const mine = r.games.map((g) => ({ g, row: g.match.players.find((x) => String(x.player_key ?? x.account_id) === String(g.account)) })).filter((x) => x.row);
     const n = mine.length, sum = (f) => mine.reduce((t, x) => t + (f(x.row) ?? 0), 0);
     const wins = mine.filter((x) => x.g.match.winner === x.row.team).length;
     return [{ ...p, pos, n, wins, k: sum((x) => x.kills) / n, d: sum((x) => x.deaths) / n, a: sum((x) => x.assists) / n, gpm: sum((x) => x.gpm) / n, counted: r.games.filter((g) => g.counted), dropped: r.games.filter((g) => !g.counted), games: r.games, points: r.points }];
@@ -401,7 +401,7 @@ export async function mountFantasyTable(host, viewSrc, scope = null, weekIdx = n
   host.innerHTML = `${head}<h2>${weekLabel(week.key)}</h2>
     ${rows.length ? `<div class="table-wrap fx-wrap"><table class="ft-table fx-table"><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Fantasy points</th><th scope="col">Team</th><th scope="col" class="num">Pos</th><th scope="col" class="num">W-L</th><th scope="col" class="num">K / D / A</th><th scope="col" class="num">GPM</th><th scope="col" class="num">Counted games</th><th scope="col" class="num">Dropped game</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr${i < 3 ? ` class="fx-top fx-top${i + 1}"` : ""}><td class="fx-rank">${i + 1}</td><td class="fx-name">${playerLink(sourceOf.get(r.account) ?? viewSrc, { name: r.name, key: String(r.account) })}</td><td class="num fx-pts"><button type="button" class="fx-btn fx-ptsbtn" data-r="${i}" title="Breakdown by game">${f1(r.points)}</button></td><td class="fx-team">${teamLink(sourceOf.get(r.account) ?? viewSrc, r.team, r.team_id)}</td><td class="num"><span class="fx-pos">${r.pos}</span></td><td class="num">${r.wins}-${r.n - r.wins}</td><td class="num">${f1(r.k)} / ${f1(r.d)} / ${f1(r.a)}</td><td class="num">${Math.round(r.gpm)}</td><td class="num">${r.counted.map((x) => `<button type="button" class="fx-btn fx-g" data-r="${i}" data-g="${x.id}" title="Breakdown of this game">${f1(x.score)}</button>`).join("")}</td><td class="num">${r.dropped.length ? r.dropped.map((x) => `<button type="button" class="fx-btn fx-g fx-drop" data-r="${i}" data-g="${x.id}" title="Not counted: only the best ${GAMES_COUNTED} games score. Click for the breakdown">${f1(x.score)}</button>`).join("") : `<span class="fx-none">-</span>`}</td></tr>`).join("")}
-      </tbody></table></div><p class="ft-note">Each player is scored at their most-played position. Fantasy points are their best ${GAMES_COUNTED} games added (no captain bonus). K / D / A and GPM are per-game averages for the week.</p>`
+      </tbody></table></div><p class="ft-note">Each player is scored at their most-played position. Fantasy points are their best ${GAMES_COUNTED} games added (no captain bonus). K / D / A and GPM are per-game averages for the week. A game a player sat out is scored on the stand-in who took their place.</p>`
     : `<div class="panel empty"><strong>No games yet</strong>No rostered player has a recorded game this week.</div>`}`;
   wire();
   host.insertAdjacentHTML("beforeend", `<dialog class="tier-modal fp-modal" id="fx-modal" style="--tc:var(--accent)" aria-labelledby="fx-mtitle"><div class="tm-head"><div class="tm-title"><h3 id="fx-mtitle"></h3><small></small></div><button type="button" class="tm-close" aria-label="Close">×</button></div><div class="tm-body fp-body"></div></dialog>`);
@@ -415,7 +415,7 @@ export async function mountFantasyTable(host, viewSrc, scope = null, weekIdx = n
     dlg.querySelector("h3").textContent = r.name;
     dlg.querySelector("small").textContent = `${weekLabel(week.key)} · Pos ${r.pos} · ${f1(r.points)} fantasy points (best ${GAMES_COUNTED} games added)`;
     const body = dlg.querySelector(".tm-body");
-    const byGame = () => r.games.map((g) => `<details${b.dataset.g == null || String(g.id) === b.dataset.g ? " open" : ""}><summary>${esc(at(g.time))} · ${f1(g.score)} points · ${g.counted ? "Counted" : "Dropped"}</summary>
+    const byGame = () => r.games.map((g) => `<details${b.dataset.g == null || String(g.id) === b.dataset.g ? " open" : ""}><summary>${esc(at(g.time))} · ${f1(g.score)} points · ${g.counted ? "Counted" : "Dropped"}${g.sub ? ` · ${esc(g.sub.name)} subbed for ${esc(r.name)}` : ""}</summary>
       <a href="${esc(link(g.match))}">View game</a>
       <div class="table-wrap"><table class="ft-table"><thead><tr><th>Stat</th><th class="num">Actual</th><th class="num">Out of 100</th><th class="num">Points</th></tr></thead><tbody>${g.stats.map((x) => `<tr><td>${esc(x.label)}</td><td class="num">${statActual(x)}</td><td class="num">${x.score.toFixed(0)}</td><td class="num">${x.points.toFixed(1)} / ${x.max.toFixed(0)}</td></tr>`).join("")}
       <tr><td colspan="3">Stat points × survival ${g.mult.survival.toFixed(2)} × consistency ${g.mult.consistency.toFixed(2)} × opponents ${g.mult.opponents.toFixed(2)}${g.win_points ? ` ${g.win_points >= 0 ? "+" : "-"} winning ${Math.abs(g.win_points).toFixed(1)}` : ""}</td><td class="num">${f1(g.score)}</td></tr></tbody></table></div></details>`).join("");

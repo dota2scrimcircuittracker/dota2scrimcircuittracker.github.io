@@ -412,8 +412,6 @@ const DEEP = [
   ]),
 
   ...group("Predict", [
-    part({ page: "predict", sel: ".pred-name", title: "Your name",
-      text: "Type the name you pick as. It's how you show up on the leaderboard, so use the same one each week." }),
     part({ page: "predict", tab: "calls", btn: true, sel: ".pred-card", when: ad2l, title: "Make your calls",
       text: "Pick 2–0 for either team, or 1–1. The bars show how everyone else picked and which call the model made. Picks lock when the series starts." }),
     part({ page: "predict", tab: "calls", sel: ".pred-card details.dr", when: ad2l, title: "Model's draft",

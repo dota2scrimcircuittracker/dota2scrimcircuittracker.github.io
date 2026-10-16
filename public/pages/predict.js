@@ -448,7 +448,7 @@ export async function renderPredict(src) {
   });
   const msg = document.getElementById("pred-msg");
   app.querySelectorAll(".pred-card").forEach((c) => c.querySelectorAll("[data-pick]").forEach((b) => b.onclick = async () => {
-    const n = storedName() || input.value.trim();
+    const n = storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
     if (!n) { msg.innerHTML = `<div class="notice warn">Type your name first, so your picks count toward the standings.</div>`; input.focus(); return; }
     storeName(n);
     c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = true));
@@ -726,7 +726,7 @@ export async function renderScrimPredict() {
   app.querySelectorAll(".pred-card[data-fid]").forEach((c) => {
     const f = settled.find((x) => x.id === c.dataset.fid);
     c.querySelectorAll("[data-pick]").forEach((b) => b.onclick = async () => {
-      const n = storedName() || input.value.trim();
+      const n = storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
       if (!n) { say("warn", "Type your name first, so your picks count toward the standings."); input.focus(); return; }
       storeName(n);
       c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = true));
