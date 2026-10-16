@@ -2,7 +2,7 @@
  "season": "S48 Challenger League - Amateur Dota 2 League",
  "playon_season_id": 672,
  "league_id": 20077,
- "updated": "2026-10-16T09:00:00.029Z",
+ "updated": "2026-10-16T12:09:59.102Z",
  "teams": [
   {
    "id": 14764,
@@ -55279,6 +55279,20 @@
    1
   ],
   "32858408": [
+   1792147181,
+   "Bristleback",
+   1,
+   5,
+   8,
+   16,
+   1,
+   1792140986,
+   "Wraith King",
+   0,
+   8,
+   9,
+   14,
+   1,
    1792137781,
    "Lifestealer",
    1,
@@ -58963,6 +58977,13 @@
    1
   ],
   "87858096": [
+   1792139361,
+   "Faceless Void",
+   1,
+   7,
+   1,
+   9,
+   1,
    1792135916,
    "Spirit Breaker",
    0,
