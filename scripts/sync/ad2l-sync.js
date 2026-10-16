@@ -29,7 +29,7 @@ import { timingFields } from "./timing-fields.js";
 import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "./combat-fields.js";
 import { leagueJson } from "./league-json.js";
 import { wardLog, visionMap, visionFields } from "./vision.js";
-import { SEASON, DIVISIONS, division } from "../../public/lib/divisions.js";
+import { SEASON, DIVISIONS, division, ANNOUNCED } from "../../public/lib/divisions.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CACHE = path.join(ROOT, ".cache");
@@ -352,11 +352,18 @@ async function buildGame(id) {
   const rad = sideTeam(true), dire = sideTeam(false);
   if (rad == null || dire == null || rad === dire) return null;
   const teamName = (id) => teams.find((t) => t.id === id).name;
-  // Which PlayOn series this game belongs to: same two teams, closest scheduled time.
+  // Which PlayOn series this game belongs to: same two teams, closest scheduled time, within
+  // 4 days. A later game between the same teams (a tiebreaker or playoff match PlayOn hasn't
+  // posted) must not fall back to their old series. It takes the announced series' id
+  // (lib/divisions.js ANNOUNCED) when one fits, else none.
   const deaths = deathsFrom(d, (id) => heroKeys[id]);
+  const DAY4 = 4 * 86400;
+  const pairOf = (s) => (s.home === rad && s.away === dire) || (s.home === dire && s.away === rad);
   const seriesOf = series
-    .filter((s) => (s.home === rad && s.away === dire) || (s.home === dire && s.away === rad))
-    .sort((x, y) => Math.abs((x.time ?? 0) - d.start_time) - Math.abs((y.time ?? 0) - d.start_time))[0];
+    .filter((s) => pairOf(s) && Math.abs((s.time ?? 0) - d.start_time) < DAY4)
+    .sort((x, y) => Math.abs((x.time ?? 0) - d.start_time) - Math.abs((y.time ?? 0) - d.start_time))[0]
+    ?? (ANNOUNCED[DIV.key] ?? []).find((a) => Math.abs(a.time - d.start_time) < DAY4
+      && (a.home != null ? pairOf(a) : a.away === rad || a.away === dire));
   const det = detailOf(d);
   if (det) detail[d.match_id] = det;
   const extras = gameExtras(d);

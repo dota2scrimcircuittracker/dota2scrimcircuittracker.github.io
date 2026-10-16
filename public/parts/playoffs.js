@@ -35,7 +35,7 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 // locked: when the bracket locked (unix seconds; the first bracket match, lib/playoffs.js
 // postseason), or null. Locked, the viewer's bracket is the one saved on the Leaderboard, shown
 // read-only. Played postseason series show as results either way.
-export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view = "bracket", team = null, watch = null, share = null, locked = null } = {}) {
+export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view = "bracket", team = null, watch = null, share = null, locked = null, status = null } = {}) {
   const split = !!DIVISIONS[src.key]?.views;
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const link = (id) => (id == null ? '<span class="muted">bye</span>' : teamLink(src, name[id], id));
@@ -74,7 +74,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     if (view === "odds") { el.innerHTML = possHtml(); return; }
     if (view === "team") { el.innerHTML = teamHtml(); return; }
     const bar = `<div class="pd-toggle po-modes" role="group" aria-label="Whose bracket">${MODES.map(([id, label]) => `<button type="button" data-pomode="${id}" aria-pressed="${id === state.mode}">${label}</button>`).join("")}</div>`;
-    el.innerHTML = `${watch ? "" : bar}${versionBar()}${pictureHtml(state.mode === "mine")}`;
+    el.innerHTML = status ? pictureHtml(false) : `${watch ? "" : bar}${versionBar()}${pictureHtml(state.mode === "mine")}`;
   };
 
   // ---------- your picks / the model's picks ----------
@@ -83,10 +83,20 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     // `mine` is a person's own series calls; `live` is the viewer clicking tiebreakers and the
     // bracket (not when watching someone else, whose bracket picks aren't saved).
     const live = mine && !watch && !locked, frozen = mine && !watch && !!locked;
-    const p = playoffPicture(d.teams, d.series, ratings, live || frozen
+    const p = playoffPicture(d.teams, d.series, ratings, status ? { split, version: state.version, blank: true } : live || frozen
       ? { split, version: state.version, call: (s) => myCalls.get(s.id), choose: (k) => state.picks[k], blank: true }
       : mine ? { split, version: state.version, call: (s) => myCalls.get(s.id), choose: watch?.picks ? (k) => state.picks[k] : undefined, blank: !!watch?.picks }
       : { split, version: state.version });
+    // status: the bracket as played, no picks. A seed still riding on an unplayed tiebreaker is TBD,
+    // and a match nobody has won shows its running score or "yet to play".
+    const unresolved = new Set(status ? p.divisions.flatMap((dv) => dv.tiebreakers.filter((tb) => tb.matches.some((m) => !m.real)).flatMap((tb) => tb.teams)) : []);
+    const progressOf = (m) => status?.progress?.find((x) => (x.home === m.a && x.away === m.b) || (x.home === m.b && x.away === m.a));
+    const statusLine = (m) => {
+      const x = progressOf(m);
+      if (!x) return "Yet to play";
+      const [sa, sb] = x.home === m.a ? [x.sa, x.sb] : [x.sb, x.sa];
+      return `${sa}–${sb}${x.live ? " · Live" : " · in progress"}`;
+    };
     const score = (s, id) => (s.home === id ? s.home_score : s.away_score);
     const whose = (x) => (mine ? ` <span class="po-who${x.mine ? " me" : ""}">${x.mine ? (watch ? "their pick" : "your pick") : "model's pick"}</span>` : "");
 
@@ -159,20 +169,29 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const slot = (m, id) => {
         if (id === TBD) return `<div class="po-slot tbd"><span class="po-seed"></span><span>TBD</span></div>`;
         if (id == null) return `<div class="po-slot bye"><span class="po-seed"></span><span>bye</span></div>`;
-        const win = m.winner === id && !m.bye;
+        if (status && unresolved.has(id)) return `<div class="po-slot tbd" title="Decided by a week 8 tiebreaker"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span>TBD</span></div>`;
+        const win = m.winner === id && !m.bye && (!status || m.real);
         if (live && !m.bye && !m.pending && !m.real) return `<button type="button" class="po-slot po-pick${win ? " win on" : ""}${m.mine ? " me" : ""}" data-k="${esc(m.key)}" data-w="${id}" aria-pressed="${win}"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span class="po-nm">${esc(name[id])}</span></button>`;
-        return `<div class="po-slot${win ? " win" : ""}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye || m.pending || m.open || (live && !m.real) ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
+        return `<div class="po-slot${win ? " win" : ""}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye || m.pending || m.open || (live && !m.real) || (status && !m.real) ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
       };
       // Your picks: an open match says "pick", a picked one "your pick"; a match still waiting
       // on an earlier pick just shows TBD.
       const tag = (m) => (m.real ? ` <span class="po-who played">played</span>` : m.mine ? ` <span class="po-who me">${live ? "your pick" : frozen ? "your pick" : "their pick"}</span>` : m.open ? ` <span class="po-who open">${live ? "pick" : "not picked"}</span>` : "");
-      const box = (m) => `<div class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}">
+      // status: a match whose teams could still change. Seed 1's first opponent (3 or 4) is its
+      // own choice and the site only guesses it until a series between them exists. A seed that
+      // rides on an unplayed tiebreaker just shows TBD (the slot), no box.
+      const pickOpen = !b.matches.some((x) => (x.id === "u1" || x.id === "u2") && !x.bye && (x.real || progressOf(x)));
+      const maybeWhy = (m) => !status || m.real || m.bye || m.pending || progressOf(m) ? ""
+        : !b.fixed && pickOpen && (m.id === "u1" || m.id === "u2") ? "Could switch: seed 1 picks seed 3 or 4"
+        : b.fixed && m.week === 1 ? "Could switch: cross-division matchups not announced" : "";
+      const box = (m) => { const why = maybeWhy(m); return `<div data-wk="${m.week}" class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}${why ? " is-maybe" : ""}">
           <div class="po-mh">${esc(m.label)} · ${m.side === "final" ? "Bo3 or Bo5" : bo(m.bestOf)}${!m.bye && (live || frozen || m.real) ? tag(m) : ""}</div>
           ${slot(m, m.a)}${slot(m, m.b)}
-          ${m.bye || m.pending ? "" : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? `<div class="po-mp">model: ${esc(name[m.model])} ${pct(m.mine && m.winner !== m.model ? 1 - m.p : m.p)}</div>`
+          ${m.bye || m.pending ? "" : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? `<div class="po-mp">model: ${esc(name[m.model])} ${pct(m.mine && m.winner !== m.model ? 1 - m.p : m.p)}</div>`
             : `<div class="po-mp">${esc(name[m.winner])} ${sc(m)} · ${pct(m.p)} to win${m.side === "final" ? " (as Bo5)" : ""}</div>
           <div class="po-odds">${scoreOdds(m)}</div>`}
-        </div>`;
+          ${why ? `<div class="po-maybe">${why}</div>` : ""}
+        </div>`; };
       const weeks = Math.max(...b.matches.map((m) => m.week));
       const col = (side, w) => b.matches.filter((m) => m.side === side && m.week === w).map(box).join("");
       const gf = b.matches.find((m) => m.side === "final");
@@ -181,13 +200,13 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
           <span class="muted">${state.picks.pick ? "your pick" : `model's pick: the weaker one, seed ${b.modelPick}`}</span></div>` : "";
       const shape = b.fixed ? "" : teams < 8 ? `${teams} teams, so everyone makes it: ${teams <= 4 ? "all start in the upper bracket" : "seeds 5–6 start in the lower bracket"}. The rules only cover 8-team brackets, so this layout is a guess.` : "Lower round 1 is 5 v 8 and 6 v 7. The loser of seed 1's match plays the 6 v 7 winner, as in S47.";
       return `${title ? `<h4 class="po-h">${esc(title)}</h4>` : ""}
-        ${live ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${`Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
+        ${status ? "" : live ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${`Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
         ${shape ? `<p class="table-note keep">${shape}</p>` : ""}
         <div class="po-br-wrap"><div class="po-br" style="--weeks:${weeks}">
           ${Array.from({ length: weeks }, (_, i) => `<div class="po-wk" style="grid-column:${i + 2}">Playoff week ${i + 1}</div>`).join("")}
           <div class="po-lbl up">Upper</div><div class="po-lbl low">Lower</div>
           ${Array.from({ length: weeks - 1 }, (_, i) => `<div class="po-col up" style="grid-column:${i + 2}">${col("upper", i + 1)}</div><div class="po-col low" style="grid-column:${i + 2}">${col("lower", i + 1)}</div>`).join("")}
-          <div class="po-col gf" style="grid-column:${weeks + 1}">${box(gf)}<div class="po-champ"><span>${live || frozen ? "Your champion" : watch && mine ? "Their champion" : "Champion"}</span>${b.champion === TBD ? `<span class="po-champ-tbd">${live ? "pick the grand final" : "not picked"}</span>` : link(b.champion)}</div></div>
+          <div class="po-col gf" style="grid-column:${weeks + 1}">${box(gf)}<div class="po-champ"><span>${live || frozen ? "Your champion" : watch && mine ? "Their champion" : "Champion"}</span>${b.champion === TBD ? `<span class="po-champ-tbd">${status ? "TBD" : live ? "pick the grand final" : "not picked"}</span>` : link(b.champion)}</div></div>
         </div></div>`;
     };
 
@@ -225,6 +244,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     // The two things side by side (stacked on narrow screens): the final table with its week 8
     // tiebreakers, and the bracket it leads to.
     const bracketsHtml = brackets.length ? `${splitNote}${split ? splitBrackets : p.divisions.map(divBracket).join("")}` : "";
+    if (status) return bracketsHtml ? `${splitNote}${split ? splitBrackets : p.divisions.map(divBracket).join("")}` : "";
     return `${lead}${progress}${notesHtml}
       <div class="po-two">
         <section class="po-pane" aria-label="Final table and week 8">${heroicNote}${p.divisions.map(divHtml).join("")}</section>

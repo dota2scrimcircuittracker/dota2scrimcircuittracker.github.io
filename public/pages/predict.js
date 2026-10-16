@@ -346,6 +346,7 @@ export async function renderPredict(src) {
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
   const tabs = playerTabs(pageTabs(PREDICT_TABS, src, [
     ["fantasy", `<section class="ft" id="ft-host"><div class="panel empty">Loading…</div></section>`],
+    ["ftable", `<section class="ft" id="fx-host"><div class="panel empty">Loading…</div></section>`],
     ["calls", callsHtml],
     ["board", boardTab],
     ["bracket", `<section class="po" id="po-bracket"></section>`],
@@ -472,14 +473,26 @@ export async function renderPredict(src) {
   // Fantasy (pages/fantasy.js) loads when its tab is first shown.
   const ftHost = document.getElementById("ft-host"), ftPanel = ftHost.closest("[role=tabpanel]");
   const nameBar = app.querySelector(".pred-name");
+  const fxPanel = document.getElementById("fx-host").closest("[role=tabpanel]");
+  // Fantasy has its own name and sign-in, and the table needs none.
+  const syncNameBar = () => { nameBar.style.display = ftPanel.hidden && fxPanel.hidden ? "" : "none"; };
   const mountFt = () => {
-    nameBar.style.display = ftPanel.hidden ? "" : "none"; // Fantasy has its own name and sign-in
+    syncNameBar();
     if (ftPanel.hidden || ftHost.dataset.done) return;
     ftHost.dataset.done = "1";
     import("./fantasy.js").then((m) => m.mountFantasy(ftHost, src)).catch((e) => { ftHost.innerHTML = errorBox(e); });
   };
   new MutationObserver(mountFt).observe(ftPanel, { attributes: true, attributeFilter: ["hidden"] });
   mountFt();
+  const fxHost = document.getElementById("fx-host");
+  const mountFx = () => {
+    syncNameBar();
+    if (fxPanel.hidden || fxHost.dataset.done) return;
+    fxHost.dataset.done = "1";
+    import("./fantasy.js").then((m) => m.mountFantasyTable(fxHost, src)).catch((e) => { fxHost.innerHTML = errorBox(e); });
+  };
+  new MutationObserver(mountFx).observe(fxPanel, { attributes: true, attributeFilter: ["hidden"] });
+  mountFx();
 }
 
 // ---------- Predictions (scrims) ----------

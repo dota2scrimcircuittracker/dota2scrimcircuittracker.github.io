@@ -5,12 +5,13 @@ import { info } from "../lib/glossary.js";
 import { clock } from "../lib/items.js";
 import { laneCuts, laneBoard, LANE_GROUPS, playerLane, isJungler } from "../lib/lanes.js";
 import { hasCombat, bestStreakOf, streakName, pausesOf } from "../lib/combat.js";
-import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg, subtabsMoved, sideBar } from "../core.js";
+import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg, subtabsMoved, sideBar, SOURCES, weekStart } from "../core.js";
 import { fbOf, hitText } from "../parts/combat.js";
 import { bestLaner, loading, errorBox, weekOfFn } from "../parts/lanes.js";
 import { upNextHtml } from "./standings.js";
 import { tagContext, gameTags, tagsHtml } from "../lib/gametags.js";
 import { plusSlot } from "../lib/hero-levels.js";
+import { announcedRole, unpostedTime, withAnnounced, isPostseason, SEASON } from "../lib/divisions.js";
 
 function weekHighlights(games, src, league = games) {
   const all = games.flatMap((m) => m.players.map((p) => ({ p, m })));
@@ -96,6 +97,10 @@ export async function renderWeek(src, back = 0) {
   const cuts = src.ad2l ? laneCuts(games.filter(hasDetails)) : null;
   const tagCtx = tagContext(games);
   const weeks = [...new Set(games.map(weekOf))].sort((a, b) => b - a);
+  // A league with nothing played since the group stage ended opens on week 9, the playoffs'
+  // first week, with no series yet and the bracket.
+  const postStart = ad2l && !src.all && SEASON.regularEnd != null ? weekStart(new Date((SEASON.regularEnd + 86400) * 1000)).getTime() : null;
+  if (weeks.length && postStart != null && !weeks.some((w) => w >= postStart)) weeks.unshift(postStart + 7 * 864e5);
   if (!weeks.length) {
     app.innerHTML = `${pageHead(src.kicker, "Content")}${nextBlock}<div class="panel empty"><strong>No games yet</strong>${src.empty}</div>`;
     return;
@@ -116,7 +121,7 @@ export async function renderWeek(src, back = 0) {
   const picker = `<nav class="week-pick" aria-label="Weeks" style="--week-cols:${weekCols}">
     <div class="week-pick-label">Week</div>
     <div class="week-chips">${weeks.map((w, i) => {
-      const n = Math.round((w - first) / WEEK_MS) + 1, c = counts.get(w);
+      const n = Math.round((w - first) / WEEK_MS) + 1, c = counts.get(w) ?? 0;
       return `<a class="week-chip${i === back ? " on" : ""}" href="${base}/${i}" ${i === back ? 'aria-current="page"' : ""}
         title="Week of ${shortDate(new Date(w))} · ${c} game${c === 1 ? "" : "s"}">
         <span class="wn">${n}</span><span class="wd">${shortDate(new Date(w))}</span><span class="wc">${c}g</span></a>`;
@@ -134,16 +139,21 @@ export async function renderWeek(src, back = 0) {
     const tteam = src.all ? new Map(ad2l.teams.map((t) => [t.id, t])) : null;
     items = [...bySeries.entries()].map(([sid, gs]) => {
       const s = ad2l.series.find((x) => x.id === sid);
+      const winsOf = (id) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === id).length;
+      // No PlayOn series yet (tiebreakers, playoff matches): the score so far, from the games.
+      // An announced Bo1/Bo3 that nobody has won, with a game in the last 6 hours, is live.
+      const [sa, sb] = s ? [s.home_score, s.away_score] : [winsOf(gs[0].team_a_id), winsOf(gs[0].team_b_id)];
+      const role = !s && !src.all ? announcedRole(src.key, { id: sid }) : null;
+      const live = !!role && Math.max(sa, sb) < Math.ceil(role.bestOf / 2) && Date.now() / 1000 - Math.max(...gs.map((g) => g.start_time ?? 0)) < 6 * 3600;
       const head = s
         ? `<span>${teamLink(src, tname[s.home], s.home)}</span> <span class="series-score">${s.home_score ?? "?"}–${s.away_score ?? "?"}</span> <span>${teamLink(src, tname[s.away], s.away)}</span>`
-        : `${esc(gs[0].team_a)} vs ${esc(gs[0].team_b)}`;
-      const [sa, sb] = s ? [s.home_score, s.away_score] : [null, null];
+        : `${esc(gs[0].team_a)} <span class="series-score">${winsOf(gs[0].team_a_id)}–${winsOf(gs[0].team_b_id)}</span> ${esc(gs[0].team_b)}${live ? ' <span class="sp-live">Live</span>' : ""}`;
       const home = tteam?.get(s?.home ?? gs[0].team_a_id);
       return {
         lg: home?.league ?? null,
         a: s ? tname[s.home] ?? gs[0].team_a : gs[0].team_a, b: s ? tname[s.away] ?? gs[0].team_b : gs[0].team_b, sa, sb,
         win: sa == null || sb == null || sa === sb ? null : sa > sb ? "a" : "b",
-        sub: `${home ? `${esc(home.division)} · ` : ""}${gs.length} game${gs.length === 1 ? "" : "s"}`,
+        sub: `${home ? `${esc(home.division)} · ` : ""}${gs.length} game${gs.length === 1 ? "" : "s"}${live ? ' · <span class="sp-live">Live</span>' : ""}`,
         html: `<h2 class="series-head">${head}</h2>${gs.map((m, j) => gamePanel(m, src, `Game ${j + 1}`, cuts, tagCtx)).join("")}`,
       };
     });
@@ -211,19 +221,88 @@ export async function renderWeek(src, back = 0) {
     hl.push(["Biggest comeback", `<a href="${src.link(m)}">${kg(s.thrown)}</a>`,
       `${teamLink(src, winner, m.winner === "a" ? m.team_a_id : m.team_b_id)} came back after ${teamLink(src, loser, m.winner === "a" ? m.team_b_id : m.team_a_id)} led by ${kg(s.thrown)} at ${s.thrown_minute}'`, null, "biggest_comeback"]);
   }
+  // From week 8 (the first postseason week) on: the playoffs so far.
+  const showBracket = !!ad2l && !src.all && SEASON.regularEnd != null && weeks[back] >= postStart;
+  const prow = showBracket ? playoffsRows(src, ad2l) : [];
   app.innerHTML = `
     <div class="week-top">
       ${pageHead(src.kicker, "Content", `Week of ${shortDate(start)} – ${shortDate(end)} · ${inWeek.length} game${inWeek.length === 1 ? "" : "s"}${src.ad2l ? " · drafts in pick/ban order" : ""}`)}
       ${picker}
     </div>
     <div class="week-nav">${navBtn(back - 1, "← Later week", back > 0)}${navBtn(back + 1, "Earlier week →", back < weeks.length - 1)}</div>
-    <h2>${src.ad2l ? "Series" : "Games"} <span class="h-note">${items.length} this week · pick one</span></h2>
-    ${body}
+    ${items.length ? `<h2>${src.ad2l ? "Series" : "Games"} <span class="h-note">${items.length} this week · pick one</span></h2>
+    ${body}` : `<div class="panel empty"><strong>No games this week yet</strong>PlayOn hasn't posted these series.</div>`}
+    ${showBracket ? playoffsHtml(src, ad2l, prow) : ""}
     ${back === 0 ? nextBlock : ""}
     ${hl.length ? `<h2>Highlights</h2>
     <div class="cards reveal">${hl.map(([k, v, s, hero, tip], i) => `<div class="card hl" style="--i:${i}">${hero ? portrait(hero, "card-hero") : ""}<div class="k">${k}${info(tip)}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("")}</div>` : ""}`;
   wireSeriesTabs();
+  if (showBracket) mountBracket(src, ad2l, prow).catch((e) => console.warn(e));
   if (subtabsMoved()) sideBar([{ label: "Weeks", el: app.querySelector(".week-pick") }], () => `Week ${app.querySelector(".week-chip.on .wn")?.textContent ?? ""}`);
+}
+
+// The postseason as played so far: each tiebreaker and playoff series, final or still to play.
+// No predictions. Series PlayOn hasn't posted count from their games (the announced best-of,
+// else Bo3), so a tiebreaker shows its running score and "Live" while games are coming in.
+function playoffsRows(src, d) {
+  const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
+  const link = (id) => (name[id] ? teamLink(src, name[id], id) : "TBD");
+  const when = (t) => new Date(t * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const rows = [];
+  const covered = new Set();
+  for (const s of withAnnounced(src.key, d.series).filter((x) => x.time && (typeof x.id === "string" || isPostseason(x)))) {
+    if (!(name[s.home] || name[s.away])) continue;
+    const role = announcedRole(src.key, s), bestOf = role?.bestOf ?? 3;
+    const gs = typeof s.id === "string" ? d.games.filter((g) => g.series_id === s.id) : [];
+    gs.forEach((g) => covered.add(g.match_id));
+    const home = s.home ?? gs[0]?.team_a_id ?? null, away = s.away ?? (gs[0] && gs[0].team_a_id === home ? gs[0].team_b_id : gs[0]?.team_a_id) ?? null;
+    const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
+    const [sa, sb] = typeof s.id === "string" ? [wins(home), wins(away)] : [s.home_score ?? 0, s.away_score ?? 0];
+    rows.push({ unposted: typeof s.id === "string", t: s.time, label: role?.label ?? "Playoffs", bestOf, home, away, sa, sb, played: sa + sb > 0, done: Math.max(sa, sb) >= Math.ceil(bestOf / 2), last: Math.max(0, ...gs.map((g) => g.start_time ?? 0)), when: s.time });
+  }
+  // Games with no series at all (a playoff match PlayOn hasn't posted): grouped by the pair.
+  const loose = new Map();
+  for (const g of d.games) {
+    if (covered.has(g.match_id) || typeof g.series_id === "number" || unpostedTime(g) == null) continue;
+    const k = [g.team_a_id, g.team_b_id].sort().join("-");
+    (loose.get(k) ?? loose.set(k, []).get(k)).push(g);
+  }
+  for (const gs of loose.values()) {
+    const home = gs[0].team_a_id, away = gs[0].team_b_id;
+    const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
+    const [sa, sb] = [wins(home), wins(away)];
+    rows.push({ unposted: true, t: unpostedTime(gs[0]), label: "Playoffs", bestOf: 3, home, away, sa, sb, played: true, done: Math.max(sa, sb) >= 2, last: Math.max(...gs.map((g) => g.start_time ?? 0)), when: null });
+  }
+  const now = Date.now() / 1000;
+  for (const r of rows) r.live = r.played && !r.done && now - r.last < 6 * 3600;
+  return rows.sort((x, y) => x.t - y.t);
+}
+function playoffsHtml(src, d, rows) {
+  const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
+  const link = (id) => (name[id] ? teamLink(src, name[id], id) : "TBD");
+  const when = (t) => new Date(t * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const li = (r) => {
+    const live = r.live;
+    const status = r.done ? "Final" : live ? '<span class="sp-live">Live</span>' : r.played ? "In progress" : r.when ? `Yet to play · ${when(r.when)}` : "Yet to play";
+    const win = r.done ? (r.sa > r.sb ? r.home : r.away) : null;
+    return `<li class="po-row"><span class="po-round">${esc(r.label)}${r.bestOf > 1 ? ` · Bo${r.bestOf}` : ""}</span>
+      <span class="po-teams"><b class="${win === r.home ? "w" : ""}">${link(r.home)}</b> <span class="series-score">${r.played ? `${r.sa}–${r.sb}` : "v"}</span> <b class="${win === r.away ? "w" : ""}">${link(r.away)}</b></span>
+      <span class="po-status">${status}</span></li>`;
+  };
+  return `${rows.length ? `<h2>Playoffs <span class="h-note">played and still to play</span></h2><ul class="po-rows">${rows.map(li).join("")}</ul>
+    <p class="table-note">Series PlayOn hasn't posted yet are counted from their games.</p>` : ""}
+    <section class="wkb-box"><h2>Bracket <span class="h-note">results so far, no picks</span></h2><p class="table-note">A dashed box marks a match whose teams could still change.</p><div id="wk-bracket"></div></section>`;
+}
+
+// The bracket from Predictions with only what has happened in it: results in, nothing picked.
+// A series PlayOn hasn't posted counts once a team has won it (so the bracket moves on); one
+// still being played shows its running score.
+async function mountBracket(src, d, rows) {
+  const [{ mountPlayoffs }, { tune, fitRatings }] = await Promise.all([import("../parts/playoffs.js"), import("../lib/predict.js")]);
+  const full = src.view ? await SOURCES[src.key].data() : d;
+  const ratings = fitRatings(full.teams, full.series, tune(full.teams, full.series));
+  const made = rows.filter((r) => r.done && r.unposted).map((r, i) => ({ id: `unposted-${i}`, time: r.t, home: r.home, away: r.away, home_score: r.sa, away_score: r.sb }));
+  mountPlayoffs(document.getElementById("wk-bracket"), src, { ...full, series: [...full.series, ...made] }, ratings, new Map(), { status: { progress: rows.filter((r) => r.played && !r.done) } });
 }
 
 // Weekly page: one series panel at a time. Arrow keys move between tabs; the "Next series"

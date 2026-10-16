@@ -51,7 +51,7 @@ export function divisionTiers() {
 
 // How each tier-list stat reads in a breakdown, and the raw number shown under a share.
 const kNum = (v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${Math.round(v)}`);
-const METRIC_FMT = {
+export const METRIC_FMT = {
   farm: pct, dmg: pct, soak: pct, tower: pct, kills: pct, assists: pct, dead: pct,
   gpm: (v) => `${Math.round(v)}`, xpm: (v) => `${Math.round(v)}`, nw: kNum,
   lane: (v) => `${Math.round(v)}%`,
@@ -63,7 +63,7 @@ const METRIC_FMT = {
   sentries: (v) => `${v.toFixed(1)}/10m`, dust: (v) => `${v.toFixed(1)}/10m`, smokes: (v) => `${v.toFixed(1)}/10m`,
   tanked: kNum,
 };
-const RAW_FMT = {
+export const RAW_FMT = {
   farm: (v) => `${Math.round(v)} GPM`, dmg: (v) => `${kNum(v)} dmg a game`, tower: (v) => `${kNum(v)} bldg dmg a game`,
   kills: (v) => `${v.toFixed(1)} kills a game`, assists: (v) => `${v.toFixed(1)} assists a game`,
   soak: (v) => `${kNum(v)} taken a game`,

@@ -840,7 +840,7 @@ export function gamePointsAt(m, matches, key, pos, models) {
   if (!rows.length) return null;
   for (const r of rows) { r.pos = pos; r.role = pos <= 3 ? "core" : "support"; scoreRow(r, model); }
   const p = scorePlayers(rows, model, { teams })[0];
-  const stats = (p.roles[0]?.stats ?? []).map((s) => ({ metric: s.metric, label: METRICS[s.metric]?.label ?? s.metric, score: s.score, max: s.max, points: s.points }));
+  const stats = (p.roles[0]?.stats ?? []).map((s) => ({ metric: s.metric, label: METRICS[s.metric]?.label ?? s.metric, score: s.score, max: s.max, points: s.points, value: s.value, raw: s.raw }));
   return { score: p.score, stats, stat_points: p.stat_points, mult: p.mult, win_points: p.win_points };
 }
 

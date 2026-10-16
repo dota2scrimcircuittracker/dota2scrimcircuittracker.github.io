@@ -2,6 +2,7 @@
 import { hasDetails, playerKey } from "../lib/stats.js";
 import { info } from "../lib/glossary.js";
 import { isJungler, at10, laneCuts, LANE_LABEL, gameLanes, verdict, cutFor, MAP_LANE, playerLane, laneSummary, laneBoard, LANE_GROUPS } from "../lib/lanes.js";
+import { unpostedTime } from "../lib/divisions.js";
 import { leagueSrc, fmt, heroHref, esc, portrait, playerLink, kg, heroLink, signedK, pct, dec, shortDate, floorOf, sortableTable, teamLink, weekStart, pageHead } from "../core.js";
 import { plusSlot } from "../lib/hero-levels.js";
 
@@ -180,7 +181,7 @@ export function lanesSection(src, matches, cuts, weekGames) {
 // The week a game counts toward: its series' scheduled week (AD2L), else its date.
 export const weekOfFn = (d) => {
   const sched = new Map((d?.series ?? []).filter((s) => s.time).map((s) => [s.id, new Date(s.time * 1000)]));
-  return (m) => weekStart(sched.get(m.series_id) ?? m.createdAt).getTime();
+  return (m) => weekStart(sched.get(m.series_id) ?? (unpostedTime(m) != null ? new Date(unpostedTime(m) * 1000) : m.createdAt)).getTime();
 };
 
 export const loading = (kicker, title) => `${pageHead(kicker, title)}<div class="panel empty">Loading…</div>`;

@@ -15,7 +15,7 @@ import { info } from "./lib/glossary.js";
 import { ordinal, RANK_STATS, RANK_GROUPS } from "./lib/ranks.js";
 import { routeOf, sharePath } from "./lib/share.js";
 import { withNicknames, loadNicknames, displayName } from "./lib/nicknames.js";
-import { DIVISIONS as DIVISION_LIST, fullName, SEASON } from "./lib/divisions.js";
+import { DIVISIONS as DIVISION_LIST, fullName, SEASON, unpostedTime } from "./lib/divisions.js";
 import { teamSplits } from "./lib/combat.js";
 import { isBye } from "./lib/playoffs.js";
 
@@ -961,7 +961,7 @@ export const seriesWeek = (s) => (s.time ? weekStart(new Date(s.time * 1000)).ge
 // A game's week; d = the division's data (null for scrims).
 export function gameWeeker(d) {
   const sched = new Map((d?.series ?? []).filter((s) => s.time).map((s) => [s.id, new Date(s.time * 1000)]));
-  return (m) => { const t = sched.get(m.series_id) ?? m.createdAt; return t ? weekStart(t).getTime() : null; };
+  return (m) => { const u = unpostedTime(m), t = sched.get(m.series_id) ?? (u != null ? new Date(u * 1000) : m.createdAt); return t ? weekStart(t).getTime() : null; };
 }
 // Narrowed copies, memoized per source object and pick so the stat caches (keyed by the
 // games array) still hit on re-renders.

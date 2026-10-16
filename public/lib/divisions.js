@@ -52,6 +52,19 @@ export function announcedRole(key, s) {
     || (a.home != null && Math.abs((s.time ?? 0) - a.time) < 4 * 86400 && [a.home, a.away].every((t) => s.home === t || s.away === t)));
   return a ? { label: `Week 8 · ${a.note}`, bestOf: a.best_of } : null;
 }
+// Games PlayOn has no series for (and no announced one covers) that belong to a later week:
+// match id -> that week's start (unix seconds). Drop an entry when PlayOn posts its series.
+export const UNPOSTED_WEEK = {
+  9046934948: WEEK8 + 7 * 86400, // Champion upper bracket: Suck my Drama Piranhas v No Immortals, week 9 (game 1)
+  9046968812: WEEK8 + 7 * 86400, // game 2
+};
+// The scheduled time a game counts toward when it has no PlayOn series: its announced series'
+// time, or an UNPOSTED_WEEK entry. null otherwise (the game's own date is used).
+export function unpostedTime(m) {
+  if (m.series_id != null && typeof m.series_id !== "string") return null;
+  for (const list of Object.values(ANNOUNCED)) { const a = list.find((x) => x.id === m.series_id); if (a) return a.time; }
+  return UNPOSTED_WEEK[m.match_id ?? m.id] ?? null;
+}
 export const isPostseason = (s) => SEASON.regularEnd != null && (s.time ?? 0) > SEASON.regularEnd && !SEASON.regularIds.includes(s.id);
 export const groupStage = (series) => series.filter((s) => !isPostseason(s));
 
