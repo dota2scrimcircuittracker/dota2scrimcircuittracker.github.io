@@ -28,3 +28,5 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-PLLOSD · 2026-10-15 · Show the back now works on Customize even when the card can't be edited
 - FB-QSATLK · 2026-10-15 · Every card's tier now comes from the player's division tier list (playoff model), same as their profile badge; the tier list defaults to All roles.
 - FB-ZBDQP3 · 2026-10-15 · Tier list matches the profile rating (All roles default), draws at once instead of waiting on card designs, and the Gallery head is compact on phones.
+- FB-9W2JYK · 2026-10-15 · Not implemented: the 8-hour wait between packs stays as is.
+- FB-D2VD3T · 2026-10-15 · Thanks note, no action needed.
