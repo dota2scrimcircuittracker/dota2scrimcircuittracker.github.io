@@ -20,7 +20,7 @@
 import { seriesOdds, modelCall, ODDS_SPREAD } from "./predict.js";
 import { isPlayed, gameWins, strengthOfSchedule } from "./schedule.js";
 import { ordinal as ord } from "./ranks.js";
-import { isPostseason, groupStage, REMOVED } from "./divisions.js";
+import { isPostseason, groupStage, REMOVED, CONFIRMED_PICKS } from "./divisions.js";
 
 export const REG_WEEKS = 7;
 export const isBye = (t) => /\bbye week\b/i.test(t?.name ?? "");
@@ -310,7 +310,7 @@ export function resolveTable(ids, series, ratings, lines, choose) {
 // are TBD, and so is every slot they feed. `fixed`: no choice, seed 1 plays seed 4 (Heroic/Aegis, where
 // the seeds alternate divisions and 1 v 4 pairs A1 with B2).
 export const TBD = "tbd";
-export function bracket(seeds, ratings, choose, { fixed = false, blank = false } = {}) {
+export function bracket(seeds, ratings, choose, { fixed = false, blank = false, pickSet = false } = {}) {
   const n = seeds.length;
   if (n < 4) return null;
   const ms = [];
@@ -361,7 +361,7 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false }
     const lf = M("lf", "lower", 4, uf.loser, l5.winner, 3, "Lower final");
     M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final");
   }
-  return { matches: ms, pick, modelPick, fixed, champion: ms.at(-1).winner };
+  return { matches: ms, pick, modelPick, fixed, pickSet, champion: ms.at(-1).winner };
 }
 
 // ---------- the whole picture ----------
@@ -394,7 +394,7 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
       const seeds = table.rows.slice(0, 8).map((r) => r.id);
       for (const tb of table.tiebreakers) for (const m of tb.matches) actual.mark(m);
       if (split) return { division: div, lines, ...table, bracket: null };
-      return { division: div, lines, ...table, bracket: asPicked ? bracket(seeds, ratings, own, { blank }) : actual.markAll(bracket(seeds, ratings, actual.chooser(seeds, choose), { blank })) };
+      return { division: div, lines, ...table, bracket: asPicked ? bracket(seeds, ratings, own, { blank }) : actual.markAll(bracket(seeds, ratings, actual.chooser(seeds, choose), { blank, pickSet: actual.seedPick(seeds) != null })) };
     }),
   };
   if (split) {
@@ -420,7 +420,8 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
 // teams can meet twice (upper round 1, then the grand final): their series go to their matches
 // in the order the matches ask, oldest series first, and a key keeps the one it got. mark(m)
 // flags a match decided that way (`real`, with the series' score from a's side), markAll a
-// bracket's. chooser(seeds, choose): `choose` plus seed 1's pick of opponent from who it played.
+// bracket's. seedPick(seeds): seed 1's opponent (3 or 4) from who it played or CONFIRMED_PICKS, else
+// null. chooser(seeds, choose): `choose` with that pick in it.
 function postResults(series) {
   const byPair = new Map();
   for (const s of series.filter((x) => isPostseason(x) && isPlayed(x) && x.home_score !== x.away_score).sort((x, y) => (x.time ?? 0) - (y.time ?? 0))) {
@@ -435,6 +436,8 @@ function postResults(series) {
     if (s) { used.set(pk, n + 1); taken.set(key, s); }
     return s;
   };
+  const met = (a, b) => a != null && b != null && (byPair.has(pairKey(a, b)) || CONFIRMED_PICKS.some(([x, y]) => pairKey(x, y) === pairKey(a, b)));
+  const seedPick = ([s1, , s3, s4]) => (met(s1, s3) ? 3 : met(s1, s4) ? 4 : null);
   const winnerOf = (s) => (s.home_score > s.away_score ? s.home : s.away);
   const mark = (m) => {
     const s = m.key ? taken.get(m.key) : null;
@@ -447,13 +450,8 @@ function postResults(series) {
     winner: (key, a, b) => { const s = seriesFor(key, a, b); return s ? winnerOf(s) : undefined; },
     mark,
     markAll: (b) => { if (b) for (const m of b.matches) mark(m); return b; },
-    chooser: (seeds, choose) => choose && ((k, ...rest) => {
-      if (k !== "pick") return choose(k, ...rest);
-      const [s1, s3, s4] = [seeds[0], seeds[2], seeds[3]];
-      if (s1 != null && s3 != null && byPair.has(pairKey(s1, s3))) return 3;
-      if (s1 != null && s4 != null && byPair.has(pairKey(s1, s4))) return 4;
-      return choose(k, ...rest);
-    }),
+    seedPick,
+    chooser: (seeds, choose) => (k, ...rest) => (k === "pick" ? seedPick(seeds) ?? choose?.(k, ...rest) : choose?.(k, ...rest)),
   };
 }
 

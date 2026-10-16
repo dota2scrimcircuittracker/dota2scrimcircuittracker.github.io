@@ -39,6 +39,12 @@ export const ANNOUNCED = {
     { id: "tb-heroic-2", pid: -48004, time: WEEK8, home: null, away: 14571, best_of: 1, after: "tb-heroic-1", note: "Play-in winner v Team Awesome, for Heroic's 8th seed" },
   ],
 };
+// Upper round 1 pairings the admins confirmed before they're played: [seed 1, the opponent it
+// picked] (team ids). The bracket takes seed 1's pick from here, as it would from a played series.
+// New season: empty it.
+export const CONFIRMED_PICKS = [
+  [15009, 15020], // Conqueror: Cult of the One Mag God feat. Retirement Home v Cult of the One Mag God v4 (seed 4)
+];
 // A league's series plus its announced ones that PlayOn hasn't posted yet (no PlayOn series
 // with one of the same teams within 4 days).
 export function withAnnounced(key, series) {

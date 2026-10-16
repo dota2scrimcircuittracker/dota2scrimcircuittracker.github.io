@@ -223,12 +223,12 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const weeks = Math.max(...b.matches.map((m) => m.week));
       const col = (side, w) => b.matches.filter((m) => m.side === side && m.week === w).map(box).join("");
       const gf = b.matches.find((m) => m.side === "final");
-      const pickChoice = live && !b.fixed && !b.matches.some((x) => (x.id === "u1" || x.id === "u2") && x.real) ? `<div class="po-seedpick" role="group" aria-label="Seed 1 plays">
+      const pickChoice = live && !b.fixed && !b.pickSet ? `<div class="po-seedpick" role="group" aria-label="Seed 1 plays">
           <span class="pd-lbl">Seed 1 picks</span>${[3, 4].map((k) => `<button type="button" data-k="pick" data-w="${k}" aria-pressed="${b.pick === k}">Seed ${k}</button>`).join("")}
           <span class="muted">${state.picks.pick ? "your pick" : `model's pick: the weaker one, seed ${b.modelPick}`}</span></div>` : "";
       const shape = b.fixed ? "" : teams < 8 ? `${teams} teams, so everyone makes it: ${teams <= 4 ? "all start in the upper bracket" : "seeds 5–6 start in the lower bracket"}. The rules only cover 8-team brackets, so this layout is a guess.` : "Lower round 1 is 5 v 8 and 6 v 7. The loser of seed 1's match plays the 6 v 7 winner, as in S47.";
       return `${title ? `<h4 class="po-h">${esc(title)}</h4>` : ""}
-        ${status || (fin && !live) ? "" : live ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${`Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
+        ${status || (fin && !live) ? "" : live ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${b.pickSet ? `Seed 1 picked seed ${b.pick} as its first opponent.` : `Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
         ${shape ? `<p class="table-note keep">${shape}</p>` : ""}
         <div class="po-br-wrap"><div class="po-br" style="--weeks:${weeks}">
           ${Array.from({ length: weeks }, (_, i) => `<div class="po-wk" style="grid-column:${i + 2}">Playoff week ${i + 1}</div>`).join("")}
