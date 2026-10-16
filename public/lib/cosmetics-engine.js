@@ -200,8 +200,11 @@ export function equipCosmetics(state, raw) {
   if(layout)equipment.layout=layout;
   equipment.hue=raw.hue??state.equipment?.hue??0;
   if(!Number.isFinite(equipment.hue)||equipment.hue<0||equipment.hue>360)throw new Error('Choose a valid hue.');
-  equipment.particleSpeed=raw.particleSpeed??state.equipment?.particleSpeed??DEFAULT_EQUIPMENT.particleSpeed;
-  if(!Number.isInteger(equipment.particleSpeed)||equipment.particleSpeed<50||equipment.particleSpeed>200)throw new Error('Choose a particle speed from 50% to 200%.');
+  // Per-card tuning, 50% to 200% of each effect's own pace: finish speed, canvas particle amount, border speed.
+  for(const [k,label] of [['particleSpeed','a particle speed'],['particleAmount','a particle amount'],['borderSpeed','a border speed']]) {
+    equipment[k]=raw[k]??state.equipment?.[k]??DEFAULT_EQUIPMENT[k];
+    if(!Number.isInteger(equipment[k])||equipment[k]<50||equipment[k]>200)throw new Error(`Choose ${label} from 50% to 200%.`);
+  }
   // Lower or upper case for modifiers with capitals (lib/signatures.js); only upper is stored.
   const letterCase=raw.letterCase??state.equipment?.letterCase??'lower';
   if(!LETTER_CASES.includes(letterCase))throw new Error('Choose lower or upper case.');

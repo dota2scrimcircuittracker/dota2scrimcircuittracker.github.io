@@ -5,7 +5,18 @@ import { cardArtwork } from './card-art.js';
 import { heroById, heroImg } from './hero-meta.js';
 import { plusSlot } from './hero-levels.js';
 import { cardAppearance, selectedCardDesign, shownNickname } from './cosmetics-engine.js';
-export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight']);
+import { CANVAS_FINISHES } from './card-fx.js';
+// Finishes with a speed setting: the particle ones, plus fx- finishes that animate (lib/card-fx.js, cosmetics-fx.css).
+export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight','fx-drift','fx-sheen','fx-waves',...Object.keys(CANVAS_FINISHES)]);
+// Finishes drawn on a canvas have a particle amount setting too; fx- borders have a border speed.
+export const isCanvasFinish=id=>id in CANVAS_FINISHES;
+export const isFxBorder=id=>typeof id==='string'&&id.startsWith('fx-');
+const tuning=e=>({speed:(e.particleSpeed??DEFAULT_EQUIPMENT.particleSpeed)/100,amount:(e.particleAmount??DEFAULT_EQUIPMENT.particleAmount)/100,border:(e.borderSpeed??DEFAULT_EQUIPMENT.borderSpeed)/100});
+// The layer a finish draws its particles in: a canvas, or a set of small elements the stylesheet animates.
+export function particleLayerHtml(finish,e={},count=24) {
+  if(isCanvasFinish(finish)) {const t=tuning(e);return `<span class="particles" aria-hidden="true"><canvas class="fx-canvas" data-fx="${CANVAS_FINISHES[finish]}" data-amt="${t.amount}" data-spd="${t.speed}"></canvas></span>`;}
+  return PARTICLE_FINISHES.includes(finish)?`<span class="particles" aria-hidden="true">${Array.from({length:count},(_,i)=>`<i style="--i:${i};left:${(i*43+13)%100}%;top:${(i*29+7)%100}%;animation-delay:-${i*.39}s"></i>`).join('')}</span>`:'';
+}
 import { syncPackOfferClaims } from './bonus-offers.js';
 import { applyLayout } from './card-layout.js';
 import { setPlayerNickname } from './nicknames.js';
@@ -107,12 +118,12 @@ export async function cosmeticAppearances() {
 }
 export function cosmeticAttributes(raw) {
   const e={...DEFAULT_EQUIPMENT,...raw}, border=itemByKey(`border:${e.border}`);
-  return ` data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${e.particleSpeed/100}"`;
+  return ` data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${tuning(e).speed};--border-speed:${tuning(e).border}"`;
 }
 export function cosmeticLayers(e,name) {
   const equipment={...DEFAULT_EQUIPMENT,...e}, border=itemByKey(`border:${equipment.border}`);
   const symbol=equipment.emblem===false?'':border?.symbol??'';
-  const particles=PARTICLE_FINISHES.includes(equipment.finish)?`<span class="particles" aria-hidden="true">${Array.from({length:24},(_,i)=>`<i style="--i:${i};left:${(i*43+13)%100}%;top:${(i*29+7)%100}%;animation-delay:-${i*.39}s"></i>`).join('')}</span>`:'';
+  const particles=particleLayerHtml(equipment.finish,equipment);
   return `<span class="cosmetic-overlay" aria-hidden="true"></span>${particles}${!symbol?'':Array.isArray(equipment.emblems)&&equipment.emblems.length?equipment.emblems.map(m=>`<span class="cosmetic-emblem placed" aria-hidden="true" style="left:${Number(m.x)}%;top:${Number(m.y)}%;--emblem-size:${(Number(m.size)||100)/100}">${symbol}</span>`).join(''):`<span class="cosmetic-emblem" aria-hidden="true">${symbol}</span>`}${signatureHtml(equipment,name)}`;
 }
 export function applyEquipment(card,e,name) {
@@ -121,7 +132,7 @@ export function applyEquipment(card,e,name) {
   card.dataset.cosmetic='true';card.dataset.texture=border?.texture??'metal';card.dataset.finish=e.finish;card.dataset.rarity=border?.rarity??'free';
   card.style.setProperty('--a',border?.a??'#92969c');card.style.setProperty('--b',border?.b??'#41454c');
   card.style.setProperty('--art-hue',`${Number(e.hue)||0}deg`);
-  card.style.setProperty('--particle-speed',(e.particleSpeed??DEFAULT_EQUIPMENT.particleSpeed)/100);
+  card.style.setProperty('--particle-speed',tuning(e).speed);card.style.setProperty('--border-speed',tuning(e).border);
   if(e.baseCard) {
     const base=e.baseCard,hero=base.hero??Number(card.dataset.autoHero),art=cardArtwork(hero,base);
     if(art) {

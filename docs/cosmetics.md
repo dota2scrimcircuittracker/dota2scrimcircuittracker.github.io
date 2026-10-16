@@ -6,6 +6,14 @@ one legendary Japanese katakana name-rendering unlock. Edit catalog rarity to
 change future rolls; existing quantities remain owned. Removed designs do not drop.
 Default grey, no finish, no autograph and original lettering are always free.
 
+Animated set (ids start `fx-`, 15 borders and 12 finishes, added October 2026 from the practice lab and
+ranked by Fav): borders are CSS in `public/cosmetics-fx.css` through the shared frame hooks; finishes are
+CSS or, for rain, downpour, mist, clouds, lightning, smoke, rot, leaves and ethereal motes, a canvas drawn by
+`public/lib/card-fx.js` (one shared loop, only canvases on screen run, still frame under reduced motion).
+Each saved design carries three tuning values, 50% to 200%: `particleSpeed` (finish speed), `particleAmount`
+(canvas particle count) and `borderSpeed`, validated in `equipCosmetics`. The editor shows each slider only
+when the equipped finish or border uses it. Rain and Rain Storm borders were flagged for more work.
+
 The actual shared player card defines geometry, artwork and crop. Cosmetics decorate
 that card without changing its format. Signatures always use the player's displayed
 name; custom signature text is ignored by the server and renderer. The editor saves

@@ -814,6 +814,282 @@ export const CATALOG = [
     "rarity": "legendary",
     "description": "A legendary modifier that sounds your name out in flowing Thai script.",
     "preview": "Fav → ฟัฟ"
+  },
+  {
+    "id": "fx-cosmic",
+    "name": "Cosmic Waves",
+    "rarity": "epic",
+    "a": "#4a5cff",
+    "b": "#7b3fd6",
+    "texture": "fx-cosmic",
+    "description": "Indigo, cyan and violet colour sweeps round the frame.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-cosmic"
+  },
+  {
+    "id": "fx-rain",
+    "name": "Rain",
+    "rarity": "rare",
+    "a": "#5b86c4",
+    "b": "#17223f",
+    "texture": "fx-rain",
+    "description": "Thin streaks of rain fall down a storm-blue frame.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-rain"
+  },
+  {
+    "id": "fx-storm",
+    "name": "Rain Storm",
+    "rarity": "epic",
+    "a": "#3d5c9a",
+    "b": "#0b1124",
+    "texture": "fx-storm",
+    "description": "Heavy rain on a dark frame, with the odd flash of lightning.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-storm"
+  },
+  {
+    "id": "fx-water",
+    "name": "Water Waves",
+    "rarity": "epic",
+    "a": "#1fb4e0",
+    "b": "#0a2f78",
+    "texture": "fx-water",
+    "description": "Crests roll along a deep blue frame.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-water"
+  },
+  {
+    "id": "fx-tide",
+    "name": "Tidal",
+    "rarity": "epic",
+    "a": "#1a9fd4",
+    "b": "#0b4fa0",
+    "texture": "fx-tide",
+    "description": "Bands of deep blue water rolling in.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-tide"
+  },
+  {
+    "id": "fx-bolt",
+    "name": "Lightning",
+    "rarity": "legendary",
+    "a": "#5b7cff",
+    "b": "#141a55",
+    "texture": "fx-bolt",
+    "description": "A bright arc races across a dark frame and flickers.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-bolt"
+  },
+  {
+    "id": "fx-ethereal",
+    "name": "Ethereal",
+    "rarity": "legendary",
+    "a": "#9fe8ff",
+    "b": "#b9a8ff",
+    "texture": "fx-ethereal",
+    "description": "A pale, ghostly frame that glows and fades.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-ethereal"
+  },
+  {
+    "id": "fx-dragon",
+    "name": "Dragon Scale",
+    "rarity": "epic",
+    "a": "#d9b445",
+    "b": "#1c4f2c",
+    "texture": "fx-dragon",
+    "description": "Green and gold scales with a breathing glow.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-dragon"
+  },
+  {
+    "id": "fx-death",
+    "name": "Death",
+    "rarity": "legendary",
+    "a": "#8f4fd6",
+    "b": "#14081f",
+    "texture": "fx-death",
+    "description": "Black and violet smoke with a cold pulse.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-death"
+  },
+  {
+    "id": "fx-ember",
+    "name": "Ember Guard",
+    "rarity": "legendary",
+    "a": "#ff6a1a",
+    "b": "#3a0c06",
+    "texture": "fx-ember",
+    "description": "A burning frame with sparks climbing up it.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-ember"
+  },
+  {
+    "id": "fx-refract",
+    "name": "Refraction",
+    "rarity": "legendary",
+    "a": "#6ac8ff",
+    "b": "#ffd86a",
+    "texture": "fx-refract",
+    "description": "A prismatic edge that shifts through the spectrum.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-refract"
+  },
+  {
+    "id": "fx-astral",
+    "name": "Astral Shield",
+    "rarity": "legendary",
+    "a": "#9d6bff",
+    "b": "#2a0f6a",
+    "texture": "fx-astral",
+    "description": "Violet and cyan light racing round, pulsing like a shield.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-astral"
+  },
+  {
+    "id": "fx-leaf",
+    "name": "Leaf Drift",
+    "rarity": "epic",
+    "a": "#6fd04a",
+    "b": "#14401c",
+    "texture": "fx-leaf",
+    "description": "A green frame with leaves drifting along it.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-leaf"
+  },
+  {
+    "id": "fx-rot",
+    "name": "Rot Cloud",
+    "rarity": "legendary",
+    "a": "#8fb02a",
+    "b": "#1a2406",
+    "texture": "fx-rot",
+    "description": "Murky green with bubbles rising through it.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-rot"
+  },
+  {
+    "id": "fx-frost",
+    "name": "Frost",
+    "rarity": "legendary",
+    "a": "#9fe0ff",
+    "b": "#4a8fd8",
+    "texture": "fx-frost",
+    "description": "A crystalline ice edge that glints.",
+    "type": "border",
+    "symbol": "",
+    "key": "border:fx-frost"
+  },
+  {
+    "id": "fx-drift",
+    "name": "Cosmic Drift",
+    "rarity": "rare",
+    "description": "A slow nebula with twinkling stars.",
+    "type": "finish",
+    "key": "finish:fx-drift"
+  },
+  {
+    "id": "fx-sheen",
+    "name": "Aurora Sheen",
+    "rarity": "rare",
+    "description": "One bright band of colour sweeps across the card.",
+    "type": "finish",
+    "key": "finish:fx-sheen"
+  },
+  {
+    "id": "fx-rain",
+    "name": "Rainfall",
+    "rarity": "legendary",
+    "description": "Steady drops fall past the art.",
+    "type": "finish",
+    "key": "finish:fx-rain"
+  },
+  {
+    "id": "fx-downpour",
+    "name": "Downpour",
+    "rarity": "legendary",
+    "description": "Dense slanted rain with flashes of lightning.",
+    "type": "finish",
+    "key": "finish:fx-downpour"
+  },
+  {
+    "id": "fx-mist",
+    "name": "Rain Mist",
+    "rarity": "legendary",
+    "description": "Fine drizzle through drifting fog.",
+    "type": "finish",
+    "key": "finish:fx-mist"
+  },
+  {
+    "id": "fx-waves",
+    "name": "Waves",
+    "rarity": "epic",
+    "description": "Layered swells rising and falling.",
+    "type": "finish",
+    "key": "finish:fx-waves"
+  },
+  {
+    "id": "fx-clouds",
+    "name": "Clouds",
+    "rarity": "legendary",
+    "description": "Soft cloud banks drift past.",
+    "type": "finish",
+    "key": "finish:fx-clouds"
+  },
+  {
+    "id": "fx-lightning",
+    "name": "Storm Bolts",
+    "rarity": "legendary",
+    "description": "Forked bolts strike with a flash across the sky.",
+    "type": "finish",
+    "key": "finish:fx-lightning"
+  },
+  {
+    "id": "fx-ethereal",
+    "name": "Ethereal Motes",
+    "rarity": "legendary",
+    "description": "Pale ghost lights float up through a cold glow.",
+    "type": "finish",
+    "key": "finish:fx-ethereal"
+  },
+  {
+    "id": "fx-smoke",
+    "name": "Death Smoke",
+    "rarity": "legendary",
+    "description": "Dark violet smoke rising and curling.",
+    "type": "finish",
+    "key": "finish:fx-smoke"
+  },
+  {
+    "id": "fx-leaf",
+    "name": "Leaf Drift",
+    "rarity": "legendary",
+    "description": "Leaves tumble past the card.",
+    "type": "finish",
+    "key": "finish:fx-leaf"
+  },
+  {
+    "id": "fx-rot",
+    "name": "Rot Cloud",
+    "rarity": "legendary",
+    "description": "Sickly green gas drifts upward.",
+    "type": "finish",
+    "key": "finish:fx-rot"
   }
 ];
 export const PEN_MARKS = {
@@ -864,6 +1140,6 @@ export const PEN_MARKS = {
 };
 export const TIERS = ['common','rare','epic','legendary'];
 export const PACK_ODDS = {common:69,rare:17,epic:10,legendary:4};
-export const DEFAULT_EQUIPMENT = {border:'grey',finish:'none',autograph:'none',translation:'none',text:'',x:50,y:60,size:15,rotation:-7,particleSpeed:100};
+export const DEFAULT_EQUIPMENT = {border:'grey',finish:'none',autograph:'none',translation:'none',text:'',x:50,y:60,size:15,rotation:-7,particleSpeed:100,particleAmount:100,borderSpeed:100};
 export const itemByKey = key => CATALOG.find(item=>item.key===key);
 

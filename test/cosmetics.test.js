@@ -7,7 +7,7 @@ import {CosmeticsVault,cosmeticsRequest} from '../workers/steam-auth/src/cosmeti
 
 test('approved collection has all tiers, no language samples in signature drops',()=>{
   assert.equal(new Set(CATALOG.map(i=>i.key)).size,CATALOG.length);
-  assert.equal(CATALOG.length,79);
+  assert.equal(CATALOG.length,106);
   assert.deepEqual(PACK_ODDS,{common:69,rare:17,epic:10,legendary:4});
   for(const tier of TIERS)assert.ok(CATALOG.some(i=>i.rarity===tier));
   for(const item of CATALOG.filter(i=>i.type==='autograph')) {assert.equal(item.sample,undefined);assert.equal(item.script,undefined);}
@@ -81,8 +81,10 @@ test('base card artwork and hue are validated and preserved when swapping cosmet
   assert.equal(saved.equipment.baseCard.hero,74);assert.equal(saved.equipment.hue,120);
   const fast=equipCosmetics(saved,{particleSpeed:180});assert.equal(fast.equipment.particleSpeed,180);
   assert.equal(equipCosmetics(fast,{}).equipment.particleSpeed,180);
+  const tuned=equipCosmetics(fast,{particleAmount:60,borderSpeed:150});assert.deepEqual([tuned.equipment.particleSpeed,tuned.equipment.particleAmount,tuned.equipment.borderSpeed],[180,60,150]);
+  assert.deepEqual([equipCosmetics(tuned,{}).equipment.particleAmount,equipCosmetics(tuned,{}).equipment.borderSpeed],[60,150]);
   const swapped=equipCosmetics(saved,{});assert.deepEqual(swapped.equipment.baseCard,saved.equipment.baseCard);assert.equal(swapped.equipment.hue,120);
-  for(const raw of [{hue:361},{hue:'30'},{particleSpeed:49},{particleSpeed:201},{particleSpeed:'100'},{baseCard:{hero:9999}},{baseCard:{hero:74,art:'bad'}},{baseCard:{hero:74,style:'bad'}},{baseCard:{hero:74,crop:{x:101,y:0,zoom:1}}}])assert.throws(()=>equipCosmetics(state,raw));
+  for(const raw of [{hue:361},{hue:'30'},{particleSpeed:49},{particleSpeed:201},{particleSpeed:'100'},{particleAmount:49},{particleAmount:201},{borderSpeed:49},{borderSpeed:'100'},{baseCard:{hero:9999}},{baseCard:{hero:74,art:'bad'}},{baseCard:{hero:74,style:'bad'}},{baseCard:{hero:74,crop:{x:101,y:0,zoom:1}}}])assert.throws(()=>equipCosmetics(state,raw));
 });
 test('five saved designs preserve the existing card; primary and viewer shuffle use only saved slots',()=>{
   const original=grantLogin(null),legacyEquipment=structuredClone(original.equipment);
