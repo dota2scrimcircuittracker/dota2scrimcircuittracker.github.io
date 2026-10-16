@@ -3,7 +3,7 @@ import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
 import { isPostseason, playoffs, ANNOUNCED, withAnnounced, postseasonRows, playedPostseason, bracketClose } from "../lib/divisions.js";
-import { postseason, bracketPoints, playoffScore } from "../lib/playoffs.js";
+import { postseason, bracketPoints, playoffScore, playoffPicture, seedsSettled } from "../lib/playoffs.js";
 import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
@@ -113,6 +113,8 @@ export async function renderPredict(src) {
       if (closes == null || !b.submittedAt || b.submittedAt.getTime() < closes * 1000) finals.push(e);
     }
   } catch (e) { console.warn(e); }
+  // Brackets are open (the seeds are settled): the Leaderboard tab leads with the bracket board.
+  const bracketsOpen = seedsSettled(playoffPicture(full.teams, full.series, fullRatings, { split, blank: true }));
   for (const f of finals) Object.assign(f, playoffScore(full.teams, full.series, fullRatings, f.picks, { split }));
   finals.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
   const roleOf = (s) => tbRole.get(s.id) ?? ps.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
@@ -286,7 +288,7 @@ export async function renderPredict(src) {
   </table></div>` : "";
   // The two bracket boards. Playoff brackets: click a name for the bracket they sent.
   const champOf = (f) => f.champions.map(([, c]) => esc(teamName[c] ?? "—")).join(" / ");
-  const finalsHtml = finals.length ? `<h3 class="pb-sub">Playoff brackets</h3><div class="table-wrap sticky-name"><table class="pred-board pb-brackets">
+  const finalsHtml = finals.length ? `${bracketsOpen ? "" : `<h3 class="pb-sub">Playoff brackets</h3>`}<div class="table-wrap sticky-name"><table class="pred-board pb-brackets">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("playoff_pts")}</th><th scope="col" class="l">Champion pick</th></tr></thead>
     <tbody>${finals.map((f, i) => `<tr class="${uids.includes(f.uid) ? "me" : ""}"><td class="rank${i < 3 && f.points ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
       <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" aria-pressed="false" title="See ${esc(f.name)}'s playoff bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button></td>
@@ -370,14 +372,21 @@ export async function renderPredict(src) {
       <p>The model's call takes the favourite 2–0, even when 1–1 is the likeliest single result. It only calls 1–1 when per-game odds are within ${TIE_EDGE * 100} points of 50%. The odds are more cautious: past results haven't predicted the next week much better than a coin flip, so most series look close. Replayed over the season, its calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>The two games in a series aren't independent: the better team on the night tends to win both, and only about a third of series have ended 1–1. So an even match is 33% / 33% / 33%, not 25% / 50% / 25%. Current settings: pull ${params.lambda}, medal weight ${params.beta}.</p>
     </details>`;
-  const boardTab = `
+  const seriesBoard = boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> for their pick history and bracket.</p>` : `<div class="panel empty">No picks yet.</div>`;
+  // In the playoffs the bracket board comes first; series picks follow under their own heading.
+  const boardTab = bracketsOpen ? `
+    <h2>Bracket leaderboard</h2>
+    ${finalsHtml ? `${finalsHtml}<p class="table-note keep">Points from submitted brackets${info("playoff_pts")}. <b>Click a name</b> for the bracket they sent.</p>` : `<div class="panel empty">No brackets submitted yet. <button type="button" class="linkish" data-tobracket>Make yours on the Bracket tab →</button></div>`}
+    <h2>Series picks</h2>
+    ${seriesBoard}
+    ${groupHtml}` : `
     <h2>Leaderboard</h2>
-    ${boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> for their pick history and bracket.</p>` : `<div class="panel empty">No picks yet.</div>`}
+    ${seriesBoard}
     ${finalsHtml}
     ${groupHtml}
     ${boardHtml ? `<details class="how pb-fold" id="pb-fold"><summary id="pb-sum">Your picks</summary><section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading…</p></section></details>` : ""}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
-  const tabs = playerTabs(pageTabs(PREDICT_TABS, src, [
+  const tabs = playerTabs(pageTabs(bracketsOpen ? PREDICT_TABS.map((t) => (t[0] === "board" ? ["board", "Bracket leaderboard", ...t.slice(2)] : t)) : PREDICT_TABS, src, [
     ["fantasy", `<section class="ft" id="ft-host"><div class="panel empty">Loading…</div></section>`],
     ["ftable", `<section class="ft" id="fx-host"><div class="panel empty">Loading…</div></section>`],
     ["calls", callsHtml],
@@ -461,6 +470,7 @@ export async function renderPredict(src) {
 
   // Leaderboard: click a name for the bracket and final table their calls lead to. Fresh host
   // each time, since mountPlayoffs listens for clicks on its element.
+  app.querySelectorAll("[data-tobracket]").forEach((b) => b.onclick = () => app.querySelector('.pp-tabs [data-tab="bracket"]')?.click());
   const view = document.getElementById("pb-view");
   if (view) {
     const fullValid = validPicks(preds ?? [], full.series);

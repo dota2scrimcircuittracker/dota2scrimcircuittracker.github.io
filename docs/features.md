@@ -571,7 +571,8 @@ shrunk-resolution problem above, not a finding problem.
     bracket series was played early; others: their first scheduled bracket series, else week 9).
     Scoring (survivalPoints): 10 per playoff week from week 2 that a team you had still in really
     is, 5 if you had it upper and it's in the lower bracket, 10 more for your champion winning.
-    The Leaderboard lists submitted brackets by points (click a name for theirs); the old
+    The Leaderboard tab becomes **Bracket leaderboard**: submitted brackets by points first (click
+    a name for theirs), then series picks under their own heading; the old
     autosaved brackets are scored as before under **Group-stage brackets**, apart from series points.
   - **Model's picks** (Bracket's other side): everything below.
   - **Seeding**: every way the open series go (3 results each, so 3^n outcomes), and in
