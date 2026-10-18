@@ -165,6 +165,10 @@ after the last group-stage night). Series PlayOn posts after `regularEnd` are th
   columns).
 - Every AD2L league gets a Playoffs stamp in the top bar.
 
+PlayOn posts a division's bracket as a separate season ("S48 Explorer League Playoffs", 678). The
+sync finds it by that name in PlayOn's League menu and adds its series; unfilled slots (TBD) are
+skipped until PlayOn names both teams. A posted series settles seed 1's pick before it's played.
+
 A group-stage make-up played after `regularEnd` would read as postseason: add its series id to
 `regularIds`. The bracket shape, Bo3/Bo5 and the S47 lower-bracket crossover are the site's
 reading of the rules (`lib/playoffs.js` header). Check them against PlayOn's bracket when it's

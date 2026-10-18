@@ -14,8 +14,9 @@
 //    for any other seed (the league admins, 2026-10-06).
 // Not in the rules, taken from S47's brackets on PlayOn: lower round 1 is 5 v 8 and 6 v 7; the
 // loser of seed 1's match meets the 6 v 7 winner, the other upper loser the 5 v 8 winner.
-// Smaller divisions (fewer than 8 teams) put everyone in: 4 teams all start upper (1 v 4,
-// 2 v 3); 5–6 teams play 5 v 6 in the lower bracket. That part is the site's assumption.
+// Smaller divisions (fewer than 8 teams) put everyone in, as PlayOn's S48 brackets drew them:
+// 4 teams all start upper (1 v 4, 2 v 3); with 5–6, seeds 5 and 6 start in the lower bracket,
+// 6 against the loser of seed 1's match and 5 against the other upper loser.
 
 import { seriesOdds, modelCall, ODDS_SPREAD } from "./predict.js";
 import { isPlayed, gameWins, strengthOfSchedule } from "./schedule.js";
@@ -334,19 +335,21 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
   const u1 = M("u1", "upper", 1, seed(1), seed(pick), 3, "Upper round 1");
   const u2 = M("u2", "upper", 1, seed(2), seed(pick === 4 ? 3 : 4), 3, "Upper round 1");
   let lbWinner;
+  // 4 and 6 teams: PlayOn's S48 Explorer and Voyager brackets, one match a week after round 1.
   if (n === 4) {
     const l1 = M("l1", "lower", 2, u1.loser, u2.loser, 3, "Lower round 1");
     lbWinner = l1.winner;
-    const uf = M("uf", "upper", 2, u1.winner, u2.winner, 3, "Upper final");
-    const lf = M("lf", "lower", 3, uf.loser, lbWinner, 3, "Lower final");
-    M("gf", "final", 4, uf.winner, lf.winner, 5, "Grand final");
-  } else if (n <= 6) {
-    const l1 = M("l1", "lower", 1, seed(5), seed(6), 3, "Lower round 1");
-    const l2 = M("l2", "lower", 2, u2.loser, l1.winner, 3, "Lower round 2");
     const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final");
-    const l3 = M("l3", "lower", 3, u1.loser, l2.winner, 3, "Lower semifinal");
-    const lf = M("lf", "lower", 4, uf.loser, l3.winner, 3, "Lower final");
+    const lf = M("lf", "lower", 4, uf.loser, lbWinner, 3, "Lower final");
     M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final");
+  } else if (n <= 6) {
+    // The loser of seed 1's match meets seed 6, the other upper loser seed 5.
+    const l1 = M("l1", "lower", 2, u1.loser, seed(6), 3, "Lower round 1");
+    const l2 = M("l2", "lower", 2, u2.loser, seed(5), 3, "Lower round 1");
+    const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final");
+    const l3 = M("l3", "lower", 4, l1.winner, l2.winner, 3, "Lower semifinal");
+    const lf = M("lf", "lower", 5, uf.loser, l3.winner, 3, "Lower final");
+    M("gf", "final", 6, uf.winner, lf.winner, 5, "Grand final");
   } else {
     const l1 = M("l1", "lower", 1, seed(5), seed(8), 3, "Lower round 1");
     const l2 = M("l2", "lower", 1, seed(6), seed(7), 3, "Lower round 1");
@@ -420,7 +423,7 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
 // teams can meet twice (upper round 1, then the grand final): their series go to their matches
 // in the order the matches ask, oldest series first, and a key keeps the one it got. mark(m)
 // flags a match decided that way (`real`, with the series' score from a's side), markAll a
-// bracket's. seedPick(seeds): seed 1's opponent (3 or 4) from who it played or CONFIRMED_PICKS, else
+// bracket's. seedPick(seeds): seed 1's opponent (3 or 4) from a posted bracket series or CONFIRMED_PICKS, else
 // null. chooser(seeds, choose): `choose` with that pick in it.
 function postResults(series) {
   const byPair = new Map();
@@ -436,7 +439,9 @@ function postResults(series) {
     if (s) { used.set(pk, n + 1); taken.set(key, s); }
     return s;
   };
-  const met = (a, b) => a != null && b != null && (byPair.has(pairKey(a, b)) || CONFIRMED_PICKS.some(([x, y]) => pairKey(x, y) === pairKey(a, b)));
+  // A bracket series PlayOn has posted settles the pairing before it's played.
+  const posted = new Set(series.filter(isPostseason).map((s) => pairKey(s.home, s.away)));
+  const met = (a, b) => a != null && b != null && (posted.has(pairKey(a, b)) || CONFIRMED_PICKS.some(([x, y]) => pairKey(x, y) === pairKey(a, b)));
   const seedPick = ([s1, , s3, s4]) => (met(s1, s3) ? 3 : met(s1, s4) ? 4 : null);
   const winnerOf = (s) => (s.home_score > s.away_score ? s.home : s.away);
   const mark = (m) => {

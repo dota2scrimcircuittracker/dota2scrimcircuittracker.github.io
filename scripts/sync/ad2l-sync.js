@@ -173,8 +173,19 @@ function parseRoster(html) {
 // ---------- build ----------
 
 console.log(`PlayOn season ${SEASON_ID}, Dota league ${LEAGUE_ID}`);
-const season = parseSeason(await playon(`/seasons/${SEASON_ID}`, 6));
+const seasonHtml = await playon(`/seasons/${SEASON_ID}`, 6);
+const season = parseSeason(seasonHtml);
 console.log(`  ${season.title}: ${season.teams.size} teams, ${season.series.length} series`);
+// PlayOn posts a division's bracket as its own season, "<season name> Playoffs" in the site's
+// League menu (S48 Explorer: 670, its playoffs 678). Its series are this division's postseason.
+const seasonName = season.title.replace(/\s+-\s+Amateur Dota 2 League.*$/i, "").trim();
+const playoffsId = Number([...seasonHtml.matchAll(/href="\/seasons\/(\d+)"[^>]*>\s*([^<]+?)\s*<\/a>/g)].find((m) => decode(m[2]) === `${seasonName} Playoffs`)?.[1] ?? 0);
+if (playoffsId) {
+  const po = parseSeason(await playon(`/seasons/${playoffsId}`, 6));
+  const added = po.series.filter((id) => !season.series.includes(id));
+  season.series.push(...added);
+  console.log(`  ${seasonName} Playoffs (season ${playoffsId}): ${added.length} bracket series`);
+}
 
 const teams = [];
 for (const [id, name] of season.teams) {

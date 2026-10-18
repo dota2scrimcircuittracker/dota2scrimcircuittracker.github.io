@@ -83,12 +83,15 @@ test("8-team bracket follows S47's shape", () => {
   assert.equal(b.champion, 8);
 });
 
-test("smaller brackets: 7 teams give seed 5 a bye; 6 play 5 v 6; 4 all start upper", () => {
+test("smaller brackets: 7 teams give seed 5 a bye; 6 meet the upper losers; 4 all start upper", () => {
   const seven = bracket([7, 6, 5, 4, 3, 2, 1], rate([1, 2, 3, 4, 5, 6, 7]));
   assert.ok(seven.matches.find((x) => x.id === "l1").bye);
   const six = bracket([6, 5, 4, 3, 2, 1], rate([1, 2, 3, 4, 5, 6]));
-  const l1 = six.matches.find((x) => x.id === "l1");
-  assert.deepEqual([l1.a, l1.b], [2, 1]);
+  const [u1, u2, l1, l2] = ["u1", "u2", "l1", "l2"].map((id) => six.matches.find((x) => x.id === id));
+  // PlayOn's S48 Voyager bracket: seed 6 meets the loser of seed 1's match, seed 5 the other.
+  assert.deepEqual([l1.a, l1.b, l1.week], [u1.loser, 1, 2]);
+  assert.deepEqual([l2.a, l2.b, l2.week], [u2.loser, 2, 2]);
+  assert.equal(six.matches.at(-1).week, 6);
   const four = bracket([4, 3, 2, 1], rate([1, 2, 3, 4]));
   const fl1 = four.matches.find((x) => x.id === "l1");
   assert.deepEqual([fl1.a, fl1.b, fl1.week], [1, 2, 2]); // the two upper round 1 losers
@@ -292,4 +295,16 @@ test("survival points: per week still in, half a tier lower", () => {
   // Unplayed weeks don't score.
   const early = bracket(seeds, r, undefined, { blank: true });
   assert.equal(survivalPoints(pred, early).points, 0);
+});
+
+test("a posted bracket series settles seed 1's pick before it's played", async () => {
+  const { SEASON } = await import("../public/lib/divisions.js");
+  const teams = [1, 2, 3, 4].map((id) => ({ id, name: `T${id}`, players: [] }));
+  const before = SEASON.regularEnd - 86400, after = SEASON.regularEnd + 10 * 86400;
+  // Round robin, the higher id 2–0 every time: seeds 4, 3, 2, 1.
+  const series = [[4, 3], [4, 2], [4, 1], [3, 2], [3, 1], [2, 1]].map(([a, b], i) => ({ ...S(a, b, 2, 0), id: i, time: before }));
+  const pick = (extra) => playoffPicture(teams, [...series, ...extra], rate([1, 2, 3, 4])).divisions[0].bracket;
+  assert.deepEqual([pick([]).pick, pick([]).pickSet], [4, false]); // the model takes the weaker seed 4
+  const posted = pick([{ ...S(4, 2, null, null), id: 99, time: after }]); // PlayOn: seed 1 v seed 3, unplayed
+  assert.deepEqual([posted.pick, posted.pickSet], [3, true]);
 });
