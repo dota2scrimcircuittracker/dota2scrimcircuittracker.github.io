@@ -21,16 +21,16 @@ test("weeks run Monday to Monday UTC and lock at the first series", () => {
   assert.equal(openWeek(ws, series[2].time + 1), null);
 });
 
-test("only teams playing that week can be picked, and never yourself", () => {
+test("only teams playing that week can be picked, yourself included", () => {
   const w = fantasyWeeks(series)[1];
-  const pool = pickable(teams, w, 1001);
+  const pool = pickable(teams, w);
   assert.deepEqual([...new Set(pool.map((p) => p.team_id))], [10, 12]);
-  assert.ok(!pool.some((p) => p.account === 1001));
-  assert.equal(checkPicks([1002, 1003, 1201, 1202, 1203], pool, 1001), null);
-  assert.equal(checkPicks([1001, 1003, 1201, 1202, 1203], pool, 1001), "You can't pick yourself.");
-  assert.equal(checkPicks([1101, 1003, 1201, 1202, 1203], pool, 1001), "Every pick must be on a team that plays this week."); // bye
-  assert.equal(checkPicks([1002, 1002, 1201, 1202, 1203], pool, 1001), "Each player can fill one position only.");
-  assert.equal(checkPicks([1002, 1003, 1201, 1202], pool, 1001), "Pick a player for every position.");
+  assert.ok(pool.some((p) => p.account === 1001));
+  assert.equal(checkPicks([1002, 1003, 1201, 1202, 1203], pool), null);
+  assert.equal(checkPicks([1001, 1003, 1201, 1202, 1203], pool), null);
+  assert.equal(checkPicks([1101, 1003, 1201, 1202, 1203], pool), "Every pick must be on a team that plays this week."); // bye
+  assert.equal(checkPicks([1002, 1002, 1201, 1202, 1203], pool), "Each player can fill one position only.");
+  assert.equal(checkPicks([1002, 1003, 1201, 1202], pool), "Pick a player for every position.");
 });
 
 // Real games: the Champion file.

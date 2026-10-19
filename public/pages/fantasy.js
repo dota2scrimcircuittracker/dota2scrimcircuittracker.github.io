@@ -74,7 +74,7 @@ function scoringDialog(shared) {
       <p>Flat points added after the multipliers, from ${wl} to +${wh}: win rate and win speed. The same record is worth the same to every player, whatever their stats.</p>
       <h4>4. Your week</h4>
       <p>Each pick's week is their best ${GAMES_COUNTED} game scores added together. In a Bo3 that's the best two of three; a bad game costs nothing. Your captain's week score counts double.</p>
-      <p>${shared ? "This first test week combines Challenger, Champion, and Heroic/Aegis tiebreakers." : "After the test week, picks are limited to this division's playoff bracket."} You can't pick yourself. Picks lock at the first series start.</p>
+      <p>${shared ? "This first test week combines Challenger, Champion, and Heroic/Aegis tiebreakers." : "After the test week, picks are limited to this division's playoff bracket."} You can pick yourself. Picks lock at the first series start.</p>
     </div></dialog>`;
 }
 function wireScoringDialog(host) {
@@ -142,7 +142,7 @@ export async function mountFantasy(host, viewSrc, scope = null) {
   let picker, picks = [], activeSlot = 1, captain = current?.captain ?? null;
   if (!open) picker = `<div class="panel empty"><strong>No week open</strong>${shared ? "The test week is locked. View saved lineups and scores below." : "PlayOn hasn't posted the next playoff series yet."}</div>`;
   else {
-    const pool = pickable(d.teams, open, me);
+    const pool = pickable(d.teams, open);
     const chosen = current?.picks ?? [];
     const byAcc = new Map(pool.map((p) => [p.account, p]));
     const slotDeck = (slot) => {
@@ -342,7 +342,7 @@ export async function mountFantasy(host, viewSrc, scope = null) {
   document.getElementById("ft-save")?.addEventListener("click", async () => {
     const msg = document.getElementById("ft-msg");
     const name = document.getElementById("ft-name").value.trim();
-    const err = checkPicks(picks, pickable(d.teams, open, me), me) ?? (Number.isInteger(captain)&&picks.includes(captain)?null:"Choose a captain for double points.") ?? (name ? null : "Type a name for the board.");
+    const err = checkPicks(picks, pickable(d.teams, open)) ?? (Number.isInteger(captain)&&picks.includes(captain)?null:"Choose a captain for double points.") ?? (name ? null : "Type a name for the board.");
     if (err) { msg.textContent = err; return; }
     if (nowSec() >= open.lock) { msg.textContent = "Picks are locked for this week."; return; }
     msg.textContent = "Saving…";

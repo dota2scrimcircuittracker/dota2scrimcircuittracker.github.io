@@ -5,8 +5,8 @@ import { tierModels, gamePointsAt, LIVE } from "./tiers.js";
 // league's rostered players, one per position (slot 1–5), from teams with a series that week;
 // picks lock at the week's first series start. A pick scores the tier model's game score (no bell
 // curve) with every game read as the slot's position, and only their best two games of the week
-// count, added together (a Bo3: the best two of three). You can't pick yourself; your teammates
-// are fine. The leaderboard is the playoffs so far.
+// count, added together (a Bo3: the best two of three). You can pick yourself and your teammates.
+// The leaderboard is the playoffs so far.
 // The test week (TEST_WEEK): week 8's tiebreakers, one Fantasy across every division that plays
 // one, stored under the league key "all".
 //
@@ -74,19 +74,18 @@ export function testWeek(divisions) {
 // hasn't posted one.
 export const openWeek = (weeks, now) => weeks.find((w) => w.lock > now) ?? null;
 
-// Who can be picked in `week`: every rostered player of a team playing that week, except `me`
-// (the picker's account id). [{ account, name, team, team_id }]
-export function pickable(teams, week, me = null) {
+// Who can be picked in `week`: every rostered player of a team playing that week, the picker
+// included. [{ account, name, team, team_id }]
+export function pickable(teams, week) {
   return (teams ?? []).filter((t) => week.teams.has(t.id)).flatMap((t) => t.players
-    .filter((p) => p.account_id && p.account_id !== me)
+    .filter((p) => p.account_id)
     .map((p) => ({ account: p.account_id, name: p.name, team: t.name, team_id: t.id })));
 }
 
 // Why `picks` (five account ids, slot 1 first) can't be saved, or null if they can.
-export function checkPicks(picks, pool, me = null) {
+export function checkPicks(picks, pool) {
   if (!Array.isArray(picks) || picks.length !== SLOTS.length || picks.some((a) => !Number.isInteger(a))) return "Pick a player for every position.";
   if (new Set(picks).size !== picks.length) return "Each player can fill one position only.";
-  if (me != null && picks.includes(me)) return "You can't pick yourself.";
   const ok = new Set(pool.map((p) => p.account));
   if (picks.some((a) => !ok.has(a))) return "Every pick must be on a team that plays this week.";
   return null;

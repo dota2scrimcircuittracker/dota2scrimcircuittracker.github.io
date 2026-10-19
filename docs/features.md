@@ -674,7 +674,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   a Firebase sign-in for `steam:<account id>`. It runs on its own Firebase session, so the
   anonymous one that owns this browser's uploads is untouched. Only the Steam ID is shared.
 - **Each week** — five picks, one per position (Pos 1 Carry … Pos 5 Hard support), from rostered
-  players of teams with a series that week (no byes, no stand-ins); never yourself, teammates
+  players of teams with a series that week (no byes, no stand-ins); yourself and teammates
   fine. "Your picks", a dark display case, stands each pick's card face up on a lit
   pedestal engraved with its position (click the card to turn it over; the pedestal is the tab
   for that position; a back under 200px wide uses a compact layout; on a phone the case scrolls
