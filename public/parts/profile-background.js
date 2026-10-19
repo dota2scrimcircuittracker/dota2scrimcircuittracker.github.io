@@ -119,10 +119,13 @@ function watchAutoText(head,bg) {
   const mo=new MutationObserver(queue);mo.observe(head,{childList:true,subtree:true,characterData:true});
   head.addEventListener('animationend',queue);head.addEventListener('transitionend',queue);document.fonts?.ready.then(queue);
   const later=setTimeout(queue,800);
-  addEventListener('resize',queue);if(bg.place==='page')addEventListener('scroll',queue,{passive:true});
+  // Scrolling (and a phone's address bar coming and going) re-samples once it settles, not every
+  // 60ms on the way: reading the image back on a canvas is heavy on phones.
+  let settle=0;const settled=()=>{clearTimeout(settle);settle=setTimeout(queue,150);};
+  addEventListener('resize',settled);if(bg.place==='page')addEventListener('scroll',settled,{passive:true});
   return ()=>{
-    clearTimeout(frame);clearTimeout(later);ro.disconnect();mo.disconnect();
-    head.removeEventListener('animationend',queue);head.removeEventListener('transitionend',queue);removeEventListener('resize',queue);removeEventListener('scroll',queue);
+    clearTimeout(frame);clearTimeout(later);clearTimeout(settle);ro.disconnect();mo.disconnect();
+    head.removeEventListener('animationend',queue);head.removeEventListener('transitionend',queue);removeEventListener('resize',settled);removeEventListener('scroll',settled);
     head.querySelectorAll('.pbg-ink-dark').forEach(el=>el.classList.remove('pbg-ink-dark'));
   };
 }

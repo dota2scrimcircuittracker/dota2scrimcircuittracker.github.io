@@ -289,7 +289,7 @@ export function tierSection(src, matches, model) {
           <div class="tier-card-actions">
             <button type="button" class="chip-caret" aria-expanded="${open}" aria-label="${open ? "Close breakdown" : "Breakdown"} for ${esc(p.name)}">${open ? "×" : "&#8964;"}</button>
           </div>
-        </div>${open ? `<div class="tier-open-head"><b>${playerLink(src, p)}</b>${p.team ? `<span>${teamLink(src, p.team)}</span>` : ""}<small>Pos ${p.pos} &middot; ${p.wins}&ndash;${p.games - p.wins}</small></div>${tierBreakdown(src, p)}` : ""}
+        </div>${open ? "" : `<div class="tier-card-name">${playerLink(src, p)}</div>`}${open ? `<div class="tier-open-head"><b>${playerLink(src, p)}</b>${p.team ? `<span>${teamLink(src, p.team)}</span>` : ""}<small>Pos ${p.pos} &middot; ${p.wins}&ndash;${p.games - p.wins}</small></div>${tierBreakdown(src, p)}` : ""}
       </div>`;
     };
     const bands = list.tiers.map(({ tier, players }) => {

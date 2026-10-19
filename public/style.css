@@ -2719,7 +2719,9 @@ button.ga-go:hover:not(:disabled) { background: var(--accent); color: var(--on-a
 .pbg-preview .pbg-sig .card-autograph { pointer-events: auto; cursor: move; }
 :is(.pbg-layer, .pbg-editor) [data-style="plain"] .ft-art img { filter: none; }
 .pbg-layer::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(var(--ink-rgb), min(1, calc(var(--pbg-dim) + .4))) 0%, rgba(var(--ink-rgb), var(--pbg-dim)) 55%, rgba(var(--ink-rgb), calc(var(--pbg-dim) * .6)) 100%); }
-.pbg-layer.pbg-fixed { position: fixed; z-index: -1; }
+/* Sized to the large viewport so a phone's address bar showing or hiding mid-scroll doesn't
+   resize (and re-crop) the whole background; its own layer so scrolling doesn't repaint it. */
+.pbg-layer.pbg-fixed { position: fixed; z-index: -1; bottom: auto; height: 100vh; height: 100lvh; transform: translateZ(0); }
 /* The head's text in the colour picked in the background editor (--pbg-text), with a shadow so it
    reads over the art. Unpicked tabs stay a step fainter than the picked one. */
 .pp-head.pbg-text :is(.kicker, .kicker a, .crumbs li::before, .crumbs [aria-current], .h1-name, .h1-name *, .pp-sub, .pp-sub *, .pp-follows, .pp-follows *, .pp-tabs button) { color: var(--pbg-text); text-shadow: 0 1px 2px rgb(0 0 0 / .7), 0 0 10px rgb(0 0 0 / .45); }
@@ -4647,7 +4649,6 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 /* Both faces: a frame (the border, a brushed-metal sheen over the tier colour) around an inner panel. */
 .ft-card .ft-face {
   all: unset; box-sizing: border-box; position: absolute; inset: 0; display: block; overflow: hidden; cursor: pointer;
-  backface-visibility: hidden; -webkit-backface-visibility: hidden;
   border: var(--frame) solid transparent; border-radius: var(--r);
   background:
     linear-gradient(#0d0c0b, #0d0c0b) padding-box,
@@ -4661,9 +4662,10 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .ft-card .ft-face:focus-visible { outline: 2px solid var(--bone); outline-offset: 3px; }
 .ft-card .ft-front:disabled { cursor: default; }
 .ft-card .ft-back { transform: rotateY(180deg); } /* after .ft-face's all: unset */
-/* Some browsers drop backface-visibility once a face holds blended or filtered layers (the
-   cosmetics), showing the turned-away face mirrored. Hide it outright at the turn's midpoint,
-   about .1s into the .7s curve. */
+/* The turned-away face is hidden outright at the turn's midpoint, about .1s into the .7s curve.
+   No backface-visibility: some browsers drop it once a face holds blended or filtered layers
+   (showing the turned-away face mirrored), and Chrome on Android culls whole faces at random
+   while scrolling zoomed cards (fitDesignCards) when it's set. */
 .ft-card .ft-face { transition: box-shadow .3s, visibility 0s .1s; }
 .ft-card.flipped .ft-front, .ft-card:not(.flipped) .ft-back { visibility: hidden; }
 /* The inner keyline of the art window. */
@@ -4949,6 +4951,15 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .tier-card-main .ft-card:hover .ft-tilt { --lift: 0px; }
 .tier-card-main .ft-front > .ft-tier { left: 4px; top: 0; width: 17px; font-size: 11px; padding-bottom: 2px; }
 .tier-card-main .ft-tier small { font-size: 7px; }
+/* The tier list always shows the tier and score, even when the owner's layout hides it. */
+.tier-card-main .ft-front > .ft-tier[hidden] { display: flex; }
+/* The Dota Plus badge scales with the small card and hangs under the small tier shield. */
+.tier-card-main .ft-plus:not(.ft-placed) { top: 24px; left: 12.5px; }
+.tier-card-main .ft-card .ft-plus i.plus { font-size: clamp(14px, 24cqi, 24px); }
+/* Each card's player, by name, under the card (owners can rename or hide the card's own name). */
+.tier-card-name { margin-top: 4px; font: 700 11px/1.2 var(--body); text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tier-card-name a { color: inherit; }
+.tier-card-name a:hover { text-decoration: underline; }
 .tier-card-main .ft-pos, .tier-card-main .ft-sig, .tier-card-main .ft-plate::before { display: none; }
 .tier-card-main .ft-plate { left: 0; right: 0; bottom: 3px; padding: 0 4px 0; gap: 2px; }
 .tier-card-main .ft-name { font: 700 clamp(8px, 10cqi, 11px)/1.05 var(--display); text-transform: uppercase; letter-spacing: 0; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 3px #000; }
