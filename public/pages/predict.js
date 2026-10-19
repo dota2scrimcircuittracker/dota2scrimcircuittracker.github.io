@@ -17,41 +17,9 @@ import { pageTabs, PREDICT_TABS } from "../lib/pagetabs.js";
 
 // ---------- Predictions (AD2L) ----------
 
-const NAME_KEY = "predict-name";
-const storedName = () => { try { return localStorage.getItem(NAME_KEY) ?? ""; } catch { return ""; } };
-const storeName = (n) => { try { localStorage.setItem(NAME_KEY, n); } catch { /* private window: name just isn't remembered */ } };
 const OUTCOMES = ["home", "tie", "away"];
-// "Picking as <name>" bar shared by both leagues' prediction pages. Signed in with Steam, the name
-// is the Steam account's (roster name, else Steam persona) and there's nothing to type.
-const nameBarHtml = (name, steam = false) => steam ? `
-    <div class="pred-name"><div class="pred-name-show">Picking as <b>${esc(name)}</b> <span class="muted">(Steam)</span></div></div>` : `
-    <div class="pred-name">
-      <div class="pred-name-show"${name ? "" : " hidden"}>Picking as <b>${esc(name)}</b> <button type="button" class="linkish" id="pred-name-edit">Change</button></div>
-      <div class="pred-name-form"${name ? " hidden" : ""}>
-        <label>Your name <input id="pred-name" maxlength="24" value="${esc(name)}" placeholder="Type your name" autocomplete="nickname"></label>
-        <button class="primary" id="pred-name-save" type="button">Save</button>
-        <button class="linkish" id="pred-steam" type="button">or sign in with Steam</button>
-      </div>
-    </div>`;
-function wireNameBar(rerender) {
-  const input = document.getElementById("pred-name");
-  if (!input) return null; // signed in with Steam: no name to type
-  document.getElementById("pred-steam").onclick = startSteamSignIn;
-  document.getElementById("pred-name-edit").onclick = () => {
-    app.querySelector(".pred-name-show").hidden = true;
-    app.querySelector(".pred-name-form").hidden = false;
-    input.focus();
-  };
-  document.getElementById("pred-name-save").onclick = () => {
-    const n = input.value.trim().slice(0, 24);
-    if (!n) { input.focus(); return; }
-    storeName(n);
-    rerender();
-  };
-  input.onkeydown = (e) => { if (e.key === "Enter") document.getElementById("pred-name-save").click(); };
-  return input;
-}
-// The signed-in Steam account's name for the boards, or null when signed out.
+// Picks need Steam sign-in: the signed-in account's name for the boards (roster name, else Steam
+// persona), or null when signed out.
 async function steamPickerName(teams) {
   const account = await steamAccount().catch(() => null);
   if (account == null) return null;
@@ -79,8 +47,7 @@ export async function renderPredict(src) {
     }
   } catch (e) { console.warn(e); }
   const uids = await myUids();
-  const steamNm = await steamPickerName(d.teams);
-  const name = steamNm ?? storedName();
+  const name = (await steamPickerName(d.teams)) ?? "";
   const teamName = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   // Week 8 tiebreakers the admins announced before PlayOn posts them (lib/divisions.js
   // ANNOUNCED) join the slate under their stand-in id (`pid`). Once the sync brings PlayOn's
@@ -423,14 +390,12 @@ export async function renderPredict(src) {
     ["odds", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
   ]), { store: "predictTab", label: "Fantasy sections" });
   app.innerHTML = `${pageHead(kicker, "Fantasy", "", tabs.bar)}
-    ${nameBarHtml(name, !!steamNm)}
     ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
     ${needsFix ? `<div class="notice warn"><b>Fix your bracket</b>Your submitted bracket now follows PlayOn's layout, so ${myFinal.open === 1 ? "1 match has a new pairing that needs" : `${myFinal.open} matches have new pairings that need`} your pick. Everything else you picked stays as it is. Make the new ${myFinal.open === 1 ? "pick" : "picks"}${closes ? ` by ${esc(new Date(closes * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}` : ""}. <button type="button" class="linkish" data-tobracket>Fix it on the Bracket tab →</button></div>` : ""}
     <div id="pred-msg"></div>
     ${tabs.panels}`;
   wirePlayerTabs();
 
-  const input = wireNameBar(() => renderPredict(src));
 
   // The draft model (parts/cmdraft.js): its pre-draft chance on every card once the division's
   // draft file loads, and its own draft when a card's "Draft model's draft" is opened. Separate
@@ -475,9 +440,8 @@ export async function renderPredict(src) {
   });
   const msg = document.getElementById("pred-msg");
   app.querySelectorAll(".pred-card").forEach((c) => c.querySelectorAll("[data-pick]").forEach((b) => b.onclick = async () => {
-    const n = steamNm || storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
-    if (!n) { msg.innerHTML = `<div class="notice warn">Type your name first, so your picks count toward the standings.</div>`; input.focus(); return; }
-    if (!steamNm) storeName(n);
+    if (!name) { startSteamSignIn(); return; }
+    const n = name;
     c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = true));
     try {
       await savePrediction(Number(c.dataset.sid), b.dataset.pick, n, src.key);
@@ -496,6 +460,7 @@ export async function renderPredict(src) {
   const myCalls = new Map(full.series.filter((s) => !isPlayed(s)).map((s) => [s.id, mine(s.id)?.pick]).filter(([, k]) => k));
   mountPlayoffs(poBracket, src, full, fullRatings, myCalls, { share: { name, saved: savedBrackets.get(myKey), save: (picks) => saveBracket(src.key, picks, name) }, locked: bracketLocked ? ps.lock : null,
     final: { closes, mine: myFinal, submit: (picks) => submitPlayoffBracket(src.key, picks, name), fix: (picks) => submitPlayoffBracketFix(src.key, picks) } });
+  poBracket.addEventListener("click", (e) => { if (e.target.closest("[data-steam]")) startSteamSignIn(); });
 
   // Leaderboard: click a name for the bracket and final table their calls lead to. Fresh host
   // each time, since mountPlayoffs listens for clicks on its element.
@@ -561,12 +526,8 @@ export async function renderPredict(src) {
   mountOdds();
   // Fantasy (pages/fantasy.js) loads when its tab is first shown.
   const ftHost = document.getElementById("ft-host"), ftPanel = ftHost.closest("[role=tabpanel]");
-  const nameBar = app.querySelector(".pred-name");
   const fxPanel = document.getElementById("fx-host").closest("[role=tabpanel]");
-  // Fantasy has its own name and sign-in, and the table needs none.
-  const syncNameBar = () => { nameBar.style.display = ftPanel.hidden && fxPanel.hidden ? "" : "none"; };
   const mountFt = () => {
-    syncNameBar();
     if (ftPanel.hidden || ftHost.dataset.done) return;
     ftHost.dataset.done = "1";
     import("./fantasy.js").then((m) => m.mountFantasy(ftHost, src)).catch((e) => { ftHost.innerHTML = errorBox(e); });
@@ -575,7 +536,6 @@ export async function renderPredict(src) {
   mountFt();
   const fxHost = document.getElementById("fx-host");
   const mountFx = () => {
-    syncNameBar();
     if (fxPanel.hidden || fxHost.dataset.done) return;
     fxHost.dataset.done = "1";
     import("./fantasy.js").then((m) => m.mountFantasyTable(fxHost, src)).catch((e) => { fxHost.innerHTML = errorBox(e); });
@@ -616,8 +576,7 @@ export async function renderScrimPredict() {
   try { fixtures = await listFixtures(); } catch (e) { console.warn(e); fixtures = null; }
   try { preds = (await listPredictions()).filter((p) => p.league === "scrim"); } catch (e) { console.warn(e); preds = null; }
   const uid = await currentUid();
-  const steamNm = await steamPickerName([]);
-  const name = steamNm ?? storedName();
+  const name = (await steamPickerName([])) ?? "";
   const myKey = nameKey(name);
   const now = Date.now();
   const settled = settle((fixtures ?? []).filter((f) => f.start), matches);
@@ -699,7 +658,6 @@ export async function renderScrimPredict() {
   const start = new Date(now + 864e5);
   start.setMinutes(0, 0, 0);
   app.innerHTML = `${pageHead(kicker, "Predictions")}
-    ${nameBarHtml(name, !!steamNm)}
     ${fixtures && preds ? "" : `<div class="notice err">Couldn't load the ${fixtures ? "" : "schedule and "}predictions from the database, so ${fixtures ? "picks and the leaderboard are" : "scheduled scrims, picks and the leaderboard are"} unavailable right now.</div>`}
     <div id="pred-msg"></div>
     <details class="fx-add" ${upcoming.length ? "" : "open"}>
@@ -726,7 +684,6 @@ export async function renderScrimPredict() {
       <p>A scrim is decided once all its games are in (Bo1, Bo2) or a team has two wins (Bo3). Until then it stays under Upcoming with the score so far. If the teams played under different names in game, the upload page offers the scheduled names in one click.</p>
     </details>`;
 
-  const input = wireNameBar(renderScrimPredict);
   const msg = document.getElementById("pred-msg");
   const say = (kind, text) => { msg.innerHTML = `<div class="notice ${kind}">${esc(text)}</div>`; msg.scrollIntoView({ block: "nearest" }); };
 
@@ -754,9 +711,8 @@ export async function renderScrimPredict() {
   app.querySelectorAll(".pred-card[data-fid]").forEach((c) => {
     const f = settled.find((x) => x.id === c.dataset.fid);
     c.querySelectorAll("[data-pick]").forEach((b) => b.onclick = async () => {
-      const n = steamNm || storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
-      if (!n) { say("warn", "Type your name first, so your picks count toward the standings."); input.focus(); return; }
-      if (!steamNm) storeName(n);
+      if (!name) { startSteamSignIn(); return; }
+      const n = name;
       c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = true));
       try { await savePrediction(f.id, b.dataset.pick, n, "scrim"); renderScrimPredict(); }
       catch (e) { say("err", `Couldn't save your pick: ${e.message}`); c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = false)); }
