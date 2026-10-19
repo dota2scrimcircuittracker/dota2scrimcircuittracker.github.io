@@ -199,7 +199,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
           ? `<li><span class="po-bo">${bo(x.bestOf)}</span> ${link(x.a)} <span class="muted">v</span> ${link(x.b)} → <b>${esc(name[x.winner])} ${sc(x)}</b> <span class="po-who played">played</span></li>`
           : live
           ? `<li class="po-tbm"><div class="po-tbm-row"><span class="po-bo">${bo(x.bestOf)}</span>${pickBtn(x, x.a)}<span class="muted">v</span>${pickBtn(x, x.b)}${whose(x)}</div>
-            <div class="po-tbm-meta">${x.note ? `${esc(x.note)} · ` : ""}model: ${esc(name[x.model])} ${pct(x.model === x.winner ? x.p : 1 - x.p)}${x.bestOf > 1 ? ` · ${scoreOdds(x)}` : ""}</div></li>`
+            ${x.note ? `<div class="po-tbm-meta">${esc(x.note)}</div>` : ""}</li>`
           : `<li><span class="po-bo">${bo(x.bestOf)}</span> ${link(x.a)} <span class="muted">v</span> ${link(x.b)}${x.note ? ` <span class="muted">(${esc(x.note)})</span>` : ""}
             → <b>${esc(name[x.winner])} ${sc(x)}</b> <span class="muted">${pct(x.p)} to win</span>
             ${x.bestOf > 1 ? `<span class="po-odds">${scoreOdds(x)}</span>` : ""}</li>`;
@@ -263,7 +263,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const box = (m) => { const why = maybeWhy(m); return `<div class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}${why ? " is-maybe" : ""}">
           <div class="po-mh">${esc(m.label)} · ${m.side === "final" ? "Bo3 or Bo5" : bo(m.bestOf)}${!m.bye && (live || frozen || m.real) ? tag(m) : ""}</div>
           ${slot(m, m.a)}${slot(m, m.b)}
-          ${m.bye || m.pending ? "" : finPicks ? finLine(m) : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : fin === "closed" ? `<div class="po-mp">Yet to play</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? `<div class="po-mp">model: ${esc(name[m.model])} ${pct(m.mine && m.winner !== m.model ? 1 - m.p : m.p)}</div>`
+          ${m.bye || m.pending ? "" : finPicks ? finLine(m) : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : fin === "closed" ? `<div class="po-mp">Yet to play</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? ""
             : `<div class="po-mp">${esc(name[m.winner])} ${sc(m)} · ${pct(m.p)} to win${m.side === "final" ? " (as Bo5)" : ""}</div>
           <div class="po-odds">${scoreOdds(m)}</div>`}
           ${why ? `<div class="po-maybe">${why}</div>` : ""}
