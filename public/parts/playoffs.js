@@ -6,10 +6,10 @@
 //    - Model's picks: the same with every call the model's.
 //  - Possibilities: every way the remaining series (and the tiebreakers they set up) can go,
 //    as each team's chance of each place; click a cell or team for what it takes.
-import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD, HEROIC_VERSIONS, HEROIC_DEFAULT, bracketsOf, seedsSettled, playoffScore, ROUND_POINTS, withFix } from "../lib/playoffs.js";
+import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD, HEROIC_DEFAULT, bracketsOf, seedsSettled, playoffScore, ROUND_POINTS, withFix } from "../lib/playoffs.js";
 import { info } from "../lib/glossary.js";
 import { esc, pct, teamLink, DIVISIONS } from "../core.js";
-import { groupStage, REMOVED } from "../lib/divisions.js";
+import { groupStage, REMOVED, SEASON } from "../lib/divisions.js";
 import { ordinal as ord } from "../lib/ranks.js";
 
 const RULES = "https://dota.playon.gg/rules";
@@ -20,7 +20,46 @@ const sc = (m) => `${m.score[0]}–${m.score[1]}`;
 const scoreOdds = (m) => m.scores.map((s) => `${s.a}–${s.b} <span class="muted">${pct(s.p)}</span>`).join(" · ");
 const MODES = [["mine", "Your picks"], ["model", "Model's picks"]];
 const MODE_KEY = "po-mode";
-const VERSION_KEY = "po-heroic";
+const BR_KEY = "po-split-br";
+// A bracket drawn as PlayOn draws it: a column per playoff week, upper above lower, each match
+// level with the middle of the matches whose winners play in it (lib/playoffs.js `from`), joined
+// to them by lines. Rows are equal, so a match's place is exact: round 1 takes two rows, a match
+// spans the rows of its feeders, and the grand final spans both sides. box(m): a match's HTML;
+// champ: what goes under the grand final.
+const NIGHT = (w) => SEASON.playoffNights?.[w - 1] ? new Date(`${SEASON.playoffNights[w - 1]}T12:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }) : "";
+function grid(b, box, champ) {
+  const weeks = [...new Set(b.matches.map((m) => m.week))].sort((x, y) => x - y);
+  const col = (m) => weeks.indexOf(m.week) + 2;
+  const span = new Map(), size = {};
+  for (const side of ["upper", "lower"]) {
+    let next = 0;
+    for (const m of b.matches.filter((x) => x.side === side)) {
+      const fs = m.from.map((id) => span.get(id)).filter(Boolean);
+      span.set(m.id, fs.length ? [Math.min(...fs.map((f) => f[0])), Math.max(...fs.map((f) => f[1]))] : [next, next += 2]);
+    }
+    size[side] = next;
+  }
+  // Grid rows: 1 the week heads, then upper, one spare row, lower.
+  const top = { upper: 2, lower: 3 + size.upper };
+  const rowsOf = (m) => (m.side === "final" ? [2, top.lower + size.lower] : span.get(m.id).map((r) => r + top[m.side]));
+  const feeds = new Set(b.matches.flatMap((m) => m.from));
+  const byId = new Map(b.matches.map((m) => [m.id, m]));
+  const cell = (m) => {
+    const [r0, r1] = rowsOf(m), fs = m.from.map((id) => byId.get(id));
+    const start = fs.length ? Math.max(...fs.map(col)) + 1 : col(m);
+    // The rail joining the feeders' lines, as % of this cell's height from the top and bottom.
+    const ys = [50, ...fs.map((f) => { const [a, z] = rowsOf(f); return ((a + z) / 2 - r0) / (r1 - r0) * 100; })];
+    const rail = fs.length ? ` style="--t:${Math.min(...ys).toFixed(2)}%;--b:${(100 - Math.max(...ys)).toFixed(2)}%"` : "";
+    const inner = m.side === "final" ? `<div class="po-gfw">${box(m)}${champ}</div>` : box(m);
+    return `<div class="po-cell${fs.length ? " has-in" : ""}${feeds.has(m.id) ? " has-out" : ""}" style="grid-column:${start}/${col(m) + 1};grid-row:${r0}/${r1}"><span class="po-in"${rail}></span>${inner}</div>`;
+  };
+  return `<div class="po-br-wrap"><div class="po-br" style="--cols:${weeks.length};--rows:${size.upper + 1 + size.lower};--up:${size.upper};--low:${size.lower}">
+    ${weeks.map((w, i) => `<div class="po-wk" style="grid-column:${i + 2}">Playoff week ${w}${NIGHT(w) ? ` <span>${NIGHT(w)}</span>` : ""}</div>`).join("")}
+    <div class="po-lbl up" style="grid-row:${top.upper}/${top.upper + size.upper}">Upper</div><div class="po-lbl low" style="grid-row:${top.lower}/${top.lower + size.lower}">Lower</div>
+    ${b.matches.map(cell).join("")}
+  </div></div>`;
+}
+
 const load = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private window: not remembered */ } };
 
@@ -49,8 +88,10 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   const state = { mode: load(MODE_KEY, "mine"), picks: watch ? { ...(watch.picks ?? {}) } : locked && share?.saved ? { ...share.saved } : load(pickKey, {}), weight: "equal", sel: null };
   if (!MODES.some(([id]) => id === state.mode)) state.mode = "mine";
   if (watch) state.mode = watch.model ? "model" : "mine";
-  // Heroic/Aegis: which reading of AD2L's week 8 (lib/playoffs.js HEROIC_VERSIONS).
-  state.version = split && HEROIC_VERSIONS.some(([id]) => id === load(VERSION_KEY, "")) ? load(VERSION_KEY, "") : HEROIC_DEFAULT;
+  // Heroic/Aegis: the week 8 reading PlayOn's posted brackets went with (lib/playoffs.js
+  // HEROIC_VERSIONS), and which of the two brackets is on screen.
+  state.version = HEROIC_DEFAULT;
+  state.br = load(BR_KEY, "Aegis") === "Heroic" ? "Heroic" : "Aegis";
   const possCache = {};
   // The submitted-bracket view, once the seeds are settled (see `final` above). A draft is kept
   // in this browser until it's submitted, starting from any bracket picks made before.
@@ -64,10 +105,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   if (ready && !watch) state.fpicks = fixable() ? { ...load(fixKey, {}), ...final.mine.picks } : load(finalKey, null) ?? { ...load(pickKey, {}) };
   const sentKey = (k) => phase() === "fix" && Object.hasOwn(final.mine.picks, k);
   const phase = () => (!ready ? null : watch ? "watch" : final.mine ? (fixable() ? "fix" : "sent") : beforeClose() ? "open" : "closed");
-  const versionBar = () => split ? `<div class="pd-toggle po-versions" role="group" aria-label="Heroic week 8"><span class="pd-lbl">Heroic week 8</span>${HEROIC_VERSIONS.map(([id, label]) => `<button type="button" data-version="${id}" aria-pressed="${id === state.version}">${label}</button>`).join("")}</div>
-    <p class="table-note keep">${state.version === "announced"
-      ? "AD2L's week 8 announcement has no game for Heroic's upper bracket in Division A, so Abz Jr, Josh A. Chaos and cheerful (all on 7 wins) are ordered by SoS."
-      : "The rules play off a tie across Heroic's upper/lower line, so this adds a Bo3 that AD2L's week 8 announcement didn't list."}</p>` : "";
+  const brBar = () => `<div class="pd-toggle po-brs" role="group" aria-label="Bracket">${["Aegis", "Heroic"].map((n) => `<button type="button" data-br="${n}" aria-pressed="${n === state.br}">${n}</button>`).join("")}</div>`;
 
   // Your picks go to the Leaderboard as you click (a short pause after the last click), so
   // others can open your bracket.
@@ -92,8 +130,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     if (view === "odds") { el.innerHTML = possHtml(); return; }
     if (view === "team") { el.innerHTML = teamHtml(); return; }
     const bar = `<div class="pd-toggle po-modes" role="group" aria-label="Whose bracket">${MODES.map(([id, label]) => `<button type="button" data-pomode="${id}" aria-pressed="${id === state.mode}">${label}</button>`).join("")}</div>`;
-    if (ready && (watch || state.mode === "mine")) { el.innerHTML = `${watch ? "" : bar}${versionBar()}${pictureHtml(true, phase())}`; return; }
-    el.innerHTML = status ? pictureHtml(false) : `${watch ? "" : bar}${versionBar()}${pictureHtml(state.mode === "mine")}`;
+    if (ready && (watch || state.mode === "mine")) { el.innerHTML = `${watch ? "" : bar}${pictureHtml(true, phase())}`; return; }
+    el.innerHTML = status ? pictureHtml(false) : `${watch ? "" : bar}${pictureHtml(state.mode === "mine")}`;
   };
 
   // ---------- your picks / the model's picks ----------
@@ -222,7 +260,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const maybeWhy = (m) => !status || m.real || m.bye || m.pending || progressOf(m) ? ""
         : !b.fixed && pickOpen && (m.id === "u1" || m.id === "u2") ? "Could switch: seed 1 picks seed 3 or 4"
         : b.fixed && !b.pickSet && m.week === 1 ? "Could switch: cross-division matchups not announced" : "";
-      const box = (m) => { const why = maybeWhy(m); return `<div data-wk="${m.week}" class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}${why ? " is-maybe" : ""}">
+      const box = (m) => { const why = maybeWhy(m); return `<div class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}${why ? " is-maybe" : ""}">
           <div class="po-mh">${esc(m.label)} · ${m.side === "final" ? "Bo3 or Bo5" : bo(m.bestOf)}${!m.bye && (live || frozen || m.real) ? tag(m) : ""}</div>
           ${slot(m, m.a)}${slot(m, m.b)}
           ${m.bye || m.pending ? "" : finPicks ? finLine(m) : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : fin === "closed" ? `<div class="po-mp">Yet to play</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? `<div class="po-mp">model: ${esc(name[m.model])} ${pct(m.mine && m.winner !== m.model ? 1 - m.p : m.p)}</div>`
@@ -230,9 +268,6 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
           <div class="po-odds">${scoreOdds(m)}</div>`}
           ${why ? `<div class="po-maybe">${why}</div>` : ""}
         </div>`; };
-      const weeks = Math.max(...b.matches.map((m) => m.week));
-      const col = (side, w) => b.matches.filter((m) => m.side === side && m.week === w).map(box).join("");
-      const gf = b.matches.find((m) => m.side === "final");
       const pickChoice = live && fin !== "fix" && !b.fixed && !b.pickSet ? `<div class="po-seedpick" role="group" aria-label="Seed 1 plays">
           <span class="pd-lbl">Seed 1 picks</span>${[3, 4].map((k) => `<button type="button" data-k="pick" data-w="${k}" aria-pressed="${b.pick === k}">Seed ${k}</button>`).join("")}
           <span class="muted">${state.picks.pick ? "your pick" : `model's pick: the weaker one, seed ${b.modelPick}`}</span></div>` : "";
@@ -240,17 +275,12 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       return `${title ? `<h4 class="po-h">${esc(title)}</h4>` : ""}
         ${status || (fin && !live) ? "" : live ? pickChoice : b.fixed ? "" : `<p class="table-note keep">${b.pickSet ? `Seed 1 picked seed ${b.pick} as its first opponent.` : `Seed 1 picks seed 3 or 4 as its first opponent. The model takes the weaker one (${b.pick === 3 ? "seed 3" : "seed 4"}).`}</p>`}
         ${shape ? `<p class="table-note keep">${shape}</p>` : ""}
-        <div class="po-br-wrap"><div class="po-br" style="--weeks:${weeks}">
-          ${Array.from({ length: weeks }, (_, i) => `<div class="po-wk" style="grid-column:${i + 2}">Playoff week ${i + 1}</div>`).join("")}
-          <div class="po-lbl up">Upper</div><div class="po-lbl low">Lower</div>
-          ${Array.from({ length: weeks - 1 }, (_, i) => `<div class="po-col up" style="grid-column:${i + 2}">${col("upper", i + 1)}</div><div class="po-col low" style="grid-column:${i + 2}">${col("lower", i + 1)}</div>`).join("")}
-          <div class="po-col gf" style="grid-column:${weeks + 1}">${box(gf)}<div class="po-champ"><span>${live || frozen ? "Your champion" : watch && mine ? "Their champion" : "Champion"}</span>${b.champion === TBD ? `<span class="po-champ-tbd">${status ? "TBD" : live ? "pick the grand final" : "not picked"}</span>` : link(b.champion)}</div></div>
-        </div></div>`;
+        ${grid(b, box, `<div class="po-champ"><span>${live || frozen ? "Your champion" : watch && mine ? "Their champion" : "Champion"}</span>${b.champion === TBD ? `<span class="po-champ-tbd">${status ? "TBD" : live ? "pick the grand final" : "not picked"}</span>` : link(b.champion)}</div>`)}`;
     };
 
     const removed = d.teams.filter((t) => REMOVED.has(t.id));
     const heroicNote = split ? `<p class="po-heroic">Top 8 of each division make the playoffs. <b>Aegis</b>: 1st to 4th of each division. <b>Heroic</b>: 5th to 8th. Each is a double-elimination bracket where all 8 start in the upper bracket.${removed.length ? ` ${removed.map((t) => `<b>${esc(t.name)}</b>`).join(", ")} ${removed.length === 1 ? "was" : "were"} removed from the league, so ${removed.length === 1 ? "it isn't" : "they aren't"} in the table below. ${removed.length === 1 ? "Its" : "Their"} results still count for the teams ${removed.length === 1 ? "it" : "they"} played.` : ""}</p>` : "";
-    const splitBrackets = (p.brackets ?? []).map((x) => bracketHtml(x.bracket, { seedOf: x.labels, title: `${x.name} bracket`, bn: x.name })).join("");
+    const splitBrackets = p.brackets?.length ? `${brBar()}${p.brackets.filter((x) => x.name === state.br).map((x) => bracketHtml(x.bracket, { seedOf: x.labels, title: `${x.name} bracket`, bn: x.name })).join("")}` : "";
     const splitNote = splitBrackets ? `<p class="table-note keep">Round 1 is as PlayOn's brackets have it. Losers of round 1 meet in pairs in the lower bracket; PlayOn hasn't drawn who the upper semifinal losers meet, so the site has each meet the lower winner from the other half.</p>` : "";
     const lockedOn = locked ? new Date(locked * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
     const lead = frozen
@@ -471,7 +501,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       return p < 5e-4 ? `<div class="po-tbar zero" ${hue}>${inner}</div>` : `<button type="button" class="po-tbar${on ? " on" : ""}" ${hue} data-team="${team}" data-place="${i + 1}">${inner}</button>`;
     }).join("");
     const n = dv.open?.length;
-    return `${weightBar()}${versionBar()}
+    return `${weightBar()}
       <p class="po-lead">Where this team could finish the group stage (its seed, after week 8 tiebreakers), not where it finishes in the playoffs. ${dv.exact ? (n ? `${n} series left, ${dv.count} ways they can go.` : "Only week 8 tiebreakers are left.") : `Based on ${dv.count} simulated seasons.`} ${state.weight === "equal" ? "Every result counts the same." : "Weighted by the model's odds."} <b>Click a seed</b> to see what it takes.</p>
       <div class="po-tcards">${cards.map((c) => `<div class="po-stat"><span>${esc(c.label)}</span><b>${c.value}${c.note ? ` <i>${c.note}</i>` : ""}</b></div>`).join("")}</div>
       <div class="po-tbars">${bars}</div>
@@ -517,7 +547,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       return `${dv.division ? `<h3 class="po-div">Division ${esc(dv.division)}</h3>` : ""}${table}${pick}${eventsHtml(dv)}`;
     };
 
-    return `${weightBar()}${versionBar()}${lead}${P.divisions.map(divHtml).join("")}
+    return `${weightBar()}${lead}${P.divisions.map(divHtml).join("")}
       <p class="table-note">Ties on wins: across a dividing line, a week 8 tiebreaker (counted both ways); for seed order, SoS, head to head, record against the highest common opponent, then a 1v1 mid for 1st or a coin flip for other seeds (both counted 50/50).</p>
       ${howHtml}`;
   };
@@ -659,7 +689,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     if (t.hasAttribute("data-tocards")) { document.querySelector('.pp-tabs [data-tab="calls"]')?.click(); return; }
     if (t.hasAttribute("data-reset")) { if (locked) return; state.picks = {}; save(pickKey, state.picks); shareNow(); return keep(render); }
     if (t.dataset.weight) { state.weight = t.dataset.weight; return keep(render); }
-    if (t.dataset.version) { state.version = t.dataset.version; save(VERSION_KEY, state.version); return keep(render); }
+    if (t.dataset.br) { state.br = t.dataset.br; save(BR_KEY, state.br); return keep(render); }
     if (t.hasAttribute("data-goodds")) {
       // Predict opens on its remembered tab; drop this page's ?tab= so it doesn't carry over.
       try { localStorage.setItem("predictTab", "odds"); } catch {}

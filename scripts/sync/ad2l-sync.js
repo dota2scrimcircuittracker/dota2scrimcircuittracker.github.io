@@ -174,7 +174,9 @@ function parseRoster(html) {
 // ---------- build ----------
 
 console.log(`PlayOn season ${SEASON_ID}, Dota league ${LEAGUE_ID}`);
-const seasonHtml = await playon(`/seasons/${SEASON_ID}`, 6);
+// Season pages are always fetched fresh (one request each): they're where a newly posted bracket
+// and its series first show up, and a cached copy hid S48's brackets for a whole run.
+const seasonHtml = await playon(`/seasons/${SEASON_ID}`, 0);
 const season = parseSeason(seasonHtml);
 console.log(`  ${season.title}: ${season.teams.size} teams, ${season.series.length} series`);
 // PlayOn posts a division's bracket as its own season, "<season name> Playoffs" in the site's
@@ -185,7 +187,7 @@ const [, pre = "", names = seasonName, post = ""] = seasonName.match(/^(.*?\s)?(
 const playoffNames = names.split("/").map((n) => `${pre}${n}${post} Playoffs`);
 const menu = [...seasonHtml.matchAll(/href="\/seasons\/(\d+)"[^>]*>\s*([^<]+?)\s*<\/a>/g)].map((m) => [Number(m[1]), decode(m[2])]);
 for (const [playoffsId, name] of menu.filter(([, n]) => playoffNames.includes(n))) {
-  const po = parseSeason(await playon(`/seasons/${playoffsId}`, 6));
+  const po = parseSeason(await playon(`/seasons/${playoffsId}`, 0));
   const added = po.series.filter((id) => !season.series.includes(id));
   season.series.push(...added);
   console.log(`  ${name} (season ${playoffsId}): ${added.length} bracket series`);

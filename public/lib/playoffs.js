@@ -311,13 +311,14 @@ export function resolveTable(ids, series, ratings, lines, choose) {
 // (3 or 4); otherwise the model's, or with `blank` nobody yet: the match's winner and loser
 // are TBD, and so is every slot they feed. `fixed`: no choice, seed 1 plays seed 4.
 // `pairs`: Heroic/Aegis's 8-team bracket where everyone starts upper, its four round 1 matches
-// [a, b] in PlayOn's order; `semiWeek` the week of its upper semifinals.
+// [a, b] in PlayOn's order. Each match's `from` names the matches on its own side whose winners
+// play in it (the bracket's lines; a team dropping from upper to lower has none).
 export const TBD = "tbd";
-export function bracket(seeds, ratings, choose, { fixed = false, blank = false, pickSet = false, pairs = null, semiWeek = 2 } = {}) {
+export function bracket(seeds, ratings, choose, { fixed = false, blank = false, pickSet = false, pairs = null } = {}) {
   const n = seeds.length;
   if (n < 4) return null;
   const ms = [];
-  const M = (id, side, week, a, b, bestOf, label) => {
+  const M = (id, side, week, a, b, bestOf, label, from = []) => {
     let m;
     if (a === TBD || b === TBD) m = { a, b, winner: TBD, loser: TBD, pending: true };
     else if (a == null || b == null) m = { a, b, winner: a ?? b, loser: null, bye: true };
@@ -326,24 +327,25 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
       m = { a, b, key, ...callMatch(ratings, a, b, bestOf, choose?.(key, a, b, bestOf)) };
       if (blank && !m.mine) m = { ...m, winner: TBD, loser: TBD, p: m.winner === m.model ? m.p : 1 - m.p, open: true };
     }
-    ms.push({ id, side, week, bestOf, label, ...m });
+    ms.push({ id, side, week, bestOf, label, from: from.map((x) => x.id), ...m });
     return ms.at(-1);
   };
   const seed = (k) => seeds[k - 1] ?? null;
   if (pairs) {
-    // Heroic and Aegis (PlayOn's S48 brackets): all 8 start upper, round 1 as PlayOn paired it.
+    // Heroic and Aegis (PlayOn's S48 brackets, both on the same nights): all 8 start upper,
+    // round 1 as PlayOn paired it.
     const [u1, u2, u3, u4] = pairs.map(([a, b], i) => M(`u${i + 1}`, "upper", 1, a, b, 3, "Upper round 1"));
-    const s1 = M("s1", "upper", semiWeek, u1.winner, u2.winner, 3, "Upper semifinal");
-    const s2 = M("s2", "upper", semiWeek, u3.winner, u4.winner, 3, "Upper semifinal");
+    const s1 = M("s1", "upper", 2, u1.winner, u2.winner, 3, "Upper semifinal", [u1, u2]);
+    const s2 = M("s2", "upper", 2, u3.winner, u4.winner, 3, "Upper semifinal", [u3, u4]);
     const l1 = M("l1", "lower", 2, u1.loser, u2.loser, 3, "Lower round 1");
     const l2 = M("l2", "lower", 2, u3.loser, u4.loser, 3, "Lower round 1");
-    const uf = M("uf", "upper", 4, s1.winner, s2.winner, 3, "Upper final");
     // PlayOn leaves these open; crossed, so no one meets the team that just beat them again.
-    const l3 = M("l3", "lower", 4, s2.loser, l1.winner, 3, "Lower round 2");
-    const l4 = M("l4", "lower", 4, s1.loser, l2.winner, 3, "Lower round 2");
-    const l5 = M("l5", "lower", 5, l3.winner, l4.winner, 3, "Lower semifinal");
-    const lf = M("lf", "lower", 6, uf.loser, l5.winner, 3, "Lower final");
-    M("gf", "final", 7, uf.winner, lf.winner, 5, "Grand final");
+    const l3 = M("l3", "lower", 3, s2.loser, l1.winner, 3, "Lower round 2", [l1]);
+    const l4 = M("l4", "lower", 3, s1.loser, l2.winner, 3, "Lower round 2", [l2]);
+    const uf = M("uf", "upper", 4, s1.winner, s2.winner, 3, "Upper final", [s1, s2]);
+    const l5 = M("l5", "lower", 4, l3.winner, l4.winner, 3, "Lower semifinal", [l3, l4]);
+    const lf = M("lf", "lower", 5, uf.loser, l5.winner, 3, "Lower final", [l5]);
+    M("gf", "final", 6, uf.winner, lf.winner, 5, "Grand final", [uf, lf]);
     return { matches: ms, pick: null, modelPick: null, fixed: true, pickSet, champion: ms.at(-1).winner };
   }
   // Seed 1 chooses 3 or 4: the model has it take whichever is weaker.
@@ -357,31 +359,31 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
   if (n === 4) {
     const l1 = M("l1", "lower", 2, u1.loser, u2.loser, 3, "Lower round 1");
     lbWinner = l1.winner;
-    const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final");
-    const lf = M("lf", "lower", 4, uf.loser, lbWinner, 3, "Lower final");
-    M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final");
+    const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final", [u1, u2]);
+    const lf = M("lf", "lower", 4, uf.loser, lbWinner, 3, "Lower final", [l1]);
+    M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final", [uf, lf]);
   } else if (n <= 6) {
     // The loser of seed 1's match meets seed 6, the other upper loser seed 5.
     const l1 = M("l1", "lower", 2, u1.loser, seed(6), 3, "Lower round 1");
     const l2 = M("l2", "lower", 2, u2.loser, seed(5), 3, "Lower round 1");
-    const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final");
-    const l3 = M("l3", "lower", 4, l1.winner, l2.winner, 3, "Lower semifinal");
-    const lf = M("lf", "lower", 5, uf.loser, l3.winner, 3, "Lower final");
-    M("gf", "final", 6, uf.winner, lf.winner, 5, "Grand final");
+    const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final", [u1, u2]);
+    const l3 = M("l3", "lower", 4, l1.winner, l2.winner, 3, "Lower semifinal", [l1, l2]);
+    const lf = M("lf", "lower", 5, uf.loser, l3.winner, 3, "Lower final", [l3]);
+    M("gf", "final", 6, uf.winner, lf.winner, 5, "Grand final", [uf, lf]);
   } else {
     const l1 = M("l1", "lower", 1, seed(5), seed(8), 3, "Lower round 1");
     const l2 = M("l2", "lower", 1, seed(6), seed(7), 3, "Lower round 1");
-    const l3 = M("l3", "lower", 2, u1.loser, l1.winner, 3, "Lower round 2");
-    const l4 = M("l4", "lower", 2, u2.loser, l2.winner, 3, "Lower round 2");
-    const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final");
+    const l3 = M("l3", "lower", 2, u1.loser, l1.winner, 3, "Lower round 2", [l1]);
+    const l4 = M("l4", "lower", 2, u2.loser, l2.winner, 3, "Lower round 2", [l2]);
+    const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final", [u1, u2]);
     // PlayOn's S48 brackets: the loser of seed 1's match meets the 5 v 8 winner, seed 2's loser
     // the 6 v 7 winner. PlayOn lists 6 v 7 first, so each lower round 2 match sits beside the
     // one that feeds it.
     const swap = (x, y) => { const i = ms.indexOf(x), j = ms.indexOf(y); ms[i] = y; ms[j] = x; };
     swap(l1, l2); swap(l3, l4);
-    const l5 = M("l5", "lower", 4, l3.winner, l4.winner, 3, "Lower semifinal");
-    const lf = M("lf", "lower", 5, uf.loser, l5.winner, 3, "Lower final");
-    M("gf", "final", 6, uf.winner, lf.winner, 5, "Grand final");
+    const l5 = M("l5", "lower", 4, l3.winner, l4.winner, 3, "Lower semifinal", [l4, l3]);
+    const lf = M("lf", "lower", 5, uf.loser, l5.winner, 3, "Lower final", [l5]);
+    M("gf", "final", 6, uf.winner, lf.winner, 5, "Grand final", [uf, lf]);
   }
   return { matches: ms, pick, modelPick, fixed, pickSet, champion: ms.at(-1).winner };
 }
@@ -431,15 +433,13 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
       }
       const posted = postedRoundOne(seeds, series);
       const pairs = posted ?? [[0, 3], [5, 6], [1, 2], [4, 7]].map(([a, b]) => [seeds[a] ?? null, seeds[b] ?? null]);
-      const opts = { blank, pairs, pickSet: !!posted, semiWeek: SEMI_WEEK[name] ?? 2 };
+      const opts = { blank, pairs, pickSet: !!posted };
       return { name, labels, bracket: asPicked ? bracket(seeds, ratings, own, opts) : actual.markAll(bracket(seeds, ratings, choose, opts)) };
     });
   }
   return out;
 }
 
-// Heroic/Aegis: PlayOn plays Heroic's upper semifinals in playoff week 2 and Aegis's in week 3.
-const SEMI_WEEK = { Heroic: 2, Aegis: 3 };
 // A bracket's round 1 as PlayOn posted it: four series on one night that pair off all 8 of its
 // teams, in PlayOn's order (series id). Null until they're posted.
 function postedRoundOne(seeds, series) {

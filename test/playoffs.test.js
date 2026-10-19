@@ -327,8 +327,11 @@ test("Heroic/Aegis take round 1 from PlayOn's posted series", async () => {
   const m = Object.fromEntries(heroic.matches.map((x) => [x.id, x]));
   assert.deepEqual([1, 2, 3, 4].map((k) => [m[`u${k}`].a, m[`u${k}`].b]), pairs);
   assert.ok(heroic.pickSet);
-  // Heroic's upper semifinals are week 2 (Aegis's week 3); the grand final week 7.
-  assert.deepEqual([m.s1.week, m.uf.week, m.gf.week], [2, 4, 7]);
+  // PlayOn's S48 nights: upper semifinals and lower round 1 week 2, lower round 2 week 3, the
+  // upper final and lower semifinal week 4, the lower final week 5, the grand final week 6.
+  assert.deepEqual(["s1", "l1", "l3", "uf", "l5", "lf", "gf"].map((k) => m[k].week), [2, 2, 3, 4, 4, 5, 6]);
+  // Each match's lines: the matches whose winners play in it.
+  assert.deepEqual([m.s1.from, m.l3.from, m.uf.from, m.lf.from, m.gf.from], [["u1", "u2"], ["l1"], ["s1", "s2"], ["l5"], ["uf", "lf"]]);
 });
 
 test("a bracket fix only fills matches the sent bracket has no pick for", async () => {

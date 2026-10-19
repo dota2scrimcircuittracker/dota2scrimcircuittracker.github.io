@@ -12,10 +12,13 @@
 // postseason (week 8 tiebreakers, then the bracket): kept out of the group-stage table, SoS and
 // records, and read as best-of-3 with no tie on Up next and Predict. A group-stage make-up
 // played after it would read as postseason: list its PlayOn series id in regularIds.
-// New season: phase "regular", regularEnd null, regularIds [].
+// playoffNights: the night of each playoff week (PlayOn's brackets; Thanksgiving week is off,
+// so week 6, the grand final, is Dec 3). Bracket columns show them.
+// New season: phase "regular", regularEnd null, regularIds [], playoffNights [].
 export const SEASON = {
   name: "S48", long: "Season 48", dotaLeague: 20077,
   phase: "playoffs", regularEnd: Date.UTC(2026, 9, 12) / 1000, regularIds: [],
+  playoffNights: ["2026-10-22", "2026-10-29", "2026-11-05", "2026-11-12", "2026-11-19", "2026-12-03"],
 };
 export const playoffs = SEASON.phase === "playoffs";
 // Teams AD2L removed from the league (PlayOn team id → when, as Y-M-D). Their results still

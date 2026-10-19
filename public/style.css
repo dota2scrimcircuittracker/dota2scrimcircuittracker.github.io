@@ -3751,16 +3751,25 @@ figure.chart .ms-fit { stroke: var(--bone); stroke-width: 1.4; stroke-dasharray:
 .po-bo { display: inline-block; min-width: 34px; font: 600 12px var(--mono); letter-spacing: .08em; color: var(--gold); }
 .po-none, .po-settled, .po-heroic { font-size: 14px; color: var(--dust); max-width: 90ch; margin: 0 0 8px; }
 .po-settled b, .po-heroic b { color: var(--bone); }
+/* Bracket (parts/playoffs.js grid): equal rows, a match centred on the rows it spans, lines from
+   the matches that feed it: a stub out of each, a rail joining them, a line into the match. */
 .po-br-wrap { overflow-x: auto; padding-bottom: 6px; }
-.po-br { display: grid; grid-template-columns: 22px repeat(var(--weeks), minmax(150px, 1fr)); grid-template-rows: auto auto auto; gap: 10px 10px; min-width: calc(22px + var(--weeks) * 160px); }
-.po-wk { grid-row: 1; font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.po-br { --cw: 176px; --g: 28px; --line: color-mix(in srgb, var(--bone) 35%, var(--seam)); display: grid; grid-template-columns: 22px repeat(var(--cols), var(--cw)); grid-template-rows: auto repeat(var(--rows), minmax(26px, 1fr)); column-gap: var(--g); width: max-content; }
+.po-wk { grid-row: 1; margin-bottom: 8px; font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.po-wk span { display: block; color: var(--dust); letter-spacing: .04em; }
 .po-lbl { grid-column: 1; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dust); }
-.po-lbl.up, .po-col.up { grid-row: 2; }
-.po-lbl.low, .po-col.low { grid-row: 3; }
 .po-lbl.up { border-right: 2px solid var(--jade); }
 .po-lbl.low { border-right: 2px solid var(--ember); }
-.po-col { display: grid; gap: 10px; align-content: center; }
-.po-col.gf { grid-row: 2 / 4; }
+.po-cell { position: relative; display: flex; align-items: center; min-width: 0; }
+.po-cell > .po-m, .po-gfw { flex: 0 0 var(--cw); width: var(--cw); margin: 5px 0; }
+.po-in { position: relative; flex: 1 1 auto; align-self: stretch; }
+.po-cell.has-in > .po-in::before { content: ""; position: absolute; left: calc(var(--g) / -2); top: var(--t); bottom: var(--b); border-left: 2px solid var(--line); }
+.po-cell.has-in > .po-in::after { content: ""; position: absolute; left: calc(var(--g) / -2); right: 0; top: 50%; border-top: 2px solid var(--line); }
+.po-cell.has-out > .po-m { position: relative; }
+.po-cell.has-out > .po-m::after { content: ""; position: absolute; left: 100%; top: 50%; width: calc(var(--g) / 2 + 1px); border-top: 2px solid var(--line); }
+.po-gfw { position: relative; }
+.po-gfw > .po-champ { position: absolute; top: 100%; left: 0; right: 0; margin-top: 10px; }
+.po-brs { margin: 4px 0 10px; }
 .po-m { background: var(--stone); border: 1px solid var(--seam); min-width: 0; }
 .po-m.gf { border-color: var(--accent); }
 .po-m.is-bye { opacity: .55; }
@@ -5152,23 +5161,16 @@ dialog.fp-modal { width: min(760px, 94vw); }
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), 0 14px 34px rgba(0, 0, 0, .35); }
 .wkb-box > h2 { margin-top: 0; }
 :is(#wk-bracket, .po-final) .po-br-wrap { padding: 6px 6px 10px; }
-:is(#wk-bracket, .po-final) .po-br { gap: 14px 44px; min-width: calc(22px + var(--weeks) * 210px); }
-:is(#wk-bracket, .po-final) .po-wk { text-align: center; padding: 5px 8px; border: 1px solid var(--seam); border-radius: 4px; background: color-mix(in srgb, var(--bone) 4%, transparent); }
+:is(#wk-bracket, .po-final) .po-br { --cw: 210px; --g: 44px; }
+:is(#wk-bracket, .po-final) .po-wk { margin: 0 0 12px; text-align: center; padding: 5px 8px; border: 1px solid var(--seam); border-radius: 4px; background: color-mix(in srgb, var(--bone) 4%, transparent); }
 :is(#wk-bracket, .po-final) .po-lbl { padding: 0 4px; }
-:is(#wk-bracket, .po-final) .po-col { position: relative; }
 :is(#wk-bracket, .po-final) .po-m { position: relative; border: 1px solid color-mix(in srgb, var(--bone) 28%, var(--seam)); border-radius: 6px; background: var(--stone); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
 :is(#wk-bracket, .po-final) .po-m.gf { border-color: var(--accent); box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent); }
 :is(#wk-bracket, .po-final) .po-mh { border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--bone) 5%, transparent); }
 :is(#wk-bracket, .po-final) .po-slot { border-bottom: 1px solid var(--seam); }
 :is(#wk-bracket, .po-final) .po-slot:last-of-type { border-bottom: 0; }
 :is(#wk-bracket, .po-final) .po-mp { border-radius: 0 0 6px 6px; background: color-mix(in srgb, var(--bone) 3%, transparent); }
-:is(#wk-bracket, .po-final) .po-champ { border-radius: 6px; background: color-mix(in srgb, var(--accent) 10%, var(--stone)); margin-top: 10px; }
-/* Connectors: a stub out of every match that has a later round, one into every match past round 1,
-   and a rail joining the stubs of a column's stacked matches. */
-:is(#wk-bracket, .po-final) .po-m:not(.gf)::after { content: ""; position: absolute; left: 100%; top: 50%; width: 22px; border-top: 2px solid var(--dim); }
-:is(#wk-bracket, .po-final) .po-m:not([data-wk="1"])::before { content: ""; position: absolute; right: 100%; top: 50%; width: 22px; border-top: 2px solid var(--dim); }
-:is(#wk-bracket, .po-final) .po-col:has(.po-m + .po-m)::after { content: ""; position: absolute; right: -22px; top: 25%; bottom: 25%; border-right: 2px solid var(--dim); }
-:is(#wk-bracket, .po-final) .po-col.gf .po-m::before { width: 22px; }
+:is(#wk-bracket, .po-final) .po-champ { border-radius: 6px; background: color-mix(in srgb, var(--accent) 10%, var(--stone)); }
 @media (max-width: 640px) { .wkb-box { padding: 12px; } }
 :is(#wk-bracket, .po-final) .po-m.is-maybe { outline: 2px dashed var(--accent); outline-offset: 4px; }
 :is(#wk-bracket, .po-final) .po-maybe { padding: 4px 8px 6px; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border-top: 1px dashed var(--accent); }
