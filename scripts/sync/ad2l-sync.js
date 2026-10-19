@@ -146,9 +146,10 @@ function parseSeason(html) {
 function parseSeries(html, id) {
   const epoch = Number(html.match(/data-epoch-offset='(\d+)'/)?.[1] ?? 0);
   const res = html.slice(html.indexOf("<h4>Results:</h4>"));
-  const [home, away] = [...res.matchAll(/<h3><a href="\/teams\/(\d+)">([^<]*)<\/a><\/h3>/g)].slice(0, 2).map((m) => Number(m[1]));
+  const sides = [...res.matchAll(/<h3><a href="\/teams\/(\d+)">([^<]*)<\/a><\/h3>/g)].slice(0, 2);
+  const [home, away] = sides.map((m) => Number(m[1]));
   const scores = [...res.matchAll(/<h4>\s*(\d*)\s*<\/h4>/g)].slice(0, 2).map((m) => (m[1] === "" ? null : Number(m[1])));
-  return { id, time: epoch || null, home, away, home_score: scores[0] ?? null, away_score: scores[1] ?? null };
+  return { id, time: epoch || null, home, away, home_score: scores[0] ?? null, away_score: scores[1] ?? null, names: sides.map((m) => decode(m[2]).trim()) };
 }
 
 // Same rules as the drafter's ad2l.py: split on the MAIN roster <li>; nested
@@ -178,13 +179,16 @@ const season = parseSeason(seasonHtml);
 console.log(`  ${season.title}: ${season.teams.size} teams, ${season.series.length} series`);
 // PlayOn posts a division's bracket as its own season, "<season name> Playoffs" in the site's
 // League menu (S48 Explorer: 670, its playoffs 678). Its series are this division's postseason.
+// A season of two leagues has one each: "S48 Heroic/Aegis League" -> Heroic and Aegis Playoffs.
 const seasonName = season.title.replace(/\s+-\s+Amateur Dota 2 League.*$/i, "").trim();
-const playoffsId = Number([...seasonHtml.matchAll(/href="\/seasons\/(\d+)"[^>]*>\s*([^<]+?)\s*<\/a>/g)].find((m) => decode(m[2]) === `${seasonName} Playoffs`)?.[1] ?? 0);
-if (playoffsId) {
+const [, pre = "", names = seasonName, post = ""] = seasonName.match(/^(.*?\s)?(\S+\/\S+)(\s.*)?$/) ?? [];
+const playoffNames = names.split("/").map((n) => `${pre}${n}${post} Playoffs`);
+const menu = [...seasonHtml.matchAll(/href="\/seasons\/(\d+)"[^>]*>\s*([^<]+?)\s*<\/a>/g)].map((m) => [Number(m[1]), decode(m[2])]);
+for (const [playoffsId, name] of menu.filter(([, n]) => playoffNames.includes(n))) {
   const po = parseSeason(await playon(`/seasons/${playoffsId}`, 6));
   const added = po.series.filter((id) => !season.series.includes(id));
   season.series.push(...added);
-  console.log(`  ${seasonName} Playoffs (season ${playoffsId}): ${added.length} bracket series`);
+  console.log(`  ${name} (season ${playoffsId}): ${added.length} bracket series`);
 }
 
 const teams = [];
@@ -220,7 +224,16 @@ console.log(`  rosters: ${teams.reduce((s, t) => s + t.players.length, 0)} playe
 const series = [];
 for (const id of season.series) {
   // Played series don't change; unplayed ones are re-checked.
-  const s = parseSeries(await playon(`/matches/${id}`, 6), id);
+  const { names, ...s } = parseSeries(await playon(`/matches/${id}`, 6), id);
+  // A bracket can name another season's team of the same name (S48 Heroic: Josh A. Chaos as
+  // 14899, its S46 entry, not 15034): the division's own team by that exact name stands in.
+  ["home", "away"].forEach((side, i) => {
+    if (season.teams.has(s[side]) || !names[i]) return;
+    const same = [...season.teams].filter(([, n]) => n.trim() === names[i]);
+    if (same.length !== 1) return;
+    console.log(`  series ${id}: ${names[i]} is team ${s[side]} on PlayOn, read as this season's ${same[0][0]}`);
+    s[side] = same[0][0];
+  });
   // "TBD / Bye vs TBD / Bye" placeholders (no team links) aren't series between two teams.
   if (!season.teams.has(s.home) || !season.teams.has(s.away)) { console.log(`  skipping series ${id}: not two division teams`); continue; }
   // A bye is a 1–0 forfeit win, but PlayOn shows 0–0 until an admin enters it, which can take

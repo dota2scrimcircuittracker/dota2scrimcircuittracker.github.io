@@ -46,9 +46,11 @@ export const CONFIRMED_PICKS = [
   [15009, 15020], // Conqueror: Cult of the One Mag God feat. Retirement Home v Cult of the One Mag God v4 (seed 4)
 ];
 // A league's series plus its announced ones that PlayOn hasn't posted yet (no PlayOn series
-// with one of the same teams within 4 days).
+// with the same teams within 4 days; a team still to be decided matches anyone). Every known
+// team, so a bracket series a few days later (Challenger's Castaway Baes v SUX, Oct 18) doesn't
+// hide a tiebreaker one of its teams played.
 export function withAnnounced(key, series) {
-  const near = (a, s) => Math.abs((s.time ?? 0) - a.time) < 4 * 86400 && [a.home, a.away].some((t) => t != null && (s.home === t || s.away === t));
+  const near = (a, s) => Math.abs((s.time ?? 0) - a.time) < 4 * 86400 && [a.home, a.away].every((t) => t == null || s.home === t || s.away === t);
   return [...series, ...(ANNOUNCED[key] ?? []).filter((a) => !series.some((s) => near(a, s)))];
 }
 // An announced series' round ("Week 8 · …" and its best-of), found by its id or, once PlayOn

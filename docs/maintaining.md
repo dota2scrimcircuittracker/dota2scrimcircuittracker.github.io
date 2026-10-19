@@ -168,6 +168,12 @@ after the last group-stage night). Series PlayOn posts after `regularEnd` are th
 PlayOn posts a division's bracket as a separate season ("S48 Explorer League Playoffs", 678). The
 sync finds it by that name in PlayOn's League menu and adds its series; unfilled slots (TBD) are
 skipped until PlayOn names both teams. A posted series settles seed 1's pick before it's played.
+Heroic/Aegis has two ("S48 Heroic League Playoffs", "S48 Aegis League Playoffs"): the sync splits
+the season name on "/". Their brackets start all 8 upper, round 1 read from the posted series.
+
+The bracket shapes follow PlayOn's S48 brackets (`lib/playoffs.js` bracket). If PlayOn's layout
+changes after people have sent brackets, change the shape; brackets with matches that no longer
+have a pick get the "Fix your bracket" prompt (docs/features.md, Submitted playoff bracket).
 
 A group-stage make-up played after `regularEnd` would read as postseason: add its series id to
 `regularIds`. The bracket shape, Bo3/Bo5 and the S47 lower-bracket crossover are the site's

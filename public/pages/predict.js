@@ -3,8 +3,8 @@ import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
 import { isPostseason, playoffs, ANNOUNCED, withAnnounced, postseasonRows, playedPostseason, bracketClose } from "../lib/divisions.js";
-import { postseason, bracketPoints, playoffScore, playoffPicture, seedsSettled } from "../lib/playoffs.js";
-import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
+import { postseason, bracketPoints, playoffScore, playoffPicture, seedsSettled, withFix, openPicks } from "../lib/playoffs.js";
+import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, listPlayoffBracketFixes, submitPlayoffBracketFix, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
 import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, DIVISIONS, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
@@ -104,11 +104,18 @@ export async function renderPredict(src) {
   const closes = bracketClose(src.key, ps.lock);
   const finals = [];
   let myFinal = null;
+  // A bracket whose layout changed after it was sent gets one fix: picks for the matches it has
+  // none for (lib/playoffs.js withFix). One sent after the deadline doesn't count.
+  const pickMap = (json) => { let p; try { p = JSON.parse(json); } catch { return null; } return p && typeof p === "object" && !Array.isArray(p) ? Object.fromEntries(Object.entries(p).filter(([, v]) => Number.isInteger(v))) : null; };
   try {
-    for (const b of (await listPlayoffBrackets()).filter((x) => x.league === src.key)) {
-      let picks; try { picks = JSON.parse(b.picks); } catch { continue; }
-      if (!picks || typeof picks !== "object" || Array.isArray(picks)) continue;
-      const e = { name: b.name, uid: b.uid, submittedAt: b.submittedAt, picks: Object.fromEntries(Object.entries(picks).filter(([, v]) => Number.isInteger(v))) };
+    const [sent, fixList] = await Promise.all([listPlayoffBrackets(), listPlayoffBracketFixes().catch((e) => (console.warn(e), []))]);
+    const fixes = new Map(fixList.filter((x) => x.league === src.key && (closes == null || !x.fixedAt || x.fixedAt.getTime() < closes * 1000)).map((x) => [x.uid, pickMap(x.picks)]));
+    for (const b of sent.filter((x) => x.league === src.key)) {
+      const orig = pickMap(b.picks);
+      if (!orig) continue;
+      const fix = fixes.get(b.uid) ?? null;
+      const picks = withFix(orig, fix);
+      const e = { name: b.name, uid: b.uid, submittedAt: b.submittedAt, picks, orig, fix, open: openPicks(full.teams, full.series, fullRatings, picks, { split }) };
       if (uids.includes(b.uid)) myFinal = e;
       if (closes == null || !b.submittedAt || b.submittedAt.getTime() < closes * 1000) finals.push(e);
     }
@@ -117,6 +124,8 @@ export async function renderPredict(src) {
   const bracketsOpen = seedsSettled(playoffPicture(full.teams, full.series, fullRatings, { split, blank: true }));
   for (const f of finals) Object.assign(f, playoffScore(full.teams, full.series, fullRatings, f.picks, { split }));
   finals.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  // The viewer's bracket has matches with no pick (its layout changed since) and can still be fixed.
+  const needsFix = !!(myFinal?.open && !myFinal.fix && (closes == null || now < closes * 1000));
   const roleOf = (s) => tbRole.get(s.id) ?? ps.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
 
   // This week's slate: the earliest night still to be played. A series whose result never
@@ -291,7 +300,7 @@ export async function renderPredict(src) {
   const finalsHtml = finals.length ? `${bracketsOpen ? "" : `<h3 class="pb-sub">Playoff brackets</h3>`}<div class="table-wrap sticky-name"><table class="pred-board pb-brackets">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("playoff_pts")}</th><th scope="col" class="l">Champion pick</th></tr></thead>
     <tbody>${finals.map((f, i) => `<tr class="${uids.includes(f.uid) ? "me" : ""}"><td class="rank${i < 3 && f.points ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
-      <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" title="Open ${esc(f.name)}'s bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button></td>
+      <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" title="Open ${esc(f.name)}'s bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button>${f.open && !f.fix ? ' <span class="tag" title="The bracket changed to the PlayOn layout after this was sent; some matches still need a pick">needs a fix</span>' : ""}</td>
       <td class="num"><button type="button" class="pb-final pb-score" data-final="${i}" title="Open ${esc(f.name)}'s bracket">${f.points}</button></td><td class="l">${champOf(f)}</td></tr>`).join("")}</tbody></table></div>` : "";
   const groupTable = groupBrackets.length ? `<div class="table-wrap sticky-name"><table class="pred-board">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Bracket${info("bracket_pts")}</th></tr></thead>
@@ -399,6 +408,7 @@ export async function renderPredict(src) {
   app.innerHTML = `${pageHead(kicker, "Fantasy", "", tabs.bar)}
     ${nameBarHtml(name)}
     ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
+    ${needsFix ? `<div class="notice warn"><b>Fix your bracket</b>Your submitted bracket now follows PlayOn's layout, so ${myFinal.open === 1 ? "1 match has a new pairing that needs" : `${myFinal.open} matches have new pairings that need`} your pick. Everything else you picked stays as it is. Make the new ${myFinal.open === 1 ? "pick" : "picks"}${closes ? ` by ${esc(new Date(closes * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}` : ""}. <button type="button" class="linkish" data-tobracket>Fix it on the Bracket tab →</button></div>` : ""}
     <div id="pred-msg"></div>
     ${tabs.panels}`;
   wirePlayerTabs();
@@ -468,7 +478,7 @@ export async function renderPredict(src) {
   if (!document.body.contains(poBracket)) return;
   const myCalls = new Map(full.series.filter((s) => !isPlayed(s)).map((s) => [s.id, mine(s.id)?.pick]).filter(([, k]) => k));
   mountPlayoffs(poBracket, src, full, fullRatings, myCalls, { share: { name, saved: savedBrackets.get(myKey), save: (picks) => saveBracket(src.key, picks, name) }, locked: bracketLocked ? ps.lock : null,
-    final: { closes, mine: myFinal, submit: (picks) => submitPlayoffBracket(src.key, picks, name) } });
+    final: { closes, mine: myFinal, submit: (picks) => submitPlayoffBracket(src.key, picks, name), fix: (picks) => submitPlayoffBracketFix(src.key, picks) } });
 
   // Leaderboard: click a name for the bracket and final table their calls lead to. Fresh host
   // each time, since mountPlayoffs listens for clicks on its element.

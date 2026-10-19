@@ -12,8 +12,9 @@
 //    highest common opponent, then a 1v1 solo mid. A tie that only decides seed order isn't
 //    played: SoS, head to head, highest common opponent, then a 1v1 mid for 1st and a coin flip
 //    for any other seed (the league admins, 2026-10-06).
-// Not in the rules, taken from S47's brackets on PlayOn: lower round 1 is 5 v 8 and 6 v 7; the
-// loser of seed 1's match meets the 6 v 7 winner, the other upper loser the 5 v 8 winner.
+// Not in the rules, taken from PlayOn's S48 brackets: lower round 1 is 5 v 8 and 6 v 7; the
+// loser of seed 1's match meets the 5 v 8 winner, the other upper loser the 6 v 7 winner (S47
+// had it the other way round).
 // Smaller divisions (fewer than 8 teams) put everyone in, as PlayOn's S48 brackets drew them:
 // 4 teams all start upper (1 v 4, 2 v 3); with 5–6, seeds 5 and 6 start in the lower bracket,
 // 6 against the loser of seed 1's match and 5 against the other upper loser.
@@ -305,13 +306,14 @@ export function resolveTable(ids, series, ratings, lines, choose) {
 
 // Double elimination from seeds (team ids, best first; a missing seed is a bye that sends its
 // opponent through). Every match is played the model's way: the higher one-game chance wins.
-// Rounds carry the playoff week they're played in, as S47 ran them. `choose(key, a, b)` may
+// Rounds carry the playoff week they're played in, as PlayOn's S48 brackets date them. `choose(key, a, b)` may
 // name a match's winner (key "<match id>:<pairKey>") and, with key "pick", seed 1's opponent
 // (3 or 4); otherwise the model's, or with `blank` nobody yet: the match's winner and loser
-// are TBD, and so is every slot they feed. `fixed`: no choice, seed 1 plays seed 4 (Heroic/Aegis, where
-// the seeds alternate divisions and 1 v 4 pairs A1 with B2).
+// are TBD, and so is every slot they feed. `fixed`: no choice, seed 1 plays seed 4.
+// `pairs`: Heroic/Aegis's 8-team bracket where everyone starts upper, its four round 1 matches
+// [a, b] in PlayOn's order; `semiWeek` the week of its upper semifinals.
 export const TBD = "tbd";
-export function bracket(seeds, ratings, choose, { fixed = false, blank = false, pickSet = false } = {}) {
+export function bracket(seeds, ratings, choose, { fixed = false, blank = false, pickSet = false, pairs = null, semiWeek = 2 } = {}) {
   const n = seeds.length;
   if (n < 4) return null;
   const ms = [];
@@ -328,6 +330,22 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
     return ms.at(-1);
   };
   const seed = (k) => seeds[k - 1] ?? null;
+  if (pairs) {
+    // Heroic and Aegis (PlayOn's S48 brackets): all 8 start upper, round 1 as PlayOn paired it.
+    const [u1, u2, u3, u4] = pairs.map(([a, b], i) => M(`u${i + 1}`, "upper", 1, a, b, 3, "Upper round 1"));
+    const s1 = M("s1", "upper", semiWeek, u1.winner, u2.winner, 3, "Upper semifinal");
+    const s2 = M("s2", "upper", semiWeek, u3.winner, u4.winner, 3, "Upper semifinal");
+    const l1 = M("l1", "lower", 2, u1.loser, u2.loser, 3, "Lower round 1");
+    const l2 = M("l2", "lower", 2, u3.loser, u4.loser, 3, "Lower round 1");
+    const uf = M("uf", "upper", 4, s1.winner, s2.winner, 3, "Upper final");
+    // PlayOn leaves these open; crossed, so no one meets the team that just beat them again.
+    const l3 = M("l3", "lower", 4, s2.loser, l1.winner, 3, "Lower round 2");
+    const l4 = M("l4", "lower", 4, s1.loser, l2.winner, 3, "Lower round 2");
+    const l5 = M("l5", "lower", 5, l3.winner, l4.winner, 3, "Lower semifinal");
+    const lf = M("lf", "lower", 6, uf.loser, l5.winner, 3, "Lower final");
+    M("gf", "final", 7, uf.winner, lf.winner, 5, "Grand final");
+    return { matches: ms, pick: null, modelPick: null, fixed: true, pickSet, champion: ms.at(-1).winner };
+  }
   // Seed 1 chooses 3 or 4: the model has it take whichever is weaker.
   const r = (id) => ratings.get(id) ?? 0;
   const modelPick = fixed ? 4 : r(seed(4)) > r(seed(3)) ? 3 : 4, own = fixed ? null : choose?.("pick");
@@ -353,16 +371,17 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
   } else {
     const l1 = M("l1", "lower", 1, seed(5), seed(8), 3, "Lower round 1");
     const l2 = M("l2", "lower", 1, seed(6), seed(7), 3, "Lower round 1");
-    const l3 = M("l3", "lower", 2, u1.loser, l2.winner, 3, "Lower round 2");
-    const l4 = M("l4", "lower", 2, u2.loser, l1.winner, 3, "Lower round 2");
+    const l3 = M("l3", "lower", 2, u1.loser, l1.winner, 3, "Lower round 2");
+    const l4 = M("l4", "lower", 2, u2.loser, l2.winner, 3, "Lower round 2");
     const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final");
-    // The loser of seed 1's match meets the 6 v 7 winner, seed 2's loser the 5 v 8 winner, so
-    // list 6 v 7 first and each lower round 2 match sits beside the one that feeds it.
-    const i1 = ms.indexOf(l1), i2 = ms.indexOf(l2);
-    ms[i1] = l2; ms[i2] = l1;
-    const l5 = M("l5", "lower", 3, l3.winner, l4.winner, 3, "Lower semifinal");
-    const lf = M("lf", "lower", 4, uf.loser, l5.winner, 3, "Lower final");
-    M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final");
+    // PlayOn's S48 brackets: the loser of seed 1's match meets the 5 v 8 winner, seed 2's loser
+    // the 6 v 7 winner. PlayOn lists 6 v 7 first, so each lower round 2 match sits beside the
+    // one that feeds it.
+    const swap = (x, y) => { const i = ms.indexOf(x), j = ms.indexOf(y); ms[i] = y; ms[j] = x; };
+    swap(l1, l2); swap(l3, l4);
+    const l5 = M("l5", "lower", 4, l3.winner, l4.winner, 3, "Lower semifinal");
+    const lf = M("lf", "lower", 5, uf.loser, l5.winner, 3, "Lower final");
+    M("gf", "final", 6, uf.winner, lf.winner, 5, "Grand final");
   }
   return { matches: ms, pick, modelPick, fixed, pickSet, champion: ms.at(-1).winner };
 }
@@ -370,11 +389,11 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
 // ---------- the whole picture ----------
 
 // teams/series: a division's data. split: Heroic/Aegis, one league in divisions A and B (the
-// admin on Discord, 2026-10-05): each division's 1st–2nd start Aegis's upper bracket, 3rd–4th
-// its lower, 5th–6th Heroic's upper, 7th–8th Heroic's lower. Who meets whom across A and B
-// wasn't said: the site alternates the divisions into seeds 1–8 (A1, B1, A2, B2, A3, B3, A4,
-// B4), so with the usual shape upper round 1 is A1 v B2 and B1 v A2, lower round 1 A3 v B4 and
-// B3 v A4. Those brackets come back in `brackets` (named, with each seed's label).
+// admin on Discord, 2026-10-05): each division's 1st–4th play Aegis, 5th–8th Heroic. PlayOn's S48
+// brackets start all 8 in the upper bracket, round 1 as PlayOn posted it (postedRoundOne). Before
+// it's posted: the divisions alternate into seeds 1–8 (A1, B1, A2, B2, A3, B3, A4, B4) and round 1
+// is Aegis's, A1 v B2, B3 v A4, B1 v A2, A3 v B4. Those brackets come back in `brackets`
+// (named, with each seed's label).
 // `call` picks group-stage results and `choose` tiebreaker and bracket winners (a viewer's own
 // picks); whatever they leave open goes the model's way.
 // `blank`: bracket matches nobody picked stay open (see bracket).
@@ -410,10 +429,29 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
         seeds.push(id);
         if (id != null) labels.set(id, `${dv.division}${from + k + 1}`);
       }
-      return { name, labels, bracket: asPicked ? bracket(seeds, ratings, own, { fixed: true, blank }) : actual.markAll(bracket(seeds, ratings, choose, { fixed: true, blank })) };
+      const posted = postedRoundOne(seeds, series);
+      const pairs = posted ?? [[0, 3], [5, 6], [1, 2], [4, 7]].map(([a, b]) => [seeds[a] ?? null, seeds[b] ?? null]);
+      const opts = { blank, pairs, pickSet: !!posted, semiWeek: SEMI_WEEK[name] ?? 2 };
+      return { name, labels, bracket: asPicked ? bracket(seeds, ratings, own, opts) : actual.markAll(bracket(seeds, ratings, choose, opts)) };
     });
   }
   return out;
+}
+
+// Heroic/Aegis: PlayOn plays Heroic's upper semifinals in playoff week 2 and Aegis's in week 3.
+const SEMI_WEEK = { Heroic: 2, Aegis: 3 };
+// A bracket's round 1 as PlayOn posted it: four series on one night that pair off all 8 of its
+// teams, in PlayOn's order (series id). Null until they're posted.
+function postedRoundOne(seeds, series) {
+  const mine = new Set(seeds.filter((x) => x != null));
+  if (mine.size !== 8) return null;
+  const post = series.filter((s) => isPostseason(s) && mine.has(s.home) && mine.has(s.away) && s.time);
+  for (const s of post) {
+    const night = post.filter((x) => Math.abs(x.time - s.time) < 86400);
+    const teams = new Set(night.flatMap((x) => [x.home, x.away]));
+    if (night.length === 4 && teams.size === 8) return night.sort((x, y) => Number(x.id) - Number(y.id)).map((x) => [x.home, x.away]);
+  }
+  return null;
 }
 
 // ---------- the postseason as played ----------
@@ -552,6 +590,18 @@ export function survivalPoints(pred, actual) {
     points += pts;
   }
   return { points, teams };
+}
+
+// A submitted bracket with its fix: the fix only fills keys the bracket doesn't have, so nothing
+// already sent changes. A fix is sent once, when the bracket's layout changed after it was
+// submitted (S48: PlayOn's lower round 2 and weeks) and some matches have pairings it has no
+// pick for.
+export const withFix = (picks, fix) => ({ ...(fix ?? {}), ...picks });
+// How many matches a submitted bracket has no pick for: both teams known from its own picks,
+// nobody picked. 0 for a whole bracket.
+export function openPicks(teams, series, ratings, picks, { split = false, version = HEROIC_DEFAULT } = {}) {
+  const bs = bracketsOf(playoffPicture(teams, series, ratings, { split, version, choose: (k) => picks[k], blank: true, asPicked: true }), split);
+  return bs.reduce((n, [, b]) => n + b.matches.filter((m) => m.open).length, 0);
 }
 
 // A picture's brackets as [name, bracket]: Aegis and Heroic, or each division's own.

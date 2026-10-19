@@ -278,6 +278,19 @@ export async function submitPlayoffBracket(league, picks, name) {
   });
   return uid;
 }
+// A submitted bracket's fix: picks for matches whose pairings changed after it was sent (the
+// bracket's layout moved to PlayOn's), id "<league>_<uid>" like the bracket it fixes. Create
+// only, once; lib/playoffs.js withFix only fills matches the bracket has no pick for.
+const playoffBracketFixes = collection(db, "scrimLeague", "data", "playoff_bracket_fixes");
+export async function listPlayoffBracketFixes() {
+  const snap = await getDocs(query(playoffBracketFixes, limit(500)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data(), fixedAt: d.data().fixedAt?.toDate?.() ?? null }));
+}
+export async function submitPlayoffBracketFix(league, picks) {
+  const { playoffBrackets: col, uid } = await predictorSession();
+  const fixes = collection(col.firestore, "scrimLeague", "data", "playoff_bracket_fixes");
+  await setDoc(doc(fixes, `${league}_${uid}`), { v: 1, league, uid, picks: JSON.stringify(picks), fixedAt: serverTimestamp() });
+}
 
 // ---------- scrim fixtures ----------
 // Upcoming scrims anyone can put on the schedule: two team names, a start time and the

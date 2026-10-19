@@ -569,6 +569,13 @@ shrunk-resolution problem above, not a finding problem.
     `playoff_brackets`, create only) and shows read-only, each match marked ✓/✗ against the real one,
     with points. Deadline: `lib/divisions.js` bracketClose (Champion: week 9 start, since its first
     bracket series was played early; others: their first scheduled bracket series, else week 9).
+    **Fixing a bracket**: when the bracket's layout changes after brackets were sent (S48: PlayOn's
+    lower round 2 and weeks), a sent bracket can have matches with no pick for their new pairing
+    (`openPicks`). Its owner sees a "Fix your bracket" notice on every Predict tab, and the Bracket
+    tab shows their bracket as sent with only those matches clickable; downstream matches open as
+    they pick. "Submit fixes" sends the new picks once (Firestore `playoff_bracket_fixes`, create
+    only, needs the sent bracket), before the same deadline. `withFix` merges them in and never
+    overrides a sent pick. The Bracket leaderboard tags unfixed brackets "needs a fix".
     Scoring (survivalPoints): 10 per playoff week from week 2 that a team you had still in really
     is, 5 if you had it upper and it's in the lower bracket, 10 more for your champion winning.
     The Leaderboard tab becomes **Bracket leaderboard**: submitted brackets by points first (click

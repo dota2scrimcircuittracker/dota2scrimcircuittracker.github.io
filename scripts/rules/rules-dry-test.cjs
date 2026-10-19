@@ -35,6 +35,12 @@ const brReq = (data, auth = { uid: "u1" }, path = BR_PATH) => ({ auth, method: "
 const PB_PATH = "/databases/(default)/documents/scrimLeague/data/playoff_brackets/ad2l_u1";
 const pbracket = (extra = {}) => ({ v: 1, league: "ad2l", name: "Rules Test", uid: "u1", picks: '{"u1:1-4":4,"pick":4}', submittedAt: NOW, ...extra });
 const pbReq = (data, auth = { uid: "u1" }, path = PB_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
+const PBF_PATH = "/databases/(default)/documents/scrimLeague/data/playoff_bracket_fixes/ad2l_u1";
+const pbfix = (extra = {}) => ({ v: 1, league: "ad2l", uid: "u1", picks: '{"l3:4-5":5}', fixedAt: NOW, ...extra });
+const pbfReq = (data, { auth = { uid: "u1" }, path = PBF_PATH, sent = true } = {}) => ({
+  request: { auth, method: "create", path, time: NOW, resource: { data } },
+  functionMocks: [mock("exists", sent)],
+});
 const FAN_PATH = "/databases/(default)/documents/scrimLeague/data/fantasy/ad2l_2026-10-12_173365627";
 const STEAM = { uid: "steam:173365627", token: { steam: 173365627 } };
 const fantasy = (extra = {}) => ({ v: 1, league: "ad2l", week: "2026-10-12", account: 173365627, picks: [75379546, 192871338, 66653545, 349392031, 239724237], name: "Rules Test", uid: "steam:173365627", updatedAt: NOW, ...extra });
@@ -194,6 +200,13 @@ const cases = [
   ["playoff bracket: extra field", pbReq(pbracket({ points: 999 })), "DENY"],
   ["playoff bracket: resubmit (update) denied", upd(pbracket(), pbracket({ picks: "{}" }), { uid: "u1" }, PB_PATH), "DENY"],
   ["playoff bracket: owner can't delete", { request: { auth: { uid: "u1" }, method: "delete", path: PB_PATH, time: NOW }, resource: { data: pbracket() } }, "DENY"],
+  ["bracket fix: own, for a sent bracket", pbfReq(pbfix()), "ALLOW"],
+  ["bracket fix: no sent bracket", pbfReq(pbfix(), { sent: false }), "DENY"],
+  ["bracket fix: not signed in", pbfReq(pbfix(), { auth: null }), "DENY"],
+  ["bracket fix: id for another uid", pbfReq(pbfix(), { path: PBF_PATH.replace("_u1", "_u2") }), "DENY"],
+  ["bracket fix: stale fixedAt", pbfReq(pbfix({ fixedAt: "2026-01-01T00:00:00Z" })), "DENY"],
+  ["bracket fix: extra field", pbfReq(pbfix({ name: "x" })), "DENY"],
+  ["bracket fix: second fix (update) denied", upd(pbfix(), pbfix({ picks: "{}" }), { uid: "u1" }, PBF_PATH), "DENY"],
   ["bracket: not signed in", brReq(bracket(), null), "DENY"],
   ["bracket: id for another uid", brReq(bracket(), { uid: "u1" }, BR_PATH.replace("_u1", "_u2")), "DENY"],
   ["bracket: id with another league", brReq(bracket({ league: "heroic" })), "DENY"],
@@ -339,15 +352,21 @@ const cases = [
   const acct = require("firebase-tools/lib/auth").getGlobalDefaultAccount();
   await requireAuth({ project: "pistachio-kitchen", user: acct.user, tokens: acct.tokens });
   const c = new Client({ urlPrefix: "https://firebaserules.googleapis.com", apiVersion: "v1" });
-  const body = {
-    source: { files: [{ name: "firestore.rules", content: source }] },
-    testSuite: {
-      testCases: cases.map(([, r, expectation]) => ({
-        ...(r.request ? r : { request: r }), expectation, expressionReportLevel: "VISITED",
-      })),
-    },
-  };
-  const res = (await c.post("/projects/pistachio-kitchen:test", body)).body;
+  // The API takes at most 100 test cases a request, so they go in batches.
+  const res = { issues: [], testResults: [] };
+  for (let at = 0; at < cases.length; at += 100) {
+    const body = {
+      source: { files: [{ name: "firestore.rules", content: source }] },
+      testSuite: {
+        testCases: cases.slice(at, at + 100).map(([, r, expectation]) => ({
+          ...(r.request ? r : { request: r }), expectation, expressionReportLevel: "VISITED",
+        })),
+      },
+    };
+    const part = (await c.post("/projects/pistachio-kitchen:test", body)).body;
+    if (!at) res.issues.push(...(part.issues ?? []));
+    res.testResults.push(...(part.testResults ?? []));
+  }
   for (const issue of res.issues ?? []) console.log("ISSUE:", issue.severity, issue.description, JSON.stringify(issue.sourcePosition));
   res.testResults?.forEach((r, i) => {
     console.log(`${r.state === "SUCCESS" ? "PASS" : "FAIL"}  ${cases[i][0]} (want ${cases[i][2]})`);
