@@ -383,6 +383,8 @@ export async function renderPredict(src) {
       <p>The two games in a series aren't independent: the better team on the night tends to win both, and only about a third of series have ended 1–1. So an even match is 33% / 33% / 33%, not 25% / 50% / 25%. Current settings: pull ${params.lambda}, medal weight ${params.beta}.</p>
     </details>`;
   const seriesBoard = boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> for their pick history and bracket.</p>` : `<div class="panel empty">No picks yet.</div>`;
+  // A clicked name's picks and bracket (the model's too), folded under the series board.
+  const pbFold = boardHtml ? `<details class="how pb-fold" id="pb-fold"><summary id="pb-sum">Your picks</summary><section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading…</p></section></details>` : "";
   // In the playoffs the bracket board comes first; series picks follow under their own heading.
   const boardTab = bracketsOpen ? `
     <h2>Bracket leaderboard</h2>
@@ -390,12 +392,13 @@ export async function renderPredict(src) {
     <h2>Group-stage bracket leaderboard</h2>
     ${groupTable || `<div class="panel empty">No group-stage brackets scored yet.</div>`}
     <h2>Series picks</h2>
-    ${seriesBoard}` : `
+    ${seriesBoard}
+    ${pbFold}` : `
     <h2>Leaderboard</h2>
     ${seriesBoard}
     ${finalsHtml}
     ${groupHtml}
-    ${boardHtml ? `<details class="how pb-fold" id="pb-fold"><summary id="pb-sum">Your picks</summary><section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading…</p></section></details>` : ""}
+    ${pbFold}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
   const tabs = playerTabs(pageTabs(bracketsOpen ? PREDICT_TABS.map((t) => (t[0] === "board" ? ["board", "Bracket leaderboard", ...t.slice(2)] : t)) : PREDICT_TABS, src, [
     ["fantasy", `<section class="ft" id="ft-host"><div class="panel empty">Loading…</div></section>`],

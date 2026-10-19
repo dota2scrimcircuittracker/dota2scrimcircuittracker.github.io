@@ -1,9 +1,8 @@
 // Predict's Bracket and Possibilities tabs (lib/playoffs.js does the working out).
-//  - Bracket, with a toggle:
-//    - Your picks: the rest of the group stage as the viewer called it on the Predictions tab,
-//      the final table and the week 8 tiebreakers it leads to, then tiebreakers and bracket to
-//      fill in by clicking winners (kept in this browser).
-//    - Model's picks: the same with every call the model's.
+//  - Bracket: the rest of the group stage as the viewer called it on the Predictions tab,
+//    the final table and the week 8 tiebreakers it leads to, then tiebreakers and bracket to
+//    fill in by clicking winners (kept in this browser). The model's bracket (every call the
+//    model's) shows only when watched from the Bracket leaderboard.
 //  - Possibilities: every way the remaining series (and the tiebreakers they set up) can go,
 //    as each team's chance of each place; click a cell or team for what it takes.
 import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD, HEROIC_DEFAULT, bracketsOf, seedsSettled, playoffScore, ROUND_POINTS, withFix } from "../lib/playoffs.js";
@@ -18,8 +17,6 @@ const bo = (n) => (n ? `Bo${n}` : "best-of not set in the rules");
 // The model's score ("2–0") and each score's chance from the first-listed team's side.
 const sc = (m) => `${m.score[0]}–${m.score[1]}`;
 const scoreOdds = (m) => m.scores.map((s) => `${s.a}–${s.b} <span class="muted">${pct(s.p)}</span>`).join(" · ");
-const MODES = [["mine", "Your picks"], ["model", "Model's picks"]];
-const MODE_KEY = "po-mode";
 const BR_KEY = "po-split-br";
 // A bracket drawn as PlayOn draws it: a column per playoff week, upper above lower, each match
 // level with the middle of the matches whose winners play in it (lib/playoffs.js `from`), joined
@@ -85,9 +82,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const link = (id) => (id == null ? '<span class="muted">bye</span>' : teamLink(src, name[id], id));
   const pickKey = `po-picks:${src.key}`;
-  const state = { mode: load(MODE_KEY, "mine"), picks: watch ? { ...(watch.picks ?? {}) } : locked && share?.saved ? { ...share.saved } : load(pickKey, {}), weight: "equal", sel: null };
-  if (!MODES.some(([id]) => id === state.mode)) state.mode = "mine";
-  if (watch) state.mode = watch.model ? "model" : "mine";
+  const state = { mode: watch?.model ? "model" : "mine", picks: watch ? { ...(watch.picks ?? {}) } : locked && share?.saved ? { ...share.saved } : load(pickKey, {}), weight: "equal", sel: null };
   // Heroic/Aegis: the week 8 reading PlayOn's posted brackets went with (lib/playoffs.js
   // HEROIC_VERSIONS), and which of the two brackets is on screen.
   state.version = HEROIC_DEFAULT;
@@ -129,9 +124,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   const render = () => {
     if (view === "odds") { el.innerHTML = possHtml(); return; }
     if (view === "team") { el.innerHTML = teamHtml(); return; }
-    const bar = `<div class="pd-toggle po-modes" role="group" aria-label="Whose bracket">${MODES.map(([id, label]) => `<button type="button" data-pomode="${id}" aria-pressed="${id === state.mode}">${label}</button>`).join("")}</div>`;
-    if (ready && (watch || state.mode === "mine")) { el.innerHTML = `${watch ? "" : bar}${pictureHtml(true, phase())}`; return; }
-    el.innerHTML = status ? pictureHtml(false) : `${watch ? "" : bar}${pictureHtml(state.mode === "mine")}`;
+    if (ready && (watch || state.mode === "mine")) { el.innerHTML = pictureHtml(true, phase()); return; }
+    el.innerHTML = status ? pictureHtml(false) : pictureHtml(state.mode === "mine");
   };
 
   // ---------- your picks / the model's picks ----------
@@ -662,7 +656,6 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   el.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t || !el.contains(t)) return;
-    if (t.dataset.pomode) { state.mode = t.dataset.pomode; save(MODE_KEY, state.mode); return keep(render); }
     if (t.dataset.k && ready && !watch) {
       const ph = phase();
       if (ph !== "open" && ph !== "fix") return;
