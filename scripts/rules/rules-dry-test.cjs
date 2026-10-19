@@ -223,7 +223,7 @@ const cases = [
   ["fantasy: uid not the steam account", fanReq(fantasy({ uid: "steam:1" }), { uid: "steam:1", token: { steam: 173365627 } }), "DENY"],
   ["fantasy: someone else's account", fanReq(fantasy({ account: 1 }), STEAM, FAN_PATH.replace("_173365627", "_1")), "DENY"],
   ["fantasy: id for another week", fanReq(fantasy(), STEAM, FAN_PATH.replace("2026-10-12", "2026-10-19")), "DENY"],
-  ["fantasy: picks themselves", fanReq(fantasy({ picks: [173365627, 192871338, 66653545, 349392031, 239724237] })), "DENY"],
+  ["fantasy: picks themselves", fanReq(fantasy({ picks: [173365627, 192871338, 66653545, 349392031, 239724237] })), "ALLOW"],
   ["fantasy: same player twice", fanReq(fantasy({ picks: [75379546, 75379546, 66653545, 349392031, 239724237] })), "DENY"],
   ["fantasy: four picks", fanReq(fantasy({ picks: [75379546, 192871338, 66653545, 349392031] })), "DENY"],
   ["fantasy: pick not a number", fanReq(fantasy({ picks: ["75379546", 192871338, 66653545, 349392031, 239724237] })), "DENY"],

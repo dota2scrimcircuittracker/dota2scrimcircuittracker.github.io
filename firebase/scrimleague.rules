@@ -203,7 +203,7 @@
     // Fantasy entries: one per person per AD2L league per week, id "<league>_<week>_<account>".
     // Only a Steam sign-in (uid "steam:<account>", minted by workers/steam-auth with the account
     // as the `steam` claim) can write, and only its own entry. picks: five distinct account ids,
-    // slot 1 first, never the picker's own. Lock and eligibility are checked when scoring:
+    // slot 1 first (the picker may pick themselves). Lock and eligibility are checked when scoring:
     // updatedAt must be the server's clock, and entries saved after the week's first series
     // start never count (as with predictions).
     match /scrimLeague/data/fantasy/{entryId} {
@@ -224,7 +224,6 @@
         && request.resource.data.picks.toSet().size() == 5
         && request.resource.data.picks[0] is int && request.resource.data.picks[1] is int && request.resource.data.picks[2] is int
         && request.resource.data.picks[3] is int && request.resource.data.picks[4] is int
-        && !(request.auth.token.steam in request.resource.data.picks)
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
         && request.resource.data.uid == request.auth.uid
