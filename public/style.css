@@ -4668,6 +4668,10 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
    while scrolling zoomed cards (fitDesignCards) when it's set. */
 .ft-card .ft-face { transition: box-shadow .3s, visibility 0s .1s; }
 .ft-card.flipped .ft-front, .ft-card:not(.flipped) .ft-back { visibility: hidden; }
+/* Cosmetics repaint every frame: they hold still while the page scrolls and while the card is off
+   screen (lib/card-motion.js), so a phone only has to scroll what's already drawn. */
+.cards-still .ft-card, .cards-still .ft-card *, .cards-still .pbg-layer *,
+.ft-card[data-effects-offscreen], .ft-card[data-effects-offscreen] * { animation-play-state: paused !important; }
 /* The inner keyline of the art window. */
 .ft-front::before {
   content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: calc(var(--r) - var(--frame));
