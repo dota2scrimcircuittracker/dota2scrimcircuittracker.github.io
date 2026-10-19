@@ -4670,8 +4670,16 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .ft-card.flipped .ft-front, .ft-card:not(.flipped) .ft-back { visibility: hidden; }
 /* Cosmetics repaint every frame: they hold still while the page scrolls and while the card is off
    screen (lib/card-motion.js), so a phone only has to scroll what's already drawn. */
-.cards-still .ft-card, .cards-still .ft-card *, .cards-still .pbg-layer *,
-.ft-card[data-effects-offscreen], .ft-card[data-effects-offscreen] * { animation-play-state: paused !important; }
+/* The feed's posts hold cosmetics outside cards too, so everything holds still while scrolling. */
+.cards-still *, .cards-still *::before, .cards-still *::after,
+[data-effects-offscreen], [data-effects-offscreen] *, [data-effects-offscreen] *::before, [data-effects-offscreen] *::after { animation-play-state: paused !important; }
+/* Blurring what's behind a button re-renders it on every scrolled frame; on phones the buttons go
+   a touch more solid instead. */
+@media (hover: none) {
+  html .ft-card .ft-pos, html .ft-card .ft-turn, html .ft-card .ft-expand { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: rgba(12, 11, 10, .84); }
+  html .ft-card .ft-pos.here { background-color: var(--tc); }
+  html .collection-dialog .feed-react-main { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
 /* The inner keyline of the art window. */
 .ft-front::before {
   content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: calc(var(--r) - var(--frame));
