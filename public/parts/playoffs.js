@@ -74,8 +74,8 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 // it was sent (open: matches it has no pick for) gets one fix before `closes`: picks for those
 // matches only (lib/playoffs.js withFix). Played matches are filled in for everyone. watch.final: someone's
 // submitted bracket, shown read-only with its points.
-// locked: when the bracket locked (unix seconds; the first bracket match, lib/playoffs.js
-// postseason), or null. Locked, the viewer's bracket is the one saved on the Leaderboard, shown
+// locked: when the bracket locked (unix seconds; the league's deadline, lib/divisions.js
+// bracketClose), or null. Locked, the viewer's bracket is the one saved on the Leaderboard, shown
 // read-only. Played postseason series show as results either way.
 export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view = "bracket", team = null, watch = null, share = null, locked = null, status = null, final = null } = {}) {
   const split = !!DIVISIONS[src.key]?.views;
@@ -278,7 +278,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
     const splitNote = splitBrackets ? `<p class="table-note keep">Round 1 is as PlayOn's brackets have it. Losers of round 1 meet in pairs in the lower bracket; PlayOn hasn't drawn who the upper semifinal losers meet, so the site has each meet the lower winner from the other half.</p>` : "";
     const lockedOn = locked ? new Date(locked * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
     const lead = frozen
-      ? `<p class="po-lead"><b>Brackets locked</b> when the playoffs started (${esc(lockedOn)}). ${share?.saved ? "This is the bracket you saved on the Leaderboard; each match whose winner you picked scores a point there." : "You hadn't saved a bracket on the Leaderboard before then."} Played matches show their results.</p>`
+      ? `<p class="po-lead"><b>Brackets locked</b> ${esc(lockedOn)}. ${share?.saved ? "This is the bracket you saved on the Leaderboard; each match whose winner you picked scores a point there." : "You hadn't saved a bracket on the Leaderboard before then."} Played matches show their results.</p>`
       : watch && mine
       ? `<p class="po-lead">${esc(watch.name)}'s calls from Predictions, played out under <a href="${RULES}" target="_blank" rel="noopener">AD2L's rules</a>. ${Object.keys(watch.picks ?? {}).length ? "Week 8 and the bracket are their picks; matches they didn't pick are left open." : watch.picks ? "They haven't picked any winners, so only round 1 is set, by their calls." : "Week 8 and the bracket are the model's."}</p>`
       : live

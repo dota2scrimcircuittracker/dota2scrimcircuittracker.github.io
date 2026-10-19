@@ -77,12 +77,12 @@ export function unpostedTime(m) {
   for (const list of Object.values(ANNOUNCED)) { const a = list.find((x) => x.id === m.series_id); if (a) return a.time; }
   return UNPOSTED_WEEK[m.match_id ?? m.id] ?? null;
 }
-// When playoff bracket submissions close (unix seconds), per league. Champion played its first
-// bracket series early (week 8 night), so it's given to everyone and picks stay open until the
-// rest of upper round 1 in week 9. A league not listed closes at its first scheduled bracket
-// series, or at week 9's start (bracketClose) while none is scheduled.
-export const BRACKET_CLOSE = { ad2l: WEEK8 + 7 * 86400 };
-export const bracketClose = (key, firstBracketSeries) => BRACKET_CLOSE[key] ?? firstBracketSeries ?? WEEK8 + 7 * 86400;
+// When playoff brackets close (unix seconds), per league: week 9's start (Thursday night) unless
+// listed. A bracket series PlayOn schedules earlier doesn't move it (Challenger's lower round 1
+// was posted for Sunday of week 8, after it had started); one already played is given to
+// everyone. List a league here to close it at another time.
+export const BRACKET_CLOSE = {};
+export const bracketClose = (key) => BRACKET_CLOSE[key] ?? WEEK8 + 7 * 86400;
 export const isPostseason = (s) => SEASON.regularEnd != null && (s.time ?? 0) > SEASON.regularEnd && !SEASON.regularIds.includes(s.id);
 export const groupStage = (series) => series.filter((s) => !isPostseason(s));
 

@@ -79,10 +79,11 @@ export async function renderPredict(src) {
   const full = { ...league, series: [...league.series, ...playedPostseason(postseasonRows(src.key, league))] };
   const split = !!DIVISIONS[src.key]?.views;
   const ps = postseason(full.teams, full.series, fullRatings, { split });
-  const bracketLocked = ps.lock != null && now >= ps.lock * 1000;
   // Submitted playoff brackets (one per person, final once sent). One sent after the league's
   // deadline isn't scored or listed; the viewer's own is kept either way, to show it back.
-  const closes = bracketClose(src.key, ps.lock);
+  // Brackets close at the league's deadline (lib/divisions.js bracketClose), Thursday of week 9 by default.
+  const closes = bracketClose(src.key);
+  const bracketLocked = now >= closes * 1000;
   const finals = [];
   let myFinal = null;
   // A bracket whose layout changed after it was sent gets one fix: picks for the matches it has
@@ -234,13 +235,13 @@ export async function renderPredict(src) {
   }
   // Group-stage brackets (the old autosaved kind, made from series calls before the playoffs):
   // 1 per decided bracket match whose winner the person picked, from a bracket saved before the
-  // lock (the first bracket match). Their own leaderboard, apart from series points and from
+  // deadline (closes). Their own leaderboard, apart from series points and from
   // submitted playoff brackets.
   const showBracket = ps.decided.length > 0;
   const groupBrackets = [];
   if (showBracket) for (const [k, picks] of savedBrackets) {
     const at = savedAt.get(k);
-    if (!at || ps.lock == null || at.getTime() >= ps.lock * 1000) continue;
+    if (!at || at.getTime() >= closes * 1000) continue;
     groupBrackets.push({ k, name: savedName.get(k), points: bracketPoints(picks, ps.decided, ps.bracketTeams).points });
   }
   groupBrackets.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
@@ -458,7 +459,7 @@ export async function renderPredict(src) {
   const poBracket = document.getElementById("po-bracket"), poOdds = document.getElementById("po-odds");
   if (!document.body.contains(poBracket)) return;
   const myCalls = new Map(full.series.filter((s) => !isPlayed(s)).map((s) => [s.id, mine(s.id)?.pick]).filter(([, k]) => k));
-  mountPlayoffs(poBracket, src, full, fullRatings, myCalls, { share: { name, saved: savedBrackets.get(myKey), save: (picks) => saveBracket(src.key, picks, name) }, locked: bracketLocked ? ps.lock : null,
+  mountPlayoffs(poBracket, src, full, fullRatings, myCalls, { share: { name, saved: savedBrackets.get(myKey), save: (picks) => saveBracket(src.key, picks, name) }, locked: bracketLocked ? closes : null,
     final: { closes, mine: myFinal, submit: (picks) => submitPlayoffBracket(src.key, picks, name), fix: (picks) => submitPlayoffBracketFix(src.key, picks) } });
   poBracket.addEventListener("click", (e) => { if (e.target.closest("[data-steam]")) startSteamSignIn(); });
 
