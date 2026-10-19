@@ -4,7 +4,7 @@ import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
 import { isPostseason, playoffs, ANNOUNCED, withAnnounced, postseasonRows, playedPostseason, bracketClose } from "../lib/divisions.js";
 import { postseason, bracketPoints, playoffScore, playoffPicture, seedsSettled, withFix, openPicks } from "../lib/playoffs.js";
-import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, listPlayoffBracketFixes, submitPlayoffBracketFix, currentUid, myUids, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
+import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, listPlayoffBracketFixes, submitPlayoffBracketFix, currentUid, myUids, steamAccount, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
 import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, DIVISIONS, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
@@ -12,6 +12,7 @@ import { loading, errorBox } from "../parts/lanes.js";
 import { lastNight, sinceLabel } from "../parts/ranks.js";
 import { draftHtml, upload } from "./upload.js";
 import { mountPlayoffs } from "../parts/playoffs.js";
+import { startSteamSignIn, steamName } from "../parts/me.js";
 import { pageTabs, PREDICT_TABS } from "../lib/pagetabs.js";
 
 // ---------- Predictions (AD2L) ----------
@@ -20,17 +21,22 @@ const NAME_KEY = "predict-name";
 const storedName = () => { try { return localStorage.getItem(NAME_KEY) ?? ""; } catch { return ""; } };
 const storeName = (n) => { try { localStorage.setItem(NAME_KEY, n); } catch { /* private window: name just isn't remembered */ } };
 const OUTCOMES = ["home", "tie", "away"];
-// "Picking as <name>" bar shared by both leagues' prediction pages.
-const nameBarHtml = (name) => `
+// "Picking as <name>" bar shared by both leagues' prediction pages. Signed in with Steam, the name
+// is the Steam account's (roster name, else Steam persona) and there's nothing to type.
+const nameBarHtml = (name, steam = false) => steam ? `
+    <div class="pred-name"><div class="pred-name-show">Picking as <b>${esc(name)}</b> <span class="muted">(Steam)</span></div></div>` : `
     <div class="pred-name">
       <div class="pred-name-show"${name ? "" : " hidden"}>Picking as <b>${esc(name)}</b> <button type="button" class="linkish" id="pred-name-edit">Change</button></div>
       <div class="pred-name-form"${name ? " hidden" : ""}>
         <label>Your name <input id="pred-name" maxlength="24" value="${esc(name)}" placeholder="Type your name" autocomplete="nickname"></label>
         <button class="primary" id="pred-name-save" type="button">Save</button>
+        <button class="linkish" id="pred-steam" type="button">or sign in with Steam</button>
       </div>
     </div>`;
 function wireNameBar(rerender) {
   const input = document.getElementById("pred-name");
+  if (!input) return null; // signed in with Steam: no name to type
+  document.getElementById("pred-steam").onclick = startSteamSignIn;
   document.getElementById("pred-name-edit").onclick = () => {
     app.querySelector(".pred-name-show").hidden = true;
     app.querySelector(".pred-name-form").hidden = false;
@@ -44,6 +50,13 @@ function wireNameBar(rerender) {
   };
   input.onkeydown = (e) => { if (e.key === "Enter") document.getElementById("pred-name-save").click(); };
   return input;
+}
+// The signed-in Steam account's name for the boards, or null when signed out.
+async function steamPickerName(teams) {
+  const account = await steamAccount().catch(() => null);
+  if (account == null) return null;
+  const roster = teams.flatMap((t) => t.players ?? []).find((p) => p.account_id === account)?.name;
+  return (roster ?? steamName(account) ?? `#${account}`).slice(0, 24);
 }
 
 export async function renderPredict(src) {
@@ -66,7 +79,8 @@ export async function renderPredict(src) {
     }
   } catch (e) { console.warn(e); }
   const uids = await myUids();
-  const name = storedName();
+  const steamNm = await steamPickerName(d.teams);
+  const name = steamNm ?? storedName();
   const teamName = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   // Week 8 tiebreakers the admins announced before PlayOn posts them (lib/divisions.js
   // ANNOUNCED) join the slate under their stand-in id (`pid`). Once the sync brings PlayOn's
@@ -409,7 +423,7 @@ export async function renderPredict(src) {
     ["odds", `<section class="po" id="po-odds"><div class="panel empty">Working out every outcome…</div></section>`],
   ]), { store: "predictTab", label: "Fantasy sections" });
   app.innerHTML = `${pageHead(kicker, "Fantasy", "", tabs.bar)}
-    ${nameBarHtml(name)}
+    ${nameBarHtml(name, !!steamNm)}
     ${preds ? "" : `<div class="notice err">Couldn't reach the predictions database, so picks and the leaderboard are unavailable right now. The model's odds still work.</div>`}
     ${needsFix ? `<div class="notice warn"><b>Fix your bracket</b>Your submitted bracket now follows PlayOn's layout, so ${myFinal.open === 1 ? "1 match has a new pairing that needs" : `${myFinal.open} matches have new pairings that need`} your pick. Everything else you picked stays as it is. Make the new ${myFinal.open === 1 ? "pick" : "picks"}${closes ? ` by ${esc(new Date(closes * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}` : ""}. <button type="button" class="linkish" data-tobracket>Fix it on the Bracket tab →</button></div>` : ""}
     <div id="pred-msg"></div>
@@ -461,9 +475,9 @@ export async function renderPredict(src) {
   });
   const msg = document.getElementById("pred-msg");
   app.querySelectorAll(".pred-card").forEach((c) => c.querySelectorAll("[data-pick]").forEach((b) => b.onclick = async () => {
-    const n = storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
+    const n = steamNm || storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
     if (!n) { msg.innerHTML = `<div class="notice warn">Type your name first, so your picks count toward the standings.</div>`; input.focus(); return; }
-    storeName(n);
+    if (!steamNm) storeName(n);
     c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = true));
     try {
       await savePrediction(Number(c.dataset.sid), b.dataset.pick, n, src.key);
@@ -602,7 +616,8 @@ export async function renderScrimPredict() {
   try { fixtures = await listFixtures(); } catch (e) { console.warn(e); fixtures = null; }
   try { preds = (await listPredictions()).filter((p) => p.league === "scrim"); } catch (e) { console.warn(e); preds = null; }
   const uid = await currentUid();
-  const name = storedName();
+  const steamNm = await steamPickerName([]);
+  const name = steamNm ?? storedName();
   const myKey = nameKey(name);
   const now = Date.now();
   const settled = settle((fixtures ?? []).filter((f) => f.start), matches);
@@ -684,7 +699,7 @@ export async function renderScrimPredict() {
   const start = new Date(now + 864e5);
   start.setMinutes(0, 0, 0);
   app.innerHTML = `${pageHead(kicker, "Predictions")}
-    ${nameBarHtml(name)}
+    ${nameBarHtml(name, !!steamNm)}
     ${fixtures && preds ? "" : `<div class="notice err">Couldn't load the ${fixtures ? "" : "schedule and "}predictions from the database, so ${fixtures ? "picks and the leaderboard are" : "scheduled scrims, picks and the leaderboard are"} unavailable right now.</div>`}
     <div id="pred-msg"></div>
     <details class="fx-add" ${upcoming.length ? "" : "open"}>
@@ -739,9 +754,9 @@ export async function renderScrimPredict() {
   app.querySelectorAll(".pred-card[data-fid]").forEach((c) => {
     const f = settled.find((x) => x.id === c.dataset.fid);
     c.querySelectorAll("[data-pick]").forEach((b) => b.onclick = async () => {
-      const n = storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
+      const n = steamNm || storedName() || input.value.trim() || (prompt("Your name for the standings (shown with your picks):") ?? "").trim().slice(0, 24);
       if (!n) { say("warn", "Type your name first, so your picks count toward the standings."); input.focus(); return; }
-      storeName(n);
+      if (!steamNm) storeName(n);
       c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = true));
       try { await savePrediction(f.id, b.dataset.pick, n, "scrim"); renderScrimPredict(); }
       catch (e) { say("err", `Couldn't save your pick: ${e.message}`); c.querySelectorAll("[data-pick]").forEach((x) => (x.disabled = false)); }

@@ -106,7 +106,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
   // others can open your bracket.
   let shared = share?.name ? "idle" : "noname", shareTimer = null;
   function shareText() {
-    return { noname: "Type your name above to share your bracket on the Leaderboard.", idle: `Shared on the Leaderboard as <b>${esc(share?.name ?? "")}</b>.`, saving: "Saving to the Leaderboard…", saved: `Saved to the Leaderboard as <b>${esc(share?.name ?? "")}</b>.`, failed: "Couldn't save your bracket to the Leaderboard. It's still kept in this browser." }[shared];
+    return { noname: "Sign in with Steam (or type your name above) to share your bracket on the Leaderboard.", idle: `Shared on the Leaderboard as <b>${esc(share?.name ?? "")}</b>.`, saving: "Saving to the Leaderboard…", saved: `Saved to the Leaderboard as <b>${esc(share?.name ?? "")}</b>.`, failed: "Couldn't save your bracket to the Leaderboard. It's still kept in this browser." }[shared];
   }
   // Picks made before the name was set (or before this was saved) go up on first show.
   const unsynced = () => share?.name && Object.keys(state.picks).length && JSON.stringify(state.picks) !== JSON.stringify(share.saved ?? {});
@@ -335,7 +335,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       closed: `<b>Submissions closed</b>${closes ? ` ${esc(closes)}` : ""} and you didn't submit a bracket. This is the bracket as played so far.`,
       watch: `${esc(watch?.name ?? "")}'s submitted bracket. Each match shows how the real one went.`,
     }[fin];
-    const why = !share?.name ? "Type your name above first." : !full ? `${all - picked} ${all - picked === 1 ? "match" : "matches"} left to pick.` : "Ready. One go, so check it first.";
+    const why = !share?.name ? "Sign in with Steam first." : !full ? `${all - picked} ${all - picked === 1 ? "match" : "matches"} left to pick.` : "Ready. One go, so check it first.";
     const stats = fin === "fix"
       ? `<div class="po-stat${toFix ? "" : " full"}"><span>Left to pick</span><b>${toFix}</b></div>${champs}
         <div class="po-submit"><button type="button" class="primary" data-fixsubmit ${toFix ? "disabled" : ""}>Submit fixes</button><span class="po-submit-note">${toFix ? `${toFix} ${toFix === 1 ? "match" : "matches"} left to pick.` : "Ready. One go, so check it first."}</span></div>`

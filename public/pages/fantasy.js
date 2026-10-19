@@ -161,7 +161,6 @@ export async function mountFantasy(host, viewSrc, scope = null) {
         </div>
         ${SLOTS.map(slotDeck).join("")}
         <div class="ft-save">
-          <label>Name on the board <input id="ft-name" maxlength="24" value="${esc(current?.name ?? (me != null ? rosterName.get(me) ?? steamName(me) ?? "" : ""))}"${locked ? " disabled" : ""}></label>
           <button type="button" class="primary" id="ft-save"${locked ? " disabled" : ""}>${current ? "Update picks" : "Save picks"}</button>
           <span class="ft-msg" id="ft-msg" role="status">${current ? `Saved ${esc(current.updatedAt?.toLocaleString() ?? "")}` : ""}</span>
         </div>
@@ -341,8 +340,8 @@ export async function mountFantasy(host, viewSrc, scope = null) {
   host.querySelector("#ft-out")?.addEventListener("click", async () => { await steamSignOut(); mountMe(); rerender(); });
   document.getElementById("ft-save")?.addEventListener("click", async () => {
     const msg = document.getElementById("ft-msg");
-    const name = document.getElementById("ft-name").value.trim();
-    const err = checkPicks(picks, pickable(d.teams, open)) ?? (Number.isInteger(captain)&&picks.includes(captain)?null:"Choose a captain for double points.") ?? (name ? null : "Type a name for the board.");
+    const name = meP.name; // the Steam account's name: roster name, else Steam persona
+    const err = checkPicks(picks, pickable(d.teams, open)) ?? (Number.isInteger(captain)&&picks.includes(captain)?null:"Choose a captain for double points.");
     if (err) { msg.textContent = err; return; }
     if (nowSec() >= open.lock) { msg.textContent = "Picks are locked for this week."; return; }
     msg.textContent = "Saving…";
