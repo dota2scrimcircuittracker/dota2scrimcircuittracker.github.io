@@ -116,8 +116,8 @@ export async function renderPredict(src) {
   // a match to call. Once a later night is posted, one that started over 12 hours ago with no
   // result (Challenger's Castaway Baes v SUX, Sun Oct 18 US) stops holding the page too.
   const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
-  const unplayed = slate.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
-  const upcoming = unplayed.some((s) => s.time * 1000 > now) ? unplayed.filter((s) => s.time * 1000 > now - 12 * 3600e3) : unplayed;
+  const due = slate.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
+  const upcoming = due.some((s) => s.time * 1000 > now) ? due.filter((s) => s.time * 1000 > now - 12 * 3600e3) : due;
   const night = upcoming.length ? Math.min(...upcoming.map((s) => s.time)) : null;
   const week = upcoming.filter((s) => s.time === night);
   const mine = (sid) => (preds ?? []).filter((p) => p.series_id === sid && uids.includes(p.uid)).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
