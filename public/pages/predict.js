@@ -113,9 +113,11 @@ export async function renderPredict(src) {
   // This week's slate: the earliest night still to be played. A series whose result never
   // came (a 0–0 between teams that dropped out) stops counting 3 days after its start, so
   // it can't hold the page on a dead week; a forfeit against the bye-week placeholder isn't
-  // a match to call.
+  // a match to call. Once a later night is posted, one that started over 12 hours ago with no
+  // result (Challenger's Castaway Baes v SUX, Sun Oct 18 US) stops holding the page too.
   const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
-  const upcoming = slate.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
+  const unplayed = slate.filter((s) => !isPlayed(s) && s.time && s.time * 1000 > now - 3 * 86400e3 && !bye.has(s.home) && !bye.has(s.away));
+  const upcoming = unplayed.some((s) => s.time * 1000 > now) ? unplayed.filter((s) => s.time * 1000 > now - 12 * 3600e3) : unplayed;
   const night = upcoming.length ? Math.min(...upcoming.map((s) => s.time)) : null;
   const week = upcoming.filter((s) => s.time === night);
   const mine = (sid) => (preds ?? []).filter((p) => p.series_id === sid && uids.includes(p.uid)).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];

@@ -1,4 +1,4 @@
-import { withAnnounced, isPostseason } from "./divisions.js";
+import { withAnnounced, isPostseason, SEASON } from "./divisions.js";
 import { tierModels, gamePointsAt, LIVE } from "./tiers.js";
 
 // Fantasy league, one per AD2L division, over the playoffs. Each week you pick five of that
@@ -58,9 +58,18 @@ export function fantasyWeeks(series) {
 
 // Restrict later weeks to the division's playoff bracket. The shared test only includes
 // its tiebreaker week; it remains available to review after it has ended.
+// A series PlayOn dates days before its playoff night (Challenger's Castaway Baes v SUX, Sun
+// Oct 18 US) belongs to that night's week and doesn't lock it early: it counts at the night's
+// start (Thursday night US = Fri 01:00 UTC). Only within 5 days of it, so the week before's
+// tiebreakers stay in their own week.
+const nightStarts = (SEASON.playoffNights ?? []).map((n) => Date.parse(`${n}T00:00:00Z`) / 1000 + 25 * 3600);
+export function onNight(s) {
+  const n = nightStarts.find((t) => t >= s.time - 12 * 3600);
+  return n != null && s.time < n && s.time > n - 5 * 86400 ? { ...s, time: n } : s;
+}
 export function playoffWeeks(league, series) {
-  return fantasyWeeks(withAnnounced(league, series).filter((s) => isPostseason(s)
-    && (!TEST_WEEK || weekKey(s.time) > TEST_WEEK.key))).map((w) => ({ ...w, league }));
+  return fantasyWeeks(withAnnounced(league, series).filter((s) => isPostseason(s)).map(onNight)
+    .filter((s) => !TEST_WEEK || weekKey(s.time) > TEST_WEEK.key)).map((w) => ({ ...w, league }));
 }
 export function testWeek(divisions) {
   if (!TEST_WEEK) return null;

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { weekKey, fantasyWeeks, openWeek, pickable, checkPicks, pickPoints, scoreEntry, leaderboard, playoffWeeks, testWeek, TEST_WEEK, weekBoard, weekGames, GAMES_COUNTED } from "../public/lib/fantasy.js";
+import { weekKey, fantasyWeeks, openWeek, pickable, checkPicks, pickPoints, scoreEntry, leaderboard, playoffWeeks, onNight, testWeek, TEST_WEEK, weekBoard, weekGames, GAMES_COUNTED } from "../public/lib/fantasy.js";
 
 const T = (iso) => Date.parse(iso) / 1000;
 const series = [
@@ -138,4 +138,13 @@ test("a game the pick sat out is scored on the stand-in who took their place", (
   assert.equal(own.sub, null);
   // A player with no stand-in in a game they missed still scores nothing for it.
   assert.equal(pickPoints(999, 2, [game("9046965419")], d.games).games.length, 0);
+});
+
+test("a playoff series dated days before its night counts on that night", () => {
+  const night = T("2026-10-23T01:00:00Z");
+  assert.equal(onNight({ id: 1, time: T("2026-10-19T01:00:00Z") }).time, night); // Sun Oct 18 US
+  assert.equal(onNight({ id: 2, time: night }).time, night);
+  assert.equal(onNight({ id: 3, time: T("2026-10-16T01:00:00Z") }).time, T("2026-10-16T01:00:00Z")); // week 8 tiebreaker
+  const ws = playoffWeeks("challenger", [{ id: 4, time: T("2026-10-19T01:00:00Z"), home: 10, away: 11 }, { id: 5, time: night, home: 12, away: 13 }]);
+  assert.equal(openWeek(ws, T("2026-10-20T01:00:00Z"))?.lock, night);
 });
