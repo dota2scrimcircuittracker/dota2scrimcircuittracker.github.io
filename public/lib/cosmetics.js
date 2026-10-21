@@ -1,21 +1,27 @@
 import { CATALOG, DEFAULT_EQUIPMENT, itemByKey } from './cosmetics-catalog.js';
 import { signatureHtml } from './signatures.js';
+import {equipmentUpdateKeys} from './cosmetics-update-keys.js';
 import { steamAccount, steamIdToken } from './store.js';
 import { cardArtwork } from './card-art.js';
 import { heroById, heroImg } from './hero-meta.js';
 import { plusSlot } from './hero-levels.js';
 import { cardAppearance, selectedCardDesign, shownNickname } from './cosmetics-engine.js';
 import { CANVAS_FINISHES } from './card-fx.js';
+import {expansionBorderHtml,expansionFinishHtml,expansionSymbolHtml,borderEmblemList,hasExpansionEmblems,expansionSymbolStyle} from './cosmetics-expansion.js';
+import {WAVE_ANIMATED_FINISHES} from './cosmetics-wave-catalog.js';
+import {hasParticleGroups} from './cosmetics-particle-groups.js';
 // Finishes with a speed setting: the particle ones, plus fx- finishes that animate (lib/card-fx.js, cosmetics-fx.css).
-export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight','fx-drift','fx-sheen','fx-waves',...Object.keys(CANVAS_FINISHES)]);
+export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight','fx-drift','fx-sheen','fx-waves','supernova','deep-sea','reality-rift','shattered-time','ink-water','lenticular',...WAVE_ANIMATED_FINISHES,...Object.keys(CANVAS_FINISHES)]);
 // Finishes drawn on a canvas; fx- borders have a border speed.
 export const isCanvasFinish=id=>id in CANVAS_FINISHES;
-// Finishes with a particle amount setting: every particle finish except fx-sheen and fx-waves, which draw no particles.
-export const hasParticleAmount=id=>PARTICLE_FINISHES.includes(id)&&id!=='fx-sheen'&&id!=='fx-waves';
-export const isFxBorder=id=>typeof id==='string'&&id.startsWith('fx-');
+// Finishes with the one particle amount setting: particle finishes without particles of their own (fx-sheen, fx-waves...)
+// or their own per-group counts (lib/cosmetics-particle-groups.js).
+export const hasParticleAmount=id=>PARTICLE_FINISHES.includes(id)&&!['fx-sheen','fx-waves','supernova','shattered-time','ink-water','lenticular',...WAVE_ANIMATED_FINISHES].includes(id)&&!hasParticleGroups('finish',id);
+export const isFxBorder=id=>typeof id==='string'&&(id.startsWith('fx-')||(itemByKey(`border:${id}`)?.expansion&&itemByKey(`border:${id}`)?.rarity!=='common'));
 const tuning=e=>({speed:(e.particleSpeed??DEFAULT_EQUIPMENT.particleSpeed)/100,amount:(e.particleAmount??DEFAULT_EQUIPMENT.particleAmount)/100,border:(e.borderSpeed??DEFAULT_EQUIPMENT.borderSpeed)/100});
 // The layer a finish draws its particles in: a canvas, or a set of small elements the stylesheet animates.
 export function particleLayerHtml(finish,e={},count=24) {
+  const expanded=itemByKey(`finish:${finish}`);if(expanded?.expansion)return expansionFinishHtml(expanded,e);
   if(isCanvasFinish(finish)) {const t=tuning(e);return `<span class="particles" aria-hidden="true"><canvas class="fx-canvas" data-fx="${CANVAS_FINISHES[finish]}" data-amt="${t.amount}" data-spd="${t.speed}"></canvas></span>`;}
   if(hasParticleAmount(finish))count=Math.round(count*tuning(e).amount);
   return PARTICLE_FINISHES.includes(finish)?`<span class="particles" aria-hidden="true">${Array.from({length:count},(_,i)=>`<i style="--i:${i};left:${(i*43+13)%100}%;top:${(i*29+7)%100}%;animation-delay:-${i*.39}s"></i>`).join('')}</span>`:'';
@@ -121,45 +127,75 @@ export async function cosmeticAppearances() {
 }
 export function cosmeticAttributes(raw) {
   const e={...DEFAULT_EQUIPMENT,...raw}, border=itemByKey(`border:${e.border}`);
-  return ` data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${tuning(e).speed};--border-speed:${tuning(e).border}"`;
+  return ` data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${tuning(e).speed};--border-speed:${tuning(e).border};--particle-speed-base:${tuning(e).speed};--border-speed-base:${tuning(e).border}"`;
 }
 export function cosmeticLayers(e,name) {
-  const equipment={...DEFAULT_EQUIPMENT,...e}, border=itemByKey(`border:${equipment.border}`);
-  const symbol=equipment.emblem===false?'':border?.symbol??'';
-  const particles=particleLayerHtml(equipment.finish,equipment);
-  return `<span class="cosmetic-overlay" aria-hidden="true"></span>${particles}${!symbol?'':Array.isArray(equipment.emblems)&&equipment.emblems.length?equipment.emblems.map(m=>`<span class="cosmetic-emblem placed" aria-hidden="true" style="left:${Number(m.x)}%;top:${Number(m.y)}%;--emblem-size:${(Number(m.size)||100)/100}">${symbol}</span>`).join(''):`<span class="cosmetic-emblem" aria-hidden="true">${symbol}</span>`}${signatureHtml(equipment,name)}`;
+  const equipment={...DEFAULT_EQUIPMENT,...e};
+  return `<span class="cosmetic-overlay" aria-hidden="true"></span>${particleLayerHtml(equipment.finish,equipment)}${symbolLayers(equipment,false)}${signatureHtml(equipment,name)}`;
 }
+function symbolLayers(e,outside){
+  const equipment={...DEFAULT_EQUIPMENT,...e},border=itemByKey(`border:${equipment.border}`);
+  const special=hasExpansionEmblems(border?.id);
+  if(special!==outside)return '';
+  const symbol=equipment.emblem===false?'':special?'svg':border?.symbol??'';
+  const symbolHtml=n=>special?expansionSymbolHtml(border.id,n):symbol;
+  const emblems=borderEmblemList(equipment);
+  const position=(v)=>outside?`calc(${Number(v)}% + ${1-Number(v)/50} * var(--frame))`:`${Number(v)}%`;
+  return !symbol?'':Array.isArray(emblems)&&emblems.length?emblems.map((m,n)=>`<span class="cosmetic-emblem placed ${special?border.id==='ancient-war'?'exp-fortress':'exp-ornament':''}" aria-hidden="true" style="${special?expansionSymbolStyle(border.id):''}left:${position(m.x)};top:${position(m.y)};--emblem-size:${(Number(m.size)||100)/100};--emblem-rotation:${Number(m.rotation)||0}deg">${symbolHtml(n)}</span>`).join(''):`<span class="cosmetic-emblem" aria-hidden="true">${symbolHtml(0)}</span>`;
+}
+export const cosmeticEmblems=e=>symbolLayers(e,true);
+// The frame belongs beside the faces; the front's overflow clips artwork to its inner window.
+export const cosmeticBorder=e=>expansionBorderHtml(itemByKey(`border:${e?.border}`),{settings:e?.borderSettings?.[e?.border]});
+const renderedEquipment=new WeakMap(),aspectImages=new WeakSet();
 export function applyEquipment(card,e,name) {
   if(!card)return;
+  const keys=equipmentUpdateKeys(e,name),previous=renderedEquipment.get(card)??{};
   const border=itemByKey(`border:${e.border}`);
   card.dataset.cosmetic='true';card.dataset.texture=border?.texture??'metal';card.dataset.finish=e.finish;card.dataset.rarity=border?.rarity??'free';
   card.style.setProperty('--a',border?.a??'#92969c');card.style.setProperty('--b',border?.b??'#41454c');
   card.style.setProperty('--art-hue',`${Number(e.hue)||0}deg`);
-  card.style.setProperty('--particle-speed',tuning(e).speed);card.style.setProperty('--border-speed',tuning(e).border);
-  if(e.baseCard) {
+  for(const [k,v] of [['particle-speed',tuning(e).speed],['border-speed',tuning(e).border]]){card.style.setProperty(`--${k}`,v);card.style.setProperty(`--${k}-base`,v);}
+  if(e.baseCard&&keys.art!==previous.art) {
     const base=e.baseCard,hero=base.hero??Number(card.dataset.autoHero),art=cardArtwork(hero,base);
     if(art) {
       [...card.classList].filter(c=>c.startsWith('src-')).forEach(c=>card.classList.remove(c));
       for(const c of art.cls?.split(' ')??[])if(c)card.classList.add(c);
       card.dataset.style=art.style;
       const host=card.querySelector('.ft-art');let img=host.querySelector('img');
-      if(!img){img=document.createElement('img');img.alt='';host.append(img);}img.src=art.src;
+      if(!img){img=document.createElement('img');img.alt='';host.append(img);}if(img.getAttribute('src')!==art.src)img.src=art.src;
       // The picture's aspect lets a rotated crop show the whole image under the frame, not a clipped card-shaped piece.
-      const aspect=()=>{if(img.naturalWidth)card.style.setProperty('--art-ar',img.naturalWidth/img.naturalHeight);};img.addEventListener('load',aspect);aspect();
+      const aspect=()=>{if(img.naturalWidth)card.style.setProperty('--art-ar',img.naturalWidth/img.naturalHeight);};if(!aspectImages.has(img)){aspectImages.add(img);img.addEventListener('load',aspect);}aspect();
       img.dataset.wide=heroImg(heroById(hero)?.name)??'';
       card.classList.toggle('ft-custom-crop',!!art.crop);
       if(art.crop){for(const k of ['x','y']){card.style.setProperty(`--art-${k}`,`${art.crop[k]}%`);card.style.setProperty(`--art-${k}f`,art.crop[k]/100);}card.style.setProperty('--art-zoom',art.crop.zoom);card.style.setProperty('--art-rot',`${art.crop.rot??0}deg`);card.style.setProperty('--art-flip',art.crop.flip?-1:1);}
       const label=card.querySelector('.ft-sig');if(label)label.textContent=heroById(hero)?.name??'';
       // The Dota Plus badge belongs to the shown hero: redraw it (the page's observer fills it in).
       const plus=card.querySelector('.ft-plus');
-      if(plus)plus.innerHTML=plusSlot(card.dataset.pick,hero);
+      if(plus&&plus.querySelector('i.plus')?.dataset.ph!==String(hero))plus.innerHTML=plusSlot(card.dataset.pick,hero);
     }
   }
-  applyLayout(card,e.layout??null,name);
+  if(keys.layout!==previous.layout)applyLayout(card,e.layout??null,name);
   // No card name of its own: the player's shown name (their nickname, else in-game name).
   if(e.layout?.name==null&&name)card.querySelectorAll('.ft-name').forEach(n=>{if(n.textContent!==name){n.textContent=name;n.title=name;}});
-  const face=card.querySelector('.ft-front');face.querySelectorAll('.card-autograph,.cosmetic-overlay,.cosmetic-emblem,.particles').forEach(n=>n.remove());
-  face.insertAdjacentHTML('beforeend',cosmeticLayers(e,e.layout?.name??name));
+  const face=card.querySelector('.ft-front');
+  if(!face.querySelector('.cosmetic-overlay'))face.insertAdjacentHTML('beforeend','<span class="cosmetic-overlay" aria-hidden="true"></span>');
+  if(keys.finish!==previous.finish){
+    face.querySelectorAll('.particles,.exp-finish').forEach(n=>n.remove());
+    face.insertAdjacentHTML('beforeend',particleLayerHtml(e.finish,e));
+  }
+  for(const canvas of face.querySelectorAll('.fx-canvas')){canvas.dataset.spd=tuning(e).speed;canvas.dataset.amt=tuning(e).amount;}
+  if(keys.signature!==previous.signature){
+    face.querySelectorAll('.card-autograph').forEach(n=>n.remove());
+    face.insertAdjacentHTML('beforeend',signatureHtml(e,e.layout?.name??name));
+  }
+  if(keys.symbols!==previous.symbols){
+    card.querySelectorAll('.cosmetic-emblem').forEach(n=>n.remove());
+    face.insertAdjacentHTML('beforeend',symbolLayers(e,false));
+    card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',cosmeticEmblems(e));
+  }
+  const frame=card.querySelector('.ft-flip>.exp-border');
+  if(frame?.dataset.borderId!==border?.id||!border?.expansion||keys.border!==previous.border){card.querySelectorAll('.exp-border').forEach(n=>n.remove());card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',cosmeticBorder(e));}
+  renderedEquipment.set(card,keys);
 }
 export function applyExpandedEquipment(panel,raw,name) {
   const e={...DEFAULT_EQUIPMENT,...raw},border=itemByKey(`border:${e.border}`);

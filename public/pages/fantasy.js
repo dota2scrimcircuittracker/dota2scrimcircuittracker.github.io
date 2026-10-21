@@ -145,12 +145,17 @@ export async function mountFantasy(host, viewSrc, scope = null) {
     const pool = pickable(d.teams, open);
     const chosen = current?.picks ?? [];
     const byAcc = new Map(pool.map((p) => [p.account, p]));
+    const choice = (p, slot) => `<div class="ft-choice" data-pick="${p.account}">
+      ${card(p, slot, { pickButtons: false })}
+      <div class="ft-choice-controls"><span class="ft-choice-name">${esc(p.name)}</span>
+        <button type="button" class="ft-choice-pick" aria-label="Pick ${esc(p.name)} for pos ${slot}" ${locked ? 'data-act="signin">Sign in to pick' : `data-act="pick" aria-pressed="false">Pick for pos ${slot}`}</button>
+      </div></div>`;
     const slotDeck = (slot) => {
       const here = pool.filter((p) => roleOf(p.account) === slot), rest = pool.filter((p) => roleOf(p.account) !== slot);
       const rank = (a, b) => (tiers.get(String(b.account))?.rating ?? -1) - (tiers.get(String(a.account))?.rating ?? -1);
       return `<div class="ft-deck" data-deck="${slot}" role="tabpanel" aria-label="${POS_NAME[slot]}" hidden>
-        ${here.length ? `<div class="ft-grid">${[...here].sort(rank).map((p) => card(p, slot)).join("")}</div>` : ""}
-        ${rest.length ? `<details class="ft-rest"${here.length ? "" : " open"}><summary>${here.length ? `Everyone else (${rest.length})` : "Players"}</summary><div class="ft-grid">${[...rest].sort(rank).map((p) => card(p, slot)).join("")}</div></details>` : ""}
+        ${here.length ? `<div class="ft-grid">${[...here].sort(rank).map((p) => choice(p, slot)).join("")}</div>` : ""}
+        ${rest.length ? `<details class="ft-rest"${here.length ? "" : " open"}><summary>${here.length ? `Everyone else (${rest.length})` : "Players"}</summary><div class="ft-grid">${[...rest].sort(rank).map((p) => choice(p, slot)).join("")}</div></details>` : ""}
       </div>`;
     };
     picker = `<section class="ft-week">
@@ -175,8 +180,11 @@ export async function mountFantasy(host, viewSrc, scope = null) {
     const lineup = scored?.picks ?? entry.picks.map((account, i) => ({ account, pos: SLOTS[i], captain: account===entry.captain, points: null, games: [] }));
     return `<div class="ft-view-lineup">${lineup.map((p) => {
       const player = { account: p.account, name: nameOf(p.account), team: teamOf.get(p.account) ?? "" };
-      return `<div class="ft-view-pick">${card(player, p.pos, { own: true })}
-        <div class="ft-pick-score">${POS_SHORT[p.pos]}${p.captain?' · Captain 2×':''} · <b>${p.points == null ? (week.lock > now ? "Pending" : "Not counted") : `${p.points.toFixed(1)} fantasy points`}</b></div></div>`;
+      return `<div class="ft-view-pick">
+        <div class="ft-pick-role" title="${POS_NAME[p.pos]}">Pos ${p.pos}${p.captain ? '<span class="ft-pick-captain">C · 2×</span>' : ""}</div>
+        ${card(player, p.pos, { own: true })}
+        <div class="ft-pick-name">${pLink(p.account)}</div>
+        <div class="ft-pick-score"><b>${p.points == null ? (week.lock > now ? "Pending" : "Not counted") : `${p.points.toFixed(1)} pts`}</b></div></div>`;
     }).join("")}</div>
     <details class="ft-breakdown"><summary>Weekly score breakdown${scored ? ` · ${scored.points.toFixed(1)} fantasy points` : (week.lock > now ? " · pending" : " · not counted")}</summary>
       ${scored ? lineup.map((p) => `<div class="ft-wk"><h3>${pLink(p.account)}${p.captain?' · Captain 2×':''} · ${p.points.toFixed(1)} fantasy points</h3>${p.captain?`<p class="ft-note">${p.basePoints.toFixed(1)} base points × 2. Game contributions below show points before the captain bonus.</p>`:''}
@@ -191,12 +199,12 @@ export async function mountFantasy(host, viewSrc, scope = null) {
   const savedWeeks = [...weeks].reverse().filter((w) => entries?.some((e) => e.week === w.key));
   const lineupsHtml = entries == null ? `<div class="panel empty">Couldn't load saved lineups.</div>`
     : !savedWeeks.length ? `<div class="panel empty">No saved lineups yet.</div>`
-    : savedWeeks.map((w) => `<details class="ft-saved-week"${w === savedWeeks[0] ? " open" : ""}><summary>${weekLabel(w.key)}</summary>
+    : savedWeeks.map((w) => `<details class="ft-saved-week"${w === savedWeeks[0] ? " open" : ""}><summary>${weekLabel(w.key)}</summary><div class="ft-saved-entries">
       ${entries.filter((e) => e.week === w.key).sort((a, b) => a.name.localeCompare(b.name)).map((e) => {
         const score = w.lock <= now && scoreEntry(e, w, matches);
-        return `<details class="ft-entry"${e.account === me ? " open" : ""}><summary>${steamLink(e.account, e.name)}${e.account === me ? " · You" : ""}
+        return `<details class="ft-entry" open><summary>${steamLink(e.account, e.name)}${e.account === me ? " · You" : ""}
           <span class="ft-total">${w.lock > now ? "Pending" : score ? `${score.points.toFixed(1)} fantasy points` : "Not counted"}</span></summary>${lineupHtml(e, w)}</details>`;
-      }).join("")}</details>`).join("");
+      }).join("")}</div></details>`).join("");
   const boardHtml = entries == null ? `<div class="panel empty">Couldn't load the leaderboard.</div>`
     : !board.length ? `<div class="panel empty"><strong>No scores yet</strong>The board fills in once the first week with entries locks.</div>`
     : `<div class="table-wrap"><table class="ft-table ft-board"><thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col" class="num">Weeks</th><th scope="col" class="num">Last week</th><th scope="col" class="num">Fantasy points</th></tr></thead><tbody>
@@ -234,7 +242,7 @@ export async function mountFantasy(host, viewSrc, scope = null) {
   const sync = () => {
     if(!picks.includes(captain))captain=null;
     for (const b of host.querySelectorAll(".ft-slot")) {
-      const s = Number(b.dataset.slot), a = picks[s - 1], c = a != null && host.querySelector(`.ft-deck[data-deck="${s}"] [data-pick="${a}"]`);
+      const s = Number(b.dataset.slot), a = picks[s - 1], c = a != null && host.querySelector(`.ft-deck[data-deck="${s}"] .ft-choice[data-pick="${a}"] .ft-card`);
       const tab = b.querySelector(".ft-plinth");
       const captainButton=b.querySelector('[data-captain-slot]');
       captainButton.disabled=locked||!c;
@@ -244,7 +252,7 @@ export async function mountFantasy(host, viewSrc, scope = null) {
       tab.setAttribute("aria-selected", String(s === activeSlot));
       b.classList.toggle("active", s === activeSlot);
       b.classList.toggle("filled", !!c);
-      tab.setAttribute("aria-label", `Pos ${s}, ${POS_SHORT[s]}: ${c ? c.querySelector(".ft-name").textContent : "empty"}`);
+      tab.setAttribute("aria-label", `Pos ${s}, ${POS_SHORT[s]}: ${c ? nameOf(a) : "empty"}`);
       if (b.dataset.acc !== String(c ? a : "")) {
         b.dataset.acc = c ? a : "";
         b.querySelector(".ft-stage").innerHTML = c ? mini(c) : `<span class="ft-empty" aria-hidden="true"><b>${s}</b>Open</span>`;
@@ -253,14 +261,18 @@ export async function mountFantasy(host, viewSrc, scope = null) {
     for (const dk of host.querySelectorAll(".ft-deck")) {
       const s = Number(dk.dataset.deck);
       dk.hidden = s !== activeSlot;
-      for (const c of dk.querySelectorAll("[data-pick]")) {
+      for (const c of dk.querySelectorAll(".ft-choice[data-pick]")) {
         const a = Number(c.dataset.pick), at = picks.indexOf(a) + 1;
         c.classList.toggle("picked", at === s);
+        const playerCard = c.querySelector(".ft-card");
+        playerCard.classList.toggle("picked", at === s);
         for (const btn of c.querySelectorAll("[data-act=pick]")) {
           btn.setAttribute("aria-pressed", String(at === s));
           btn.textContent = at === s ? "Picked · tap to drop" : at ? `In pos ${at} · move here` : `Pick for pos ${s}`;
+          btn.setAttribute("aria-label", `${btn.textContent}: ${nameOf(a)}`);
         }
         c.dataset.taken = at && at !== s ? `In pos ${at}` : "";
+        playerCard.dataset.taken = c.dataset.taken;
       }
     }
   };
@@ -275,9 +287,9 @@ export async function mountFantasy(host, viewSrc, scope = null) {
   // Clicking a card anywhere but its pick button turns it over (the turn button does the same from
   // the keyboard). Signed out, the pick button starts the Steam sign-in.
   host.addEventListener("click", (ev) => {
+    if (ev.target.closest("[data-act=signin]")) { startSteamSignIn(); return; }
     const c = ev.target.closest(".ft-card");
     if (!c) return;
-    if (ev.target.closest("[data-act=signin]")) { startSteamSignIn(); return; }
     if (ev.target.closest("[data-act=pick]")) return; // the deck's handler picks
     if (ev.target.closest(".ft-expand")) { showBigCard(c); return; }
     if (ev.target.closest(".ft-mine-card .ft-front")) return;
@@ -293,10 +305,11 @@ export async function mountFantasy(host, viewSrc, scope = null) {
       activeSlot = Number(b.dataset.slot); sync();
     });
     host.querySelectorAll(".ft-deck").forEach((dk) => dk.addEventListener("click", (ev) => {
-      const c = ev.target.closest("[data-pick]");
+      const choice = ev.target.closest(".ft-choice[data-pick]");
       const btn = ev.target.closest("[data-act=pick]");
-      if (!btn || btn.disabled) return;
-      const a = Number(c.dataset.pick), s = Number(dk.dataset.deck);
+      if (!choice || !btn || btn.disabled) return;
+      const c = choice.querySelector(".ft-card");
+      const a = Number(choice.dataset.pick), s = Number(dk.dataset.deck);
       if (picks[s - 1] === a) { picks[s - 1] = null; sync(); return; }
       const was = picks.indexOf(a);
       if (was >= 0) picks[was] = null;
@@ -374,7 +387,9 @@ export async function mountFantasyTable(host, viewSrc, scope = null, weekIdx = n
     matches = loaded.flatMap((x) => x.games);
     weeks = shared ? [testWeek(loaded)].filter(Boolean) : playoffWeeks(src.key, loaded[0].series);
   } catch (e) { host.innerHTML = errorBox(e); return; }
-  const started = weeks.filter((w) => w.lock <= now);
+  // A week shows once picks lock, or earlier when some of its games are already played (a series
+  // PlayOn dated before the playoff night).
+  const started = weeks.filter((w) => w.lock <= now || weekGames(matches, w).length);
   const idx = weekIdx ?? Math.max(0, started.length - 1);
   const week = started[idx];
   const head = `<div class="ft-sign"><label>Fantasy <select id="fx-scope">${TEST_WEEK ? `<option value="all"${shared ? " selected" : ""}>Cross-division tiebreaker test</option>` : ""}<option value="${src.key}"${!shared ? " selected" : ""}>${esc(src.division)} playoffs</option></select></label>
@@ -397,7 +412,7 @@ export async function mountFantasyTable(host, viewSrc, scope = null, weekIdx = n
     return [{ ...p, pos, n, wins, k: sum((x) => x.kills) / n, d: sum((x) => x.deaths) / n, a: sum((x) => x.assists) / n, gpm: sum((x) => x.gpm) / n, counted: r.games.filter((g) => g.counted), dropped: r.games.filter((g) => !g.counted), games: r.games, points: r.points }];
   }).sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
   const f1 = (x) => x.toFixed(1);
-  host.innerHTML = `${head}<h2>${weekLabel(week.key)}</h2>
+  host.innerHTML = `${head}<h2>${weekLabel(week.key)}</h2>${week.lock > now ? `<p class="ft-note">Picks are open until ${esc(at(week.lock))}. These points are from games already played this week.</p>` : ""}
     ${rows.length ? `<div class="table-wrap fx-wrap"><table class="ft-table fx-table"><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="num">Fantasy points</th><th scope="col">Team</th><th scope="col" class="num">Pos</th><th scope="col" class="num">W-L</th><th scope="col" class="num">K / D / A</th><th scope="col" class="num">GPM</th><th scope="col" class="num">Counted games</th><th scope="col" class="num">Dropped game</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr${i < 3 ? ` class="fx-top fx-top${i + 1}"` : ""}><td class="fx-rank">${i + 1}</td><td class="fx-name">${playerLink(sourceOf.get(r.account) ?? viewSrc, { name: r.name, key: String(r.account) })}</td><td class="num fx-pts"><button type="button" class="fx-btn fx-ptsbtn" data-r="${i}" title="Breakdown by game">${f1(r.points)}</button></td><td class="fx-team">${teamLink(sourceOf.get(r.account) ?? viewSrc, r.team, r.team_id)}</td><td class="num"><span class="fx-pos">${r.pos}</span></td><td class="num">${r.wins}-${r.n - r.wins}</td><td class="num">${f1(r.k)} / ${f1(r.d)} / ${f1(r.a)}</td><td class="num">${Math.round(r.gpm)}</td><td class="num">${r.counted.map((x) => `<button type="button" class="fx-btn fx-g" data-r="${i}" data-g="${x.id}" title="Breakdown of this game">${f1(x.score)}</button>`).join("")}</td><td class="num">${r.dropped.length ? r.dropped.map((x) => `<button type="button" class="fx-btn fx-g fx-drop" data-r="${i}" data-g="${x.id}" title="Not counted: only the best ${GAMES_COUNTED} games score. Click for the breakdown">${f1(x.score)}</button>`).join("") : `<span class="fx-none">-</span>`}</td></tr>`).join("")}
       </tbody></table></div><p class="ft-note">Each player is scored at their most-played position. Fantasy points are their best ${GAMES_COUNTED} games added (no captain bonus). K / D / A and GPM are per-game averages for the week. A game a player sat out is scored on the stand-in who took their place.</p>`

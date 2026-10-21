@@ -3,10 +3,14 @@ import { PACK_KIND_TYPES, parsePack, isThemedPack } from './pack-types.js';
 import { heroById } from './hero-meta.js';
 import { CARD_ART } from './card-art-data.js';
 import { SCREEN_ART } from './screen-art-data.js';
-const screenHero=new Map(SCREEN_ART.map(s=>[s.id,s.hero??null]));
+import { ALL_SCREENS, LEGENDARY_SCREENS } from './legendary-screens.js';
+const screenHero=new Map(ALL_SCREENS.map(s=>[s.id,s.hero??null]));
 import { CARD_STYLES, validCardCrop } from './card-art.js';
 import { validLayout, MAX_NAME } from './card-layout.js';
 import { LETTER_CASES } from './signatures.js';
+import {validFinishSettings} from './cosmetics-expansion-settings.js';
+import {validBorderSettings} from './cosmetics-particle-groups.js';
+import {hasExpansionEmblems} from './cosmetics-expansion-symbols.js';
 
 export const PACK_INTERVAL_MS=8*60*60*1000;
 export const NORMAL_PACK_CAP=3;
@@ -15,7 +19,15 @@ export const CARD_SLOTS=5;
 const slotList=list=>Array.from({length:CARD_SLOTS},(_,i)=>list?.[i]??null);
 export function cardDesignState(state) {
   const designs=Array.from({length:CARD_SLOTS},(_,i)=>state.cardDesigns?.[i]??(i===0?state.equipment:null));
-  return {cardDesigns:designs,cardNames:slotList(state.cardNames),primaryCard:state.primaryCard??0,shuffleCards:state.shuffleCards??false};
+  return {cardDesigns:designs,cardNames:slotList(state.cardNames),primaryCard:state.primaryCard??0,shuffleCards:state.shuffleCards??false,cardOrder:cardOrderOf(state.cardOrder)};
+}
+// The order your card slots show on your profile: every slot once. Only the display moves, so a
+// slot's ratings, Feed posts and name stay with it. Anything else reads as the plain order.
+const isCardOrder=order=>Array.isArray(order)&&order.length===CARD_SLOTS&&[...order].sort((a,b)=>a-b).every((n,i)=>n===i);
+export const cardOrderOf=order=>isCardOrder(order)?[...order]:Array.from({length:CARD_SLOTS},(_,i)=>i);
+export function setCardOrder(state,order) {
+  if(!isCardOrder(order))throw new Error('Choose an order for all of your cards.');
+  return {...state,cardOrder:[...order]};
 }
 // What a saved card is called in the slot list and under it on the profile: its name, else "Card 2".
 export const cardSlotName=(prefs,slot)=>prefs?.cardNames?.[slot]??`Card ${slot+1}`;
@@ -113,10 +125,20 @@ export function grantLogin(saved, now = new Date()) {
   }
   return state;
 }
+// A rolled card the player already owns has a 1 in 10 chance to swap for one they don't own of the
+// same rarity (and pack kind). Rarity odds are untouched; with every card of that rarity owned it stays a duplicate.
+export const NEW_CARD_REROLL=0.1;
+function preferNew(item,items,inventory,random) {
+  if(!((inventory[item.key]??0)>0))return item;
+  const left=items.filter(i=>!((inventory[i.key]??0)>0));
+  if(!left.length||random()>=NEW_CARD_REROLL)return item;
+  return left[Math.min(left.length-1,Math.floor(random()*left.length))];
+}
 // A themed pack (lib/pack-types.js): three items of its kind, rolled with the same odds as a normal
 // pack of that rarity or better (the floor's rarities, weighted by PACK_ODDS). A roll that lands on
 // a rarity the kind has no items in moves up to the next rarity it has (signatures have no commons),
-// so legendary stays as rare as in a normal pack. No bonus screens, and no effect on the
+// so legendary stays as rare as in a normal pack. No bonus screens (border packs may hold a legendary
+// background, below), and no effect on the
 // normal-pack timer.
 function rollThemedPack(state, packIndex, random) {
   const {tier,kind}=parsePack(state.packs[packIndex]), types=PACK_KIND_TYPES[kind], next=structuredClone(state), rewards=[];
@@ -126,12 +148,20 @@ function rollThemedPack(state, packIndex, random) {
     let r=random()*groups.reduce((s,g)=>s+g.weight,0), at=groups.length-1;
     for(let i=0;i<groups.length;i++) {r-=groups[i].weight;if(r<0){at=i;break;}}
     const group=groups.slice(at).find(g=>g.items.length)??groups.findLast(g=>g.items.length);
-    const item=group.items[Math.min(group.items.length-1,Math.floor(random()*group.items.length))];
+    const item=preferNew(group.items[Math.min(group.items.length-1,Math.floor(random()*group.items.length))],group.items,next.inventory,random);
     rewards.push({key:item.key,duplicate:(next.inventory[item.key]??0)>0});
     next.inventory[item.key]=(next.inventory[item.key]??0)+1;
   }
+  // Border packs also have the legendary odds of a legendary background (lib/legendary-screens.js)
+  // the player doesn't have yet, on top of the three borders.
+  const screens=[];
+  if(kind==='border'&&random()<PACK_ODDS.legendary/100) {
+    const left=LEGENDARY_SCREENS.filter(s=>!(next.screens??[]).includes(s.id));
+    if(left.length)screens.push(left[Math.min(left.length-1,Math.floor(random()*left.length))].id);
+  }
+  if(screens.length)next.screens=[...(next.screens??[]),...screens];
   next.packs.splice(packIndex,1);
-  return {state:next,rewards,screens:[]};
+  return {state:next,rewards,screens};
 }
 export function rollPack(state, packIndex, random = Math.random, now = new Date()) {
   if(!Number.isInteger(packIndex) || packIndex<0 || packIndex>=state.packs.length) throw new Error('Choose an available pack.');
@@ -149,7 +179,7 @@ export function rollPack(state, packIndex, random = Math.random, now = new Date(
   for(let n=0;n<3;n++) {
     let r=random()*groups.reduce((s,g)=>s+g.weight,0), group=groups.at(-1);
     for(const g of groups) {r-=g.weight;if(r<0){group=g;break;}}
-    const item=group.items[Math.min(group.items.length-1,Math.floor(random()*group.items.length))];
+    const item=preferNew(group.items[Math.min(group.items.length-1,Math.floor(random()*group.items.length))],group.items,next.inventory,random);
     rewards.push({key:item.key,duplicate:(next.inventory[item.key]??0)>0});
     next.inventory[item.key]=(next.inventory[item.key]??0)+1;
   }
@@ -184,6 +214,15 @@ export function recycleCards(state, selections) {
   return {state:next,minimum:TIERS[tier+1]};
 }
 export const MAX_EMBLEMS=12;
+function validEmblems(emblems){
+  if(!Array.isArray(emblems)||emblems.length<1||emblems.length>MAX_EMBLEMS)throw new Error(`Place 1 to ${MAX_EMBLEMS} border symbols.`);
+  return emblems.map(m=>{
+    const {x,y,size=100,rotation=0}=m&&typeof m==='object'?m:{};
+    if(![x,y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=100)||typeof size!=='number'||!Number.isFinite(size)||size<50||size>300)throw new Error('Invalid border symbol position or size.');
+    if(typeof rotation!=='number'||!Number.isFinite(rotation)||rotation< -180||rotation>180)throw new Error('Choose a border symbol rotation from -180 to 180 degrees.');
+    return {x:Math.round(x*10)/10,y:Math.round(y*10)/10,size:Math.round(size),...(rotation?{rotation:Math.round(rotation)}:{})};
+  });
+}
 export function equipCosmetics(state, raw) {
   if(!raw || typeof raw!=='object') throw new Error('Choose your card cosmetics.');
   const equipment={...DEFAULT_EQUIPMENT};
@@ -196,6 +235,10 @@ export function equipCosmetics(state, raw) {
   }
   // Signatures use the card's name: the player's, or the owner's own (layout.name, checked there).
   equipment.text='';
+  const finishSettings=validFinishSettings(raw.finishSettings!==undefined?raw.finishSettings:state.equipment?.finishSettings);
+  if(finishSettings)equipment.finishSettings=finishSettings;
+  const borderSettings=validBorderSettings(raw.borderSettings!==undefined?raw.borderSettings:state.equipment?.borderSettings);
+  if(borderSettings)equipment.borderSettings=borderSettings;
   const layout=validLayout(raw.layout!==undefined?raw.layout:state.equipment?.layout??null);
   if(layout)equipment.layout=layout;
   equipment.hue=raw.hue??state.equipment?.hue??0;
@@ -216,13 +259,12 @@ export function equipCosmetics(state, raw) {
   // Border symbols the owner placed: 1 to MAX_EMBLEMS, each at x/y % of the card with a size %. Absent (or null)
   // means the one default symbol at the top.
   const emblems=raw.emblems!==undefined?raw.emblems:state.equipment?.emblems??null;
-  if(emblems!=null) {
-    if(!Array.isArray(emblems)||emblems.length<1||emblems.length>MAX_EMBLEMS)throw new Error(`Place 1 to ${MAX_EMBLEMS} border symbols.`);
-    equipment.emblems=emblems.map(m=>{
-      const {x,y,size=100}=m&&typeof m==='object'?m:{};
-      if(![x,y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=100)||typeof size!=='number'||!Number.isFinite(size)||size<50||size>300)throw new Error('Invalid border symbol position or size.');
-      return {x:Math.round(x*10)/10,y:Math.round(y*10)/10,size:Math.round(size)};
-    });
+  if(emblems!=null)equipment.emblems=validEmblems(emblems);
+  const borderEmblems=raw.borderEmblems!==undefined?raw.borderEmblems:state.equipment?.borderEmblems;
+  if(borderEmblems!=null){
+    if(typeof borderEmblems!=='object'||Array.isArray(borderEmblems)||Object.keys(borderEmblems).some(id=>!hasExpansionEmblems(id)))throw new Error('Choose valid border symbol placements.');
+    const entries=Object.entries(borderEmblems).map(([id,list])=>[id,validEmblems(list)]);
+    if(entries.length)equipment.borderEmblems=Object.fromEntries(entries);
   }
   const base=raw.baseCard??state.equipment?.baseCard;
   if(base!=null) {

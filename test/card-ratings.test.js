@@ -91,8 +91,10 @@ test('pull log: epic and legendary pulls only, newest first, filled once from ol
   // New opens log as they happen; an epic upgrade pack is all epic or better.
   await as(402,{action:'session'});
   rows.set('user:402',{...rows.get('user:402'),packs:['epic']});
-  await as(402,{action:'open',packIndex:0});
+  const opened=await (await as(402,{action:'open',packIndex:0})).json();
   const log=await pulls();
-  assert.equal(log.length,2);assert.equal(log[0].account,'402');assert.equal(log[0].items.length,3);
+  assert.equal(log.length,2);assert.equal(log[0].account,'402');
+  // A random pack can repeat an item; the Feed posts first copies only.
+  assert.deepEqual(log[0].items,opened.rewards.filter(r=>!r.duplicate).map(r=>r.key));
   assert.ok(log[0].items.every(k=>['epic','legendary'].includes(CATALOG.find(i=>i.key===k).rarity)));
 });

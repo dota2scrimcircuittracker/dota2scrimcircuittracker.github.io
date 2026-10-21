@@ -101,10 +101,18 @@ export function checkPicks(picks, pool) {
 }
 
 // The week's games: those of its series, or (a series PlayOn hadn't posted, see
-// divisions.js ANNOUNCED) played that week between two of its teams.
-export const weekGames = (matches, week) => matches.filter((m) => (!week.league || week.league === "all" || m.league === week.league)
-  && (week.seriesIds.has(m.series_id)
-  || (m.start_time && weekKey(m.start_time) === week.key && week.teams.has(m.team_a_id) && week.teams.has(m.team_b_id))));
+// divisions.js ANNOUNCED) played that week between two of its teams, or (a series played before
+// its date: Champion's No Immortals v Piranhas, dated Oct 23, played Oct 16) unlinked games
+// between a scored series' two teams in the 8 days before the lock.
+export function weekGames(matches, week) {
+  const done = (week.series ?? []).filter((s) => (s.home_score ?? 0) + (s.away_score ?? 0) > 0);
+  const early = (m) => m.series_id == null && m.start_time && m.start_time < week.lock && m.start_time >= week.lock - 8 * 86400
+    && done.some((s) => (s.home === m.team_a_id && s.away === m.team_b_id) || (s.home === m.team_b_id && s.away === m.team_a_id));
+  return matches.filter((m) => (!week.league || week.league === "all" || m.league === week.league)
+    && (week.seriesIds.has(m.series_id)
+    || (m.start_time && weekKey(m.start_time) === week.key && week.teams.has(m.team_a_id) && week.teams.has(m.team_b_id))
+    || early(m)));
+}
 
 // A team's roster as the games show it: the players who played for it and weren't stand-ins (the
 // sync flags anyone off the current roster), each with the positions they played. Map of

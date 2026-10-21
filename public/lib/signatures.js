@@ -1,4 +1,5 @@
 import { PEN_MARKS, itemByKey } from './cosmetics-catalog.js';
+import {expansionSignatureHtml} from './cosmetics-expansion.js';
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Legendary name modifiers. `translation` remains the save key for compatibility.
 const kana={sci:'シ',shi:'シ',chi:'チ',tsu:'ツ',sha:'シャ',shu:'シュ',sho:'ショ',cha:'チャ',chu:'チュ',cho:'チョ',kya:'キャ',kyu:'キュ',kyo:'キョ',nya:'ニャ',nyu:'ニュ',nyo:'ニョ',rya:'リャ',ryu:'リュ',ryo:'リョ',sya:'シャ',syu:'シュ',syo:'ショ',ja:'ジャ',ju:'ジュ',jo:'ジョ',ka:'カ',ki:'キ',ku:'ク',ke:'ケ',ko:'コ',ga:'ガ',gi:'ギ',gu:'グ',ge:'ゲ',go:'ゴ',sa:'サ',si:'シ',su:'ス',se:'セ',so:'ソ',za:'ザ',zi:'ジ',zu:'ズ',ze:'ゼ',zo:'ゾ',ta:'タ',ti:'ティ',tu:'トゥ',te:'テ',to:'ト',da:'ダ',di:'ディ',du:'ドゥ',de:'デ',do:'ド',na:'ナ',ni:'ニ',nu:'ヌ',ne:'ネ',no:'ノ',ha:'ハ',hi:'ヒ',hu:'フ',he:'ヘ',ho:'ホ',ba:'バ',bi:'ビ',bu:'ブ',be:'ベ',bo:'ボ',pa:'パ',pi:'ピ',pu:'プ',pe:'ペ',po:'ポ',ma:'マ',mi:'ミ',mu:'ム',me:'メ',mo:'モ',ya:'ヤ',yu:'ユ',yo:'ヨ',ra:'ラ',ri:'リ',ru:'ル',re:'レ',ro:'ロ',la:'ラ',li:'リ',lu:'ル',le:'レ',lo:'ロ',wa:'ワ',wi:'ウィ',we:'ウェ',wo:'ウォ',fa:'ファ',fi:'フィ',fu:'フ',fe:'フェ',fo:'フォ',va:'ヴァ',vi:'ヴィ',vu:'ヴ',ve:'ヴェ',vo:'ヴォ',ci:'シ',ce:'セ',ca:'カ',co:'コ',cu:'ク',a:'ア',i:'イ',u:'ウ',e:'エ',o:'オ',n:'ン',k:'ク',g:'グ',s:'ス',z:'ズ',t:'ト',d:'ド',h:'フ',b:'ブ',p:'プ',m:'ム',r:'ル',l:'ル',v:'ヴ',f:'フ',c:'ク',j:'ジ',x:'クス',y:'イ',w:'ウ'};
@@ -91,6 +92,9 @@ export const signatureSize=(size,text)=>Math.min(size,200/Math.max(8,[...text].l
 export function signatureHtml(equipment,name) {
   const item=itemByKey(`autograph:${equipment.autograph}`);if(!item)return '';
   const text=renderedName(name,equipment.translation,equipment.letterCase);
+  // Expansion SVGs already fit lettering to their viewBox. Applying the text-font cap here
+  // shrinks long names a second time, including their ornaments and animation.
+  if(item.expansion)return `<span class="card-autograph exp-autograph" data-autograph="${item.id}" data-writing="${equipment.translation==='kanji'?'ja':writingOf(text)}" style="left:${equipment.x}%;top:${equipment.y}%;--signature-size:${equipment.size}cqi;--placement-rotation:${equipment.rotation}deg" aria-label="Signature: ${escape(text)}">${expansionSignatureHtml(item,text)}</span>`;
   const glyphs=item.rough?[...text].map((c,i)=>`<span class="signature-glyph" style="--glyph-lift:${(i%3)-1}px;--glyph-tilt:${(i%5-2)*2}deg">${escape(c)}</span>`).join(''):escape(text);
   const paths=(PEN_MARKS[item.flourish]??PEN_MARKS.simple).map(d=>`<path d="${d}"/>`).join('');
   const size=signatureSize(equipment.size,text);

@@ -230,7 +230,7 @@ function size(st) {
   c.width = Math.max(1, Math.round(st.w * r)); c.height = Math.max(1, Math.round(st.h * r));
   st.ctx.setTransform(r, 0, 0, r, 0, 0);
   st.fx.resize(st.w, st.h);
-  if (still()) draw(st, 0);
+  if (still()||c.closest('[data-preview-paused]')) draw(st, 0);
 }
 function draw(st, dt) {
   const c = st.c;
@@ -245,7 +245,7 @@ function tick(now) {
   let any = false;
   for (const [c, st] of live) {
     if (!c.isConnected) { live.delete(c); io.unobserve(c); ro.unobserve(c); continue; }
-    if (st.visible) { draw(st, dt); any = true; }
+    if (st.visible&&!c.closest('[data-preview-paused]')) { draw(st, dt); any = true; }
   }
   if (any && !document.hidden && !still()) { raf = requestAnimationFrame(tick); }
 }
@@ -269,5 +269,6 @@ if (typeof document !== 'undefined' && typeof IntersectionObserver !== 'undefine
   ro = new ResizeObserver(entries => { for (const e of entries) { const st = live.get(e.target); if (st) size(st); } });
   new MutationObserver(list => { for (const m of list) m.addedNodes.forEach(scan); }).observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener('visibilitychange', kick);
+  document.addEventListener('card-preview-motion', kick);
   scan(document.documentElement);
 }

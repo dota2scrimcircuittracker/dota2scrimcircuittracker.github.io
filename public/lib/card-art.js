@@ -2,17 +2,18 @@ import { heroById, HERO_META } from "./hero-meta.js";
 import { heroArt } from "./hero-art.js";
 import { CARD_ART } from "./card-art-data.js";
 import { SCREEN_ART } from "./screen-art-data.js";
-export const CARD_STYLES = [["plain", "No filter"], ["stencil", "Stencil"], ["clean", "Clean"], ["cinema", "Cinematic"], ["ember", "Ember"], ["frost", "Frost"], ["comic", "Comic"], ["ink", "Ink"], ["noir", "Noir"]];
+import { ALL_SCREENS } from "./legendary-screens.js";
+export const CARD_STYLES = [["plain", "No filter"], ["stencil", "Stencil"], ["clean", "Clean"], ["cinema", "Cinematic"], ["ember", "Ember"], ["frost", "Frost"], ["comic", "Comic"], ["ink", "Ink"], ["noir", "Noir"], ["neon", "Neon"], ["blueprint", "Blueprint"], ["parchment", "Parchment"], ["risograph", "Risograph"], ["hologram", "Hologram"]];
 const byName = new Map(HERO_META.map(([id, name]) => [name, heroById(id)]));
 const base = "https://cdn.cloudflare.steamstatic.com/apps/dota2";
 const absolute = (src) => new URL(src, new URL("../", import.meta.url)).href;
 // Loading screens from packs (cosmetics-engine.js rollScreens), by id. A screen with a hero shows
 // only for that hero; event, team and courier screens fit any hero.
-const screens = new Map(SCREEN_ART.map((s) => [s.id, s]));
-export const SCREEN_COUNT = SCREEN_ART.length;
+const screens = new Map(ALL_SCREENS.map((s) => [s.id, s]));
+export const SCREEN_COUNT = ALL_SCREENS.length;
 export function screenArt(id) {
   const s = screens.get(id);
-  return s && { id: s.id, label: s.label, rarity: s.rarity, hero: s.hero ?? null, cls: "src-ls src-screen", src: absolute(`img/loading-screens/${s.id.slice(4)}.webp`) };
+  return s && { id: s.id, label: s.label, rarity: s.rarity, hero: s.hero ?? null, legendary: !!s.legendary, cls: "src-ls src-screen", src: absolute(`img/loading-screens/${s.id.slice(4)}.webp`) };
 }
 // owned: the player's pack screen ids; those for this hero (or none) follow the hero's own art.
 export function cardArtOptions(hero, owned = []) {

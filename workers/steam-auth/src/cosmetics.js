@@ -1,4 +1,4 @@
-import { grantLogin, applyPackGrants, rollPack, recycleCards, saveCardDesign, setCardPreferences, setCardName, CARD_SLOTS, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
+import { grantLogin, applyPackGrants, rollPack, recycleCards, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
 import { designKey, castVote, tally } from '../../../public/lib/card-ratings.js';
 import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-catalog.js';
 import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
@@ -305,6 +305,7 @@ export class CosmeticsVault {
         }
         else if(body.action==='card-settings')result={state:setCardPreferences(saved,body)};
         else if(body.action==='card-name')result={state:setCardName(saved,body.cardSlot,body.name)};
+        else if(body.action==='card-order')result={state:setCardOrder(saved,body.order)};
         else if(body.action==='nickname')result={state:setNickname(saved,body)};
         else if(body.action==='profile-background')result={state:setProfileBackground(saved,body)};
         else if(body.action==='gift') {

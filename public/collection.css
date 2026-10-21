@@ -68,6 +68,10 @@
 .card-settings{min-width:0}.card-editor [data-card-editor]{position:sticky;top:16px;align-self:start}@media(max-width:650px){.card-editor [data-card-editor]{position:static}}
 .pack-offer-guide{display:grid;gap:8px;margin:20px auto 0;padding:16px;max-width:680px;text-align:left;border:1px solid #ffd87999;border-radius:12px;background:linear-gradient(120deg,#ffd8791c,#8b5cf61c);box-shadow:0 0 28px #ffd87922}.pack-offer-guide>strong{color:#ffd879;font:800 18px/1.1 var(--display);text-transform:uppercase;letter-spacing:.04em}.pack-offer-guide>span{color:#d8cfdb;font-size:13px}.pack-offer-steps{display:grid;grid-template-columns:repeat(var(--steps,3),minmax(0,1fr));gap:8px;margin-top:6px}.pack-offer-steps>div{display:grid;gap:4px;padding:10px;border:1px solid #ffd87944;border-radius:8px;background:#120f18aa}.pack-offer-steps b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#ffd879;color:#17120a;font:800 12px/1 var(--mono)}.pack-offer-steps strong{font-size:12px;color:#fff1c2}.pack-offer-steps small{color:#bfb7c4;line-height:1.35}@media(max-width:650px){.pack-offer-steps{grid-template-columns:1fr}.pack-offer-guide{padding:12px}}
 .collection-swatch[data-texture]:not(.finish-swatch){background-size:var(--frame-size);animation:var(--frame-motion)}
+/* The grid is a static catalog. Run the complete treatment on the selected card, instead
+   of hundreds of SVG animations in every small sample (including hidden pages). */
+.collection-swatch,.collection-swatch *,.collection-swatch::before,.collection-swatch::after,.collection-swatch *::before,.collection-swatch *::after{animation:none!important;transition:none!important}
+.dex-item{content-visibility:auto;contain-intrinsic-size:auto 250px}
 /* Finish swatches carry the card's own overlay and particles (swatch() in parts/collection.js). The
    overlay is stronger than on a card so a small flat swatch still shows it; particles that cross a
    whole card travel a swatch's height instead. */
@@ -181,6 +185,25 @@
 .visual-style-strip{gap:7px;padding:2px 2px 6px}
 .collection-dialog .visual-style-strip button{flex-basis:96px;padding:5px;gap:4px}
 .visual-style-strip .collection-swatch{height:44px;line-height:34px}
+/* Use the real cosmetic layers. Borders get a clear, wide sample; finishes keep artwork. */
+.collection-swatch.expansion-swatch{display:grid;place-items:center;border:0;background:#131218;overflow:hidden;line-height:normal;--mini-height:60px}
+.collection-swatch.expansion-swatch .cosmetic-mini-card{position:relative;display:block;flex:none;height:var(--mini-height);width:auto;aspect-ratio:284/382;border-radius:3px;background:#0d0c0b;isolation:isolate}
+.cosmetic-mini-art{position:absolute;inset:1px;border-radius:2px;background:linear-gradient(0deg,#000 0%,#0008 22%,transparent 65%),url('/img/hero-art/invoker.webp') center/cover;opacity:.8}
+.cosmetic-mini-card>.exp-border,.cosmetic-mini-card>.exp-finish{position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;max-height:none;filter:none}
+.cosmetic-mini-card>.exp-border{overflow:visible;z-index:2}
+.cosmetic-mini-card>.exp-finish{overflow:hidden;border-radius:3px;z-index:1}
+.visual-style-strip .collection-swatch.expansion-swatch{height:96px;--mini-height:76px}
+.collection-dialog .visual-style-strip button:has(.expansion-swatch){grid-template-rows:96px auto auto}
+.dex-item .collection-swatch.expansion-swatch{height:120px;--mini-height:100px}
+.feed-pulls .collection-swatch.expansion-swatch{--mini-height:38px}
+.recycle-slot.filled .collection-swatch.expansion-swatch{border:0;--mini-height:26px}
+.visual-style-strip .collection-swatch.expansion-border-swatch{height:62px}
+.collection-dialog .visual-style-strip button:has(.expansion-border-swatch){grid-template-rows:62px auto auto}
+.dex-item .collection-swatch.expansion-border-swatch{height:72px}
+.collection-swatch>.border-preview-frame{position:absolute;inset:5px;width:calc(100% - 10px);height:calc(100% - 10px);display:block;pointer-events:none}
+.border-preview-slice{overflow:hidden}
+.border-preview-atmosphere{position:absolute;inset:7px;pointer-events:none}
+.border-preview-atmosphere>.exp-border{display:block;width:100%;height:100%;overflow:visible}
 .appearance-settings .emblem-toggle{margin-top:4px;padding-top:8px}
 .card-settings>summary{display:flex;align-items:baseline;gap:10px;padding:10px 14px;list-style:none}
 .card-settings>summary::-webkit-details-marker{display:none}
@@ -430,3 +453,26 @@ button.feed-poll-choice:focus-visible{outline:2px solid #eac47e;outline-offset:2
 @media (max-width:420px){main:has(> .collection-host) .pp-tabs{flex-wrap:wrap}}
 /* The open collection dialog is the only thing that scrolls; the page behind it stays put. */
 html:has(dialog.collection-dialog[open]){overflow:hidden}.collection-dialog{overscroll-behavior:contain}
+/* Per-group particle sliders (lib/cosmetics-particle-groups.js): count, size and speed for each group. */
+.particle-group-host{grid-column:1/-1;flex:1 1 100%;min-width:0}.particle-group-host[hidden]{display:none!important}
+.particle-group-host .effect-particles{gap:10px}
+.particle-group-host label{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;font-size:12px;margin:6px 0;min-width:0;text-transform:none}
+.particle-group-host input{grid-column:1/-1;width:100%;accent-color:#d6a85a}.particle-group-host output{color:#eac47e}
+.particle-group-host [data-particle-reset]{grid-column:1/-1;justify-self:start}
+/* Legendary reveal (parts/collection.js legendaryBurst): on flip a flash, two shockwaves and a spray of sparkles, then a lasting gold glow with drifting glints. */
+.reward-card.legendary-burst{z-index:2;animation:legendary-pop .9s cubic-bezier(.2,1.4,.3,1) both}
+.reward-card.legendary-burst .reward-front{box-shadow:0 0 26px #ffd879aa,0 0 70px #ffb84d66,inset 0 0 30px #ffd87944}
+.reward-card.legendary-burst .reward-front::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(circle at 20% 30%,#fff8 0 1px,transparent 2px),radial-gradient(circle at 75% 20%,#ffe9a8 0 1.5px,transparent 2.5px),radial-gradient(circle at 60% 70%,#fff 0 1px,transparent 2px),radial-gradient(circle at 30% 80%,#ffd879 0 1.5px,transparent 2.5px),linear-gradient(115deg,transparent 35%,#fff3c455 50%,transparent 65%);background-size:100% 100%,100% 100%,100% 100%,100% 100%,250% 100%;animation:legendary-glints 2.6s ease-in-out infinite}
+.reward-row{position:relative}.legendary-fx{position:absolute;pointer-events:none;z-index:3;transform:translateZ(60px)}
+.legendary-fx i{position:absolute;left:50%;top:50%;display:block}
+.legendary-flash{width:100%;height:100%;left:0!important;top:0!important;border-radius:12px;background:radial-gradient(circle,#fff 0,#ffe7a0 35%,#ffb84d00 70%);mix-blend-mode:screen;animation:legendary-flash .7s ease-out both}
+.legendary-ring{width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:3px solid #ffd879;box-shadow:0 0 18px #ffd879,inset 0 0 12px #fff3c4;animation:legendary-ring 1s cubic-bezier(.1,.7,.3,1) both}
+.legendary-ring+.legendary-ring{animation-delay:.18s;border-color:#fff3c4}
+.legendary-spark{width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff6d0;box-shadow:0 0 8px 2px #ffd879,0 0 16px 4px #ffb84d88;animation:legendary-spark var(--t) cubic-bezier(.15,.75,.35,1) var(--d) both}
+.legendary-spark.star{width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:0;background:#fff8dc;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);box-shadow:none;filter:drop-shadow(0 0 4px #ffd879)}
+@keyframes legendary-pop{0%{scale:1}35%{scale:1.12}100%{scale:1.04}}
+@keyframes legendary-flash{0%{opacity:0;scale:.6}20%{opacity:1;scale:1.15}100%{opacity:0;scale:1.4}}
+@keyframes legendary-ring{0%{opacity:1;scale:.2}100%{opacity:0;scale:7}}
+@keyframes legendary-spark{0%{opacity:0;transform:translate(0,0) scale(0) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(var(--s)) rotate(180deg)}}
+@keyframes legendary-glints{0%,100%{background-position:0 0,0 0,0 0,0 0,120% 0;opacity:.7}50%{opacity:1;background-position:0 0,0 0,0 0,0 0,-20% 0}}
+@media(prefers-reduced-motion:reduce){.reward-card.legendary-burst,.reward-card.legendary-burst .reward-front::after{animation:none}}

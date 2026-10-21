@@ -72,7 +72,7 @@ export function validLayout(raw) {
     if (!Array.isArray(back.stats) || back.stats.length > MAX_BACK_STATS || back.stats.some((k) => !keys.has(k)) || new Set(back.stats).size !== back.stats.length) throw new Error(`Choose up to ${MAX_BACK_STATS} different stats.`);
     out.back.stats = [...back.stats];
   }
-  for (const k of ['positions', 'heroes']) {
+  for (const k of ['positions', 'heroes', 'tier', 'team', 'plus']) {
     if (back[k] == null) continue;
     if (typeof back[k] !== 'boolean') throw new Error('Choose a valid card layout.');
     out.back[k] = back[k];
@@ -82,6 +82,9 @@ export function validLayout(raw) {
 
 // The stats a card's back lists, in order.
 export const backStats = (layout, role) => layout?.back?.stats ?? defaultStats(role);
+
+// Older designs used the front badge switch for both sides. Explicit back choices are independent.
+export const backPartShown = (layout, key) => layout?.back?.[key] ?? (key === 'plus' ? partState(layout, 'plus').show : true);
 
 // A front part's inline style and whether it's placed off the plate.
 export function partState(layout, key) {
@@ -131,4 +134,7 @@ export function applyLayout(card, layout, playerName) {
   card.classList.toggle('ft-no-posbars', layout?.back?.positions === false);
   card.classList.toggle('ft-no-heroes', layout?.back?.heroes === false);
   card.classList.toggle('ft-plus-on', partState(layout, 'plus').show);
+  card.classList.toggle('ft-back-plus-on', backPartShown(layout, 'plus'));
+  card.classList.toggle('ft-back-no-tier', !backPartShown(layout, 'tier'));
+  card.classList.toggle('ft-back-no-team', !backPartShown(layout, 'team'));
 }

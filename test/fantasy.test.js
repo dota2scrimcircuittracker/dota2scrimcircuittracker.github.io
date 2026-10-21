@@ -148,3 +148,13 @@ test("a playoff series dated days before its night counts on that night", () => 
   const ws = playoffWeeks("challenger", [{ id: 4, time: T("2026-10-19T01:00:00Z"), home: 10, away: 11 }, { id: 5, time: night, home: 12, away: 13 }]);
   assert.equal(openWeek(ws, T("2026-10-20T01:00:00Z"))?.lock, night);
 });
+
+test("weekGames takes a scored series' unlinked games played in the 8 days before the lock", () => {
+  const lock = Date.parse("2026-10-23T01:00:00Z") / 1000;
+  const w = fantasyWeeks([{ id: 1, time: lock, home: 10, away: 20, home_score: 1, away_score: 2 }, { id: 2, time: lock, home: 30, away: 40, home_score: 0, away_score: 0 }])[0];
+  const g = (o) => ({ id: "g", series_id: null, start_time: lock - 7 * 86400, team_a_id: 20, team_b_id: 10, ...o });
+  assert.equal(weekGames([g()], w).length, 1);
+  assert.equal(weekGames([g({ start_time: lock - 9 * 86400 })], w).length, 0); // too early
+  assert.equal(weekGames([g({ series_id: "other" })], w).length, 0); // linked to another series
+  assert.equal(weekGames([g({ team_a_id: 30, team_b_id: 40 })], w).length, 0); // series not played yet
+});

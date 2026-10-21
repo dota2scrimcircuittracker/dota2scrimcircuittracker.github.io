@@ -4,8 +4,8 @@ import { playerKey } from "../lib/stats.js";
 import { heroById, heroImg, heroVert, HERO_META } from "../lib/hero-meta.js";
 import { cardArtwork } from "../lib/card-art.js";
 import { teamLogoHtml } from "../lib/team-logos.js";
-import { cosmeticAttributes, cosmeticLayers, playerEquipment, playerNickname } from '../lib/cosmetics.js';
-import { BACK_STATS, backStats, partState } from '../lib/card-layout.js';
+import { cosmeticAttributes, cosmeticLayers, cosmeticBorder, cosmeticEmblems, playerEquipment, playerNickname } from '../lib/cosmetics.js';
+import { BACK_STATS, backStats, backPartShown, partState } from '../lib/card-layout.js';
 import { plusSlot } from "../lib/hero-levels.js";
 
 // A custom-cropped card needs its picture's aspect so a rotated crop shows the whole image under the frame
@@ -103,7 +103,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
   const mainPos = mainPositions(matches), stats = cardStats(matches);
   const teamIdOf = new Map(teams.flatMap((t) => t.players.map((p) => [p.account_id, t.id])));
   const roleOf = (a, ov = cards.get(a)) => ov?.pos ?? mainPos.get(a);
-  const card = (p, slot, { own = false, ov = cards.get(p.account), tier = null, nameHtml = null, equipmentOverride = null } = {}) => {
+  const card = (p, slot, { own = false, pickButtons = !own, ov = cards.get(p.account), tier = null, nameHtml = null, equipmentOverride = null } = {}) => {
     const equipment=equipmentOverride??playerEquipment(p.account,ov?.cosmetics);
     if(equipment?.baseCard)ov={...ov,...equipment.baseCard};
     const st = stats.get(p.account), t = tier ?? tierOf(p.account), top = st?.top ?? [], g = st?.games ?? 0;
@@ -155,7 +155,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
     ];
     const onPlate = plateParts.filter(([k]) => !partState(layout, k).placed).map(([, h]) => h).join("");
     const offPlate = plateParts.filter(([k]) => partState(layout, k).placed).map(([, h]) => h).join("");
-    return `<div class="ft-card${t ? ` t-${t.tier}` : ""}${ha ? ` ${ha.cls}` : ""}${own ? " own" : ""}${ha?.crop ? " ft-custom-crop" : ""}${layout?.back?.positions === false ? " ft-no-posbars" : ""}${layout?.back?.heroes === false ? " ft-no-heroes" : ""}${partState(layout, "plus").show ? " ft-plus-on" : ""}"${appearance} data-role="${role ?? 0}"${layout?.name != null ? ' data-renamed="1"' : ""}${ha ? ` data-style="${ha.style}"` : ""} data-pick="${p.account}" data-player-name="${esc(p.name)}" data-auto-hero="${HERO_META.find(([,name])=>name===top[0]?.hero)?.[0]??0}" data-card-hero="${ov?.hero??0}" data-card-art="${esc(ov?.art??'')}" data-card-style="${esc(ov?.style??'')}" data-card-pos="${ov?.pos??0}" data-card-crop="${esc(JSON.stringify(ov?.crop??null))}">
+    return `<div class="ft-card${t ? ` t-${t.tier}` : ""}${ha ? ` ${ha.cls}` : ""}${own ? " own" : ""}${ha?.crop ? " ft-custom-crop" : ""}${layout?.back?.positions === false ? " ft-no-posbars" : ""}${layout?.back?.heroes === false ? " ft-no-heroes" : ""}${partState(layout, "plus").show ? " ft-plus-on" : ""}${backPartShown(layout, "plus") ? " ft-back-plus-on" : ""}${backPartShown(layout, "tier") ? "" : " ft-back-no-tier"}${backPartShown(layout, "team") ? "" : " ft-back-no-team"}"${appearance} data-role="${role ?? 0}"${layout?.name != null ? ' data-renamed="1"' : ""}${ha ? ` data-style="${ha.style}"` : ""} data-pick="${p.account}" data-player-name="${esc(p.name)}" data-auto-hero="${HERO_META.find(([,name])=>name===top[0]?.hero)?.[0]??0}" data-card-hero="${ov?.hero??0}" data-card-art="${esc(ov?.art??'')}" data-card-style="${esc(ov?.style??'')}" data-card-pos="${ov?.pos??0}" data-card-crop="${esc(JSON.stringify(ov?.crop??null))}">
       <div class="ft-tilt"><div class="ft-flip">
         <div class="ft-face ft-front" role="group" aria-label="${esc(p.name)}, ${esc(p.team)}${t ? `, tier ${t.tier}` : ""}${face ? `, ${esc(face)}` : ""}">
           <span class="ft-art" style="--grit:${gritAt(p.account)}">${art ? `<img src="${esc(art)}" alt="" loading="lazy" data-wide="${esc(wide)}">` : ""}</span>
@@ -164,12 +164,14 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
           ${face ? part("plus", "ft-plus", plusSlot(p.account, face)) : ""}
           <span class="ft-plate">
             ${onPlate}
-            ${own ? "" : pickBtn("ft-fpick")}
+            ${pickButtons ? pickBtn("ft-fpick") : ""}
           </span>
           ${offPlate}
           <span class="ft-shine"></span>
           ${cosmeticLayers(equipment,cardName)}
         </div>
+        ${cosmeticBorder(equipment)}
+        ${cosmeticEmblems(equipment)}
         <div class="ft-face ft-back" aria-hidden="true">
           <span class="ft-bhead">${tierChip}<span class="ft-bname"><span class="ft-name" title="${esc(cardName)}">${nameShown}</span><span class="ft-tm">${teamMark}<span class="ft-team-name">${esc(p.team)}</span></span>${st?.rank ? `<span class="ft-medal">${esc(medal(st.rank))}${role ? ` · ${role >= 4 ? "Support" : "Core"}` : ""}</span>` : ""}</span></span>
           <span class="ft-stats">${statsHtml}</span>
@@ -177,7 +179,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
           <span class="ft-posbars">${[1, 2, 3, 4, 5].map((n) => { const c = st?.pos[n - 1] ?? 0; return `<span class="${n === slot ? "here" : ""}" title="Pos ${n}: ${c} game${c === 1 ? "" : "s"}"><i style="height:${Math.round((100 * c) / posMax)}%"></i><b>${n}</b></span>`; }).join("")}</span>
           <span class="ft-label">Top heroes</span>
           <span class="ft-heroes">${top.length ? top.map(hero).join("") : `<span class="ft-note">No league games yet</span>`}</span>
-          ${own ? "" : pickBtn("ft-bpick", true)}
+          ${pickButtons ? pickBtn("ft-bpick", true) : ""}
         </div>
       </div>
       <button type="button" class="ft-expand" aria-label="Show ${esc(p.name)}'s card full size"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H7.4l3.3 3.3-1.4 1.4L6 7.4V10H4zm16 0v6h-2V7.4l-3.3 3.3-1.4-1.4L16.6 6H14V4zM4 20v-6h2v2.6l3.3-3.3 1.4 1.4L7.4 18H10v2zm16 0h-6v-2h2.6l-3.3-3.3 1.4-1.4 3.3 3.3V14h2z"/></svg></button>

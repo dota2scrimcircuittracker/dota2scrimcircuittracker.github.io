@@ -1,0 +1,45 @@
+.ft-flip>.exp-border{position:absolute;inset:0;width:100%;height:100%;z-index:6;pointer-events:none;overflow:visible;backface-visibility:hidden;transform:translateZ(.5px)}
+.ft-card[data-effects-offscreen],.ft-card[data-effects-offscreen] *,.cosmetics-tab-hidden .ft-card,.cosmetics-tab-hidden .ft-card *{animation-play-state:paused!important}
+.cosmetic-emblem.placed,.ft-card .cosmetic-emblem.placed{transform:translate(-50%,-50%) rotate(var(--emblem-rotation,0deg))}
+[data-card-editor] .emblem-wheel .sig-wheel-handle{transition:none}
+[data-card-editor] .emblem-wheel{backface-visibility:hidden}
+.ft-card[data-texture^="exp-"] .ft-front{background-image:linear-gradient(#0d0c0b,#0d0c0b);background-clip:border-box}
+.ft-front>.exp-finish{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:hidden;filter:none;max-height:none}
+.ft-card .exp-autograph{width:min(90%,calc(var(--signature-size) * 5.5));filter:drop-shadow(0 1px 1px #0008);line-height:0}
+.exp-autograph>.exp-signature-svg{display:block;width:100%;height:auto;overflow:visible}
+.exp-signature-svg svg{overflow:visible}
+.collection-signature.exp-autograph{width:100%;transform:none;line-height:0}
+.collection-signature.exp-autograph>.exp-signature-svg{width:100%;height:65px}
+.collection-swatch>.exp-border{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);pointer-events:none}
+.collection-swatch>.exp-finish{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;pointer-events:none;filter:none}
+.ft-card .cosmetic-emblem.exp-fortress{width:calc(44px * var(--emblem-size,1));height:calc(51px * var(--emblem-size,1));filter:drop-shadow(0 1px 1px #0008);text-shadow:none}
+.exp-fortress svg{display:block;width:100%;height:100%}
+.exp-war-metal stop{animation:exp-war-color calc(16s / var(--border-speed,1)) ease-in-out infinite}
+.exp-war-metal stop:nth-child(2){animation-delay:-3.2s}.exp-war-metal stop:nth-child(3){animation-delay:-6.4s}.exp-war-metal stop:nth-child(4){animation-delay:-9.6s}.exp-war-metal stop:nth-child(5){animation-delay:-12.8s}
+@keyframes exp-war-color{0%,100%{stop-color:#e5ddc5}30%{stop-color:#b5c6ba}65%{stop-color:#bd7f7b}}
+.exp-serpent-sheen{animation:exp-serpent-sheen calc(16s / var(--border-speed,1)) linear infinite}
+.exp-serpent-spark{animation:exp-serpent-spark calc(23s / var(--border-speed,1)) linear infinite}
+@keyframes exp-serpent-sheen{to{stroke-dashoffset:-1402}}
+@keyframes exp-serpent-spark{0%{offset-distance:0%;opacity:0}10%,85%{opacity:.85}100%{offset-distance:100%;opacity:0}}
+.exp-rift-mote{animation:exp-rift-drift calc(var(--drift,9s) / var(--particle-speed,1)) ease-in-out infinite}
+@keyframes exp-rift-drift{0%,100%{transform:translate(0);opacity:.15}35%{opacity:.8}75%{transform:translate(var(--dx),var(--dy));opacity:.4}}
+.exp-finish .v6-cloud{animation-duration:calc(var(--cloud-cycle,14s) / var(--particle-speed,1))}
+.exp-finish .v6-wisp{animation-duration:calc(12s / var(--particle-speed,1))}
+.exp-finish .time-shard{animation-duration:calc(6s / var(--particle-speed,1))}
+.exp-velvet-gloss{animation:exp-velvet-gloss calc(10s / var(--particle-speed,1)) ease-in-out infinite alternate}
+@keyframes exp-velvet-gloss{from{transform:translateX(-90px)}to{transform:translateX(115px)}}
+.exp-ink-plume{animation:exp-ink-diffuse calc(var(--ink-cycle,16s) / var(--particle-speed,1)) ease-in-out infinite alternate}
+.exp-ink-filaments{animation:exp-ink-curl calc(19s / var(--particle-speed,1)) ease-in-out infinite alternate;transform-origin:125px 240px}
+@keyframes exp-ink-diffuse{from{transform:translate(0,5px) scale(.97,1);opacity:.8}to{transform:translate(var(--ink-drift,8px),-12px) scale(1.08,1.04);opacity:1}}
+@keyframes exp-ink-curl{from{transform:translate(-3px,6px) rotate(-2deg);opacity:.6}to{transform:translate(5px,-9px) rotate(3deg);opacity:1}}
+.exp-finish .nova-rings{animation-duration:calc(9s / var(--particle-speed,1))}
+.exp-finish .v6-star{animation-duration:calc(var(--twinkle,4s) / var(--particle-speed,1))}
+.exp-finish .v6-burst{animation-duration:calc(var(--flight,6s) / var(--particle-speed,1))}
+.exp-border .v6-edge-particle{animation-duration:calc(var(--flight,6s) / var(--border-speed,1))}
+.effect-settings{padding:16px;border:1px solid #5d4d35;border-radius:9px;background:#211d19;margin:14px 0}
+.effect-settings h3{font-size:14px;margin:0 0 14px}.effect-position,.effect-particles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.effect-settings label{display:grid;gap:7px;font-size:12px;margin:10px 0}.effect-settings output{color:#eac47e}.effect-settings input{width:100%;accent-color:#eac47e}
+.effect-particles fieldset{min-width:0;border:1px solid #4d4336;border-radius:7px;padding:12px}.effect-particles legend{font-size:12px;padding:0 5px}
+.local-collection-review{padding:10px 14px;border:1px solid #665432;background:#282217;color:#e4ce9d;font-size:12px;border-radius:7px;margin:0 0 18px}
+@media(prefers-reduced-motion:reduce){.exp-layer,.exp-layer *{animation:none!important;transition:none!important}.exp-layer .nova-rings{opacity:.65;transform:scale(1)}.exp-layer .paperfold{transform:none!important}}
+@media(max-width:550px){.effect-position,.effect-particles{grid-template-columns:1fr}}

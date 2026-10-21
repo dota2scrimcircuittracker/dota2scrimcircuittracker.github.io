@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validLayout,backStats,partState,MAX_BACK_STATS} from '../public/lib/card-layout.js';
+import {validLayout,backStats,backPartShown,partState,MAX_BACK_STATS} from '../public/lib/card-layout.js';
 import {grantLogin,equipCosmetics} from '../public/lib/cosmetics-engine.js';
 
 test('no layout stays null and the card keeps its role defaults',()=>{
@@ -50,4 +50,20 @@ test('rotation and layer are kept and bounded',()=>{
   assert.equal(l.front.name.rot,45);assert.equal(l.front.name.z,3);
   assert.throws(()=>validLayout({front:{name:{rot:200}}}));
   assert.throws(()=>validLayout({front:{name:{z:11}}}));
+});
+
+test('back tier, team and Dota Plus choices save independently and retain old badge defaults',()=>{
+  assert.equal(backPartShown(null,'tier'),true);
+  assert.equal(backPartShown(null,'team'),true);
+  assert.equal(backPartShown(null,'plus'),false);
+  const legacy=validLayout({front:{plus:{show:true}}});
+  assert.equal(backPartShown(legacy,'plus'),true);
+  const state=grantLogin(null,new Date('2026-10-13'));
+  const saved=equipCosmetics(state,{layout:{front:{plus:{show:true}},back:{tier:false,team:false,plus:false}}});
+  assert.equal(partState(saved.equipment.layout,'plus').show,true);
+  for(const key of ['tier','team','plus'])assert.equal(backPartShown(saved.equipment.layout,key),false);
+  const backOnly=validLayout({back:{plus:true}});
+  assert.equal(backPartShown(backOnly,'plus'),true);
+  assert.equal(partState(backOnly,'plus').show,false);
+  for(const key of ['tier','team','plus'])assert.throws(()=>validLayout({back:{[key]:'yes'}}));
 });

@@ -1,0 +1,162 @@
+/* Atmosphere stays translucent; metal polish is clipped to the frame band. */
+.ft-flip>.cosmetic-emblem{z-index:8;backface-visibility:hidden}
+.ft-card .cosmetic-emblem.exp-ornament{width:calc(var(--ornament-width) * var(--emblem-size,1));height:calc(var(--ornament-height) * var(--emblem-size,1));text-shadow:none}
+.exp-ornament svg{display:block;width:100%;height:100%;overflow:visible}
+.ft-card button.finish-position-handle{position:absolute;z-index:24;width:30px;height:30px;padding:0;border:1px dashed #f1cf88;border-radius:50%;background:#1a242bcc;color:#f1cf88;transform:translate(-50%,-50%);cursor:grab;touch-action:none;backface-visibility:hidden}
+.ft-card button.finish-position-handle::before{content:'+';display:block;font:24px/26px monospace;text-align:center}
+.ft-card button.finish-position-handle:active{cursor:grabbing}.ft-card button.finish-position-handle:focus-visible{outline:2px solid #ffecbb;outline-offset:3px}
+.exp-border-gloss{animation:exp-border-gloss calc(11s / var(--border-speed,1)) ease-in-out infinite;transform-origin:150px 200px}
+.exp-border-luster{transform:translateX(270px) rotate(-18deg);transform-origin:150px 200px}
+.exp-rare-polish .exp-border-gloss{animation-duration:calc(8s / var(--border-speed,1));mix-blend-mode:screen}
+.exp-rare-rim{animation:exp-rare-luster calc(8s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes exp-rare-luster{from{opacity:.55}to{opacity:1}}
+.exp-spectrum-drift{animation:exp-spectrum-drift calc(12s / var(--border-speed,1)) linear infinite}
+.exp-spectrum-coating{mix-blend-mode:soft-light}
+.exp-color-flow .exp-spectrum-coating{mix-blend-mode:normal}
+.exp-spectrum-turn{transform-origin:150px 200px;animation:exp-spectrum-turn calc(9s / var(--border-speed,1)) linear infinite}
+[data-border-id=mirror] .exp-spectrum-turn{animation-direction:reverse;animation-duration:calc(7s / var(--border-speed,1))}
+:is([data-border-id=brushed-tin],[data-border-id=dusty-rose],[data-border-id=naval]) .exp-spectrum-turn{animation-duration:calc(15s / var(--border-speed,1))}
+@keyframes exp-spectrum-turn{to{transform:rotate(360deg)}}
+.exp-spectrum-runner{animation:exp-spectrum-lap calc(14s / var(--border-speed,1)) linear infinite}
+[data-border-id=ancient-war] .exp-spectrum-coating,[data-border-id=event-horizon] .exp-spectrum-coating{mix-blend-mode:normal}
+[data-border-id=ouroboros] .exp-spectrum-drift{animation-duration:calc(17s / var(--border-speed,1))}
+@keyframes exp-spectrum-drift{from{transform:translate(0,0)}to{transform:translate(360px,440px)}}
+@keyframes exp-spectrum-lap{to{stroke-dashoffset:-982}}
+.exp-nebula-spectrum stop{animation:exp-nebula-color calc(13s / var(--border-speed,1)) ease-in-out infinite}
+.exp-nebula-spectrum stop:nth-child(2){animation-delay:-4.3s}.exp-nebula-spectrum stop:nth-child(3){animation-delay:-8.6s}
+@keyframes exp-nebula-color{0%,100%{stop-color:#d1bde7}35%{stop-color:#96d5dc}70%{stop-color:#e5c1ad}}
+.exp-nova-spectrum circle{animation:exp-nova-color calc(12s / var(--particle-speed,1)) ease-in-out infinite}
+.exp-nova-spectrum circle:nth-child(2){animation-delay:-4s}.exp-nova-spectrum circle:nth-child(3){animation-delay:-8s}
+@keyframes exp-nova-color{0%,100%{stroke:#ecc28b}35%{stroke:#d6a8c8}70%{stroke:#b7a4e0}}
+.exp-nova-core stop:nth-child(2){animation:exp-nova-core calc(12s / var(--particle-speed,1)) ease-in-out infinite}
+@keyframes exp-nova-core{0%,100%{stop-color:#edbf8a}45%{stop-color:#ecc1c5}75%{stop-color:#c4addf}}
+.exp-tide-spectrum stop{animation:exp-tide-color calc(16s / var(--particle-speed,1)) ease-in-out infinite}
+.exp-rift-spectrum stop{animation:exp-rift-color calc(12s / var(--particle-speed,1)) ease-in-out infinite}
+.exp-tide-spectrum stop:nth-child(2),.exp-rift-spectrum stop:nth-child(2){animation-delay:-5s}
+@keyframes exp-tide-color{0%,100%{stop-color:#a6ddd3}40%{stop-color:#7ca9cd}75%{stop-color:#83c9b3}}
+@keyframes exp-rift-color{0%,100%{stop-color:#c1a9e0}40%{stop-color:#82c4d3}75%{stop-color:#b699d2}}
+.exp-lens-gloss{animation:exp-lens-gloss calc(9s / var(--particle-speed,1)) ease-in-out infinite alternate}
+/* Tier audit: material details, thematic motion, and readable signature compositions. */
+.tier-glass-facet{animation:tier-facet-light calc(6s / var(--border-speed,1)) ease-in-out infinite alternate}
+.tier-circuit-node{animation:tier-node calc(3s / var(--border-speed,1)) ease-in-out infinite}
+.tier-war-volley{offset-rotate:auto;animation:tier-war-volley calc(var(--volley-time,6s) / var(--border-speed,1)) linear infinite}
+.tier-war-impact{animation:tier-war-impact calc(2.8s / var(--border-speed,1)) ease-out infinite}
+.tier-fortress-beacon{transform-origin:28px 41px;animation:tier-war-impact calc(2.8s / var(--border-speed,1)) ease-out infinite}
+.tier-fortress-core{animation:tier-node calc(2.8s / var(--border-speed,1)) ease-in-out infinite}
+@keyframes tier-facet-light{from{opacity:.55}to{opacity:1}}
+@keyframes tier-node{0%,100%{opacity:.2}35%,55%{opacity:1}}
+@keyframes tier-war-volley{0%{offset-distance:0%;opacity:0}8%,90%{opacity:1}100%{offset-distance:100%;opacity:0}}
+@keyframes tier-war-impact{0%{transform:scale(.3);opacity:0}20%{opacity:.9}100%{transform:scale(2);opacity:0}}
+.tier-ink-ribbon{transform-origin:150px 220px;animation:tier-ink-ribbon calc(12s / var(--particle-speed,1)) ease-in-out infinite alternate}
+.tier-time-shard{animation:tier-time-shift calc(8s / var(--particle-speed,1)) ease-in-out infinite}
+.tier-abyss-currents{mix-blend-mode:screen}
+.tier-abyss-current{animation:tier-abyss-current calc(10s / var(--particle-speed,1)) ease-in-out infinite alternate}
+.tier-abyss-leviathan{animation:tier-abyss-swim calc(18s / var(--particle-speed,1)) ease-in-out infinite alternate}
+.tier-abyss-wing{transform-origin:150px 160px;animation:tier-abyss-wing calc(7s / var(--particle-speed,1)) ease-in-out infinite alternate}
+.tier-abyss-wing.right{animation-direction:alternate-reverse}
+.tier-abyss-light{animation:tier-abyss-light calc(4s / var(--particle-speed,1)) ease-in-out infinite alternate}
+.tier-stellar-bloom{animation:tier-stellar-bloom calc(5s / var(--particle-speed,1)) ease-in-out infinite;mix-blend-mode:screen}
+.tier-stellar-corona{animation:tier-stellar-turn calc(19s / var(--particle-speed,1)) linear infinite}
+@keyframes tier-ink-ribbon{from{transform:translate(-5px,5px) scale(.98);opacity:.55}to{transform:translate(6px,-8px) scale(1.04);opacity:1}}
+@keyframes tier-abyss-current{from{transform:translate(-8px,5px);opacity:.35}to{transform:translate(9px,-6px);opacity:.9}}
+@keyframes tier-abyss-swim{from{transform:translate(-22px,2px);opacity:.65}to{transform:translate(20px,-9px);opacity:1}}
+@keyframes tier-abyss-wing{from{transform:rotate(-3deg) scaleY(.94)}to{transform:rotate(3deg) scaleY(1.03)}}
+@keyframes tier-abyss-light{from{opacity:.25}to{opacity:1}}
+@keyframes tier-stellar-bloom{0%,100%{transform:scale(.82);opacity:.65}40%,55%{transform:scale(1.15);opacity:1}}
+@keyframes tier-stellar-turn{to{transform:rotate(360deg)}}
+.tier-signature-glint{animation:tier-signature-glint 7s ease-in-out infinite}
+.tier-marquee-lights{filter:drop-shadow(0 0 1.5px #ffcf78)}
+.tier-signature-echo{animation:tier-signature-echo 6s ease-in-out infinite}
+.tier-echo-trace{animation:tier-echo-trace 4s linear infinite}
+.tier-assembly-letter{transform-origin:0 235px;animation:tier-assembly 8s cubic-bezier(.22,.75,.2,1) infinite}
+.tier-assembly-register{animation:tier-register 8s ease-in-out infinite}
+.tier-fold-letter{animation:tier-paper-unfold 9s ease-in-out infinite}
+.tier-fold-crease{animation:tier-register 9s ease-in-out infinite}
+@keyframes tier-signature-glint{0%,12%{transform:translateX(0);opacity:0}20%{opacity:.8}65%{transform:translateX(300px);opacity:.8}75%,100%{transform:translateX(300px);opacity:0}}
+@keyframes tier-time-shift{0%,12%,88%,100%{transform:none;opacity:0}24%,72%{transform:translate(var(--time-x),var(--time-y)) rotate(var(--time-turn,0deg));opacity:1}}
+@keyframes tier-signature-echo{0%,100%{transform:translate(calc(var(--echo) * -2px),calc(var(--echo) * 2px));opacity:.2}45%,65%{transform:translate(calc(var(--echo) * 5px),calc(var(--echo) * 4px));opacity:.9}}
+@keyframes tier-echo-trace{to{stroke-dashoffset:-204}}
+@keyframes tier-assembly{0%,5%,32%,100%{transform:none;opacity:1}12%,18%{transform:translate(var(--assembly-x),var(--assembly-y)) rotate(var(--assembly-turn));opacity:.55}25%{transform:translate(0,-3px);opacity:.9}}
+@keyframes tier-register{0%,15%,90%,100%{opacity:.2}30%,75%{opacity:.9}}
+@keyframes tier-paper-unfold{0%,5%,29%,100%{transform:none;opacity:1}11%,16%{transform:scaleX(.15) skewY(-15deg);opacity:.55}22%{transform:scaleX(.65) skewY(7deg);opacity:.9}}
+.exp-legendary-rift{mix-blend-mode:screen}
+.exp-rift-orbit{animation:exp-rift-orbit calc(14s / var(--particle-speed,1)) linear infinite}
+.exp-rift-orbit.reverse{animation-direction:reverse;animation-duration:calc(11s / var(--particle-speed,1))}
+.exp-rift-tear{transform-origin:150px 200px;animation:exp-rift-breathe calc(6s / var(--particle-speed,1)) ease-in-out infinite}
+.exp-rift-edge{animation:exp-rift-edge calc(5s / var(--particle-speed,1)) linear infinite}
+.exp-rift-shockwave{animation:exp-rift-shockwave calc(6s / var(--particle-speed,1)) ease-out infinite;opacity:.25}
+.exp-rift-infall{offset-rotate:auto;animation:exp-rift-infall calc(var(--infall,5s) / var(--particle-speed,1)) linear infinite}
+.exp-rift-fragment{animation:exp-rift-fragment calc(7s / var(--particle-speed,1)) ease-in-out infinite;opacity:.65}
+@keyframes exp-rift-orbit{to{transform:rotate(360deg)}}
+@keyframes exp-rift-breathe{0%,100%{transform:scale(1);opacity:.8}45%,60%{transform:scale(.994);opacity:1}}
+@keyframes exp-rift-edge{to{stroke-dashoffset:-135}}
+@keyframes exp-rift-shockwave{0%{transform:scale(.65);opacity:0}15%{opacity:.55}100%{transform:scale(2.15,1.65);opacity:0}}
+@keyframes exp-rift-infall{0%{offset-distance:0%;opacity:0}15%,75%{opacity:.9}100%{offset-distance:100%;opacity:0}}
+@keyframes exp-rift-fragment{0%,100%{transform:translateY(-3px) rotate(-12deg);opacity:.35}50%{transform:translateY(5px) rotate(18deg);opacity:.85}}
+@keyframes exp-lens-gloss{from{transform:translateX(-100px)}to{transform:translateX(160px)}}
+@media(prefers-reduced-motion:reduce){.exp-finish *{animation:none!important;transition:none!important}}
+@keyframes exp-border-gloss{0%,12%{transform:translateX(-40px) rotate(-18deg);opacity:0}20%{opacity:.9}62%{transform:translateX(520px) rotate(-18deg);opacity:.9}70%,100%{transform:translateX(520px) rotate(-18deg);opacity:0}}
+.exp-mirror-facet{animation:exp-mirror-facet calc(6s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes exp-mirror-facet{0%,100%{opacity:.45}55%{opacity:1}}
+.exp-mirror-runner{animation:exp-mirror-lap calc(13s / var(--border-speed,1)) linear infinite}
+@keyframes exp-mirror-lap{to{stroke-dashoffset:-1320}}
+.exp-mirror-spark{animation:exp-mirror-spark calc(16s / var(--border-speed,1)) linear infinite}
+@keyframes exp-mirror-spark{0%{offset-distance:0%;opacity:.1}15%,65%{opacity:.85}100%{offset-distance:100%;opacity:.12}}
+.exp-horizon-vapor{offset-rotate:auto;animation:exp-horizon-orbit calc(var(--orbit-cycle,24s) / var(--border-speed,1)) linear infinite,exp-horizon-breathe calc(7s / var(--border-speed,1)) ease-in-out infinite alternate}
+.exp-horizon-dust{offset-rotate:auto;animation:exp-horizon-orbit calc(var(--orbit-cycle,20s) / var(--border-speed,1)) linear infinite}
+@keyframes exp-horizon-orbit{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes exp-horizon-breathe{from{opacity:.5;transform:scale(var(--vapor-scale,1))}to{opacity:1;transform:scale(1.16)}}
+.exp-horizon-filament{animation:exp-horizon-filament calc(7s / var(--border-speed,1)) ease-in-out infinite alternate}
+.exp-horizon-plume{animation:exp-horizon-plume calc(var(--wisp-time,10s) / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes exp-horizon-plume{from{transform:translateY(-4px) scale(.72);opacity:.24}to{transform:translateY(var(--wisp-drift,14px)) scale(1.25);opacity:.85}}
+@keyframes exp-horizon-filament{from{opacity:.04}to{opacity:.2}}
+.exp-serpent{filter:drop-shadow(0 0 1.2px #b9ca7c44)}
+.exp-serpent-eye{animation:exp-eye-glint calc(5s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes exp-eye-glint{from{opacity:.4}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.exp-ornament *,.exp-border *{animation:none!important;transition:none!important}}
+/* House style (lib/cosmetics-house-style.js): the original catalog's metal band, keyline and glow. */
+.exp-house-wash{mix-blend-mode:overlay;opacity:.85}.exp-house-wash.exp-house-dark{mix-blend-mode:soft-light;opacity:.5}
+/* Ancients: the house wash sets the rim's colour, so its stops cycle teal, ember, gold and rose, each one phase
+   later along the gradient, and the colours travel round the frame instead of sitting still. */
+[data-border-id=ancient-war] [id$="-house-wash"] stop{animation:exp-war-wash calc(12s / var(--border-speed,1)) linear infinite}
+[data-border-id=ancient-war] [id$="-house-wash"] stop:nth-child(2){animation-delay:calc(-3.84s / var(--border-speed,1))}
+[data-border-id=ancient-war] [id$="-house-wash"] stop:nth-child(3){animation-delay:calc(-6.6s / var(--border-speed,1))}
+[data-border-id=ancient-war] [id$="-house-wash"] stop:nth-child(4){animation-delay:calc(-9.96s / var(--border-speed,1))}
+@keyframes exp-war-wash{0%,100%{stop-color:#84ded2}25%{stop-color:#f25e48}50%{stop-color:#ffd18b}75%{stop-color:#ed738f}}
+.ft-card[data-texture^="exp-"]{--frame-shadow:0 18px 40px #0009,0 0 20px color-mix(in srgb,var(--a) 30%,transparent)}
+.ft-card[data-texture^="exp-"][data-rarity=rare]{--frame-shadow:0 18px 40px #0009,0 0 22px color-mix(in srgb,var(--a) 40%,transparent)}
+.ft-card[data-texture^="exp-"][data-rarity=epic]{--frame-shadow:0 18px 40px #0009,0 0 26px color-mix(in srgb,var(--a) 50%,transparent),0 0 44px color-mix(in srgb,var(--b) 18%,transparent)}
+.ft-card[data-texture^="exp-"][data-rarity=legendary]{--frame-shadow:0 18px 40px #0009,0 0 28px color-mix(in srgb,var(--a) 55%,transparent),0 0 50px color-mix(in srgb,var(--b) 30%,transparent)}
+.exp-autograph>.exp-signature-svg{filter:drop-shadow(0 0 5px var(--signature-glow,transparent))}
+/* Reality Rift portal (lib/reality-rift.js): rim ripples and flickering cracks. */
+.exp-rift-ripple{transform-origin:150px 200px;animation:exp-rift-ripple calc(6s / var(--particle-speed,1)) ease-out infinite;opacity:0}
+.exp-rift-crack{animation:exp-rift-crack calc(3.4s / var(--particle-speed,1)) steps(3) infinite alternate}
+@keyframes exp-rift-ripple{0%{transform:scale(1);opacity:0}15%{opacity:.5}100%{transform:scale(.9,.92);opacity:0}}
+@keyframes exp-rift-crack{from{opacity:.2}to{opacity:.9}}
+/* Shattered Time: the dial runs backwards while the shards are out. */
+.tier-time-hands{animation:tier-time-hands calc(20s / var(--particle-speed,1)) linear infinite}
+.tier-time-seams{animation:tier-time-seams calc(4s / var(--particle-speed,1)) ease-in-out infinite alternate}
+@keyframes tier-time-hands{to{transform:rotate(-360deg)}}
+@keyframes tier-time-seams{from{opacity:.15}to{opacity:.6}}
+/* Ink in Water: a drop falls, then blooms and sinks. */
+.tier-ink-water{mix-blend-mode:screen}
+.tier-ink-drop{animation:tier-ink-drop calc(13s / var(--particle-speed,1)) ease-in infinite;animation-delay:var(--ink-delay)}
+.tier-ink-bloom{animation:tier-ink-bloom calc(13s / var(--particle-speed,1)) ease-out infinite;animation-delay:var(--ink-delay)}
+@keyframes tier-ink-drop{0%{transform:translateY(-34px);opacity:0}5%{opacity:1}11%{transform:none;opacity:1}14%,100%{transform:none;opacity:0}}
+@keyframes tier-ink-bloom{0%,10%{transform:scale(.15);opacity:0}22%{opacity:.95}70%{opacity:.75}100%{transform:translateY(38px) scale(1.3);opacity:0}}
+/* Leviathan's Wake plankton. */
+.v6-cloud-motes .tier-abyss-plankton{animation:tier-abyss-rise calc(var(--rise,12s) / var(--particle-speed,1)) linear infinite}
+@keyframes tier-abyss-rise{0%{transform:translate(0,20px);opacity:0}15%{opacity:.9}50%{transform:translate(var(--sway),-25px)}85%{opacity:.7}100%{transform:translate(0,-70px);opacity:0}}
+/* Event Horizon's far half (cosmetics-expansion.js horizonHalves) sits behind the card faces. */
+.ft-flip>.exp-border.exp-horizon-back{transform:translateZ(-.5px);z-index:0}
+/* Border signatures (lib/cosmetics-border-upgrades.js). */
+.sig-packet{animation:sig-packet calc(7s / var(--border-speed,1)) linear infinite}
+.sig-packet.reverse{animation-direction:reverse;animation-duration:calc(9s / var(--border-speed,1))}
+@keyframes sig-packet{from{offset-distance:0%}to{offset-distance:100%}}
+.sig-packets{filter:drop-shadow(0 0 1.5px #7dfff0)}
+.sig-led{filter:drop-shadow(0 0 2px currentColor);animation:sig-led calc(2.8s / var(--border-speed,1)) steps(2) infinite}
+@keyframes sig-led{from{opacity:.25}to{opacity:1}}
+.exp-serpent-slither{animation:exp-serpent-slither calc(3s / var(--border-speed,1)) linear infinite}
+@keyframes exp-serpent-slither{to{stroke-dashoffset:-24}}
+.exp-serpent-eye-glow{animation:exp-serpent-eye calc(3.5s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes exp-serpent-eye{from{opacity:.45}to{opacity:1}}

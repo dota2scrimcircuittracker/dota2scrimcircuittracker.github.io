@@ -343,7 +343,8 @@ Reviewing (your Firebase login): `node scripts/feedback.cjs list`, `show FB-XXXX
 screenshots and a replay file in gitignored `public/_dev/feedback/`), `done FB-XXXXXX "summary"`
 (deletes it and its Discord post, reposts today's digest without it, logs it in
 `docs/feedback-log.md`). With `npm start` running,
-`http://localhost:3000/?fbreview=FB-XXXXXX` replays a shown ticket on the real pages: its marks,
+`http://localhost:3000/?fbreview=FB-XXXXXX` replays a ticket on the real pages (the dev server runs
+`show` for it on first open if its replay file isn't there yet): its marks,
 pins and notes drawn where the visitor made them, a clicked element found again by its selector,
 and a panel to step through the notes (`public/lib/feedback-review.js`, loaded on localhost only).
 A scheduled task on Jonah's PC (`check` / `emailed`) emails each new ticket and a daily digest.

@@ -6,7 +6,7 @@ test("cards default to no filter; saved filters override it", () => {
   assert.equal(cardArtwork("Windranger").style, "plain");
   assert.equal(cardArtwork("Windranger", { style: "frost" }).style, "frost");
   assert.equal(cardArtwork("Windranger", { style: "untrusted" }).style, "plain");
-  assert.equal(CARD_STYLES.length, 9);
+  assert.equal(CARD_STYLES.length, 14);
 });
 
 test("art belongs to the selected hero and unrecognized choices fall back", () => {

@@ -251,7 +251,7 @@
         && (request.resource.data.get('art', null) == null
           || (request.resource.data.art is string && request.resource.data.art.matches('(vert|crop|render|ls:[0-9a-f]{12})')))
         && (request.resource.data.get('style', null) == null
-          || request.resource.data.style in ['stencil', 'clean', 'cinema', 'ember', 'frost', 'comic', 'ink', 'noir'])
+          || request.resource.data.style in ['stencil', 'clean', 'cinema', 'ember', 'frost', 'comic', 'ink', 'noir', 'neon', 'blueprint', 'parchment', 'risograph', 'hologram'])
         && (request.resource.data.get('crop', null) == null
           || (request.resource.data.crop is map && request.resource.data.crop.keys().hasOnly(['x', 'y', 'zoom'])
             && request.resource.data.crop.keys().size() == 3

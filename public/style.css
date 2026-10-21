@@ -323,6 +323,9 @@ nav a.nav-cta:hover { background: #f5c862; color: var(--on-accent); }
   animation: rise .14s cubic-bezier(.2, .8, .2, 1);
 }
 .nav-drop[hidden] { display: none; }
+/* The header's menus can't rise above the header itself (its z-index is the ceiling), so while
+   one is open the header goes above everything else on the page. */
+header.top:has(.nav-drop:not([hidden]), #search-pop:not([hidden]), #league-menu:not([hidden]), #settings-pop:not([hidden])) { z-index: 2147483000; }
 /* A bridge over the gap, so moving the mouse from the tab down into the menu keeps it open. */
 .nav-drop::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 8px; }
 .nav-drop a {
@@ -3534,6 +3537,9 @@ dialog.fb-lifted { position: fixed; inset: 0; margin: auto; z-index: 980; box-sh
 .fb-list-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 .fb-list-head b { font: 800 18px/1 var(--display); text-transform: uppercase; letter-spacing: .04em; }
 .fb-list-head span, .fb-empty { font: 400 12px/1.4 var(--mono); color: var(--dust); }
+.fb-list-head span { margin-left: auto; }
+.fb-clear { margin-left: 10px; cursor: pointer; font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px; color: var(--dust); background: none; border: 1px solid var(--seam-2); }
+.fb-clear:hover, .fb-clear[data-clear="1"] { color: var(--err); border-color: var(--err); }
 .fb-list ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .fb-list li { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px; background: var(--ink); border: 1px solid var(--seam); }
 .fb-list img, .fb-noshot { width: 72px; height: 48px; object-fit: cover; object-position: top left; border: 1px solid var(--seam-2); box-sizing: border-box; }
@@ -4629,6 +4635,14 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 /* Player cards */
 .ft-deck { margin: 0 0 20px; }
 .ft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 26px 20px; padding-top: 10px; }
+.ft-choice { min-width: 0; }
+.ft-choice-controls { position: relative; z-index: 1; display: grid; gap: 8px; margin-top: 14px; }
+.ft-choice-name { color: var(--bone); font-weight: 700; text-align: center; overflow-wrap: anywhere; }
+.ft-choice-pick { width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 7px; clip-path: none; background: var(--accent); color: var(--on-accent); font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.ft-choice-pick:hover { background: #f5c862; }
+.ft-choice-pick:focus-visible { outline: 2px solid var(--bone); outline-offset: 3px; }
+.ft-choice.picked .ft-choice-pick { background: rgba(12, 11, 10, .7); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.ft-choice[data-taken]:not([data-taken=""]) .ft-choice-pick { background: rgba(12, 11, 10, .7); color: var(--bone); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35); }
 .ft-rest { margin-top: 16px; }
 .ft-rest > summary { cursor: pointer; font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dust); margin-bottom: 12px; }
 .ft-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
@@ -4808,7 +4822,7 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .part-panel label { display: grid; gap: .2rem; }
 .part-panel .pp-remove { color: #ff6b6b; }
 .ft-card .ft-bname .ft-name { zoom: var(--name-size, 1); }
-.ft-card .ft-front > .ft-placed { position: absolute; z-index: calc(6 + var(--part-z, 0)); zoom: 1; transform: translate(-50%, -50%) rotate(var(--part-rot, 0deg)) scale(var(--part-size, 1)); max-width: calc(96% / var(--part-size, 1)); margin: 0; white-space: nowrap; }
+.ft-card .ft-front > .ft-placed { position: absolute; right: auto; bottom: auto; z-index: calc(6 + var(--part-z, 0)); zoom: 1; transform: translate(-50%, -50%) rotate(var(--part-rot, 0deg)) scale(var(--part-size, 1)); max-width: calc(96% / var(--part-size, 1)); margin: 0; white-space: nowrap; }
 .ft-card [data-part][hidden], .ft-stats > span[hidden] { display: none; }
 .ft-no-posbars .ft-posbars, .ft-no-posbars .ft-label:has(+ .ft-posbars),
 .ft-no-heroes .ft-heroes, .ft-no-heroes .ft-label:has(+ .ft-heroes) { display: none; }
@@ -4920,7 +4934,7 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .ft-wk { font-size: 12px; color: var(--dust); margin: 6px 0 0 14px; }
 .ft-wk b { color: var(--bone); font-weight: 600; }
 /* Steam sign-in in the top bar (parts/me.js) */
-.me { display: flex; align-items: center; }
+div.me { display: flex; align-items: center; }
 .me-in { padding: 8px 12px; font-size: 12px; }
 .me-av { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--seam-2); background: var(--stone-2); color: var(--bone); font: 600 13px var(--mono); text-decoration: none; }
 .me-av:hover, .me-av:focus-visible { border-color: var(--accent); }
@@ -4928,18 +4942,24 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .ft-intro { font-size: 14px; color: var(--dust); margin: 0 0 14px; max-width: 70ch; }
 
 /* Saved Fantasy lineups and score details. */
-.ft-view-lineup { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin: 20px 0; }
+.ft-saved-entries { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 12px; align-items: start; margin-top: 12px; }
+.ft-view-lineup { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; max-width: 592px; margin: 12px 0; }
 .ft-view-pick { min-width: 0; }
+.ft-pick-role { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; min-height: 22px; margin-bottom: 6px; color: var(--dust); font: 600 11px var(--mono); }
+.ft-pick-captain { padding: 2px 4px; border-radius: 3px; background: rgba(var(--accent-rgb), .15); color: var(--accent); }
 .ft-view-pick .ft-card { width: 100%; }
-.ft-pick-score { margin-top: 10px; font-size: 13px; color: var(--dust); }
+.ft-pick-name { margin-top: 8px; font-size: 12px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.ft-pick-score { margin-top: 4px; font-size: 11px; color: var(--dust); }
 .ft-pick-score b { color: var(--accent); }
 .ft-entry, .ft-saved-week { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+.ft-saved-entries > .ft-entry { margin: 0; background: rgba(12, 11, 10, .35); }
+.ft-entry > summary .ft-total { font-size: 12px; }
+.ft-entry > .ft-breakdown > summary { font-size: 12px; color: var(--dust); }
 .ft-entry > summary, .ft-saved-week > summary, .ft-breakdown > summary, .ft-rules > summary { cursor: pointer; }
 .ft-breakdown .ft-wk { margin: 18px 0; }
 .ft-breakdown .ft-wk > details { margin: 8px 0; }
 .ft-rules { max-width: 680px; }
-@media (max-width: 800px) { .ft-view-lineup { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .ft-view-lineup { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .ft-entry .ft-total { display: block; margin: 6px 0 0; } }
+@media (max-width: 620px) { .ft-view-lineup { grid-template-columns: repeat(5, minmax(84px, 1fr)); overflow-x: auto; padding: 6px 2px 10px; } .ft-entry .ft-total { display: block; margin: 6px 0 0; } }
 
 /* Authentic team logos: small marks on the cards, larger beside team titles. */
 .team-logo { display: inline-block; object-fit: contain; flex-shrink: 0; vertical-align: middle; }
@@ -5029,6 +5049,19 @@ td .gtags, .hist-games .gtags { margin-left: 4px; }
 .ft-art-thumb[data-style="comic"] .ft-art::before, .ft-card[data-style="comic"] .ft-art::before { background: radial-gradient(circle, rgba(0, 0, 0, .55) .9px, transparent 1.5px) 0 0 / 5px 5px; mix-blend-mode: multiply; }
 .ft-art-thumb[data-style="ink"] .ft-art img { filter: url(#ft-ink) saturate(1.3); }
 .ft-art-thumb[data-style="noir"] .ft-art img { filter: grayscale(1) url(#ft-paint) contrast(1.5) brightness(.95); }
+/* Shared by full cards, editor thumbnails and profile backgrounds. Keep textures on the
+   artwork so card text and the existing readability wash stay clear. */
+:is(.ft-card, .ft-art-thumb):is([data-style="neon"], [data-style="blueprint"], [data-style="parchment"], [data-style="risograph"], [data-style="hologram"]) .ft-art { isolation: isolate; }
+:is(.ft-card, .ft-art-thumb)[data-style="neon"] .ft-art img { filter: saturate(1.9) contrast(1.3) brightness(1.08) hue-rotate(315deg); }
+:is(.ft-card, .ft-art-thumb)[data-style="neon"] .ft-art::before { background: linear-gradient(135deg, #ff28bc 5%, transparent 50%, #00eaff 95%); mix-blend-mode: screen; opacity: .48; }
+:is(.ft-card, .ft-art-thumb)[data-style="blueprint"] .ft-art img { filter: grayscale(1) sepia(1) saturate(4) hue-rotate(165deg) contrast(1.4) brightness(1.15); }
+:is(.ft-card, .ft-art-thumb)[data-style="blueprint"] .ft-art::before { background: repeating-linear-gradient(0deg, #b5e8ff55 0 1px, transparent 1px 18px), repeating-linear-gradient(90deg, #b5e8ff55 0 1px, transparent 1px 18px), #06357855; mix-blend-mode: screen; }
+:is(.ft-card, .ft-art-thumb)[data-style="parchment"] .ft-art img { filter: grayscale(1) sepia(.9) contrast(.85) brightness(1.18); }
+:is(.ft-card, .ft-art-thumb)[data-style="parchment"] .ft-art::before { background: radial-gradient(ellipse at center, #f4dda038 20%, #683b18a6 100%), repeating-linear-gradient(7deg, #70451618 0 1px, transparent 1px 4px); mix-blend-mode: multiply; }
+:is(.ft-card, .ft-art-thumb)[data-style="risograph"] .ft-art img { filter: grayscale(1) contrast(1.65) brightness(1.12); }
+:is(.ft-card, .ft-art-thumb)[data-style="risograph"] .ft-art::before { background: radial-gradient(circle, #17296280 .6px, transparent 1px) 0 0 / 3px 3px, linear-gradient(155deg, #ff785c 20%, #f1b9a0 52%, #4059ad 85%); mix-blend-mode: multiply; }
+:is(.ft-card, .ft-art-thumb)[data-style="hologram"] .ft-art img { filter: grayscale(1) sepia(1) saturate(2.8) hue-rotate(125deg) brightness(1.15) contrast(1.2); }
+:is(.ft-card, .ft-art-thumb)[data-style="hologram"] .ft-art::before { background: repeating-linear-gradient(0deg, #001f3980 0 1px, transparent 1px 4px), linear-gradient(115deg, transparent 20%, #b5ffff99 45%, #e7bdff66 50%, transparent 65%); mix-blend-mode: screen; }
 .ft-style-options { display: flex; flex-wrap: wrap; gap: 6px; }
 .ft-style-choice { padding: 5px 8px; clip-path: none; font-size: 11px; border: 1px solid var(--seam); }
 .ft-art-choice[aria-pressed="true"], .ft-style-choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -5096,7 +5129,8 @@ i.plus b { position: absolute; left: 0; right: 0; bottom: -.04em; text-align: ce
 .ft-card .ft-plus i.plus { font-size: clamp(38px, 18cqi, 56px); margin: 0; zoom: var(--part-size, 1); }
 .ft-card .ft-plus.ft-placed i.plus { zoom: 1; }
 .ft-card .ft-h i.plus { position: absolute; right: -5px; bottom: -6px; font-size: max(16px, 8cqi); margin: 0; }
-.ft-card:not(.ft-plus-on) .ft-h i.plus { display: none; }
+.ft-card:not(.ft-back-plus-on) .ft-h i.plus { display: none; }
+.ft-back-no-tier .ft-back .ft-tier, .ft-back-no-team .ft-back .ft-tm { display: none; }
 .ft-card .ft-h i.plus b { display: block; } /* .ft-h b (the games count) is hidden */
 /* Beside a name instead of on a portrait: the hero page's players. */
 .hp-name i.plus { margin: 0 0 0 6px; vertical-align: -5px; }
@@ -5246,3 +5280,24 @@ dialog.pb-modal { width: min(1320px, 96vw); }
 
 /* The "Picking as" name bar never shows; picks ask for a name once if none is stored. */
 .pred-name { display: none !important; }
+
+/* Profile: Follow button beside the follower counts (parts/collection.js mountFollowButton). */
+.pp-row .pp-follows { align-items: center; flex-wrap: wrap; }
+.pp-follow { padding: 4px 14px; border: 1px solid var(--accent); border-radius: 999px; background: var(--accent); color: var(--on-accent); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.pp-follow:hover { filter: brightness(1.1); }
+.pp-follow.is-following { background: transparent; color: var(--bone); border-color: var(--seam-2); }
+.pp-follow .pp-follow-off { display: none; }
+.pp-follow.is-following:is(:hover, :focus-visible) { border-color: var(--err); color: var(--err); }
+.pp-follow.is-following:is(:hover, :focus-visible) .pp-follow-on { display: none; }
+.pp-follow.is-following:is(:hover, :focus-visible) .pp-follow-off { display: inline; }
+.pp-follow:disabled { opacity: .6; cursor: wait; }
+.pp-follow-note { color: var(--err); font-size: 13px; }
+.pp-follow-note:empty { display: none; }
+
+/* Profile: drag your own cards to reorder them (parts/collection.js wireCardOrder). */
+.cards-reorderable > figure { cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s; }
+.cards-reorderable.cards-dragging, .cards-reorderable.cards-dragging * { cursor: grabbing; }
+.cards-reorderable > figure.card-dragging { opacity: .6; transform: scale(.96); outline: 2px dashed var(--seam-2); outline-offset: 4px; }
+.card-order-hint { margin: 6px 0 0; color: var(--dust); font-size: 13px; }
+.pp-head.pbg-text .pp-follows .pp-follow, .pp-head.pbg-text .pp-follows .pp-follow * { color: var(--on-accent); text-shadow: none; }
+.pp-head.pbg-text .pp-follows .pp-follow.is-following, .pp-head.pbg-text .pp-follows .pp-follow.is-following * { color: var(--pbg-text); }

@@ -263,6 +263,13 @@ function build() {
   ta.addEventListener("input", () => { noteBox.querySelector(".fb-add").disabled = !ta.value.trim(); });
 
   listBox.addEventListener("click", (e) => {
+    // Clear all asks once ("Clear 3?"), then empties the ticket.
+    const clr = e.target.closest("[data-clear]");
+    if (clr) {
+      if (clr.dataset.clear) { items = []; editing = null; save(); refresh(); renderList(); }
+      else { clr.dataset.clear = "1"; clr.textContent = `Clear ${items.length}?`; }
+      return;
+    }
     const rm = e.target.closest("[data-remove]");
     if (rm) { items.splice(Number(rm.dataset.remove), 1); editing = null; save(); refresh(); renderList(); return; }
     const ed = e.target.closest("[data-edit]");
@@ -297,6 +304,8 @@ function setOn(v) {
     watch = setInterval(() => { if (pageKey() !== seenPage) { seenPage = pageKey(); discard(); drawPins(); } }, 400);
     setTool(tool);
     refresh();
+    // Notes left from before: show them, so they can be sent or cleared.
+    if (items.length) { listBox.hidden = false; renderList(); }
   } else {
     discard();
     listBox.hidden = true;
@@ -548,7 +557,8 @@ function toggleList() {
 }
 function renderList() {
   if (editing != null && !items[editing]) editing = null;
-  listBox.innerHTML = `<div class="fb-list-head"><b>Your notes</b><span>${items.length} of ${MAX_FEEDBACK_ITEMS}</span></div>`
+  listBox.innerHTML = `<div class="fb-list-head"><b>Your notes</b><span>${items.length} of ${MAX_FEEDBACK_ITEMS}</span>
+      ${items.length ? `<button type="button" class="fb-clear" data-clear="" title="Remove every note without sending">Clear all</button>` : ""}</div>`
     + (items.length ? `<ol>${items.map((it, i) => `<li>
         ${it.shot ? `<img src="${it.shot}" alt="">` : `<span class="fb-noshot">${KIND_LABEL[it.kind]}</span>`}
         <div><b>${i + 1}. ${KIND_LABEL[it.kind]}</b> <small>${esc(new URL(it.page).pathname + new URL(it.page).search)}</small>

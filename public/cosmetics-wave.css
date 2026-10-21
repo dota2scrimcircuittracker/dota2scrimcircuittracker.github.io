@@ -1,0 +1,177 @@
+/* October 20 wave (lib/cosmetics-wave-*.js). Borders pace on --border-speed, finishes on --particle-speed.
+   Reduced motion and offscreen pausing come from the shared .exp-layer rules in cosmetics-expansion-native.css. */
+
+/* Borders */
+.wave-tape-run{animation:wave-tape-run calc(4s / var(--border-speed,1)) linear infinite}
+@keyframes wave-tape-run{to{transform:translateX(-46px)}}
+.wave-tape-flap{transform-box:fill-box;transform-origin:100% 0;animation:wave-flap calc(1.4s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-flap{from{transform:rotate(-9deg)}to{transform:rotate(11deg) skewY(4deg)}}
+.wave-film-holes{animation:wave-film calc(1.1s / var(--border-speed,1)) linear infinite}
+@keyframes wave-film{to{stroke-dashoffset:-5.2}}
+.wave-film-leak{mix-blend-mode:screen;animation:wave-leak calc(6s / var(--border-speed,1)) ease-in-out infinite alternate}
+.wave-film-leak.late{animation-delay:-3s}
+@keyframes wave-leak{from{opacity:.25}to{opacity:.9}}
+.wave-glass-beam{mix-blend-mode:screen;animation:wave-beam calc(9s / var(--border-speed,1)) ease-in-out infinite}
+@keyframes wave-beam{from{transform:translateX(-40px)}to{transform:translateX(440px)}}
+.wave-neon-pink,.wave-neon-cast{animation:wave-neon-flicker calc(7s / var(--border-speed,1)) steps(1) infinite}
+.wave-neon-dying{animation:wave-neon-buzz calc(3.2s / var(--border-speed,1)) steps(1) infinite}
+@keyframes wave-neon-flicker{0%,100%{opacity:1}61%{opacity:.3}62%{opacity:1}63%{opacity:.15}65%{opacity:1}88%{opacity:.55}89%{opacity:1}}
+@keyframes wave-neon-buzz{0%,100%{opacity:1}20%{opacity:.25}22%{opacity:.9}24%{opacity:.1}30%{opacity:.85}52%{opacity:.4}53%{opacity:1}}
+.wave-leaf{transform-box:fill-box;transform-origin:0 50%;animation:wave-leaf calc(5s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-leaf{from{transform:rotate(-7deg)}to{transform:rotate(8deg)}}
+.wave-bloom{transform-box:fill-box;transform-origin:center;animation:wave-bloom calc(4s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-bloom{from{transform:scale(.84) rotate(-8deg)}to{transform:scale(1.06) rotate(6deg)}}
+.wave-petal{transform-box:fill-box;transform-origin:center;opacity:0;animation:wave-petal calc(8s / var(--border-speed,1)) linear infinite}
+.wave-firefly{animation:wave-firefly calc(6s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-firefly{0%{transform:translate(0,0);opacity:.15}30%{opacity:1}55%{opacity:.3}80%{opacity:.95}100%{transform:translate(var(--fly-x,6px),var(--fly-y,4px));opacity:.2}}
+@keyframes wave-petal{0%{transform:translate(0,0) rotate(0);opacity:0}10%{opacity:.9}100%{transform:translate(var(--drift,6px),80px) rotate(540deg);opacity:0}}
+.wave-drip{transform-box:fill-box;transform-origin:50% 0;animation:wave-drip calc(var(--drip,5s) / var(--border-speed,1)) ease-in infinite}
+@keyframes wave-drip{0%{transform:scaleY(.25)}55%{transform:scaleY(1)}62%{transform:scaleY(.55)}100%{transform:scaleY(.25)}}
+.wave-drop{opacity:0;animation:wave-drop calc(var(--drip,5s) / var(--border-speed,1)) ease-in infinite}
+@keyframes wave-drop{0%,54%{transform:translateY(0);opacity:0}56%{opacity:1}82%{transform:translateY(34px);opacity:0}100%{opacity:0}}
+.wave-gild-flow{animation:wave-gild-flow calc(2.6s / var(--border-speed,1)) linear infinite}
+@keyframes wave-gild-flow{to{stroke-dashoffset:-62}}
+.wave-gild-run{opacity:0;animation:wave-gild-run calc(var(--run,6s) / var(--border-speed,1)) cubic-bezier(.6,0,.85,.6) infinite}
+@keyframes wave-gild-run{0%{transform:translateY(20px);opacity:0}8%{opacity:1}88%{opacity:1}100%{transform:translateY(382px);opacity:0}}
+.wave-gild-ember{opacity:0;animation:wave-gild-ember calc(var(--ember,3s) / var(--border-speed,1)) ease-out infinite}
+@keyframes wave-gild-ember{0%{transform:translate(0,0);opacity:0}12%{opacity:1}100%{transform:translate(var(--ember-x,0),14px) scale(.3);opacity:0}}
+.wave-gild-sheen{mix-blend-mode:overlay;animation:wave-beam calc(7s / var(--border-speed,1)) ease-in-out infinite}
+.wave-gild-heat,.wave-gild-pool,.wave-ancient-glow{animation:wave-pulse calc(3s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-pulse{from{opacity:.3}to{opacity:.8}}
+.wave-creep{offset-rotate:0deg;animation:wave-creep calc(9s / var(--border-speed,1)) linear infinite}
+@keyframes wave-creep{0%{offset-distance:0%;opacity:0}5%{opacity:1}90%{opacity:1}100%{offset-distance:var(--stop,50%);opacity:0}}
+.wave-creep-step{animation:wave-step calc(.5s / var(--border-speed,1)) steps(2) infinite}
+@keyframes wave-step{to{transform:translateY(-1.2px)}}
+.wave-clash{transform-box:fill-box;transform-origin:center;opacity:0;animation:wave-clash calc(9s / var(--border-speed,1)) ease-out infinite}
+@keyframes wave-clash{0%,84%{transform:scale(.2);opacity:0}88%{transform:scale(1);opacity:1}91%{transform:scale(1.3);opacity:.2}94%{transform:scale(.9);opacity:1}100%{transform:scale(1.4);opacity:0}}
+
+/* Finishes */
+.wave-riso-shift{animation:wave-riso calc(2.4s / var(--particle-speed,1)) steps(1) infinite}
+@keyframes wave-riso{0%{transform:translate(2px,1.2px)}33%{transform:translate(1.1px,2.3px)}66%{transform:translate(2.7px,.6px)}}
+.wave-confetti{animation:wave-confetti-fall calc(var(--fall,7s) / var(--particle-speed,1)) linear infinite}
+@keyframes wave-confetti-fall{from{transform:translate(0,-12px)}to{transform:translate(var(--sway,0),414px)}}
+.wave-confetti-flip{transform-box:fill-box;transform-origin:center;animation:wave-flip calc(var(--spin,1.6s) / var(--particle-speed,1)) linear infinite}
+@keyframes wave-flip{0%{transform:rotate(0) scaleY(1)}50%{transform:rotate(180deg) scaleY(-.3)}100%{transform:rotate(360deg) scaleY(1)}}
+.wave-doodle,.wave-star-line{stroke-dasharray:1;animation:wave-doodle calc(9s / var(--particle-speed,1)) ease-in-out infinite both}
+@keyframes wave-doodle{0%{stroke-dashoffset:1;opacity:1}20%,85%{stroke-dashoffset:0;opacity:1}95%,100%{stroke-dashoffset:0;opacity:0}}
+.wave-doodle-note{animation:wave-note calc(9s / var(--particle-speed,1)) ease-in-out infinite both;animation-delay:.9s}
+@keyframes wave-note{0%,20%{opacity:0}30%,85%{opacity:1}95%,100%{opacity:0}}
+.wave-thermal-sweep{animation:wave-sweep calc(4s / var(--particle-speed,1)) linear infinite}
+@keyframes wave-sweep{to{transform:translateY(460px)}}
+.wave-thermal-read{animation:wave-read calc(3s / var(--particle-speed,1)) steps(1) infinite}
+@keyframes wave-read{0%{opacity:1}33.3%,100%{opacity:0}}
+.wave-rec,.wave-caret{animation:wave-blink 1.1s steps(1) infinite}
+@keyframes wave-blink{50%{opacity:0}}
+.wave-vhs-jitter{animation:wave-jitter calc(.26s / var(--particle-speed,1)) steps(1) infinite}
+@keyframes wave-jitter{50%{transform:translateY(.7px)}}
+.wave-vhs-band{animation:wave-band calc(5s / var(--particle-speed,1)) linear infinite}
+.wave-vhs-counter{animation:wave-band-counter calc(5s / var(--particle-speed,1)) linear infinite}
+@keyframes wave-band{0%,45%{transform:translateY(-30px)}100%{transform:translateY(420px)}}
+@keyframes wave-band-counter{0%,45%{transform:translateY(30px)}100%{transform:translateY(-420px)}}
+.wave-rain-run{animation:wave-rain calc(var(--run,6s) / var(--particle-speed,1)) cubic-bezier(.7,0,.9,.5) infinite}
+.wave-rain-trail{transform-box:fill-box;transform-origin:50% 0;animation:wave-trail calc(var(--run,6s) / var(--particle-speed,1)) cubic-bezier(.7,0,.9,.5) infinite}
+@keyframes wave-rain{0%,30%{transform:translateY(0)}100%{transform:translateY(250px)}}
+@keyframes wave-trail{0%,30%{transform:scaleY(0)}100%{transform:scaleY(1)}}
+.wave-star,.wave-twinkle,.wave-ember{animation:wave-twinkle 2.8s ease-in-out infinite alternate}
+.wave-ember{animation-duration:1.1s}
+@keyframes wave-twinkle{from{opacity:.25}to{opacity:1}}
+.wave-aurora-curtain{transform-origin:150px 120px;animation:wave-aurora calc(11s / var(--particle-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-aurora{from{transform:translateX(calc(var(--sway,16px) * -1)) skewX(-4deg);opacity:.7}to{transform:translateX(var(--sway,16px)) skewX(5deg);opacity:1}}
+.wave-finish .wave-star{animation-duration:calc(2.8s / var(--particle-speed,1))}
+.wave-shooting{opacity:0;animation:wave-shooting calc(8s / var(--particle-speed,1)) ease-in infinite}
+@keyframes wave-shooting{0%,80%{transform:translateX(0);opacity:0}82%{opacity:1}92%{transform:translateX(170px);opacity:0}100%{opacity:0}}
+.wave-disco-spin{animation:wave-spin calc(14s / var(--particle-speed,1)) linear infinite}
+.wave-disco-spin.reverse{animation-direction:reverse;animation-duration:calc(19s / var(--particle-speed,1))}
+@keyframes wave-spin{to{transform:rotate(360deg)}}
+.wave-disco-facets{animation:wave-facets calc(3s / var(--particle-speed,1)) linear infinite}
+@keyframes wave-facets{to{transform:translateX(-67.2px)}}
+.wave-glint,.wave-chrome-glint{transform-box:fill-box;transform-origin:center;animation:wave-glint 2.2s ease-in-out infinite}
+@keyframes wave-glint{0%,100%{transform:scale(.2);opacity:.2}50%{transform:scale(1) rotate(45deg);opacity:1}}
+
+/* Signatures */
+.wave-ransom{transform-box:fill-box;transform-origin:center;animation:wave-ransom 3s ease-in-out infinite alternate}
+@keyframes wave-ransom{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
+.wave-tag-drip{transform-box:fill-box;transform-origin:50% 0;animation:wave-tag-drip 14s ease-out infinite}
+@keyframes wave-tag-drip{0%{transform:scaleY(.35)}80%,100%{transform:scaleY(1)}}
+.wave-seal-glint{animation:wave-seal 5s ease-in-out infinite}
+@keyframes wave-seal{0%,60%{transform:translateX(0)}100%{transform:translateX(72px)}}
+.wave-key{transform-box:fill-box;transform-origin:center;animation:wave-key 8s infinite both}
+@keyframes wave-key{0%{opacity:0;transform:translateY(-1.5px) scale(1.18)}2.5%{opacity:1;transform:none}82%{opacity:1}86%,100%{opacity:0}}
+.wave-spark-reveal{transform-box:fill-box;transform-origin:0 50%;animation:wave-reveal 6s ease-in-out infinite}
+@keyframes wave-reveal{0%{transform:scaleX(0)}38%,100%{transform:scaleX(1)}}
+.wave-spark-text{animation:wave-spark-fade 6s infinite}
+@keyframes wave-spark-fade{0%,90%{opacity:1}97%,100%{opacity:0}}
+.wave-spark-head{opacity:0;animation:wave-head 6s ease-in-out infinite}
+@keyframes wave-head{0%{transform:translate(var(--from),250px);opacity:1}38%{transform:translate(var(--to),250px);opacity:1}40%,100%{transform:translate(var(--to),250px);opacity:0}}
+.wave-spark-bob{animation:wave-bob .32s ease-in-out infinite alternate}
+@keyframes wave-bob{from{transform:translateY(-5px)}to{transform:translateY(5px)}}
+.wave-spark-burst{transform-box:fill-box;transform-origin:center;animation:wave-burst .18s steps(2) infinite}
+@keyframes wave-burst{from{transform:rotate(0) scale(.85)}to{transform:rotate(25deg) scale(1.15)}}
+.wave-chrome-sweep{animation:wave-chrome 4.5s ease-in-out infinite}
+@keyframes wave-chrome{0%,55%{transform:translateX(var(--from))}100%{transform:translateX(var(--to))}}
+/* Redrawn codex borders (lib/cosmetics-redrawn-borders.js) */
+.wave-torch{mix-blend-mode:screen;animation:wave-torch calc(2.6s / var(--border-speed,1)) steps(6) infinite alternate}
+@keyframes wave-torch{0%{opacity:.55}30%{opacity:.9}55%{opacity:.6}80%{opacity:1}100%{opacity:.7}}
+.wave-carbon-sweep{mix-blend-mode:screen;animation:wave-beam calc(5s / var(--border-speed,1)) cubic-bezier(.5,0,.5,1) infinite}
+.wave-knight{offset-rotate:0deg;animation:wave-orbit calc(40s / var(--border-speed,1)) linear infinite}
+.wave-knight-hop{animation:wave-hop calc(1.25s / var(--border-speed,1)) ease-in-out infinite}
+@keyframes wave-hop{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.wave-inlay{animation:wave-pulse calc(4s / var(--border-speed,1)) ease-in-out infinite alternate}
+.wave-plate{animation:wave-plate calc(6s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-plate{from{transform:translate(0,0)}to{transform:translate(var(--dx),var(--dy))}}
+.wave-magma-flow{animation:wave-magma-flow calc(9s / var(--border-speed,1)) linear infinite}
+@keyframes wave-magma-flow{to{stroke-dashoffset:-140}}
+.wave-steam{opacity:0;animation:wave-steam calc(5s / var(--border-speed,1)) ease-out infinite}
+@keyframes wave-steam{0%{transform:translate(0,0) scale(.6);opacity:0}20%{opacity:.6}100%{transform:translate(var(--drift,0),-26px) scale(2.2);opacity:0}}
+.wave-planet{offset-rotate:0deg;animation:wave-orbit calc(var(--orbit,20s) / var(--border-speed,1)) linear infinite}
+@keyframes wave-orbit{from{offset-distance:0%}to{offset-distance:100%}}
+.wave-moon{animation:wave-moon calc(3s / var(--border-speed,1)) linear infinite}
+@keyframes wave-moon{from{transform:rotate(0) translateX(var(--moon))}to{transform:rotate(360deg) translateX(var(--moon))}}
+.wave-sun-rays{animation:wave-turn calc(20s / var(--border-speed,1)) linear infinite}
+@keyframes wave-turn{to{transform:rotate(360deg)}}
+.wave-armillary{transform-box:fill-box;transform-origin:center;animation:wave-armillary calc(4s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-armillary{from{transform:scaleX(1)}to{transform:scaleX(.1)}}
+/* Dota borders (lib/cosmetics-dota-borders.js) */
+/* Roshan's Pit runs on one 32s lap: the party fights at each corner in turn (8.75-25% of each quarter). */
+.wave-raider{offset-rotate:0deg;animation:wave-raid calc(32s / var(--border-speed,1)) linear infinite}
+@keyframes wave-raid{0%{offset-distance:calc(0% - var(--lag))}14%,30%{offset-distance:calc(21.18% - var(--lag))}64%,80%{offset-distance:calc(71.18% - var(--lag))}100%{offset-distance:calc(100% - var(--lag))}}
+.wave-rosh-alive{animation:wave-rosh-alive calc(32s / var(--border-speed,1)) linear infinite}
+@keyframes wave-rosh-alive{0%,18%{opacity:1}20%,75%{opacity:0}80%,100%{opacity:1}}
+.wave-rosh-hp{transform-box:fill-box;transform-origin:0 50%;animation:wave-rosh-hp calc(32s / var(--border-speed,1)) linear infinite}
+@keyframes wave-rosh-hp{0%,9%{transform:scaleX(1);fill:#5ec46b}14%{fill:#ffd34d}18%{transform:scaleX(0);fill:#e0453b}75%,100%{transform:scaleX(1);fill:#5ec46b}}
+.wave-rosh-hit{opacity:0;animation:wave-rosh-hit calc(32s / var(--border-speed,1)) steps(1) infinite}
+@keyframes wave-rosh-hit{9%,11%,13%,15%,17%{opacity:1}10%,12%,14%,16%,18%{opacity:0}}
+.wave-aegis,.wave-aegis-glow{transform-box:fill-box;transform-origin:center;opacity:0;animation:wave-aegis calc(32s / var(--border-speed,1)) ease-out infinite}
+@keyframes wave-aegis{0%,18%{opacity:0;transform:translateY(5px) scale(.5)}20%{opacity:1;transform:translateY(0) scale(1.15)}21%,22.5%{opacity:1;transform:translateY(0) scale(1)}24.5%,100%{opacity:0;transform:translateY(-4px) scale(1)}}
+.wave-raider-swing{animation:wave-step calc(.4s / var(--border-speed,1)) steps(2) infinite}
+.wave-rosh-breathe{transform-box:fill-box;transform-origin:50% 100%;animation:wave-breathe calc(1.6s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-breathe{to{transform:scale(1.03,1.06)}}
+.wave-courier{offset-rotate:0deg;animation:wave-ferry calc(var(--ferry,14s) / var(--border-speed,1)) ease-in-out infinite}
+@keyframes wave-ferry{0%{offset-distance:0%;opacity:0}4%{opacity:1}48%,52%{offset-distance:100%}96%{opacity:1}100%{offset-distance:0%;opacity:0}}
+.wave-trot-a{animation:wave-trot-a calc(.32s / var(--border-speed,1)) steps(1) infinite}
+.wave-trot-b{animation:wave-trot-b calc(.32s / var(--border-speed,1)) steps(1) infinite}
+@keyframes wave-trot-a{0%{opacity:1}50%,100%{opacity:0}}
+@keyframes wave-trot-b{0%{opacity:0}50%,100%{opacity:1}}
+.wave-face{animation:wave-face calc(var(--ferry,14s) / var(--border-speed,1)) steps(1) infinite}
+@keyframes wave-face{0%{transform:var(--out)}50%,100%{transform:var(--back)}}
+.wave-flap{transform-box:fill-box;transform-origin:center;animation:wave-flap-wing calc(.35s / var(--border-speed,1)) steps(2) infinite}
+@keyframes wave-flap-wing{to{transform:scaleY(.6)}}
+.wave-fountain-spark{animation:wave-pulse calc(.8s / var(--border-speed,1)) steps(2) infinite alternate}
+.wave-rune{opacity:0;animation:wave-rune calc(12s / var(--border-speed,1)) step-end infinite}
+@keyframes wave-rune{0%{opacity:1}16.66%,100%{opacity:0}}
+.wave-rune-bob{animation:wave-rune-bob calc(1.2s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-rune-bob{from{transform:translateY(-1.5px)}to{transform:translateY(1.5px)}}
+.wave-ripple{transform-box:fill-box;transform-origin:center;opacity:0;animation:wave-ripple calc(3s / var(--border-speed,1)) ease-out infinite}
+@keyframes wave-ripple{0%{transform:scale(.2);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+.wave-river-flow{animation:wave-magma-flow calc(7s / var(--border-speed,1)) linear infinite}
+.wave-ward{opacity:0;animation:wave-ward calc(16s / var(--border-speed,1)) ease-out infinite}
+@keyframes wave-ward{0%{opacity:0;transform:translateY(-8px)}6%{opacity:1;transform:translateY(0)}80%{opacity:1}88%,100%{opacity:0}}
+.wave-ward-sight{transform-box:fill-box;transform-origin:center;opacity:0;animation:wave-ward-sight calc(16s / var(--border-speed,1)) ease-out infinite}
+@keyframes wave-ward-sight{0%{opacity:0;transform:scale(.2)}8%{opacity:1;transform:scale(1)}80%{opacity:1}90%,100%{opacity:0}}
+.wave-fog{animation:wave-fog calc(10s / var(--border-speed,1)) ease-in-out infinite alternate}
+@keyframes wave-fog{from{opacity:.55}to{opacity:1}}
+.wave-smoke{offset-rotate:0deg;animation:wave-orbit calc(30s / var(--border-speed,1)) linear infinite}
+.wave-pull{animation:wave-pull calc(10s / var(--border-speed,1)) ease-in-out infinite}
+@keyframes wave-pull{0%,45%{transform:translateX(0)}62%{transform:translateX(var(--pull))}85%,100%{transform:translateX(0)}}
+.wave-colon{animation:wave-colon calc(1s / var(--border-speed,1)) step-end infinite}
+@keyframes wave-colon{50%{fill-opacity:0}}

@@ -1,4 +1,6 @@
-// Approved collection from cosmetics-review (3).json. Edit rarity here to change future drops.
+import {EXPANSION_CATALOG} from './cosmetics-expansion-catalog.js';
+import {WAVE_CATALOG,DOTA_CATALOG} from './cosmetics-wave-catalog.js';
+// Approved collection. Edit rarity here to change future drops.
 export const CATALOG = [
   {
     "id": "copper",
@@ -1092,6 +1094,7 @@ export const CATALOG = [
     "key": "finish:fx-rot"
   }
 ];
+CATALOG.push(...EXPANSION_CATALOG,...WAVE_CATALOG,...DOTA_CATALOG);
 export const PEN_MARKS = {
   "simple": [
     "M55 65 Q145 85 260 53"

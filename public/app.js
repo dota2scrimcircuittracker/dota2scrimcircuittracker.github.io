@@ -7,7 +7,7 @@ import { loadSearch } from "./parts/searchindex.js";
 import { DIVISIONS as DIVISION_LIST, slugOf, fullName, divisionCss, SEASON, playoffs } from "./lib/divisions.js";
 import { esc, DIVISIONS, SOURCES, TM_KEY, timeSel, gameWeeker, seriesWeek, shortDate, divLite, allMatches, addressOf, routedAt, setRoutedAt, navigate, goToSection, showTab, app, tabInUrl, here, bySlug, timeSrc, allLoad, gameLeague, divUploaded, setTitle, myTeam, setMyTeam, myTeamOptions, teamFromOption, pageHead } from "./core.js";
 import { weekOfFn } from "./parts/lanes.js";
-import { tabList, PLAYERS_PAGE_TABS, HEROES_PAGE_TABS, PREDICT_TABS, DRAFTER_MODES } from "./lib/pagetabs.js";
+import { tabList, PLAYERS_PAGE_TABS, HEROES_PAGE_TABS, PREDICT_TABS, DRAFTER_MODES, GALLERY_TABS } from "./lib/pagetabs.js";
 import { renderMatch, renderMatches } from "./pages/games.js";
 import { renderHero } from "./pages/hero.js";
 import { renderHeroes } from "./pages/heroes.js";
@@ -298,7 +298,7 @@ function focusPage() {
 }
 
 // Nav dropdowns, one plain list each: Teams lists the teams, Content the weeks, and Players,
-// Heroes, Predict and Drafter their page's own tabs (from lib/pagetabs.js, the same lists the
+// Heroes, Predict, Drafter and Gallery their page's own tabs (from lib/pagetabs.js, the same lists the
 // pages' tab bars use). Built the first time a tab opens. Mouse hover where the device has one;
 // from the keyboard, Arrow Down on a tab opens it.
 const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
@@ -314,6 +314,8 @@ async function teamMenu(src) {
 const pageMenu = (list, path) => async (src) => ({ items: tabList(list, src).map(([id, label]) => ({ name: label, href: `${src.root}/${path}?tab=${id}` })) });
 const playerMenu = pageMenu(PLAYERS_PAGE_TABS, "players");
 const heroMenu = pageMenu(HEROES_PAGE_TABS, "heroes");
+// The Gallery keeps its sub-tab in the path and no league in the address.
+const galleryMenu = async () => ({ items: GALLERY_TABS.map(([, label, seg]) => ({ name: label, href: `#/gallery${seg ? `/${seg}` : ""}` })) });
 async function weekMenu(src) {
   const games = await src.load(), weekOf = weekOfFn(src.ad2l ? await src.data() : null);
   const weeks = [...new Set(games.map(weekOf))].sort((a, b) => b - a);
@@ -332,7 +334,7 @@ const moreMenu = async (src) => ({ items: (await Promise.all(src.nav.slice(NAV_S
   ...(key === "predict" && hasMenu(key, src) ? (await NAV_MENUS.predict(src)).items.map((x) => ({ ...x, child: true })) : []),
 ]))).flat() });
 const NAV_MENUS = { standings: teamMenu, players: playerMenu, heroes: heroMenu, week: weekMenu,
-  predict: pageMenu(PREDICT_TABS, "predict"), drafter: pageMenu(DRAFTER_MODES, "drafter"), more: moreMenu };
+  predict: pageMenu(PREDICT_TABS, "predict"), drafter: pageMenu(DRAFTER_MODES, "drafter"), gallery: galleryMenu, more: moreMenu };
 // Scrim Predict has no tabs, so no dropdown.
 const hasMenu = (key, src) => !!NAV_MENUS[key] && !(key === "predict" && !src.ad2l);
 let navSrc = null;

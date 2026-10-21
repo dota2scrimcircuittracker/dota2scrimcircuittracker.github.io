@@ -4,9 +4,8 @@
 // (parts/collection.js); the address follows the open sub-tab.
 import { app, pageHead, addressOf, setRoutedAt } from "../core.js";
 import { openCollection } from "../parts/collection.js";
-
-// [collection.js tab, label, address segment]
-const TABS = [["feed", "Feed", ""], ["gallery", "Gallery", "gallery"], ["packs", "Packs", "packs"], ["collection", "Collection", "collection"], ["customize", "Customize", "customize"], ["recycle", "Recycle", "recycle"]];
+import {localCosmeticsReview} from '../lib/local-cosmetics-review.js';
+import { GALLERY_TABS as TABS } from "../lib/pagetabs.js";
 
 // bare: opened at #/gallery, so the address keeps no league in it.
 export function renderGallery(src, segment, bare = false) {
@@ -16,9 +15,12 @@ export function renderGallery(src, segment, bare = false) {
   app.innerHTML = `${pageHead(src.kicker, "Gallery", "What the league is pulling and saving, everyone's custom cards, and your own packs and collection.", bar)}<div class="collection-host"></div>`;
   // ?slot=<n> (1-based, from a profile's empty "Add card" slot) opens Customize on that card.
   const slot = Number(new URLSearchParams(location.search).get("slot"));
+  const review=localCosmeticsReview();
+  if(review)app.querySelector('.collection-host').insertAdjacentHTML('beforebegin','<p class="local-collection-review">Local cosmetics review · New borders, finishes &amp; signatures only. Saved designs stay in this browser.</p>');
   return openCollection({
+    ...review,
     slot: slot >= 1 ? slot - 1 : null,
     page: app.querySelector(".collection-host"), tabBar: app.querySelector(".pp-tabs"), tab: open,
-    onTab: (t) => { const s = TABS.find(([id]) => id === t)[2]; history.replaceState(history.state, "", addressOf(`${bare ? "#" : src.root}/gallery${s ? `/${s}` : ""}`)); setRoutedAt(location.href); },
+    onTab: (t) => { const s = TABS.find(([id]) => id === t)[2]; const url=new URL(addressOf(`${bare ? "#" : src.root}/gallery${s ? `/${s}` : ""}`),location.href);if(review)url.searchParams.set('reviewCosmetics','1');history.replaceState(history.state, "", url.pathname+url.search+url.hash); setRoutedAt(location.href); },
   });
 }

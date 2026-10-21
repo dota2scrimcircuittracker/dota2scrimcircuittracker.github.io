@@ -9,26 +9,47 @@ import { createPlayerCards, PAINT_FILTER, wirePlayerCards, fitDesignCards } from
 import { startSteamSignIn, steamName } from './me.js';
 import { HERO_META } from '../lib/hero-meta.js';
 import { cardArtOptions, CARD_STYLES, defaultCardCrop, cardArtwork, screenArt, SCREEN_COUNT } from '../lib/card-art.js';
-import { cardDesignState, cardSlotName, shownNickname, RECYCLE_COST, MAX_EMBLEMS } from '../lib/cosmetics-engine.js';
+import { cardDesignState, cardSlotName, shownNickname, RECYCLE_COST, MAX_EMBLEMS, CARD_SLOTS } from '../lib/cosmetics-engine.js';
 import { availablePackOffers, completedPackOffers, markPackOfferClaimed } from '../lib/bonus-offers.js';
 import { startFeedback } from '../lib/feedback.js';
 import { showProfileBackground, mountBackgroundButton, letterCaseHtml, drawLetterCase } from './profile-background.js';
-import { FRONT_PARTS, BACK_STATS, MAX_BACK_STATS, MAX_NAME, backStats, applyLayout, shownByDefault } from '../lib/card-layout.js';
+import { FRONT_PARTS, BACK_STATS, MAX_BACK_STATS, MAX_NAME, backStats, backPartShown, applyLayout, shownByDefault } from '../lib/card-layout.js';
 import './pack-gifts.js'; // the "Fav sent you packs" notice
 import './feed-notice.js'; // the "new comments on your posts" notice
 import { drawFeed } from './feed.js';
 import { mountRating } from './card-rating.js';
 import { SCREEN_ART } from '../lib/screen-art-data.js';
+import { ALL_SCREENS } from '../lib/legendary-screens.js';
 import { strangerNames } from '../lib/scout.js';
+import {effectControlsHtml,normalizeSettings as normalizeEffect,finishPlacement,EDITABLE_FINISHES} from '../lib/cosmetics-expansion-settings.js';
+import {particleControlsHtml,normalizeParticles} from '../lib/cosmetics-particle-groups.js';
+import {expansionBorderSwatchHtml,expansionFinishSwatchHtml,expansionFinishHtml,defaultExpansionEmblems,borderEmblemList,hasExpansionEmblems} from '../lib/cosmetics-expansion.js';
+import {createEditorDrafts,positionAtPointer} from '../lib/card-editor-workspace.js';
+import {mountCardEditorUI} from './card-editor-ui.js';
+
+const pointerPoint=e=>({x:e.clientX,y:e.clientY});
+const dragBounds=(el,contents=false)=>{
+  if(contents){const range=document.createRange();range.selectNodeContents(el);const bounds=range.getBoundingClientRect();if(bounds.width&&bounds.height)return bounds;}
+  return el.getBoundingClientRect();
+};
+const dragGrab=(el,e,contents=false)=>{const bounds=dragBounds(el,contents);return {x:e.clientX-bounds.left,y:e.clientY-bounds.top};};
+const dragFrame=face=>{
+  const rect=face.getBoundingClientRect(),sx=rect.width/face.offsetWidth,sy=rect.height/face.offsetHeight;
+  return {left:rect.left+face.clientLeft*sx,top:rect.top+face.clientTop*sy,width:face.clientWidth*sx,height:face.clientHeight*sy};
+};
 
 const gift=`<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 13h24v6H4zm2 6h20v11H6zm10-6v17M16 13C4 13 5 2 11 4c4 1 5 9 5 9zm0 0c12 0 11-11 5-9-4 1-5 9-5 9z"/></svg>`;
 const colors={common:'#abb3be',rare:'#80c4ff',epic:'#d7a3ff',legendary:'#ffd879'};
 const COLLECTION_TOTAL=CATALOG.length+SCREEN_COUNT;
 // `translation` is the legacy save/inventory key; players know these as modifiers.
 const typeLabel=type=>type==='translation'?'modifier':type;
-function swatch(item,name='Scionara') {
+export function swatch(item,name='Scionara') {
   if(item.type==='autograph') return `<span class="collection-swatch signature-sample">${signatureHtml({...DEFAULT_EQUIPMENT,autograph:item.id,text:name},name).replace('card-autograph','collection-signature')}</span>`;
   if(item.type==='translation')return `<span class="collection-swatch translation-swatch ${item.id}">${esc(item.preview)}</span>`;
+  if(item.expansion){
+    if(item.type==='border')return `<span class="collection-swatch expansion-swatch expansion-border-swatch">${expansionBorderSwatchHtml(item)}</span>`;
+    return `<span class="collection-swatch expansion-swatch expansion-finish-swatch"><span class="cosmetic-mini-card"><span class="cosmetic-mini-art" aria-hidden="true"></span>${expansionFinishSwatchHtml(item)}</span></span>`;
+  }
   // A finish shows what it does on a card: the card's own overlay and, for particle finishes, its particles.
   const inner=item.type==='finish'?`<span class="cosmetic-overlay" aria-hidden="true"></span>${particleLayerHtml(item.id,{},16)}`:item.symbol??'';
   return `<span class="collection-swatch ${item.type==='finish'?'finish-swatch':''}" data-texture="${item.texture??'metal'}" data-finish="${item.id}" style="--a:${item.a??'#536282'};--b:${item.b??'#151a29'}">${inner}</span>`;
@@ -36,7 +57,7 @@ function swatch(item,name='Scionara') {
 // Grouped by type (catalog order), common to legendary within each type.
 const TYPE_ORDER=[...new Set(CATALOG.map(i=>i.type))];
 const DEX_ORDER=[...CATALOG].sort((a,b)=>TYPE_ORDER.indexOf(a.type)-TYPE_ORDER.indexOf(b.type)||TIERS.indexOf(a.rarity)-TIERS.indexOf(b.rarity));
-const dexHtml=(inventory,filter='all',status='all',name,equipment=DEFAULT_EQUIPMENT,editable=false,rarity='all')=>DEX_ORDER.filter(i=>(filter==='all'||i.type===filter)&&(rarity==='all'||i.rarity===rarity)&&(status==='all'||(status==='owned'?(inventory[i.key]??0)>0:!inventory[i.key]))).map((i)=>{
+const dexHtml=(inventory,filter='all',status='all',name,equipment=DEFAULT_EQUIPMENT,editable=false,rarity='all',newOnly=false)=>DEX_ORDER.filter(i=>(!newOnly||i.expansion)&&(filter==='all'||i.type===filter)&&(rarity==='all'||i.rarity===rarity)&&(status==='all'||(status==='owned'?(inventory[i.key]??0)>0:!inventory[i.key]))).map((i)=>{
   const n=inventory[i.key]??0;
   const equipped=equipment[i.type]===i.id;
   return `<article class="dex-item ${n?'collected':'uncollected'}${equipped?' equipped':''}" style="--rarity:${colors[i.rarity]}"><button type="button" class="dex-preview-choice" data-preview="${i.key}" aria-label="Preview ${esc(i.name)}">${swatch(i,name)}<span>Preview</span></button><small>${esc(typeLabel(i.type))} · ${i.rarity}</small><strong>${esc(i.name)}</strong><span>${n?`Owned ×${n}`:'Not collected'}</span>${equipped?'<span class="equipped-label">Equipped</span>':''}${n&&editable?`<button type="button" data-equip="${i.key}" ${equipped?'disabled aria-pressed="true"':'aria-pressed="false"'}>${equipped?'Equipped':'Equip'}</button>`:''}</article>`;
@@ -45,9 +66,9 @@ const dexHtml=(inventory,filter='all',status='all',name,equipment=DEFAULT_EQUIPM
 // each previewable on the card. Steam rarities, so the hero filter stands in for the rarity one.
 const SCREEN_PACK_COLOR='#7fd6c2';
 const SCREEN_HEROES=[...new Set(SCREEN_ART.map(s=>s.hero).filter(Boolean))].sort();
-const screenDexHtml=(owned,status,hero,preview,empty='<p>No loading screens match.</p>')=>SCREEN_ART.filter(s=>(hero==='all'||(hero==='any'?!s.hero:s.hero===hero))&&(status==='all'||(status==='owned')===owned.has(s.id))).map(s=>{
+const screenDexHtml=(owned,status,hero,preview,empty='<p>No loading screens match.</p>')=>ALL_SCREENS.filter(s=>(hero==='all'||(hero==='any'?!s.hero:s.hero===hero))&&(status==='all'||(status==='owned')===owned.has(s.id))).map(s=>{
   const art=screenArt(s.id),have=owned.has(s.id);
-  return `<article class="dex-item dex-screen ${have?'collected':'uncollected'}" style="--rarity:${SCREEN_PACK_COLOR}"><button type="button" class="dex-preview-choice" data-preview-screen="${s.id}" aria-pressed="${preview===s.id}" aria-label="Preview ${esc(s.label)}"><img src="${esc(art.src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span>Preview</span></button><small>Loading screen · ${esc(s.hero??'Any hero')}</small><strong>${esc(s.label)}</strong><span>${have?'Collected':'Not collected'}</span></article>`;
+  return `<article class="dex-item dex-screen ${have?'collected':'uncollected'}" style="--rarity:${s.legendary?colors.legendary:SCREEN_PACK_COLOR}"><button type="button" class="dex-preview-choice" data-preview-screen="${s.id}" aria-pressed="${preview===s.id}" aria-label="Preview ${esc(s.label)}"><img src="${esc(art.src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span>Preview</span></button><small>${s.legendary?'Legendary background · Border packs':`Loading screen · ${esc(s.hero??'Any hero')}`}</small><strong>${esc(s.label)}</strong><span>${have?'Collected':'Not collected'}</span></article>`;
 }).join('')||empty;
 
 // The collection as a dialog, or with `page` (an element) as a full page: the Gallery tab
@@ -81,8 +102,11 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   let equipment={...DEFAULT_EQUIPMENT,...state?.equipment}, initialEquipment=JSON.stringify(equipment);
   // Customize undo history (Ctrl+Z / Ctrl+Y) for the card being edited. Changes in quick succession, like one slider drag, are one step.
   let editHistory={slot:null,undo:[],redo:[],last:null,at:0},editorKeys=null;
+  const editorDrafts=createEditorDrafts();let editorUI=null;
+  const rememberEditor=()=>{if(editorUI&&body.querySelector('.card-editor'))editorDrafts.set(selectedSlot,{equipment,baseline:initialEquipment,history:editHistory,view:editorUI.capture()});};
   const say=text=>{
-    message.textContent=text;
+    message.textContent=body.classList.contains('editor-workspace')&&text==='Unsaved card changes'?'':text;
+    editorUI?.refresh();
     if(['Your Steam session expired. Sign in again.','Sign in with Steam first.','Sign in with Steam to collect cards.'].includes(text)) {
       const link=document.createElement('a');
       link.href=steamLoginUrl(location.origin+location.pathname+location.search);
@@ -105,7 +129,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   dialog.addEventListener('close',()=>{if(dialog.open)return;/* feedback mode reopening it */if(dialog._revealTimer)clearTimeout(dialog._revealTimer);clearInterval(dialog._packTimer);dialog.remove();});
   tabsHost.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;onTab?.(tab);draw();});
   try {
-    if(editable) {const data=adapter?{state:adapter.state}:await action('session');if(data.serverNow)clockOffset=data.serverNow-Date.now();state=data.state;selectedSlot=slot??state.primaryCard??0;inventory=state.inventory;equipment=selectedEquipment();initialEquipment=JSON.stringify(equipment);}
+    if(editable) {const data=adapter?{state:adapter.state}:await action('session');if(data.serverNow)clockOffset=data.serverNow-Date.now();state=data.state;selectedSlot=slot??state.primaryCard??0;inventory=state.inventory;equipment=structuredClone(selectedEquipment());initialEquipment=JSON.stringify(equipment);}
     else if(target!=null) {const data=await publicCollection(target);publicDesigns=data;selectedSlot=data.primaryCard??0;inventory=data.inventory;equipment={...DEFAULT_EQUIPMENT,...data.equipment};}
   } catch(e){say(e.message);}
   // Use the site's existing shared card, including its artwork choices and crop.
@@ -128,7 +152,9 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   }
   function wireCardSlots() {
     body.querySelectorAll('[data-card-slot]').forEach(b=>{b.disabled=busy||(!editable&&!designs().cardDesigns[Number(b.dataset.cardSlot)]);b.onclick=()=>{
-      previewItem=null;selectedSlot=Number(b.dataset.cardSlot);equipment=structuredClone(selectedEquipment());initialEquipment=JSON.stringify(equipment);
+      if(tab==='customize')rememberEditor();editorUI?.destroy();editorUI=null;
+      previewItem=null;selectedSlot=Number(b.dataset.cardSlot);
+      const draft=editorDrafts.get(selectedSlot);equipment=draft?.equipment??structuredClone(selectedEquipment());initialEquipment=draft?.baseline??JSON.stringify(equipment);editHistory=draft?.history??{slot:selectedSlot,undo:[],redo:[],last:null,at:0};
       if(editable&&!designs().cardDesigns[selectedSlot])tab='customize';draw();
     };});
     body.querySelector('[data-primary]')?.addEventListener('click',async()=>{const data=await run('card-settings',{primaryCard:selectedSlot});if(data){draw();say(`${cardSlotName(designs(),selectedSlot)} is now primary.`);}});
@@ -136,6 +162,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelector('[data-shuffle]')?.addEventListener('change',async e=>{const enabled=e.target.checked;const data=await run('card-settings',{shuffleCards:enabled});draw();if(data)say(enabled?'Other viewers will see a shuffled saved design.':'Other viewers will see your primary card.');});
   }
   function draw() {
+    if(tab!=='customize'){rememberEditor();editorUI?.destroy();editorUI=null;body.classList.remove('editor-workspace');}
+    else if(!editorUI){const draft=editorDrafts.get(selectedSlot);if(draft){equipment=draft.equipment;initialEquipment=draft.baseline;editHistory=draft.history;}}
     body._feedToken=null; // cancel a Feed request that finishes after another tab was chosen
     body.dataset.collectionView=tab;body.classList.remove('feed-body'); // the Feed's two-column layout (parts/feed.js) is the Feed's alone
     tabsHost.querySelectorAll('[data-tab]').forEach(b=>{b.setAttribute(tabBar?'aria-selected':'aria-pressed',String(b.dataset.tab===tab));if(tabBar)b.tabIndex=b.dataset.tab===tab?0:-1;b.disabled=busy;});
@@ -173,6 +201,19 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     if(!seconds&&!busy&&Date.now()>timerRetryAt){timerRetryAt=Date.now()+15000;run('session',{}).then(data=>{if(data&&dialog.isConnected&&tab==='packs')drawPacks();});}
   }
   dialog._packTimer=setInterval(()=>{if(!dialog.isConnected){clearInterval(dialog._packTimer);clearTimeout(dialog._revealTimer);return;}updateCountdown();},1000);
+  // A legendary reveal, once the flip is nearly done: a gold flash, two shockwaves and a spray of sparkles thrown out from the card.
+  function legendaryBurst(card) {
+    card.classList.add('legendary-burst');
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const fx=document.createElement('span');fx.className='legendary-fx';fx.setAttribute('aria-hidden','true');
+    fx.innerHTML='<i class="legendary-flash"></i><i class="legendary-ring"></i><i class="legendary-ring"></i>'+Array.from({length:36},(_,n)=>{
+      const a=n/36*Math.PI*2+Math.random()*.3,d=90+Math.random()*130;
+      return `<i class="legendary-spark${n%3?'':' star'}" style="--x:${(Math.cos(a)*d).toFixed(1)}px;--y:${(Math.sin(a)*d).toFixed(1)}px;--s:${(.6+Math.random()*.9).toFixed(2)};--t:${(700+Math.random()*700)|0}ms;--d:${(Math.random()*180)|0}ms"></i>`;
+    }).join('');
+    // Over the card, not inside it: the flipping card is a 3D scene that would clip and split the burst.
+    Object.assign(fx.style,{left:`${card.offsetLeft}px`,top:`${card.offsetTop}px`,width:`${card.offsetWidth}px`,height:`${card.offsetHeight}px`});
+    card.parentElement.append(fx);setTimeout(()=>fx.remove(),2200);
+  }
   function showRewards() {
     const host=body.querySelector('.pack-results');if(!host)return;
     clearTimeout(dialog._revealTimer);
@@ -180,8 +221,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const shown=rewardScreens.map(screenArt).filter(Boolean),total=rewards.length+shown.length;
     const done=()=>Array.from({length:total}).every((_,i)=>rewardRevealed[i]);
     const faceDown=(i,rarity,label,front,flavour='')=>{const open=!!rewardRevealed[i];return `<button type="button" class="reward-card opening-prismatic ${flavour} ${open?'revealed':''}" style="--rarity:${rarity};--delay:${i*90}ms" aria-label="${open?esc(label):`Reveal card ${i+1} of ${total}`}" data-reveal="${i}"><span class="reward-back">${gift}<b>AD2L</b></span><span class="reward-front">${front}</span></button>`;};
-    const cardHtml=(r,i)=>{const item=itemByKey(r.key);return faceDown(i,colors[item.rarity],`${item.name}, ${item.rarity}, ${r.duplicate?'duplicate':'new discovery'}`,`${swatch(item,name)}<small>${item.rarity} · ${typeLabel(item.type)}</small><strong>${esc(item.name)}</strong><span>${r.duplicate?'Duplicate':'New discovery'}</span>`);};
-    const screenHtml=(sc,j)=>faceDown(rewards.length+j,colors[sc.rarity]??'#eac47e',`${sc.label}, loading screen for ${sc.hero??'any hero'}`,`<img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><small>Loading screen · ${esc(sc.hero??'Any hero')}</small><strong>${esc(sc.label)}</strong><span>New</span>`,'reward-screen-card');
+    const cardHtml=(r,i)=>{const item=itemByKey(r.key);return faceDown(i,colors[item.rarity],`${item.name}, ${item.rarity}, ${r.duplicate?'duplicate':'new discovery'}`,`${swatch(item,name)}<small>${item.rarity} · ${typeLabel(item.type)}</small><strong>${esc(item.name)}</strong><span>${r.duplicate?'Duplicate':'New discovery'}</span>`,item.rarity==='legendary'?'reward-legendary':'');};
+    const screenHtml=(sc,j)=>faceDown(rewards.length+j,sc.legendary?colors.legendary:colors[sc.rarity]??'#eac47e',`${sc.label}, loading screen for ${sc.hero??'any hero'}`,`<img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><small>${sc.legendary?'Legendary background':`Loading screen · ${esc(sc.hero??'Any hero')}`}</small><strong>${esc(sc.label)}</strong><span>New</span>`,`reward-screen-card${sc.legendary?' reward-legendary':''}`);
     const heading=()=>done()?'Pack opened':`Revealed ${rewardRevealed.filter(Boolean).length} of ${total}`;
     const extras=()=>`${shown.length?'<p class="muted">Use loading screens as your card background in Customize, on the hero shown.</p>':''}<button type="button" data-view-dex>View collection</button>`;
     const wireExtras=()=>host.querySelector('[data-view-dex]')?.addEventListener('click',()=>{tab='collection';if(!rewards.length)filter='screen';draw();});
@@ -190,6 +231,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     host.querySelectorAll('[data-reveal]').forEach(card=>card.onclick=()=>{
       const i=Number(card.dataset.reveal);if(rewardRevealed[i])return;
       rewardRevealed[i]=true;card.classList.add('revealed');card.setAttribute('aria-label',card.querySelector('.reward-front').textContent);
+      if(card.classList.contains('reward-legendary'))setTimeout(()=>card.isConnected&&legendaryBurst(card),matchMedia('(prefers-reduced-motion: reduce)').matches?0:320);
       host.querySelector('[data-reward-heading]').textContent=heading();
       if(!done())return;
       host.querySelector('[data-reveal-prompt]').textContent='';
@@ -197,14 +239,16 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     });
   }
   function drawDex() {
-    const count=CATALOG.filter(i=>inventory[i.key]>0).length;
+    const reviewCatalog=adapter?.expansionReview?CATALOG.filter(i=>i.expansion):CATALOG;
+    const count=reviewCatalog.filter(i=>inventory[i.key]>0).length;
+    const total=adapter?.expansionReview?reviewCatalog.length:COLLECTION_TOTAL;
     const savedEquipment=selectedEquipment();
     const previewEquipment=previewItem?{...savedEquipment,[previewItem.type]:previewItem.id}:{...savedEquipment};
-    const owned=new Set(state?.screens??publicDesigns?.screens??[]),screen=previewScreen&&SCREEN_ART.find(s=>s.id===previewScreen);
+    const owned=new Set(adapter?.expansionReview?[]:state?.screens??publicDesigns?.screens??[]),screen=previewScreen&&ALL_SCREENS.find(s=>s.id===previewScreen);
     if(screen)previewEquipment.baseCard={...(savedEquipment.baseCard??{}),hero:screen.hero?HERO_META.find(([,n])=>n===screen.hero)?.[0]??null:savedEquipment.baseCard?.hero??null,art:screen.id,crop:null};
     // A name-rendering preview needs a signature to make the script visible.
     if(previewItem?.type==='translation'&&previewEquipment.autograph==='none')previewEquipment.autograph='brush-ink';
-    body.innerHTML=`${cardSlotsHtml()}<div class="dex-progress"><strong>${count+owned.size} / ${COLLECTION_TOTAL} collected</strong><progress max="${COLLECTION_TOTAL}" value="${count+owned.size}" aria-label="Collection completion"></progress></div><div class="dex-layout"><div><div class="dex-filters"><label>Type <select data-filter>${['all','border','finish','autograph','translation'].map(t=>`<option value="${t}">${t}</option>`).join('')}<option value="screen">loading screens</option></select></label>${filter==='screen'?`<label>Hero <select data-screen-hero><option value="all">all</option><option value="any">any hero (events, teams)</option>${SCREEN_HEROES.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('')}</select></label>`:`<label>Rarity <select data-rarity-filter><option value="all">all</option>${TIERS.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></label>`}<label>Show <select data-status><option value="all">All designs</option><option value="owned">Collected</option><option value="missing">Not collected</option></select></label></div><div class="dex-grid">${filter==='screen'?screenDexHtml(owned,status,screenHero,previewScreen):dexHtml(inventory,filter,status,name,savedEquipment,editable,rarity)+(filter==='all'&&rarity==='all'?screenDexHtml(owned,status,'all',previewScreen,''):'')}</div></div><aside class="dex-card-preview"><h3>${previewItem||screen?'Card preview':editable?'Your equipped card':'Equipped card'}</h3>${previewItem||screen?`<p class="dex-preview-note">Previewing ${esc(previewItem?.name??screen.label)}${(previewItem?inventory[previewItem.key]>0:owned.has(screen.id))?'':' - Not collected'}. Your saved card is unchanged.</p><button type="button" data-clear-preview>Show equipped card</button>`:''}<div data-dex-card>${cardHtml}</div><dl>${['border','finish','autograph','translation'].map(type=>`<dt>${type==='autograph'?'Signature':type==='translation'?'Name rendering':type}</dt><dd>${esc(itemByKey(`${type}:${previewEquipment[type]}`)?.name??({border:'Default grey',finish:'No finish',autograph:'No signature',translation:'Original name'}[type]))}</dd>`).join('')}</dl>${editable?'<button type="button" data-customize-card>Edit card design</button><p>Equip an item to save and update your card immediately.</p>':''}</aside></div>`;
+    body.innerHTML=`${cardSlotsHtml()}<div class="dex-progress"><strong>${count+owned.size} / ${total} collected</strong><progress max="${total}" value="${count+owned.size}" aria-label="Collection completion"></progress></div><div class="dex-layout"><div><div class="dex-filters"><label>Type <select data-filter>${(adapter?.expansionReview?['all','border','finish','autograph']:['all','border','finish','autograph','translation']).map(t=>`<option value="${t}">${t}</option>`).join('')}${adapter?.expansionReview?'':'<option value="screen">loading screens</option>'}</select></label>${filter==='screen'?`<label>Hero <select data-screen-hero><option value="all">all</option><option value="any">any hero (events, teams)</option>${SCREEN_HEROES.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('')}</select></label>`:`<label>Rarity <select data-rarity-filter><option value="all">all</option>${TIERS.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></label>`}<label>Show <select data-status><option value="all">All designs</option><option value="owned">Collected</option><option value="missing">Not collected</option></select></label></div><div class="dex-grid">${filter==='screen'?screenDexHtml(owned,status,screenHero,previewScreen):dexHtml(inventory,filter,status,name,savedEquipment,editable,rarity,!!adapter?.expansionReview)+(!adapter?.expansionReview&&filter==='all'&&rarity==='all'?screenDexHtml(owned,status,'all',previewScreen,''):'')}</div></div><aside class="dex-card-preview"><h3>${previewItem||screen?'Card preview':editable?'Your equipped card':'Equipped card'}</h3>${previewItem||screen?`<p class="dex-preview-note">Previewing ${esc(previewItem?.name??screen.label)}${(previewItem?inventory[previewItem.key]>0:owned.has(screen.id))?'':' - Not collected'}. Your saved card is unchanged.</p><button type="button" data-clear-preview>Show equipped card</button>`:''}<div data-dex-card>${cardHtml}</div><dl>${['border','finish','autograph','translation'].map(type=>`<dt>${type==='autograph'?'Signature':type==='translation'?'Name rendering':type}</dt><dd>${esc(itemByKey(`${type}:${previewEquipment[type]}`)?.name??({border:'Default grey',finish:'No finish',autograph:'No signature',translation:'Original name'}[type]))}</dd>`).join('')}</dl>${editable?'<button type="button" data-customize-card>Edit card design</button><p>Equip an item to save and update your card immediately.</p>':''}</aside></div>`;
     wireCardSlots();
     const preview=body.querySelector('[data-dex-card] .ft-card');preview.dataset.designSlot=selectedSlot;preview.classList.remove('flipped');preview.querySelectorAll('button').forEach(b=>b.remove());applyEquipment(preview,previewEquipment,shownName());
     body.querySelectorAll('[data-preview]').forEach(b=>{b.setAttribute('aria-pressed',String(previewItem?.key===b.dataset.preview));b.onclick=()=>{previewItem=itemByKey(b.dataset.preview);previewScreen=null;drawDex();};});
@@ -226,19 +270,22 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       if(data){previewItem=null;equipment=selectedEquipment();initialEquipment=JSON.stringify(equipment);drawDex();say(`${item.name} equipped. Card saved.`);}
     };});
   }
+  const ownedStyles=type=>CATALOG.filter(i=>i.type===type&&inventory[i.key]>0&&(!adapter?.expansionReview||i.expansion)).sort((a,b)=>adapter?.expansionReview?Number(!!b.expansion)-Number(!!a.expansion):0);
   function visualStyleChoices(type) {
     const fallback=type==='border'?{id:DEFAULT_EQUIPMENT.border,name:'Default grey',type,rarity:'standard',texture:'metal',a:'#92969c',b:'#41454c'}:{id:DEFAULT_EQUIPMENT.finish,name:'No finish',type,rarity:'standard',texture:'metal',a:'#536282',b:'#151a29'};
-    const items=[fallback,...CATALOG.filter(i=>i.type===type&&inventory[i.key]>0)];
+    const items=[...(adapter?.expansionReview&&type==='border'?[]:[fallback]),...ownedStyles(type)];
     return `<fieldset class="visual-style-options"><legend>${type==='border'?'Border':'Finish'}</legend><p>${type==='border'?'Choose the frame around your card.':'Choose the animated surface treatment.'}</p><div class="visual-style-strip">${items.map(item=>`<button type="button" data-style-choice="${type}" data-choice="${item.id}" aria-pressed="${equipment[type]===item.id}" ${editable?'':'disabled'}>${swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status>${equipment[type]===item.id?'Selected':esc(item.rarity)}</small></button>`).join('')}</div></fieldset>`;
   }
   function visualTextChoices(type) {
-    const items=[{id:DEFAULT_EQUIPMENT[type],name:type==='autograph'?'No signature':'No modifier'},...CATALOG.filter(i=>i.type===type&&inventory[i.key]>0)];
+    if(adapter?.expansionReview&&type==='translation')return '';
+    const items=[{id:DEFAULT_EQUIPMENT[type],name:type==='autograph'?'No signature':'No modifier'},...ownedStyles(type)];
     return `<fieldset class="visual-text-options"><legend>${type==='autograph'?'Signature style':'Modifier'}</legend><div>${items.map(item=>`<button type="button" data-text-choice="${type}" data-choice="${item.id}" aria-pressed="${equipment[type]===item.id}" ${editable?'':'disabled'}><span data-text-choice-preview></span><strong>${esc(item.name)}</strong><small data-choice-status>${equipment[type]===item.id?'Selected':'Select'}</small></button>`).join('')}</div></fieldset>`;
   }
   function drawEditor() {
     // Redrawing replaces the editor, which would otherwise jump the dialog (or page) back to the top.
     const scroller=body.closest('dialog')??document.scrollingElement,keepY=scroller.scrollTop;
     const imageOpen=body.querySelector('[data-image-settings]')?.open??false;
+    const editorView=editorUI?.capture()??editorDrafts.get(selectedSlot)?.view??{};editorUI?.destroy();editorUI=null;
     if(!equipment.baseCard) {
       const template=document.createElement('template');template.innerHTML=cardHtml;
       const card=template.content.querySelector('.ft-card');
@@ -252,17 +299,78 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const template=document.createElement('template');template.innerHTML=cardHtml;
     const effectiveHero=base.hero||Number(template.content.querySelector('.ft-card').dataset.autoHero);
     const artOptions=cardArtOptions(effectiveHero,state?.screens??(String(base.art??'').startsWith('scr:')?[base.art]:[]));
-    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar">${[['particleSpeed','Finish speed'],['particleAmount','Particle amount'],['borderSpeed','Border speed']].map(([k,label])=>`<label class="particle-speed-control" data-tune-control="${k}">${label} <output data-tune-value="${k}">${equipment[k]}%</output><input type="range" data-tune="${k}" min="50" max="200" step="10" value="${equipment[k]}" ${editable?'':'disabled'}></label>`).join('')}<button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
+    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar">${[['particleSpeed','Finish speed'],['particleAmount','Particle amount'],['borderSpeed','Border speed']].map(([k,label])=>`<label class="particle-speed-control" data-tune-control="${k}">${label} <output data-tune-value="${k}">${equipment[k]}%</output><input type="range" data-tune="${k}" min="50" max="200" step="10" value="${equipment[k]}" ${editable?'':'disabled'}></label>`).join('')}<div class="particle-group-host" data-particle-controls="border" hidden></div><div class="particle-group-host" data-particle-controls="finish" hidden></div><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
     wireCardSlots();
     if(editable)mountNameEditor(body.querySelector('[data-name-editor]'),{state,inGame:name,action,onSaved:next=>{state=next;draw();say(shownNickname(next)?`Showing ${shownNickname(next)} on your cards and profile.`:'Showing your in-game name.');}});
     const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');fitDesignCards(card);
     card.querySelectorAll('button').forEach(b=>b.remove());
-    const update=()=>{track();applyEquipment(card,equipment,shownName());wireSignature();say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');};
+    let movingFinish=false;
+    const update=()=>{track();applyEquipment(card,equipment,shownName());wireSignature();wireFinishPlacement();body.querySelectorAll('[data-back-section]').forEach(input=>input.checked=backPartShown(equipment.layout,input.dataset.backSection));say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');};
+    body.querySelector('.appearance-settings').insertAdjacentHTML('afterend','<div data-effect-controls></div>');
+    const effectHost=body.querySelector('[data-effect-controls]');
+    const drawEffects=()=>{effectHost.innerHTML=effectControlsHtml(equipment);effectHost.hidden=!effectHost.innerHTML;effectHost.querySelectorAll('input,button').forEach(input=>input.disabled=!editable);const move=effectHost.querySelector('[data-finish-move]');if(move){move.setAttribute('aria-pressed',String(movingFinish));move.textContent=movingFinish?'Done positioning finish':'Move finish on card';}};
+    effectHost.oninput=event=>{
+      const input=event.target.closest('[data-effect]');if(!input||!editable)return;
+      equipment.finishSettings??={};const s=normalizeEffect('finish-'+equipment.finish,equipment.finishSettings[equipment.finish]);
+      s[input.dataset.effect]=Number(input.value);equipment.finishSettings[equipment.finish]=s;
+      effectHost.querySelector(`[data-effect-value="${input.dataset.effect}"]`).textContent=input.value;update();
+    };drawEffects();
+    effectHost.onclick=event=>{
+      if(!editable)return;
+      if(event.target.closest('[data-finish-move]')){movingFinish=!movingFinish;drawEffects();wireFinishPlacement();if(movingFinish&&!body.classList.contains('editor-workspace'))card.scrollIntoView({block:'center',behavior:'smooth'});}
+      if(event.target.closest('[data-finish-reset]')){if(equipment.finishSettings)delete equipment.finishSettings[equipment.finish];drawEffects();update();}
+    };
+    function wireFinishPlacement(){
+      card.querySelectorAll('.finish-position-handle').forEach(el=>el.remove());
+      if(!editable||!movingFinish||!EDITABLE_FINISHES.includes(equipment.finish))return;
+      const id=equipment.finish,s=normalizeEffect('finish-'+id,equipment.finishSettings?.[id]),face=card.querySelector('.ft-front');
+      const handle=document.createElement('button');handle.type='button';handle.className='finish-position-handle';handle.setAttribute('aria-label',`Move ${itemByKey('finish:'+id).name} finish`);handle.title='Drag to move finish; arrow keys move one step; Escape finishes positioning';
+      const place=()=>{handle.style.left=`calc(${s.x}% + ${1-s.x/50} * var(--frame))`;handle.style.top=`calc(${s.y}% + ${1-s.y/50} * var(--frame))`;};
+      const sync=()=>{
+        equipment.finishSettings??={};equipment.finishSettings[id]=s;
+        const group=card.querySelector('[data-finish-transform]'),p=finishPlacement(id,s);if(group){group.setAttribute('transform',p.transform);group.setAttribute('opacity',p.opacity);}
+        for(const k of ['x','y']){const input=effectHost.querySelector(`[data-effect="${k}"]`);if(input)input.value=s[k];const output=effectHost.querySelector(`[data-effect-value="${k}"]`);if(output)output.textContent=s[k];}
+        place();say('Unsaved card changes');
+      };
+      place();card.querySelector('.ft-flip').append(handle);
+      handle.onpointerdown=e=>{
+        if(e.button!==0)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);
+        const grab=dragGrab(handle,e);
+        handle.onpointermove=ev=>{Object.assign(s,positionAtPointer(s,pointerPoint(ev),grab,dragBounds(handle),dragFrame(face)));sync();};
+        handle.onpointerup=handle.onpointercancel=()=>{handle.onpointermove=null;update();card.querySelector('.finish-position-handle')?.focus({preventScroll:true});};
+      };
+      handle.onkeydown=e=>{
+        if(e.key==='Escape'){e.preventDefault();movingFinish=false;drawEffects();wireFinishPlacement();return;}
+        const d={ArrowLeft:['x',-1],ArrowRight:['x',1],ArrowUp:['y',-1],ArrowDown:['y',1]}[e.key];if(!d)return;e.preventDefault();s[d[0]]=Math.max(0,Math.min(100,s[d[0]]+d[1]));sync();update();card.querySelector('.finish-position-handle')?.focus({preventScroll:true});
+      };
+    }
     // Per-card tuning sliders, each shown only when what's equipped uses it.
     const tuneShown={particleSpeed:()=>PARTICLE_FINISHES.includes(equipment.finish),particleAmount:()=>hasParticleAmount(equipment.finish),borderSpeed:()=>isFxBorder(equipment.border)};
-    const syncTuneControls=()=>body.querySelectorAll('[data-tune]').forEach(input=>{const k=input.dataset.tune;input.closest('[data-tune-control]').hidden=!tuneShown[k]();input.value=equipment[k];body.querySelector(`[data-tune-value="${k}"]`).textContent=`${equipment[k]}%`;});
+    // Count, size and speed for each particle group of the equipped border and finish (lib/cosmetics-particle-groups.js).
+    const particleStore=type=>type==='border'?(equipment.borderSettings??={}):(equipment.finishSettings??={});
+    const drawParticles=()=>body.querySelectorAll('[data-particle-controls]').forEach(host=>{
+      const type=host.dataset.particleControls,id=equipment[type],drawn=`${id}:${JSON.stringify((type==='border'?equipment.borderSettings:equipment.finishSettings)?.[id]??null)}`;
+      if(host.dataset.drawn!==drawn){host.innerHTML=particleControlsHtml(type,id,(type==='border'?equipment.borderSettings:equipment.finishSettings)?.[id]);host.dataset.drawn=drawn;}
+      host.hidden=!host.innerHTML;host.querySelectorAll('input,button').forEach(input=>input.disabled=!editable);
+    });
+    body.querySelectorAll('[data-particle-controls]').forEach(host=>{
+      const type=host.dataset.particleControls;
+      host.oninput=event=>{
+        const input=event.target.closest('[data-particle]');if(!input||!editable)return;
+        const id=equipment[type],store=particleStore(type),s=type==='finish'?normalizeEffect('finish-'+id,store[id]):normalizeParticles(type,id,store[id]);
+        s[input.dataset.particle]=Number(input.value);store[id]=s;
+        host.querySelector(`[data-particle-value="${input.dataset.particle}"]`).textContent=input.value;host.dataset.drawn=`${id}:${JSON.stringify(s)}`;update();
+      };
+      host.onclick=event=>{
+        if(!editable||!event.target.closest('[data-particle-reset]'))return;
+        const id=equipment[type],store=particleStore(type);
+        if(type==='finish'&&EDITABLE_FINISHES.includes(id)){const s=normalizeEffect('finish-'+id,store[id]);Object.assign(s,normalizeParticles('finish',id,{}));store[id]=s;}else delete store[id];
+        drawParticles();update();
+      };
+    });
+    const syncTuneControls=()=>{drawParticles();body.querySelectorAll('[data-tune]').forEach(input=>{const k=input.dataset.tune;input.closest('[data-tune-control]').hidden=!tuneShown[k]();input.value=equipment[k];body.querySelector(`[data-tune-value="${k}"]`).textContent=`${equipment[k]}%`;});};
     body.querySelectorAll('[data-tune]').forEach(input=>{input.oninput=()=>{equipment[input.dataset.tune]=Number(input.value);syncTuneControls();update();};});syncTuneControls();
-    wireLayout(card,update);
+    const layoutTools=wireLayout(card,update,target=>editorUI?.select(target,false),track);
     // Keys: Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Delete removes the selected part or symbol, Escape closes its menu.
     const restore=(from,to)=>{
       const h=editHistory;if(!h[from].length)return;
@@ -293,7 +401,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelectorAll('[data-letter-case]').forEach(button=>button.onclick=()=>{if(button.dataset.letterCase==='upper')equipment.letterCase='upper';else delete equipment.letterCase;refreshTextChoices();update();});
     refreshTextChoices();
     const refreshStyleChoices=()=>body.querySelectorAll('[data-style-choice]').forEach(button=>{const type=button.dataset.styleChoice,selected=equipment[type]===button.dataset.choice;button.setAttribute('aria-pressed',String(selected));button.querySelector('[data-choice-status]').textContent=selected?'Selected':itemByKey(`${type}:${button.dataset.choice}`)?.rarity??'standard';});
-    body.querySelectorAll('[data-style-choice]').forEach(button=>button.onclick=()=>{equipment[button.dataset.styleChoice]=button.dataset.choice;refreshStyleChoices();syncTuneControls();update();});
+    body.querySelectorAll('[data-style-choice]').forEach(button=>button.onclick=()=>{if(button.dataset.styleChoice==='border')body.querySelector('[data-em-close]')?.click();if(button.dataset.styleChoice==='finish')movingFinish=false;equipment[button.dataset.styleChoice]=button.dataset.choice;refreshStyleChoices();syncTuneControls();drawEffects();update();});
     refreshStyleChoices();
     function drawImageGallery() {
       const host=body.querySelector('[data-image-gallery]'),scrolls=[...host.querySelectorAll('.image-choice-strip')].map(el=>el.scrollLeft);
@@ -338,15 +446,15 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const stopPan=e=>{if(pan?.id!==e.pointerId)return;pan=null;front.classList.remove('panning');if(front.hasPointerCapture(e.pointerId))front.releasePointerCapture(e.pointerId);};
     front.onpointerup=stopPan;front.onpointercancel=stopPan;front.onlostpointercapture=()=>{pan=null;front.classList.remove('panning');};
     function wireSignature() {
+      const prior=card.querySelector('.card-autograph');if(prior?._editorMoveSync)prior.removeEventListener('pointermove',prior._editorMoveSync);
+      card.querySelectorAll('.sig-wheel:not(.part-wheel)').forEach(w=>w.remove());
       const sig=card.querySelector('.card-autograph');if(!sig)return;sig.tabIndex=editable?0:-1;sig.setAttribute('role','img');
       sig.onpointerdown=e=>{
-        if(!editable)return;e.preventDefault();const rect=card.querySelector('.ft-front').getBoundingClientRect();sig.setPointerCapture(e.pointerId);
-        const start={px:e.clientX,py:e.clientY,x:equipment.x,y:equipment.y};
-        sig.onpointermove=ev=>{equipment.x=Math.max(0,Math.min(100,start.x+(ev.clientX-start.px)/rect.width*100));equipment.y=Math.max(0,Math.min(100,start.y+(ev.clientY-start.py)/rect.height*100));sig.style.left=equipment.x+'%';sig.style.top=equipment.y+'%';syncControls();say('Unsaved card changes');};
+        if(!editable)return;e.preventDefault();const face=card.querySelector('.ft-front'),grab=dragGrab(sig,e);sig.setPointerCapture(e.pointerId);
+        sig.onpointermove=ev=>{Object.assign(equipment,positionAtPointer(equipment,pointerPoint(ev),grab,dragBounds(sig),dragFrame(face)));sig.style.left=equipment.x+'%';sig.style.top=equipment.y+'%';syncControls();say('Unsaved card changes');};
         sig.onpointerup=()=>{sig.onpointermove=null;};sig.onpointercancel=sig.onpointerup;
       };
       // Rotation wheel: a ring round the signature with a handle at its angle; drag the handle to turn it.
-      card.querySelectorAll('.sig-wheel').forEach(w=>w.remove());
       if(editable) {
         const front=card.querySelector('.ft-front'),wheel=document.createElement('div'),dot=document.createElement('button');
         wheel.className='sig-wheel';dot.type='button';dot.className='sig-wheel-handle';dot.setAttribute('aria-label','Rotate signature');dot.title='Drag to rotate (Shift snaps to 15°)';
@@ -355,7 +463,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
         const place=()=>{const d=Math.max(72,sig.offsetWidth+28);wheel.style.width=wheel.style.height=d+'px';wheel.style.setProperty('--wheel-r',d/2+'px');wheel.style.left=equipment.x+'%';wheel.style.top=equipment.y+'%';dot.style.setProperty('--wheel-angle',equipment.rotation+'deg');};
         place();
         const sync=()=>{place();sig.style.left=equipment.x+'%';sig.style.top=equipment.y+'%';};
-        sig.addEventListener('pointermove',sync);
+        sig._editorMoveSync=sync;sig.addEventListener('pointermove',sync);
         dot.onpointerdown=e=>{
           e.preventDefault();e.stopPropagation();dot.setPointerCapture(e.pointerId);wheel.classList.add('turning');
           dot.onpointermove=ev=>{
@@ -372,7 +480,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
           const d0=dist(e),size0=equipment.size;
           grow.onpointermove=ev=>{
             equipment.size=Math.round(Math.max(5,Math.min(30,size0*dist(ev)/d0))*2)/2;
-            sig.style.setProperty('--signature-size',signatureSize(equipment.size,renderedName(shownName(),equipment.translation,equipment.letterCase))+'cqi');place();syncControls();say('Unsaved card changes');
+            sig.style.setProperty('--signature-size',(sig.classList.contains('exp-autograph')?equipment.size:signatureSize(equipment.size,renderedName(shownName(),equipment.translation,equipment.letterCase)))+'cqi');place();syncControls();say('Unsaved card changes');
           };
           grow.onpointerup=grow.onpointercancel=()=>{grow.onpointermove=null;wheel.classList.remove('turning');};
         };
@@ -380,11 +488,25 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       sig.onkeydown=e=>{const d={ArrowLeft:['x',-1],ArrowRight:['x',1],ArrowUp:['y',-1],ArrowDown:['y',1]}[e.key];if(!editable||!d)return;e.preventDefault();equipment[d[0]]=Math.max(0,Math.min(100,equipment[d[0]]+d[1]));syncControls();update();card.querySelector('.card-autograph').focus();};
     }
     body.querySelector('[data-save]').disabled=!editable;
-    body.querySelector('[data-save]').onclick=async()=>{const data=await run('equip',{equipment},()=>{initialEquipment=JSON.stringify(equipment);document.querySelectorAll(`.ft-card[data-pick="${own}"]`).forEach(c=>applyEquipment(c,c.dataset.designSlot!=null?(state.cardDesigns?.[Number(c.dataset.designSlot)]??state.equipment):state.equipment,c.dataset.playerName??name));});if(data){equipment=selectedEquipment();initialEquipment=JSON.stringify(equipment);drawEditor();say(`Card ${selectedSlot+1} saved.`);}};
+    body.querySelector('[data-save]').onclick=async()=>{const data=await run('equip',{equipment},()=>{initialEquipment=JSON.stringify(equipment);document.querySelectorAll(`.ft-card[data-pick="${own}"]`).forEach(c=>applyEquipment(c,c.dataset.designSlot!=null?(state.cardDesigns?.[Number(c.dataset.designSlot)]??state.equipment):state.equipment,c.dataset.playerName??name));});if(data){editorDrafts.delete(selectedSlot);equipment=structuredClone(selectedEquipment());initialEquipment=JSON.stringify(equipment);drawEditor();say(`Card ${selectedSlot+1} saved.`);}};
     body.querySelector('[data-reset]').onclick=()=>{Object.assign(equipment,{x:50,y:60,size:15,rotation:-7});syncControls();update();};
     // Read-only: every control off but Show the back, which only looks.
     if(!editable)body.querySelectorAll('input,select,button:not([data-layout-flip])').forEach(n=>n.disabled=true);
     update();
+    const emptySlot=()=>designs().cardDesigns.findIndex((d,i)=>!d&&!editorDrafts.has(i)&&i!==selectedSlot);
+    editorUI=mountCardEditorUI({body,card,view:editorView,
+      getState:()=>({equipment,baseline:initialEquipment,history:editHistory,editable,busy,hasSaved:!!designs().cardDesigns[selectedSlot],canDuplicate:emptySlot()>=0,dirtySlots:Array.from({length:CARD_SLOTS},(_,i)=>i).filter(i=>{if(i===selectedSlot)return false;const d=editorDrafts.get(i);return d&&(JSON.stringify(d.equipment)!==d.baseline||!designs().cardDesigns[i]);})}),
+      onUndo:()=>restore('undo','redo'),onRedo:()=>restore('redo','undo'),
+      onRevert:()=>{
+        if(!designs().cardDesigns[selectedSlot]){editorDrafts.delete(selectedSlot);editorUI?.destroy();editorUI=null;selectedSlot=designs().primaryCard;const draft=editorDrafts.get(selectedSlot);equipment=draft?.equipment??structuredClone(selectedEquipment());initialEquipment=draft?.baseline??JSON.stringify(equipment);editHistory=draft?.history??{slot:selectedSlot,undo:[],redo:[],last:null,at:0};drawEditor();return;}
+        editHistory.undo.push(JSON.stringify(equipment));editHistory.redo=[];equipment=JSON.parse(initialEquipment);editHistory.last=JSON.stringify(equipment);editHistory.at=0;drawEditor();
+      },
+      onDuplicate:()=>{const slot=emptySlot();if(slot<0)return;rememberEditor();const copy=structuredClone(equipment);editorUI?.destroy();editorUI=null;selectedSlot=slot;equipment=copy;initialEquipment=JSON.stringify(selectedEquipment());editHistory={slot,undo:[],redo:[],last:null,at:0};drawEditor();say(`Draft copied to Card ${slot+1}. Save when ready.`);},
+      onTarget:(target,selection)=>{movingFinish=target==='finish';drawEffects();wireFinishPlacement();layoutTools.selectTarget(target,selection);},
+      onCompare:saved=>{if(saved)applyEquipment(card,JSON.parse(initialEquipment),shownName());else update();},
+      onSettled:()=>{track();rememberEditor();},
+      onDestroy:layoutTools.close,
+    });
     scroller.scrollTop=keepY;
   }
   // Layout (lib/card-layout.js): the card's name and its size, each front part shown or hidden,
@@ -394,17 +516,22 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const L=equipment.layout,role=Number(new DOMParser().parseFromString(cardHtml,'text/html').querySelector('.ft-card')?.dataset.role)||0;
     const stats=backStats(L,role),part=k=>L?.front?.[k];
     const statSelect=i=>`<select data-back-stat="${i}" aria-label="Back stat ${i+1}"><option value="">Empty</option>${BACK_STATS.map(([k,label])=>`<option value="${k}"${stats[i]===k?' selected':''}>${esc(label)}</option>`).join('')}</select>`;
-    return `<details class="card-settings card-layout-settings"><summary><strong>Card layout</strong><span>Front content and back-of-card stats</span></summary><div>
+    return `<details class="card-settings card-layout-settings" data-layout-face="front"><summary><strong>Front layout</strong><span>Name, text, and placement</span></summary><div>
       <label>Card name <input type="text" data-layout-name maxlength="${MAX_NAME}" placeholder="${esc(name)}" value="${esc(L?.name??'')}"></label>
       <label>Name size <output data-layout-namesize-value>${L?.nameSize??100}%</output><input type="range" data-layout-namesize min="40" max="160" value="${L?.nameSize??100}"></label>
       <fieldset class="layout-parts"><legend>Front</legend><p>Drag any text on the card to move it.</p>${FRONT_PARTS.map(([k,label])=>`<div class="layout-part"><label><input type="checkbox" data-part-show="${k}"${(part(k)?.show??shownByDefault(k))?' checked':''}> ${label}</label><input type="range" data-part-size="${k}" min="40" max="250" value="${part(k)?.size??100}" aria-label="${label} size"><button type="button" data-part-reset="${k}">Reset</button></div>`).join('')}</fieldset>
+      <button type="button" data-layout-reset="front">Reset front layout</button>
+    </div></details><details class="card-settings card-layout-settings" data-layout-face="back"><summary><strong>Back layout</strong><span>Stats, positions, and heroes</span></summary><div>
+      <fieldset class="layout-back"><legend>Show on back</legend>
+      ${[['tier','Tier & rating'],['team','Team'],['plus','Dota Plus hero levels']].map(([key,label])=>`<label><input type="checkbox" data-back-section="${key}"${backPartShown(L,key)?' checked':''}> ${label}</label>`).join('')}
+      <p>Dota Plus levels appear beside top heroes when available.</p></fieldset>
       <fieldset class="layout-back"><legend>Back</legend><div class="layout-stats">${Array.from({length:MAX_BACK_STATS},(_,i)=>statSelect(i)).join('')}</div>
       <label><input type="checkbox" data-back-section="positions"${L?.back?.positions===false?'':' checked'}> Positions played</label>
       <label><input type="checkbox" data-back-section="heroes"${L?.back?.heroes===false?'':' checked'}> Top heroes</label></fieldset>
-      <button type="button" data-layout-flip>Show the back</button> <button type="button" data-layout-reset>Reset layout</button>
+      <button type="button" data-layout-reset="back">Reset back layout</button>
     </div></details>`;
   }
-  function wireLayout(card,update) {
+  function wireLayout(card,update,onTarget=()=>{},track=()=>{}) {
     const front=card.querySelector('.ft-front'),q=sel=>body.querySelector(sel);
     q('[data-layout-name]').oninput=e=>{layoutOf().name=e.target.value.trim()||null;update();};
     q('[data-layout-namesize]').oninput=e=>{layoutOf().nameSize=Number(e.target.value);q('[data-layout-namesize-value]').textContent=`${e.target.value}%`;update();};
@@ -415,38 +542,43 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const readStats=()=>{const keys=[...body.querySelectorAll('[data-back-stat]')].map(s=>s.value).filter(Boolean);layoutOf().back.stats=[...new Set(keys)];update();};
     body.querySelectorAll('[data-back-stat]').forEach(s=>s.onchange=readStats);
     body.querySelectorAll('[data-back-section]').forEach(b=>b.onchange=()=>{layoutOf().back[b.dataset.backSection]=b.checked;update();});
-    q('[data-layout-flip]').onclick=e=>{const on=!card.classList.contains('flipped');card.classList.toggle('flipped',on);e.target.textContent=on?'Show the front':'Show the back';};
-    q('[data-layout-reset]').onclick=()=>{delete equipment.layout;drawEditor();};
-    // Drag a part: it leaves the plate and centres on the pointer, in percent of the face.
+    body.querySelectorAll('[data-layout-reset]').forEach(button=>button.onclick=()=>{
+      if(equipment.layout){const layout=layoutOf();if(button.dataset.layoutReset==='front'){layout.name=null;layout.nameSize=100;layout.front={};}else layout.back={stats:null,positions:true,heroes:true};}
+      drawEditor();
+    });
+    let partClick=false;
+    // Preserve the grabbed point when a full-width plate row becomes a free-standing object.
     front.addEventListener('pointerdown',e=>{
       const el=e.target.closest('[data-part]');if(!el||!editable||busy||e.button!==0)return;
       e.preventDefault();e.stopPropagation();
-      const k=el.dataset.part,rect=front.getBoundingClientRect(),box=el.getBoundingClientRect();
-      const p=partOf(k),off={x:e.clientX-(box.left+box.width/2),y:e.clientY-(box.top+box.height/2)};
-      const at=ev=>{p.x=Math.round(Math.max(0,Math.min(100,(ev.clientX-off.x-rect.left)/rect.width*100))*10)/10;p.y=Math.round(Math.max(0,Math.min(100,(ev.clientY-off.y-rect.top)/rect.height*100))*10)/10;applyLayout(card,equipment.layout,name);say('Unsaved card changes');};
+      const k=el.dataset.part,grab=dragGrab(el,e,true);
+      const p=equipment.layout?.front?.[k]??{show:shownByDefault(k),x:null,y:null,size:100};
+      const at=ev=>{layoutOf().front[k]=p;p.x??=50;p.y??=50;applyLayout(card,equipment.layout,name);Object.assign(p,positionAtPointer(p,pointerPoint(ev),grab,dragBounds(el,true),dragFrame(front)));applyLayout(card,equipment.layout,name);say('Unsaved card changes');};
       const start={x:e.clientX,y:e.clientY};let moved=false;
-      const move=ev=>{if(!moved&&Math.hypot(ev.clientX-start.x,ev.clientY-start.y)<4)return;moved=true;at(ev);};
+      const move=ev=>{if(!moved&&Math.hypot(ev.clientX-start.x,ev.clientY-start.y)<4)return;moved=true;partClick=true;at(ev);};
       const up=()=>{removeEventListener('pointermove',move);removeEventListener('pointerup',up);if(moved)update();selectPart(k);};
       addEventListener('pointermove',move);addEventListener('pointerup',up);
     },true);
     // Clicking a part opens its menu at the top of the right-hand column: remove, size, rotate, layer.
     const panel=q('[data-part-panel]');
     function selectPart(k) {
-      front.querySelectorAll('.part-selected').forEach(n=>n.classList.remove('part-selected'));
+      onTarget('text');
+      card.querySelectorAll('.part-selected').forEach(n=>n.classList.remove('part-selected'));
       front.querySelector(`[data-part="${k}"]`)?.classList.add('part-selected');
-      const label=FRONT_PARTS.find(([key])=>key===k)[1],p=partOf(k),opening=panel.hidden||panel.dataset.for!==k;
+      const label=FRONT_PARTS.find(([key])=>key===k)[1],p=equipment.layout?.front?.[k]??{show:shownByDefault(k),x:null,y:null,size:100},opening=panel.hidden||panel.dataset.for!==k;
+      const commit=()=>{layoutOf().front[k]=p;};
       panel.hidden=false;panel.dataset.for=k;
       panel.innerHTML=`<strong>${esc(label)}</strong><label>Size <output>${p.size}%</output><input type="range" data-pp="size" min="40" max="250" value="${p.size}"></label><label>Rotation <output>${p.rot??0}°</output><input type="range" data-pp="rot" min="-180" max="180" value="${p.rot??0}"></label><label>Layer <output>${p.z??0}</output><input type="range" data-pp="z" min="-10" max="10" value="${p.z??0}"></label><div><button type="button" data-pp-back>Send back</button> <button type="button" data-pp-forward>Bring forward</button> <button type="button" data-pp-reset>Reset</button> <button type="button" data-pp-show ${p.show?'class="pp-remove"':''}>${p.show?'Remove from card':'Put back on card'}</button> <button type="button" data-pp-close>Close</button></div>`;
       const sync=()=>{const c=body.querySelector(`[data-part-show="${k}"]`),r=body.querySelector(`[data-part-size="${k}"]`);if(c)c.checked=p.show;if(r)r.value=p.size;};
-      panel.querySelector('[data-pp-show]').onclick=()=>{p.show=!p.show;update();selectPart(k);sync();};
-      panel.querySelectorAll('[data-pp]').forEach(r=>r.oninput=()=>{p[r.dataset.pp]=Number(r.value);r.previousElementSibling.textContent=r.dataset.pp==='size'?`${r.value}%`:r.dataset.pp==='rot'?`${r.value}°`:r.value;update();sync();partWheelPlace?.();});
-      const nudge=d=>{p.z=Math.max(-10,Math.min(10,(p.z??0)+d));update();selectPart(k);};
+      panel.querySelector('[data-pp-show]').onclick=()=>{p.show=!p.show;commit();update();selectPart(k);sync();};
+      panel.querySelectorAll('[data-pp]').forEach(r=>r.oninput=()=>{p[r.dataset.pp]=Number(r.value);commit();r.previousElementSibling.textContent=r.dataset.pp==='size'?`${r.value}%`:r.dataset.pp==='rot'?`${r.value}°`:r.value;update();sync();partWheelPlace?.();});
+      const nudge=d=>{p.z=Math.max(-10,Math.min(10,(p.z??0)+d));commit();update();selectPart(k);};
       panel.querySelector('[data-pp-back]').onclick=()=>nudge(-1);
       panel.querySelector('[data-pp-forward]').onclick=()=>nudge(1);
       panel.querySelector('[data-pp-reset]').onclick=()=>{delete layoutOf().front[k];update();selectPart(k);sync();};
       panel.querySelector('[data-pp-close]').onclick=()=>{panel.hidden=true;clearPart();};
       // Bring the menu into view only when it opens for a new part, not on every slider or button inside it.
-      if(opening)panel.scrollIntoView({block:'nearest'});
+      if(opening&&!body.classList.contains('editor-workspace'))panel.scrollIntoView({block:'nearest'});
       // The same rotation ring the signature has, round the selected part.
       front.querySelectorAll('.part-wheel').forEach(w=>w.remove());
       const el=front.querySelector(`[data-part="${k}"]`);
@@ -463,7 +595,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
           dot.onpointermove=ev=>{
             const r=wheel.getBoundingClientRect();let a=Math.atan2(ev.clientY-(r.top+r.height/2),ev.clientX-(r.left+r.width/2))*180/Math.PI;
             if(ev.shiftKey)a=Math.round(a/15)*15;else for(const t of [-180,-90,0,90,180])if(Math.abs(a-t)<3)a=t;
-            p.rot=Math.round(a);applyLayout(card,equipment.layout,name);dot.style.setProperty('--wheel-angle',p.rot+'deg');
+            p.rot=Math.round(a);commit();applyLayout(card,equipment.layout,name);dot.style.setProperty('--wheel-angle',p.rot+'deg');
             const ri=panel.querySelector('[data-pp="rot"]');if(ri){ri.value=p.rot;ri.previousElementSibling.textContent=p.rot+'°';}say('Unsaved card changes');
           };
           dot.onpointerup=dot.onpointercancel=()=>{dot.onpointermove=null;wheel.classList.remove('turning');update();};
@@ -472,52 +604,70 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     }
     // Border symbols: drag one anywhere on the card; clicking it opens its menu (size, add another, remove).
     // The first drag turns the default top symbol into a placed one (equipment.emblems).
-    const emblemEls=()=>[...front.querySelectorAll('.cosmetic-emblem')];
-    const emblemsOf=()=>{
+    const emblemEls=()=>[...card.querySelectorAll('.cosmetic-emblem')];
+    const persistEmblems=list=>{if(hasExpansionEmblems(equipment.border)){equipment.borderEmblems??={};equipment.borderEmblems[equipment.border]=list;}else equipment.emblems=list;};
+    const emblemsOf=(initialize=true)=>{
+      if(hasExpansionEmblems(equipment.border)){
+        if(!equipment.borderEmblems?.[equipment.border]){const initial=structuredClone(borderEmblemList(equipment));if(!initialize)return initial;persistEmblems(initial);update();}
+        return equipment.borderEmblems[equipment.border];
+      }
       if(!equipment.emblems){
+        const defaults=defaultExpansionEmblems(equipment.border);if(defaults){if(!initialize)return defaults;equipment.emblems=defaults;update();return equipment.emblems;}
         const r=front.getBoundingClientRect(),b=emblemEls()[0]?.getBoundingClientRect(),pct=(v,n)=>Math.round(v/n*1000)/10;
-        equipment.emblems=[{x:b?pct(b.left+b.width/2-r.left,r.width):50,y:b?pct(b.top+b.height/2-r.top,r.height):4,size:100}];update();
+        const initial=[{x:b?pct(b.left+b.width/2-r.left,r.width):50,y:b?pct(b.top+b.height/2-r.top,r.height):4,size:100}];if(!initialize)return initial;equipment.emblems=initial;update();
       }
       return equipment.emblems;
     };
     function selectEmblem(i) {
-      clearPart();const list=emblemsOf(),m=list[i];if(!m)return;
+      onTarget('symbols');
+      clearPart();const list=emblemsOf(false),m=list[i];if(!m)return;const commit=()=>persistEmblems(list);
       const mark=()=>emblemEls().forEach((n,j)=>n.classList.toggle('part-selected',j===i));mark();
-      panel.hidden=false;panel.dataset.for="";
-      panel.innerHTML=`<strong>Border symbol ${i+1} of ${list.length}</strong><label>Size <output>${m.size}%</output><input type="range" data-em-size min="50" max="300" value="${m.size}"></label><div><button type="button" data-em-add ${list.length>=MAX_EMBLEMS?'disabled':''}>Add another</button> <button type="button" data-em-remove class="pp-remove">Remove</button> <button type="button" data-em-close>Close</button></div><small>Drag a symbol to move it. Up to ${MAX_EMBLEMS}.</small>`;
-      panel.querySelector('[data-em-size]').oninput=e=>{m.size=Number(e.target.value);e.target.previousElementSibling.textContent=`${m.size}%`;update();mark();};
-      panel.querySelector('[data-em-add]').onclick=()=>{list.push({x:Math.min(95,m.x+8),y:Math.min(95,m.y+8),size:m.size});update();selectEmblem(list.length-1);};
+      panel.hidden=false;panel.dataset.for="";panel.dataset.symbolIndex=String(i);
+      panel.innerHTML=`<strong>Border symbol ${i+1} of ${list.length}</strong><label>Size <output>${m.size}%</output><input type="range" data-em-size min="50" max="300" value="${m.size}"></label><label>Rotation <output>${m.rotation??0}°</output><input type="range" data-em-rotation min="-180" max="180" value="${m.rotation??0}"></label><div><button type="button" data-em-add ${list.length>=MAX_EMBLEMS?'disabled':''}>Add another</button> <button type="button" data-em-remove class="pp-remove">Remove</button> <button type="button" data-em-close>Close</button></div><small>Drag a symbol to move it; drag its gold handle to rotate (Shift snaps to 15°). Up to ${MAX_EMBLEMS}.</small>`;
+      panel.querySelector('[data-em-size]').oninput=e=>{m.size=Number(e.target.value);commit();e.target.previousElementSibling.textContent=`${m.size}%`;update();mark();partWheelPlace?.();};
+      panel.querySelector('[data-em-rotation]').oninput=e=>{m.rotation=Number(e.target.value);commit();e.target.previousElementSibling.textContent=`${m.rotation}°`;update();mark();partWheelPlace?.();};
+      panel.querySelector('[data-em-add]').onclick=()=>{list.push({x:Math.min(95,m.x+8),y:Math.min(95,m.y+8),size:m.size,...(m.rotation?{rotation:m.rotation}:{})});commit();update();selectEmblem(list.length-1);};
       panel.querySelector('[data-em-remove]').onclick=()=>{
-        if(list.length>1)list.splice(i,1);
-        else {delete equipment.emblems;equipment.emblem=false;const box=q('[data-emblem]');if(box)box.checked=false;}
-        update();panel.hidden=true;
+        if(list.length>1){list.splice(i,1);commit();}
+        else {if(equipment.borderEmblems?.[equipment.border])delete equipment.borderEmblems[equipment.border];else delete equipment.emblems;equipment.emblem=false;const box=q('[data-emblem]');if(box)box.checked=false;}
+        update();panel.hidden=true;clearPart();
       };
       panel.querySelector('[data-em-close]').onclick=()=>{panel.hidden=true;clearPart();};
+      if(editable){
+        const wheel=document.createElement('div'),dot=document.createElement('button');
+        wheel.className='sig-wheel part-wheel emblem-wheel';dot.type='button';dot.className='sig-wheel-handle';dot.setAttribute('aria-label',`Rotate border symbol ${i+1}`);dot.title='Drag to rotate (Shift snaps to 15°)';wheel.append(dot);card.querySelector('.ft-flip').append(wheel);
+        const place=()=>{const el=emblemEls()[i];if(!el)return;const d=Math.max(64,Math.max(el.offsetWidth,el.offsetHeight)+28);wheel.style.width=wheel.style.height=d+'px';wheel.style.setProperty('--wheel-r',d/2+'px');wheel.style.left=(front.offsetLeft+front.clientLeft+m.x/100*front.clientWidth)+'px';wheel.style.top=(front.offsetTop+front.clientTop+m.y/100*front.clientHeight)+'px';dot.style.setProperty('--wheel-angle',(m.rotation??0)+'deg');};
+        place();partWheelPlace=place;
+        dot.onpointerdown=e=>{
+          e.preventDefault();e.stopPropagation();dot.setPointerCapture(e.pointerId);wheel.classList.add('turning');
+          dot.onpointermove=ev=>{const r=wheel.getBoundingClientRect();let angle=Math.atan2(ev.clientY-r.top-r.height/2,ev.clientX-r.left-r.width/2)*180/Math.PI;if(ev.shiftKey)angle=Math.round(angle/15)*15;else for(const snap of [-180,-90,0,90,180])if(Math.abs(angle-snap)<3)angle=snap;m.rotation=Math.round(angle);commit();emblemEls()[i]?.style.setProperty('--emblem-rotation',m.rotation+'deg');const input=panel.querySelector('[data-em-rotation]');input.value=m.rotation;input.previousElementSibling.textContent=m.rotation+'°';place();say('Unsaved card changes');};
+          dot.onpointerup=dot.onpointercancel=()=>{dot.onpointermove=null;wheel.classList.remove('turning');update();mark();place();};
+        };
+      }
     }
     // "Add a symbol" turns symbols back on if they were off, then adds one in the middle of the card.
     q('[data-emblem-add]')?.addEventListener('click',()=>{
-      if(equipment.emblem===false){delete equipment.emblems;equipment.emblem=true;const box=q('[data-emblem]');if(box)box.checked=true;update();}
+      if(equipment.emblem===false){if(equipment.borderEmblems?.[equipment.border])delete equipment.borderEmblems[equipment.border];else delete equipment.emblems;equipment.emblem=true;const box=q('[data-emblem]');if(box)box.checked=true;update();}
       const list=emblemsOf();
       if(list.length>=MAX_EMBLEMS)return say(`Up to ${MAX_EMBLEMS} border symbols.`);
       list.push({x:50,y:50,size:100});update();selectEmblem(list.length-1);
     });
     let emblemClick=false; // the click after a symbol drag lands on the card once the symbols redraw: skip it
-    front.addEventListener('pointerdown',e=>{
+    card.querySelector('.ft-flip').addEventListener('pointerdown',e=>{
       const el=e.target.closest('.cosmetic-emblem');emblemClick=!!el;if(!el||!editable||e.button!==0)return;
       e.preventDefault();e.stopPropagation();
-      const i=emblemEls().indexOf(el),m=emblemsOf()[i];if(!m)return;
-      const rect=front.getBoundingClientRect(),start={x:e.clientX,y:e.clientY,mx:m.x,my:m.y};let moved=false;
+      const i=emblemEls().indexOf(el),list=emblemsOf(false),m=list[i];if(!m)return;
+      const grab=dragGrab(el,e),start=pointerPoint(e);let moved=false;
       const move=ev=>{
         if(!moved&&Math.hypot(ev.clientX-start.x,ev.clientY-start.y)<4)return;moved=true;
-        m.x=Math.round(Math.max(0,Math.min(100,start.mx+(ev.clientX-start.x)/rect.width*100))*10)/10;
-        m.y=Math.round(Math.max(0,Math.min(100,start.my+(ev.clientY-start.y)/rect.height*100))*10)/10;
-        const n=emblemEls()[i];if(n){n.style.left=`${m.x}%`;n.style.top=`${m.y}%`;}say('Unsaved card changes');
+        Object.assign(m,positionAtPointer(m,pointerPoint(ev),grab,dragBounds(emblemEls()[i]),dragFrame(front)));
+        persistEmblems(list);const n=emblemEls()[i];if(n){const outside=n.parentElement.classList.contains('ft-flip');n.style.left=outside?`calc(${m.x}% + ${1-m.x/50} * var(--frame))`:`${m.x}%`;n.style.top=outside?`calc(${m.y}% + ${1-m.y/50} * var(--frame))`:`${m.y}%`;}say('Unsaved card changes');
       };
       const up=()=>{removeEventListener('pointermove',move);removeEventListener('pointerup',up);update();selectEmblem(i);};
       addEventListener('pointermove',move);addEventListener('pointerup',up);
     },true);
     let partWheelPlace=null;
-    const clearPart=()=>{front.querySelectorAll('.part-wheel').forEach(w=>w.remove());front.querySelectorAll('.part-selected').forEach(n=>n.classList.remove('part-selected'));partWheelPlace=null;};
+    const clearPart=()=>{card.querySelectorAll('.part-wheel,.part-selected').forEach(n=>n.classList.contains('part-wheel')?n.remove():n.classList.remove('part-selected'));partWheelPlace=null;};
     // Framing view: opened with the Artwork menu, it gets its own column on the far right and shows the whole
     // picture (rotation, mirror, zoom and hue applied) under a fixed card-shaped box. Dragging the picture there
     // reframes the card live. It stays open while other menus are used and closes only with its own button.
@@ -529,7 +679,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       body.querySelectorAll('[data-crop]').forEach(input=>input.value=c[input.dataset.crop]??0);say('Unsaved card changes');
     };
     let framing=null;
-    const stopFraming=()=>{framing?.observer.disconnect();framing?.stage.remove();framing=null;};
+    const stopFraming=()=>{framing?.observer.disconnect();framing?.sizing.disconnect();framing?.stage.remove();framing=null;};
     function startFraming(sync) {
       if(framing?.stage.isConnected){framing.sync=sync;framing.draw();return;}
       stopFraming();const editorGrid=q('.card-editor');if(!host||!editorGrid)return;
@@ -540,8 +690,18 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       const draw=()=>{
         const src=cardImg(),W=host.offsetWidth,H=host.offsetHeight;if(!src||!W||!H)return;
         if(pic.src!==src.src)pic.src=src.src;
-        const nw=src.naturalWidth,nh=src.naturalHeight,vw=view.clientWidth,vh=vw*H/W;view.style.height=`${vh}px`;if(!nw||!nh||!vw)return;
-        const sc=.55*vw/W,bw=W*sc,bh=H*sc,bx=(vw-bw)/2,by=(vh-bh)/2,c=cropNow(),k=Math.max(W/nw,H/nh),iw=nw*k*sc,ih=nh*k*sc;
+        const nw=src.naturalWidth,nh=src.naturalHeight,vw=view.clientWidth;if(!nw||!nh||!vw)return;
+        const c=cropNow(),k=Math.max(W/nw,H/nh),imageW=nw*k,imageH=nh*k;
+        const ox=c.x/100*imageW,oy=c.y/100*imageH,left=-c.x/100*(imageW-W),top=-c.y/100*(imageH-H),angle=(c.rot??0)*Math.PI/180;
+        // Fit the complete transformed wallpaper and the card crop into the secondary view.
+        const corners=[[0,0],[imageW,0],[0,imageH],[imageW,imageH]].map(([x,y])=>{
+          const dx=(x-ox)*(c.flip?-1:1),dy=y-oy;
+          return [left+ox+c.zoom*(Math.cos(angle)*dx-Math.sin(angle)*dy),top+oy+c.zoom*(Math.sin(angle)*dx+Math.cos(angle)*dy)];
+        });
+        const minX=Math.min(0,...corners.map(p=>p[0])),maxX=Math.max(W,...corners.map(p=>p[0])),minY=Math.min(0,...corners.map(p=>p[1])),maxY=Math.max(H,...corners.map(p=>p[1]));
+        const sc=Math.min((vw-16)/(maxX-minX),(Math.min(330,vw*1.1)-16)/(maxY-minY)),iw=imageW*sc,ih=imageH*sc;
+        const bx=(vw-(maxX-minX)*sc)/2-minX*sc,by=8-minY*sc;view.style.height=`${(maxY-minY)*sc+16}px`;
+        const bw=W*sc,bh=H*sc;
         const filter=getComputedStyle(src).filter;
         box.style.cssText=`left:${bx}px;top:${by}px;width:${bw}px;height:${bh}px`;
         // Same geometry as the card's object-position + transform-origin, drawn unclipped.
@@ -551,18 +711,20 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       pic.onload=draw;
       view.onpointerdown=e=>{
         if(e.button!==0)return;e.preventDefault();view.setPointerCapture(e.pointerId);view.classList.add('panning');
-        const start={x:e.clientX,y:e.clientY,crop:{...cropNow()}};
-        view.onpointermove=ev=>{const s=framing?.scale;if(s)setCrop(nudgeCrop(start.crop,(ev.clientX-start.x)/s,(ev.clientY-start.y)/s,host.offsetWidth,host.offsetHeight,cardImg()));};
+        const start={x:e.clientX,y:e.clientY,crop:{...cropNow()},scale:framing?.scale};
+        view.onpointermove=ev=>{const s=start.scale;if(s)setCrop(nudgeCrop(start.crop,(ev.clientX-start.x)/s,(ev.clientY-start.y)/s,host.offsetWidth,host.offsetHeight,cardImg()));};
         view.onpointerup=view.onpointercancel=()=>{view.onpointermove=null;view.classList.remove('panning');};
       };
       const observer=new MutationObserver(()=>{draw();framing?.sync();});
       observer.observe(card,{attributes:true,subtree:true,attributeFilter:['style','class','data-style','src']});
-      framing={stage,observer,sync,draw,scale:0};draw();
+      const sizing=new ResizeObserver(draw);
+      framing={stage,observer,sizing,sync,draw,scale:0};sizing.observe(view);sizing.observe(host);draw();
     }
     // Artwork menu in the same right-hand slot: hue, framing sliders and mirrors. It opens when the art is clicked or
     // rotated, along with the framing stage. Horizontal and Vertical move the picture straight across and up/down
     // on screen at any rotation; the rest drive the Artwork section's own inputs.
     function openArtPanel() {
+      onTarget('artwork');
       clearPart();
       const real=k=>q(k==='hue'?'[data-hue]':`[data-crop="${k}"]`);if(!real('x'))return;
       const valueOf=k=>k==='hue'?Number(equipment.hue)||0:cropNow()[k]??0;
@@ -587,15 +749,16 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     q('[data-crop-turn]').addEventListener('click',()=>{if(panel.hidden||!panel.querySelector('[data-art]'))openArtPanel();});
     // The artwork and signature have their own sections: a click opens the matching one.
     front.addEventListener('click',e=>{
-      if(emblemClick||e.target.closest('.part-wheel,.cosmetic-emblem')){emblemClick=false;return;}
+      if(partClick||emblemClick||e.target.closest('.part-wheel,.cosmetic-emblem')){partClick=false;emblemClick=false;return;}
       if(e.target.closest('[data-part]')){card.classList.remove('sig-selected');return;}
       clearPart();panel.hidden=true;
-      const open=sel=>{const d=q(sel);if(d){d.open=true;d.scrollIntoView({block:'nearest'});}};
+      const open=sel=>{const d=q(sel);if(d){d.open=true;if(!body.classList.contains('editor-workspace'))d.scrollIntoView({block:'nearest'});}};
       const onSig=!!e.target.closest('.sig-wheel,.card-autograph');
       card.classList.toggle('sig-selected',onSig);
-      if(onSig)open('.card-settings:has([data-position])');
+      if(onSig){onTarget('signature');open('.card-settings:has([data-position])');}
       else openArtPanel();
     });
+    return {selectTarget(target,selection){clearPart();panel.hidden=true;if(target==='artwork')openArtPanel();else if(target==='symbols'){if(emblemEls().length)selectEmblem(Math.min(emblemEls().length-1,Math.max(0,Number(selection)||0)));}else if(target==='text')selectPart(FRONT_PARTS.some(([key])=>key===selection)?selection:'name');},close:stopFraming};
   }
   // Recycle: your spare copies (all but the last of each) as cards, dragged (or clicked) into a
   // ten-slot bin. The bin takes one rarity, set by the first card in it.
@@ -704,7 +867,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     const count=CATALOG.filter(i=>data.inventory[i.key]>0).length+new Set(data.screens??[]).size,renderer=createPlayerCards(matches,{cards,tiers:new Map(tier?[[String(account),tier]]:[])});
     const preferences=cardDesignState(data),player={account,name,team:team??'AD2L'};
     const cardHtml=PAINT_FILTER+renderer.card(player,null,{own:true,equipmentOverride:preferences.cardDesigns[preferences.primaryCard]});
-    const showcase=preferences.cardDesigns.map((equipment,i)=>equipment?`<figure>${renderer.card(player,null,{own:true,equipmentOverride:equipment}).replace('data-pick=',`data-design-slot="${i}" data-pick=`)}<figcaption>${esc(cardSlotName(preferences,i))}${i===preferences.primaryCard?' · Primary':''}</figcaption></figure>`:'').join('');
+    const showcase=preferences.cardOrder.map(i=>[preferences.cardDesigns[i],i]).map(([equipment,i])=>equipment?`<figure>${renderer.card(player,null,{own:true,equipmentOverride:equipment}).replace('data-pick=',`data-design-slot="${i}" data-pick=`)}<figcaption>${esc(cardSlotName(preferences,i))}${i===preferences.primaryCard?' · Primary':''}</figcaption></figure>`:'').join('');
     // The collection's heading, count and button sit above the cards; your own name and background
     // settings get a column of their own beside them (below).
     section.innerHTML=`<div class="profile-collection-main"><div class="profile-collection-head"><h3>Card collection</h3>${data.unavailable?'<p>Collection service is currently unavailable.</p>':`<strong>${count} / ${COLLECTION_TOTAL} discovered</strong><progress value="${count}" max="${COLLECTION_TOTAL}" aria-label="Collection completion"></progress>`}<button type="button" data-profile-collection>View collection & cards</button>${preferences.shuffleCards?'<p>Saved cards are on shuffle for other viewers.</p>':''}</div><div class="profile-collection-card profile-card-designs">${PAINT_FILTER}${showcase||`<figure>${cardHtml}</figure>`}</div></div>`;
@@ -717,6 +880,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
       // Anyone else's profile: their achievement progress and claims, in the same column.
       if(String(viewer)!==String(account)){
         if(data.unavailable)return;
+        mountFollowButton(data,account,viewer);
         const ach=document.createElement('div');section.append(ach);
         import('./achievements.js').then(m=>m.mountAchievementSummary(ach,account,false)).catch(()=>ach.remove());
         return;
@@ -731,9 +895,11 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
         const fig=document.createElement('figure');fig.className='card-slot-empty';fig.dataset.emptySlot=i;
         fig.innerHTML=`<button type="button" aria-label="Add a design to ${esc(cardSlotName(preferences,i))}"><span aria-hidden="true">+</span>Add card</button><figcaption>${esc(cardSlotName(preferences,i))}</figcaption>`;
         fig.querySelector('button').onclick=()=>navigate(`#/gallery/customize?slot=${i+1}`);
-        const after=[...designsBox.querySelectorAll(':scope>figure')].find(f=>Number(f.querySelector('[data-design-slot]')?.dataset.designSlot??f.dataset.emptySlot)>i);
+        const at=s=>preferences.cardOrder.indexOf(s);
+        const after=[...designsBox.querySelectorAll(':scope>figure')].find(f=>at(figureSlot(f))>at(i));
         designsBox.insertBefore(fig,after??null);
       });
+      if(designsBox)wireCardOrder(designsBox);
       const state=collectionState()??(await collectionAction('session')).state;
       const info=document.createElement('div');info.className='profile-collection-info';section.querySelector('.profile-collection-main').after(info);
       const host=document.createElement('div');info.append(host);
@@ -742,6 +908,64 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     }).catch(()=>{});
   } catch {if(section.isConnected)section.innerHTML='<h3>Card collection</h3><p>Collection service is unavailable. Try again shortly.</p><button type="button">View designs</button>';section.querySelector('button')?.addEventListener('click',()=>openCollection({tab:'collection',viewAccount:account,name}));}
 }
+
+const figureSlot=f=>Number(f.querySelector('[data-design-slot]')?.dataset.designSlot??f.dataset.emptySlot);
+// Your own profile: drag a card (or an empty slot) sideways to change the order your cards show in.
+// A mouse drags after a few pixels; a finger holds for a moment first, so the page still scrolls.
+// The order saves on drop (Worker action card-order); the click that ends a drag doesn't flip the card.
+function wireCardOrder(box) {
+  box.classList.add('cards-reorderable');
+  const hint=document.createElement('p');hint.className='card-order-hint';hint.setAttribute('role','status');hint.textContent='Drag your cards to reorder them.';
+  box.after(hint);
+  let drag=null,justDragged=false;
+  const order=()=>{
+    const shown=[...box.querySelectorAll(':scope>figure')].map(figureSlot);
+    return [...shown,...cardOrderFallback(shown)];
+  };
+  const move=e=>{
+    if(!drag)return;
+    if(!drag.started){
+      const far=Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6;
+      if(far&&drag.touch)return stop(); // a finger moved before the hold: it's a scroll
+      if(far)start();
+      return;
+    }
+    const over=[...box.querySelectorAll(':scope>figure')].find(f=>{if(f===drag.fig)return false;const r=f.getBoundingClientRect();return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;});
+    if(!over)return;
+    const r=over.getBoundingClientRect();
+    box.insertBefore(drag.fig,e.clientX<r.left+r.width/2?over:over.nextSibling);
+  };
+  // A held finger mustn't scroll the page while dragging.
+  const holdTouch=e=>{if(drag?.started)e.preventDefault();};
+  const start=()=>{if(!drag)return;drag.started=true;drag.fig.classList.add('card-dragging');box.classList.add('cards-dragging');};
+  const stop=()=>{
+    const was=drag;drag=null;
+    removeEventListener('pointermove',move);removeEventListener('pointerup',drop);removeEventListener('pointercancel',drop);removeEventListener('touchmove',holdTouch);
+    if(!was)return null;
+    clearTimeout(was.timer);was.fig.classList.remove('card-dragging');box.classList.remove('cards-dragging');
+    return was;
+  };
+  const drop=async()=>{
+    const was=stop();if(!was?.started)return;
+    justDragged=true;setTimeout(()=>justDragged=false,0);
+    const next=order();if(next.join()===was.before.join())return;
+    hint.textContent='Saving order…';
+    try {await collectionAction('card-order',{order:next});hint.textContent='Order saved.';}
+    catch(err){hint.textContent=err.message;}
+  };
+  box.addEventListener('click',e=>{if(justDragged){e.preventDefault();e.stopPropagation();}},true);
+  box.addEventListener('dragstart',e=>e.preventDefault());
+  box.addEventListener('contextmenu',e=>{if(drag)e.preventDefault();});
+  box.addEventListener('pointerdown',e=>{
+    const fig=e.target.closest('.cards-reorderable>figure');
+    if(drag||!fig||e.button!==0||e.target.closest('.card-rating, input, select, textarea'))return;
+    const touch=e.pointerType!=='mouse';
+    drag={fig,x:e.clientX,y:e.clientY,started:false,touch,before:order(),timer:touch?setTimeout(start,350):0};
+    addEventListener('pointermove',move);addEventListener('pointerup',drop);addEventListener('pointercancel',drop);addEventListener('touchmove',holdTouch,{passive:false});
+  });
+}
+// Slots not on the page (none today: every slot shows, saved or empty) keep their place at the end.
+const cardOrderFallback=shown=>Array.from({length:CARD_SLOTS},(_,i)=>i).filter(i=>!shown.includes(i));
 
 async function mountRatings(section,account) {
   const [cards,viewer]=await Promise.all([cardRatings(account),steamAccount().catch(()=>null)]);
@@ -861,6 +1085,31 @@ function profileFollows({followers,following}) {
   const p=h1.parentElement.querySelector('.pp-follows')??document.createElement('p');p.className='pp-follows';
   p.innerHTML=`<span><strong>${fmt(followers)}</strong> ${followers===1?'follower':'followers'}</span><span><strong>${fmt(following)}</strong> following</span>`;
   if(!p.isConnected)h1.after(p);
+}
+// Follow / Following beside someone else's follower count. Signed out, it signs you in first.
+// Hovering Following offers Unfollow; a blocked player has to be unblocked from the Feed first.
+async function mountFollowButton(data,account,viewer) {
+  const p=document.querySelector('.pp-follows');if(!p)return;
+  const target=String(account),btn=document.createElement('button');btn.type='button';btn.className='pp-follow';
+  let following=false;
+  const paint=()=>{btn.classList.toggle('is-following',following);btn.setAttribute('aria-pressed',String(following));btn.innerHTML=viewer==null?'Follow':following?'<span class="pp-follow-on">Following</span><span class="pp-follow-off">Unfollow</span>':'Follow';btn.title=viewer==null?'Sign in with Steam to follow':following?'Unfollow':'Follow to see their posts in your Feed';};
+  if(viewer!=null){
+    const state=collectionState()??(await collectionAction('session').catch(()=>null))?.state;
+    following=(state?.following??[]).includes(target);
+  }
+  const note=document.createElement('span');note.className='pp-follow-note';note.setAttribute('role','status');
+  paint();p.append(btn,note);
+  btn.onclick=async()=>{
+    if(viewer==null)return startSteamSignIn();
+    const next=!following;btn.disabled=true;
+    try {
+      const res=await collectionAction('follow',{target,follow:next});
+      following=(res.state?.following??[]).includes(target);
+      if(following!==next)throw new Error('Could not update.');
+      data.followers=Math.max(0,data.followers+(following?1:-1));profileFollows(data);p.append(btn,note);note.textContent='';
+    } catch(err){note.textContent=err.message;}
+    finally{btn.disabled=false;paint();}
+  };
 }
 // A profile's title: the nickname they show, then their in-game name in brackets.
 function profileTitle(nickname,inGame) {

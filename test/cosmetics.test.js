@@ -1,13 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {CATALOG,TIERS,PACK_ODDS,DEFAULT_EQUIPMENT} from '../public/lib/cosmetics-catalog.js';
-import {grantLogin,rollPack,recycleCards,equipCosmetics,saveCardDesign,setCardPreferences,setCardName,cardSlotName,CARD_SLOTS,cardDesignState,cardAppearance,selectedCardDesign,setProfileBackground,profileBackgroundOf} from '../public/lib/cosmetics-engine.js';
+import {grantLogin,rollPack,recycleCards,equipCosmetics,saveCardDesign,setCardPreferences,setCardName,setCardOrder,cardSlotName,CARD_SLOTS,cardDesignState,cardAppearance,selectedCardDesign,setProfileBackground,profileBackgroundOf} from '../public/lib/cosmetics-engine.js';
 import {japaneseName,cyrillicName,greekName,runicName,koreanName,chineseName,thaiName,renderedName,signatureHtml} from '../public/lib/signatures.js';
 import {CosmeticsVault,cosmeticsRequest} from '../workers/steam-auth/src/cosmetics.js';
 
 test('approved collection has all tiers, no language samples in signature drops',()=>{
   assert.equal(new Set(CATALOG.map(i=>i.key)).size,CATALOG.length);
-  assert.equal(CATALOG.length,106);
+  assert.equal(CATALOG.length,190);
   assert.deepEqual(PACK_ODDS,{common:69,rare:17,epic:10,legendary:4});
   for(const tier of TIERS)assert.ok(CATALOG.some(i=>i.rarity===tier));
   for(const item of CATALOG.filter(i=>i.type==='autograph')) {assert.equal(item.sample,undefined);assert.equal(item.script,undefined);}
@@ -256,4 +256,16 @@ test('placed border symbols are validated, kept across saves, and reset with nul
   assert.deepEqual(equipCosmetics(saved,{hue:40}).equipment.emblems,saved.equipment.emblems);
   assert.equal(equipCosmetics(saved,{emblems:null}).equipment.emblems,undefined);
   for(const emblems of [[],[{x:101,y:0}],[{x:0,y:0,size:20}],Array.from({length:13},()=>({x:1,y:1})),'x',[null]])assert.throws(()=>equipCosmetics(state,{emblems}));
+});
+
+test('card order: a profile display order of every slot, defaulting to the slot order',()=>{
+  const state=grantLogin(null);
+  assert.deepEqual(cardDesignState(state).cardOrder,[0,1,2,3,4]);
+  const moved=setCardOrder(state,[2,0,1,4,3]);
+  assert.deepEqual(cardDesignState(moved).cardOrder,[2,0,1,4,3]);
+  assert.equal(state.cardOrder,undefined);
+  for(const bad of [[0,1,2,3],[0,0,1,2,3],[0,1,2,3,5],'01234',null,[0,1,2,3,'4']])assert.throws(()=>setCardOrder(state,bad),/order/);
+  assert.deepEqual(cardDesignState({...state,cardOrder:[9,9,9,9,9]}).cardOrder,[0,1,2,3,4]);
+  // Saving a design or primary card keeps the order.
+  assert.deepEqual(saveCardDesign(moved,{hue:40},1).cardOrder,[2,0,1,4,3]);
 });

@@ -30,3 +30,5 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-ZBDQP3 · 2026-10-15 · Tier list matches the profile rating (All roles default), draws at once instead of waiting on card designs, and the Gallery head is compact on phones.
 - FB-9W2JYK · 2026-10-15 · Not implemented: the 8-hour wait between packs stays as is.
 - FB-D2VD3T · 2026-10-15 · Thanks note, no action needed.
+- FB-42KTAW · 2026-10-16 · Not a code bug: game 3 was added before OpenDota parsed it, so it had no 10-minute data; the next sync filled it in and all three No Immortals games show on Lanes now.
+- FB-H6HBZV · 2026-10-16 · Not adding: stacking already feeds into the carry farm stats.
