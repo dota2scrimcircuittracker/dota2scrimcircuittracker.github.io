@@ -1,7 +1,7 @@
 // Items (AD2L, parsed replays): the Items tabs on game, player and hero pages.
 import { info } from "../lib/glossary.js";
 import { itemIcon, clock, hasItems, timingsOf, itemStats, itemName, averageTimes } from "../lib/items.js";
-import { kg, playerLink, heroLink, teamLink, esc, pct, portrait, app } from "../core.js";
+import { kg, playerLink, heroLink, heroHref,teamLink, esc, pct, portrait, app } from "../core.js";
 
 // ---------- items (AD2L, parsed replays) ----------
 
@@ -14,7 +14,7 @@ const ago = (d) => (d == null ? "" : `<span class="${d > 0 ? "pos" : d < 0 ? "ne
 // Game page: each player's final items and core-item timeline.
 export function gameItemsHtml(m, src) {
   if (!m.players.some(hasItems)) return "";
-  const row = (p) => `<tr class="team-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l">${heroLink(src, p.hero)}</td>
+  const row = (p) => `<tr class="team-${p.team}"><td class="l">${playerLink(src, p)}</td><td class="l"><a class="hero-link" href="${heroHref(src, p.hero)}">${portrait(p.hero, "it-hero")}</a></td>
     <td class="l">${p.items ? `${itemRow(p.items.slice(0, 6))}${p.items[6] ? itemIcon(p.items[6], null, "neutral") : ""}` : "—"}</td>
     <td class="l"><span class="item-row timeline">${timingsOf(p).map(({ key, sec }) => itemIcon(key, sec)).join("") || "—"}</span></td></tr>`;
   const head = `<th scope="col" class="l">Player</th><th scope="col" class="l">Hero</th><th scope="col" class="l">Final items</th><th scope="col" class="l">Core items finished</th>`;

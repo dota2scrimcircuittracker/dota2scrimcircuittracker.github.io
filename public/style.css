@@ -1301,7 +1301,7 @@ h2 .h-note { font: 400 12px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .sd-win { font: 600 12px/1 var(--mono); color: var(--bone); }
 .lineups { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .lineup { list-style: none; margin: 0; padding: 0; }
-.lineup li { display: grid; grid-template-columns: 53px 1fr auto auto; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--seam); font-size: 13px; }
+.lineup li { display: grid; grid-template-columns: 53px 1fr auto auto auto; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--seam); font-size: 13px; }
 .lineup li:last-child { border-bottom: 0; }
 .lineup .hero-img { width: 53px; height: 30px; }
 .lineup .lu-head { display: block; font: 800 15px/1 var(--display); text-transform: uppercase; letter-spacing: .06em; padding: 0 0 8px; }
@@ -1315,6 +1315,15 @@ h2 .h-note { font: 400 12px/1 var(--mono); letter-spacing: .12em; color: var(--d
 @media (max-width: 760px) {
   .lineups { grid-template-columns: 1fr; }
   .gp-meta { margin-left: 0; }
+}
+/* Final items on each lineup row; under 1300px they drop to their own line below the name. */
+.item-row.lu-items { gap: 2px; flex-wrap: nowrap; align-items: center; }
+.lu-items .item img, .lu-items .item .missing, .lu-items .item.empty { width: 28px; height: 20px; }
+.lu-items .item.neutral { margin-left: 4px; }
+.lu-items .item.neutral img { width: 20px; }
+@media (max-width: 1300px) {
+  .lineup li { grid-template-columns: 53px 1fr auto auto; row-gap: 4px; }
+  .lu-items { grid-column: 2 / -1; grid-row: 2; }
 }
 
 /* ---------- teams ---------- */
@@ -3117,6 +3126,7 @@ figure.chart.item-lead .it:hover image { outline: 1px solid var(--accent); filte
 .ih-chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--bone); box-shadow: inset 0 -2px var(--accent); }
 .ih-chips button b { font-weight: 500; color: var(--dim); }
 .ih-chips .hero-img.ih-img { width: 32px; height: 18px; }
+.items-table .hero-img.it-hero { width: 56px; height: 31px; vertical-align: middle; }
 .ih-view .table-note { margin-top: 8px; }
 .ih-more-btn {
   margin: 8px 0 0; padding: 6px 12px; cursor: pointer; background: var(--stone); border: 1px solid var(--seam-2);
@@ -4292,6 +4302,16 @@ html.light .po-need-p, html.light .po-tbar { --pc: hsl(var(--ph, 40) 60% 34%); }
 .game-panel .draft-bans .draft-step { flex: 0 0 60px; }
 .game-panel .draft-picks .draft-step { flex: 0 0 77px; }
 .game-panel .draft-gap { flex: 0 0 10px; }
+/* Bans and picks interleaved in draft order on one line. */
+.draft-seq { display: flex; flex-wrap: wrap; gap: 5px; align-items: flex-end; }
+.draft-seq .draft-step.ban { flex: 0 0 60px; }
+.draft-seq .draft-step.pick { flex: 0 0 77px; }
+@media (max-width: 760px) {
+  .draft-seq { gap: 3px; }
+  .draft-seq .draft-step.ban { flex-basis: 44px; }
+  .draft-seq .draft-step.pick { flex-basis: 56px; }
+  .draft-seq .draft-gap { flex: 0 0 6px; }
+}
 .game-panel .draft-tag { padding: 2px 0; font-size: 12px; }
 .game-panel .draft-legend { margin: 6px 0 8px; }
 .game-panel .draft-rows.draft-bottom { margin-top: 8px; }

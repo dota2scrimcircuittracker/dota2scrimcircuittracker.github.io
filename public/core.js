@@ -875,7 +875,7 @@ export const seriesDraftsHtml = (src, games) => games.map((m, j) => !m.draft?.le
     <div class="sd-game-head"><span class="gp-label">Game ${j + 1}</span>
       <span class="sd-win">${esc(m.winner === "a" ? m.team_a : m.team_b)} win</span>
       <span class="gp-meta">${m.score_a}–${m.score_b} · ${dur(m.duration_sec)} · <a href="${src.link(m)}">Full stats →</a></span></div>
-    ${draftStrip(m, src)}</div>`).join("");
+    ${draftStrip(m, src, undefined, true)}</div>`).join("");
 
 // "Show at least N" filter above a table, so a hero picked once at 100% doesn't top the list.
 export const MIN_DEFAULT = (matches) => (matches.length >= 20 ? 3 : matches.length >= 8 ? 2 : 1);
@@ -923,7 +923,8 @@ export const heroStrip = (src, list) => (list?.length
   : '<span class="muted">—</span>');
 
 // part: "top" = Radiant's row and the legend, "bottom" = Dire's row; omitted = both rows together.
-export function draftStrip(m, src, part) {
+// seq: each side's bans and picks on one line in draft order, instead of bans then picks.
+export function draftStrip(m, src, part, seq = false) {
   if (!m.draft?.length) return `<p class="draft-none">Draft order isn't on the post-game screen, so scrims show lineups only.</p>`;
   // Team A is Radiant: its bans and picks on the top row, Dire's below. Numbers keep the overall order.
   const step = (s, i) => `
@@ -932,16 +933,16 @@ export function draftStrip(m, src, part) {
     </a>`;
   // A phase is a run of consecutive bans or picks in the draft; a gap marks each new phase in a row.
   const run = []; m.draft.forEach((s, i) => run.push(i && !!s.pick === !!m.draft[i - 1].pick ? run[i - 1] : (run[i - 1] ?? -1) + 1));
-  // Bans on top, picks below, each in draft order.
-  const row = (side) => `<div class="draft draft-${side}">${[false, true].map((pick) => {
+  // Bans on top, picks below, each in draft order (or one line of both with seq).
+  const row = (side) => `<div class="draft draft-${side}">${(seq ? [null] : [false, true]).map((pick) => {
     let last = null;
     const cells = m.draft.map((s, i) => {
-      if (s.side !== side || !!s.pick !== pick) return "";
+      if (s.side !== side || (pick !== null && !!s.pick !== pick)) return "";
       const gap = last !== null && run[i] !== last ? '<i class="draft-gap"></i>' : "";
       last = run[i];
       return gap + step(s, i);
     }).join("");
-    return `<div class="draft-${pick ? "picks" : "bans"}">${cells}</div>`;
+    return `<div class="draft-${pick === null ? "seq" : pick ? "picks" : "bans"}">${cells}</div>`;
   }).join("")}</div>`;
   if (part === "bottom") return `<div class="draft-rows draft-bottom" aria-label="Dire draft">${row("b")}</div>`;
   return `<div class="draft-rows" aria-label="Draft order">${row("a")}${part === "top" ? "" : row("b")}</div>

@@ -2,7 +2,7 @@
 import { hasDetails, playerKey, hasMapStats } from "../lib/stats.js";
 import { hasTimeline, swings } from "../lib/timeline.js";
 import { info } from "../lib/glossary.js";
-import { clock } from "../lib/items.js";
+import { clock, itemIcon } from "../lib/items.js";
 import { laneCuts, laneBoard, LANE_GROUPS, playerLane, isJungler } from "../lib/lanes.js";
 import { hasCombat, bestStreakOf, streakName, pausesOf } from "../lib/combat.js";
 import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg, subtabsMoved, sideBar, SOURCES, weekStart } from "../core.js";
@@ -63,6 +63,7 @@ function gamePanel(m, src, label, cuts = null, tagCtx = null) {
   const lineup = (t) => m.players.filter((p) => p.team === t).map((p) => `
     <li class="${p === mvp ? "mvp" : ""}">${portrait(p.hero)}
       <span class="lu-name">${plusSlot(p.account_id, p.hero, m.start_time)}${playerLink(src, p)}${p === mvp ? ' <span class="mvp-tag">MVP</span>' : ""}${laneTag(p)}</span>
+      <span class="item-row lu-items">${p.items ? `${p.items.slice(0, 6).map((k) => (k ? itemIcon(k) : `<span class="item empty"></span>`)).join("")}${p.items[6] ? itemIcon(p.items[6], null, "neutral") : ""}` : ""}</span>
       <span class="lu-kda">${p.kills}/${p.deaths}/${p.assists}</span>
       <span class="lu-nw">${fmt(p.net_worth)}</span>
     </li>`).join("");
@@ -72,12 +73,12 @@ function gamePanel(m, src, label, cuts = null, tagCtx = null) {
       <span class="gp-result"><b class="${m.winner === "a" ? "w" : ""}">${teamLink(src, m.team_a, m.team_a_id)}</b> <span class="gp-score">${m.score_a}–${m.score_b}</span> <b class="${m.winner === "b" ? "w" : ""}">${teamLink(src, m.team_b, m.team_b_id)}</b></span>
       <span class="gp-meta">${dur(m.duration_sec)} · ${esc(m.winner === "a" ? m.team_a : m.team_b)} win${fbOf(m) ? ` · first blood ${clock(fbOf(m).t)} ${esc(m.players[fbOf(m).i].name)}` : ""} · <a href="${src.link(m)}">Full stats →</a>${tagsHtml(gameTags(m, tagCtx))}</span>
     </header>
-    ${draftStrip(m, src, "top")}
+    ${draftStrip(m, src, "top", true)}
     <div class="lineups">
       <ul class="lineup a"><li class="lu-head">${teamLink(src, m.team_a, m.team_a_id)}${m.winner === "a" ? ' <span class="win-badge">Win</span>' : ""}</li>${lineup("a")}</ul>
       <ul class="lineup b"><li class="lu-head">${teamLink(src, m.team_b, m.team_b_id)}${m.winner === "b" ? ' <span class="win-badge">Win</span>' : ""}</li>${lineup("b")}</ul>
     </div>
-    ${draftStrip(m, src, "bottom")}
+    ${draftStrip(m, src, "bottom", true)}
   </article>`;
 }
 
