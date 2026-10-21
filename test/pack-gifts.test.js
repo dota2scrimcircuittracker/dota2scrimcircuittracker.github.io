@@ -117,3 +117,10 @@ test('vault: players send packs from their own inventory; never to themselves or
   const facts=await (await request('101',{action:'achievements'})).json();
   assert.equal(facts.facts.packsSent,1);
 });
+
+test('Fav can gift a legendary loading screen', () => {
+  const next=giftPacks({screens:[]},{kind:'screen',item:'scr:saint-gaben'},5);
+  assert.deepEqual(next.screens,['scr:saint-gaben']);
+  assert.equal(giftLabel(next.gifts[0]),'the Saint Gaben loading screen');
+  assert.throws(()=>giftPacks(next,{kind:'screen',item:'scr:saint-gaben'}),/already have/);
+});

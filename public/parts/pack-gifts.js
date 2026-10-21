@@ -4,7 +4,7 @@ import { esc } from '../core.js';
 import { steamAccount } from '../lib/store.js';
 import { collectionAction, collectionState } from '../lib/cosmetics.js';
 import { TIERS, CATALOG } from '../lib/cosmetics-catalog.js';
-import { SCREEN_ART } from '../lib/screen-art-data.js';
+import { ALL_SCREENS } from '../lib/legendary-screens.js';
 import { THEMED_PACKS, themedLabel, parsePack, packName } from '../lib/pack-types.js';
 import { isAdmin, giftLabel, MAX_GIFT_PACKS, MAX_SENT_PER_DAY } from '../lib/pack-gifts.js';
 
@@ -20,7 +20,7 @@ export async function mountGiftPanel(host, account, name, adapter = null) {
       <label data-gift-count>Quantity <input type="number" name="count" min="1" max="${MAX_GIFT_PACKS}" value="1" required></label>
       <label data-gift-tier>Pack <select name="tier">${TIERS.map((t) => `<option value="${t}">${t === 'common' ? 'Normal card pack' : t[0].toUpperCase() + t.slice(1) + ' or better'}</option>`).join('')}${THEMED_PACKS.map((p) => `<option value="${p}">${themedLabel(p)} · 3 ${parsePack(p).kind} items</option>`).join('')}<option value="screens">Loading screen pack · 5 new screens</option></select></label>
       <label data-gift-item hidden>Card item <select name="item">${CATALOG.map(i=>`<option value="${esc(i.key)}">${esc(i.name)} · ${esc(i.type)} · ${i.rarity}</option>`).join('')}</select></label>
-      <label data-gift-screen hidden>Loading screen <select name="screen">${SCREEN_ART.map(s=>`<option value="${esc(s.id)}">${esc(s.label)} · ${esc(s.hero??'Any hero')}</option>`).join('')}</select></label>
+      <label data-gift-screen hidden>Loading screen <select name="screen">${ALL_SCREENS.map(s=>`<option value="${esc(s.id)}">${esc(s.label)} · ${esc(s.hero??(s.legendary?'Legendary':'Any hero'))}</option>`).join('')}</select></label>
       <label class="gift-note">Note <input name="note" maxlength="120" placeholder="Optional, shown to them"></label>
       <button type="submit">Send gift</button>
       <span class="gift-msg" role="status" aria-live="polite"></span>

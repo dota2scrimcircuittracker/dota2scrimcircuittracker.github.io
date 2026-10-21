@@ -6,7 +6,7 @@
 import { NORMAL_PACK_CAP, PACK_INTERVAL_MS } from './cosmetics-engine.js';
 import { TIERS, itemByKey } from './cosmetics-catalog.js';
 import { THEMED_PACKS, isThemedPack, themedLabel } from './pack-types.js';
-import { SCREEN_ART } from './screen-art-data.js';
+import { ALL_SCREENS } from './legendary-screens.js';
 
 export const ADMIN_ACCOUNT = '173365627';
 export const MAX_GIFT_PACKS = 10;
@@ -20,7 +20,7 @@ export function giftPacks(state, { kind = 'pack', tier = 'common', item = null, 
   const record = { kind, count: 1, note: text || null, at: now };
   const next = { ...state };
   if (kind === 'screen') {
-    if (!SCREEN_ART.some((s) => s.id === item)) throw new Error('Choose a loading screen.');
+    if (!ALL_SCREENS.some((s) => s.id === item)) throw new Error('Choose a loading screen.');
     if ((state.screens ?? []).includes(item)) throw new Error('They already have that loading screen.');
     next.screens = [...(state.screens ?? []), item];
     record.item = item;
@@ -69,7 +69,7 @@ const article = (s) => `a${/^[aeiou]/i.test(s) ? 'n' : ''} ${s}`;
 const ITEM_TYPES = { border: 'border', finish: 'finish', autograph: 'signature', translation: 'modifier' };
 // "2 Epic packs" / "a loading screen pack" / "the Gold border" / "the Chemical Rage loading screen"
 export function giftLabel({ kind = 'pack', tier, item, count = 1 }) {
-  if (kind === 'screen') return `the ${SCREEN_ART.find((s) => s.id === item)?.label ?? 'new'} loading screen`;
+  if (kind === 'screen') return `the ${ALL_SCREENS.find((s) => s.id === item)?.label ?? 'new'} loading screen`;
   if (kind === 'item') {
     const it = itemByKey(item), name = `${it?.name ?? 'card'} ${ITEM_TYPES[it?.type] ?? 'item'}`;
     return count === 1 ? `the ${name}` : `${count} × the ${name}`;
