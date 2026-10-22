@@ -29,7 +29,7 @@ import { timingFields } from "./timing-fields.js";
 import { combatFields, gameExtras, firstDeathOf, detailOf, detailName, detailJson } from "./combat-fields.js";
 import { leagueJson } from "./league-json.js";
 import { wardLog, visionMap, visionFields } from "./vision.js";
-import { SEASON, DIVISIONS, division, ANNOUNCED } from "../../public/lib/divisions.js";
+import { SEASON, DIVISIONS, division, ANNOUNCED, isPostseason } from "../../public/lib/divisions.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CACHE = path.join(ROOT, ".cache");
@@ -385,8 +385,11 @@ async function buildGame(id) {
   const deaths = deathsFrom(d, (id) => heroKeys[id]);
   const DAY4 = 4 * 86400;
   const pairOf = (s) => (s.home === rad && s.away === dire) || (s.home === dire && s.away === rad);
+  // A playoff series can be played up to 8 days before PlayOn's time (Champion's Suck my Drama
+  // Piranhas v No Immortals: played Oct 16, posted for Oct 23).
+  const near = (s) => (s.time ?? 0) - d.start_time < (isPostseason(s) ? 8 * 86400 : DAY4) && d.start_time - (s.time ?? 0) < DAY4;
   const seriesOf = series
-    .filter((s) => pairOf(s) && Math.abs((s.time ?? 0) - d.start_time) < DAY4)
+    .filter((s) => pairOf(s) && near(s))
     .sort((x, y) => Math.abs((x.time ?? 0) - d.start_time) - Math.abs((y.time ?? 0) - d.start_time))[0]
     ?? (ANNOUNCED[DIV.key] ?? []).find((a) => Math.abs(a.time - d.start_time) < DAY4
       && (a.home != null ? pairOf(a) : a.away === rad || a.away === dire));
@@ -523,13 +526,15 @@ async function bySeries() {
     const played = (s.home_score ?? 0) + (s.away_score ?? 0);
     const found = new Map(), seen = new Set();
     const accounts = [...owner].filter(([, o]) => o.team === s.home || o.team === s.away);
-    const window = Math.ceil((now - s.time) / 86400) + 1;
+    // From 8 days before PlayOn's time: teams sometimes play a playoff series early.
+    const from = s.time - 8 * 86400;
+    const window = Math.ceil((now - from) / 86400) + 1;
     for (const [acct] of accounts) {
       if (played && found.size >= played) break;
       const rows = await opendota(`/players/${acct}/matches?date=${window}&lobby_type=1`, "GET", 2)
         .catch((e) => (console.log(`  ${acct}: ${e.message}; next player`), []));
       for (const r of rows) {
-        if (seen.has(r.match_id) || r.start_time < s.time - 3 * 3600) continue;
+        if (seen.has(r.match_id) || r.start_time < from) continue;
         seen.add(r.match_id);
         const g = await buildGame(r.match_id).catch((e) => (console.log(`  match ${r.match_id}: ${e.message}`), null));
         if (g && g.series_id === s.id) found.set(g.match_id, g);

@@ -15,7 +15,7 @@ import { itemLeadHtml, LAYERS } from "../lib/itemlead.js";
 import { asAd2l, sameTeams } from "../lib/unticketed.js";
 import { getMatch, currentUid, moveMatch, deleteMatch, listCasts, MAX_CASTS, addCast, deleteCast } from "../lib/store.js";
 import { info } from "../lib/glossary.js";
-import { SEASON } from "../lib/divisions.js";
+import { SEASON, isPostseason } from "../lib/divisions.js";
 import { clock } from "../lib/items.js";
 import { firstBloodOf } from "../lib/combat.js";
 import { tagContext, gameTags, tagsHtml } from "../lib/gametags.js";
@@ -195,12 +195,33 @@ export async function renderMatch(id, src) {
   };
 
   // The series this game belongs to (AD2L), or earlier meetings of the same two teams (scrims).
+  // An AD2L game with no series yet goes with the pair's other unattached games from the same
+  // stage, so playoff games never number on from group-stage ones.
   const pair = (g) => [g.team_a, g.team_b].map((x) => x.toLowerCase()).sort().join("|");
   const inSeries = ad2l && m.series_id != null;
-  const others = all.filter((g) => (inSeries ? g.series_id === m.series_id : pair(g) === pair(m)))
+  const playoffGame = (g) => SEASON.regularEnd != null && (g.start_time ?? 0) > SEASON.regularEnd;
+  const others = all.filter((g) => (inSeries ? g.series_id === m.series_id
+    : pair(g) === pair(m) && (!ad2l || (g.series_id == null && playoffGame(g) === playoffGame(m)))))
     .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  // AD2L: the pair's other series, one link each to its first game (not numbered with this one).
+  const allSeries = src.cache()?.series ?? [];
+  const otherSeries = new Map();
+  if (ad2l) for (const g of all.filter((g) => pair(g) === pair(m) && !others.includes(g)).sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0))) {
+    const k = g.series_id ?? `none-${playoffGame(g)}`;
+    if (!otherSeries.has(k)) otherSeries.set(k, { first: g, games: [] });
+    otherSeries.get(k).games.push(g);
+  }
+  const otherHtml = [...otherSeries.values()].map(({ first, games }) => {
+    const s = allSeries.find((x) => x.id === first.series_id);
+    const winsOf = (name) => games.filter((g) => (g.winner === "a" ? g.team_a : g.team_b).toLowerCase() === name.toLowerCase()).length;
+    const [wa, wb] = s ? (s.home === m.team_a_id ? [s.home_score, s.away_score] : [s.away_score, s.home_score]) : [winsOf(m.team_a), winsOf(m.team_b)];
+    const lead = (wa ?? 0) >= (wb ?? 0) ? "a" : "b";
+    const stage = (s ? isPostseason(s) : playoffGame(first)) ? "Playoffs" : "Group stage";
+    const date = shortDate(new Date(first.start_time * 1000));
+    return `<a class="gm-chip s-${lead}" href="${src.link(first)}"><small>${stage} series · ${date}</small>${wa === wb ? `${wa ?? "?"}–${wb ?? "?"}` : `${esc(lead === "a" ? m.team_a : m.team_b)} ${Math.max(wa, wb)}–${Math.min(wa, wb)}`}</a>`;
+  }).join("");
   let seriesHtml = "";
-  if (others.length > 1) {
+  if (others.length > 1 || otherHtml) {
     const wins = { [m.team_a.toLowerCase()]: 0, [m.team_b.toLowerCase()]: 0 };
     for (const g of others) wins[(g.winner === "a" ? g.team_a : g.team_b).toLowerCase()]++;
     const s = inSeries ? src.cache()?.series?.find((x) => x.id === m.series_id) : null;
@@ -214,7 +235,7 @@ export async function renderMatch(id, src) {
         return g === m
           ? `<span class="gm-chip on s-${side}" aria-current="page"><small>Game ${n} · won by</small>${esc(win)}</span>`
           : `<a class="gm-chip s-${side}" href="${src.link(g)}"><small>Game ${n}${inSeries ? "" : ` · ${shortDate(g.createdAt)}`} · won by</small>${esc(win)}</a>`;
-      }).join("")}</nav>`;
+      }).join("")}${otherHtml}</nav>`;
   }
 
   // Key facts: MVP, the gold story, first Roshan, towers.

@@ -65,11 +65,7 @@ export function announcedRole(key, s) {
 }
 // Games PlayOn has no series for (and no announced one covers) that belong to a later week:
 // match id -> that week's start (unix seconds). Drop an entry when PlayOn posts its series.
-export const UNPOSTED_WEEK = {
-  9046934948: WEEK8 + 7 * 86400, // Champion upper bracket: Suck my Drama Piranhas v No Immortals, week 9 (game 1)
-  9046968812: WEEK8 + 7 * 86400, // game 2
-  9047014449: WEEK8 + 7 * 86400, // game 3
-};
+export const UNPOSTED_WEEK = {};
 // The scheduled time a game counts toward when it has no PlayOn series: its announced series'
 // time, or an UNPOSTED_WEEK entry. null otherwise (the game's own date is used).
 export function unpostedTime(m) {
