@@ -81,7 +81,9 @@ export function unpostedTime(m) {
 // listed. A bracket series PlayOn schedules earlier doesn't move it (Challenger's lower round 1
 // was posted for Sunday of week 8, after it had started); one already played is given to
 // everyone. List a league here to close it at another time.
-export const BRACKET_CLOSE = {};
+export const BRACKET_CLOSE = {
+  conqueror: Date.UTC(2026, 9, 22, 23) / 1000, // 7pm ET Thursday: a week 9 series was rescheduled to Wednesday 10/21
+};
 export const bracketClose = (key) => BRACKET_CLOSE[key] ?? WEEK8 + 7 * 86400;
 export const isPostseason = (s) => SEASON.regularEnd != null && (s.time ?? 0) > SEASON.regularEnd && !SEASON.regularIds.includes(s.id);
 export const groupStage = (series) => series.filter((s) => !isPostseason(s));
