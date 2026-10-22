@@ -5061,6 +5061,7 @@ div.me { display: flex; align-items: center; }
 .ft-art-thumb.src-crop .ft-art img { object-position: center top; transform: scale(1.25); }
 .ft-art-thumb.src-render .ft-art img { object-position: center 20%; transform: scale(1.35); }
 .ft-art-thumb[data-style]:not([data-style="stencil"]) .ft-art img { -webkit-mask: none; mask: none; }
+.ft-art-thumb[data-style="plain"] .ft-art img { filter: none; }
 .ft-art-thumb[data-style="clean"] .ft-art img { filter: contrast(1.08) saturate(1.12); }
 .ft-art-thumb[data-style="cinema"] .ft-art img { filter: contrast(1.18) saturate(.85) sepia(.18) brightness(.95); }
 .ft-art-thumb[data-style="ember"] .ft-art img { filter: url(#ft-ember) contrast(1.1); }

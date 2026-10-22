@@ -13,7 +13,7 @@ const DAY = 864e5;
 async function profileOf(account) {
   try {
     const c = JSON.parse(localStorage.getItem(PROFILE_KEY));
-    if (c?.account === account && Date.now() - c.at < DAY) return c;
+    if (c?.account === account && c.avatar && Date.now() - c.at < DAY) return c;
   } catch { /* storage blocked or empty */ }
   let p = { account, name: null, avatar: null, at: Date.now() };
   try {
@@ -21,7 +21,8 @@ async function profileOf(account) {
     const j = r.ok ? await r.json() : null;
     p = { ...p, name: j?.profile?.personaname ?? null, avatar: j?.profile?.avatarmedium ?? null };
   } catch { /* offline or OpenDota down: initials instead */ }
-  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch { /* not remembered */ }
+  // Only a real profile is kept: a failed call (rate limit, outage) is retried on the next load.
+  if (p.avatar) try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch { /* not remembered */ }
   return p;
 }
 

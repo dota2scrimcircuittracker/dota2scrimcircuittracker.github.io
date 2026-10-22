@@ -252,6 +252,10 @@ export function equipCosmetics(state, raw) {
   const letterCase=raw.letterCase??state.equipment?.letterCase??'lower';
   if(!LETTER_CASES.includes(letterCase))throw new Error('Choose lower or upper case.');
   if(letterCase==='upper')equipment.letterCase='upper';
+  // The signature's lettering on its own, 50% to 200% of the signature size (its flourish keeps that size); only non-100 is stored.
+  const textSize=raw.textSize??state.equipment?.textSize??100;
+  if(!Number.isInteger(textSize)||textSize<50||textSize>200)throw new Error('Choose a signature text size from 50% to 200%.');
+  if(textSize!==100)equipment.textSize=textSize;
   // The border's corner symbol shows unless the owner turns it off; only false is stored.
   const emblem=raw.emblem??state.equipment?.emblem??true;
   if(typeof emblem!=='boolean')throw new Error('Choose whether to show the border symbol.');

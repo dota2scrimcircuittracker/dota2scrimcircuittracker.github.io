@@ -148,6 +148,9 @@
 .signature-penmarks{position:absolute;inset:auto 0;top:50%;transform:translateY(-50%);width:100%;height:auto;overflow:visible;pointer-events:none;color:var(--signature-ink);}
 .signature-penmarks path{fill:none;stroke:currentColor;stroke-width:var(--pen-width,1.5);stroke-linecap:round;stroke-linejoin:round;opacity:.8;}
 .card-autograph .signature-penmarks{filter:drop-shadow(0 0 3px var(--signature-glow));}
+/* Name size: the lettering scales on its own; the flourish keeps the signature's size. */
+.card-autograph .autograph-lettering{scale:var(--sig-text,1);}
+.card-autograph .exp-signature-svg text{transform-box:fill-box;transform-origin:center;scale:var(--sig-text,1);}
 .signature-sample .signature-penmarks{opacity:.6;}
 .signature-glyph{display:inline-block;transform:translateY(var(--glyph-lift)) rotate(var(--glyph-tilt));}
 .signature-glyph:first-child{transform:translateY(var(--glyph-lift)) rotate(var(--glyph-tilt)) scale(1.24);transform-origin:right bottom;}
