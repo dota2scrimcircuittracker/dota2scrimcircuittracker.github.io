@@ -501,7 +501,8 @@ async function buildGame(id) {
 // series from them; a score PlayOn does enter replaces this on the next sync.
 function scoreFromGames(list, gameList) {
   for (const s of list) {
-    if (!s.time || s.time > Date.now() / 1000 || s.home_score || s.away_score) continue;
+    // No time check: a series played early (before PlayOn's date) is scored by its games too.
+    if (s.home_score || s.away_score) continue;
     const mine = gameList.filter((g) => g.series_id === s.id);
     if (!mine.length) continue;
     const won = (id) => mine.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === id).length;
