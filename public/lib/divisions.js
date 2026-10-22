@@ -82,7 +82,7 @@ export function unpostedTime(m) {
 // was posted for Sunday of week 8, after it had started); one already played is given to
 // everyone. List a league here to close it at another time.
 export const BRACKET_CLOSE = {
-  conqueror: Date.UTC(2026, 9, 22, 23) / 1000, // 7pm ET Thursday: a week 9 series was rescheduled to Wednesday 10/21
+  conqueror: Date.UTC(2026, 9, 22, 2) / 1000, // Wednesday 10/21 10pm ET: a week 9 series was rescheduled to that night
 };
 export const bracketClose = (key) => BRACKET_CLOSE[key] ?? WEEK8 + 7 * 86400;
 export const isPostseason = (s) => SEASON.regularEnd != null && (s.time ?? 0) > SEASON.regularEnd && !SEASON.regularIds.includes(s.id);
