@@ -5115,13 +5115,17 @@ div.me { display: flex; align-items: center; }
 /* Saved art framing applies identically to full-size and miniature cards. */
 .ft-card.ft-custom-crop .ft-front .ft-art img { height: 100%; object-position: var(--art-x) var(--art-y); transform-origin: var(--art-x) var(--art-y); transform: scale(var(--art-zoom)) rotate(var(--art-rot, 0deg)) scaleX(var(--art-flip, 1)); transition: none; }
 /* Once the picture's aspect is known, size it to cover the window without clipping it, so rotating shows more of
-   the picture instead of a card-shaped piece with dark corners. Same anchor as object-position above. */
-.ft-card.ft-custom-crop .ft-front .ft-art { container-type: size; }
-.ft-card.ft-custom-crop[style*="--art-ar"] .ft-front .ft-art img {
-  --w: max(100cqw, calc(var(--art-ar) * 100cqh)); --h: max(100cqh, calc(100cqw / var(--art-ar)));
-  position: absolute; max-width: none; width: var(--w); height: var(--h); object-fit: fill;
-  left: calc((100cqw - var(--w)) * var(--art-xf, .5)); top: calc((100cqh - var(--h)) * var(--art-yf, .5));
+   the picture instead of a card-shaped piece with dark corners. Same anchor as object-position above.
+   data-art-fit (lib/cosmetics.js setArtAspect) says which side fills the window; the other follows the picture.
+   Percentages, not container units: Safari miscomputes those inside a zoomed card (fitDesignCards), so phone
+   cards showed the picture small and off its anchor. */
+.ft-card.ft-custom-crop[data-art-fit] .ft-front .ft-art img {
+  position: absolute; max-width: none; max-height: none; object-fit: fill;
+  left: calc(var(--art-xf, .5) * 100%); top: calc(var(--art-yf, .5) * 100%);
+  translate: calc(var(--art-xf, .5) * -100%) calc(var(--art-yf, .5) * -100%);
 }
+.ft-card.ft-custom-crop[data-art-fit="h"] .ft-front .ft-art img { height: 100%; width: auto; min-width: 100%; }
+.ft-card.ft-custom-crop[data-art-fit="w"] .ft-front .ft-art img { width: 100%; height: auto; min-height: 100%; }
 .ft-mine-card .ft-front { touch-action: none; user-select: none; }
 .ft-mine-card .ft-front .ft-art img { -webkit-user-drag: none; }
 .ft-mine-card .ft-card.own .ft-front { cursor: grab; }

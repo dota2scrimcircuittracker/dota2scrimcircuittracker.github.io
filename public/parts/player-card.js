@@ -4,7 +4,7 @@ import { playerKey } from "../lib/stats.js";
 import { heroById, heroImg, heroVert, HERO_META } from "../lib/hero-meta.js";
 import { cardArtwork } from "../lib/card-art.js";
 import { teamLogoHtml } from "../lib/team-logos.js";
-import { cosmeticAttributes, cosmeticLayers, cosmeticBorder, cosmeticEmblems, playerEquipment, playerNickname } from '../lib/cosmetics.js';
+import { cosmeticAttributes, cosmeticLayers, cosmeticBorder, cosmeticEmblems, playerEquipment, playerNickname, setArtAspect } from '../lib/cosmetics.js';
 import { BACK_STATS, backStats, backPartShown, partState } from '../lib/card-layout.js';
 import { plusSlot } from "../lib/hero-levels.js";
 
@@ -12,7 +12,7 @@ import { plusSlot } from "../lib/hero-levels.js";
 // instead of a clipped card-shaped piece (style.css .ft-custom-crop). Cards are HTML strings, so catch every load.
 document.addEventListener("load", (e) => {
   const img = e.target, card = img.closest?.(".ft-card.ft-custom-crop");
-  if (img.tagName === "IMG" && card && img.closest(".ft-art") && img.naturalWidth) card.style.setProperty("--art-ar", img.naturalWidth / img.naturalHeight);
+  if (img.tagName === "IMG" && card && img.closest(".ft-art")) setArtAspect(card, img);
 }, true);
 
 // The cards' hero art filters. Each hero has its own art and style (lib/hero-art.js, picked by

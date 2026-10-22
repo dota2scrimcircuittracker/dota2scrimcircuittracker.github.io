@@ -147,6 +147,13 @@ export const cosmeticEmblems=e=>symbolLayers(e,true);
 // The frame belongs beside the faces; the front's overflow clips artwork to its inner window.
 export const cosmeticBorder=e=>expansionBorderHtml(itemByKey(`border:${e?.border}`),{settings:e?.borderSettings?.[e?.border]});
 const renderedEquipment=new WeakMap(),aspectImages=new WeakSet();
+// Whether a custom-cropped picture is wider than its art window, so style.css can size it to cover the window
+// (data-art-fit). A hidden card has no window to measure yet, so it uses the card's 5:7.
+export function setArtAspect(card,img){
+  if(!img.naturalWidth)return;
+  const box=img.closest('.ft-art'),boxAr=box?.clientHeight?box.clientWidth/box.clientHeight:5/7;
+  card.dataset.artFit=img.naturalWidth/img.naturalHeight>boxAr?'h':'w';
+}
 export function applyEquipment(card,e,name) {
   if(!card)return;
   const keys=equipmentUpdateKeys(e,name),previous=renderedEquipment.get(card)??{};
@@ -164,7 +171,7 @@ export function applyEquipment(card,e,name) {
       const host=card.querySelector('.ft-art');let img=host.querySelector('img');
       if(!img){img=document.createElement('img');img.alt='';host.append(img);}if(img.getAttribute('src')!==art.src)img.src=art.src;
       // The picture's aspect lets a rotated crop show the whole image under the frame, not a clipped card-shaped piece.
-      const aspect=()=>{if(img.naturalWidth)card.style.setProperty('--art-ar',img.naturalWidth/img.naturalHeight);};if(!aspectImages.has(img)){aspectImages.add(img);img.addEventListener('load',aspect);}aspect();
+      const aspect=()=>setArtAspect(card,img);if(!aspectImages.has(img)){aspectImages.add(img);img.addEventListener('load',aspect);}aspect();
       img.dataset.wide=heroImg(heroById(hero)?.name)??'';
       card.classList.toggle('ft-custom-crop',!!art.crop);
       if(art.crop){for(const k of ['x','y']){card.style.setProperty(`--art-${k}`,`${art.crop[k]}%`);card.style.setProperty(`--art-${k}f`,art.crop[k]/100);}card.style.setProperty('--art-zoom',art.crop.zoom);card.style.setProperty('--art-rot',`${art.crop.rot??0}deg`);card.style.setProperty('--art-flip',art.crop.flip?-1:1);}
