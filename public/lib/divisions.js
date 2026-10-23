@@ -84,7 +84,7 @@ export const bracketClose = (key) => BRACKET_CLOSE[key] ?? WEEK8 + 7 * 86400;
 // One person's later deadline, per league: uid -> unix seconds. Their bracket stays open for
 // them until then and counts if sent before it; everyone else keeps the league's.
 export const BRACKET_EXTEND = {
-  heroic: { "steam:72046975": Date.UTC(2026, 9, 23, 19, 36) / 1000 }, // Rusty Shackleford: his bracket didn't save
+  heroic: { "steam:72046975": Date.UTC(2026, 9, 23, 23, 36) / 1000 }, // Rusty Shackleford: his bracket didn't save
 };
 export const bracketCloseFor = (key, uid) => Math.max(bracketClose(key), BRACKET_EXTEND[key]?.[uid] ?? 0);
 export const isPostseason = (s) => SEASON.regularEnd != null && (s.time ?? 0) > SEASON.regularEnd && !SEASON.regularIds.includes(s.id);
