@@ -289,17 +289,34 @@ export async function renderPredict(src) {
   </table></div>` : "";
   // The two bracket boards. Playoff brackets: a name or score opens the bracket they sent.
   const champOf = (f) => f.champions.map(([, c]) => esc(teamName[c] ?? "—")).join(" / ");
-  const finalsHtml = finals.length ? `${bracketsOpen ? "" : `<h3 class="pb-sub">Playoff brackets</h3>`}<div class="table-wrap sticky-name"><table class="pred-board pb-brackets">
+  // Tied scores share a rank: 1 + how many scored more.
+  const finalRank = (i) => finals.findIndex((x) => x.points === finals[i].points) + 1;
+  const finalsHtml = finals.length ? `<div class="table-wrap sticky-name"><table class="pred-board pb-brackets">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Points${info("playoff_pts")}</th><th scope="col" class="l">Champion pick</th></tr></thead>
-    <tbody>${finals.map((f, i) => `<tr class="${uids.includes(f.uid) ? "me" : ""}"><td class="rank${i < 3 && f.points ? " lead" : ""}">${String(i + 1).padStart(2, "0")}</td>
+    <tbody>${finals.map((f, i) => `<tr class="${uids.includes(f.uid) ? "me" : ""}"><td class="rank${finalRank(i) <= 3 && f.points ? " lead" : ""}">${String(finalRank(i)).padStart(2, "0")}</td>
       <td class="l"><button type="button" class="linkish pb-final" data-final="${i}" title="Open ${esc(f.name)}'s bracket"><i class="pb-dot" aria-hidden="true"></i>${esc(f.name)}</button>${f.open && !f.fix ? ' <span class="tag" title="The bracket changed to the PlayOn layout after this was sent; some matches still need a pick">needs a fix</span>' : ""}</td>
       <td class="num"><button type="button" class="pb-final pb-score" data-final="${i}" title="Open ${esc(f.name)}'s bracket">${f.points}</button></td><td class="l">${champOf(f)}</td></tr>`).join("")}</tbody></table></div>` : "";
   const groupTable = groupBrackets.length ? `<div class="table-wrap sticky-name"><table class="pred-board">
     <thead><tr><th scope="col" class="rank">#</th><th scope="col" class="l">Name</th><th scope="col">Bracket${info("bracket_pts")}</th></tr></thead>
     <tbody>${groupBrackets.map((g, i) => `<tr class="${g.k === myKey ? "me" : ""}"><td class="rank">${String(i + 1).padStart(2, "0")}</td><td class="l">${esc(g.name)}</td>
-      <td class="num">${g.points}<span class="muted">/${ps.decided.length}</span></td></tr>`).join("")}</tbody></table></div>
-    <p class="table-note keep">Brackets saved from series calls before the playoffs started: 1 point per bracket match whose winner was picked.</p>` : "";
-  const groupHtml = groupTable ? `<details class="how"><summary>Group-stage brackets</summary>${groupTable}</details>` : "";
+      <td class="num">${g.points}<span class="muted">/${ps.decided.length}</span></td></tr>`).join("")}</tbody></table></div>` : "";
+  // A titled card around one board: heading and a one-line hint above the table.
+  const boardCard = (title, hint, body, cls = "") => `<section class="pb-card ${cls}"><header class="pb-card-h"><h2>${title}</h2>${hint ? `<p>${hint}</p>` : ""}</header>${body}</section>`;
+  // Playoffs: four headline numbers over the boards (leader, you, brackets in, the crowd's champion).
+  const summaryHtml = bracketsOpen && finals.length ? (() => {
+    const top = finals.filter((f) => f.points === finals[0].points);
+    const mine = finals.findIndex((f) => uids.includes(f.uid));
+    const champs = new Map();
+    for (const f of finals) for (const [, c] of f.champions) if (c != null) champs.set(c, (champs.get(c) ?? 0) + 1);
+    const [champ, champN] = [...champs].sort((a, b) => b[1] - a[1])[0] ?? [];
+    const tile = (lbl, big, sub) => `<div class="pb-tile"><span class="pb-tile-l">${lbl}</span><b class="pb-tile-v">${big}</b><span class="pb-tile-s">${sub}</span></div>`;
+    return `<div class="pb-summary">
+      ${tile("Leading", top.length > 1 ? `${top.length} tied` : esc(top[0].name), `${finals[0].points} points${top.length > 1 ? " each" : ""}`)}
+      ${tile("You", mine >= 0 ? `#${finalRank(mine)}` : "—", mine >= 0 ? `${finals[mine].points} points · of ${finals.length}` : `<button type="button" class="linkish" data-tobracket>Make your bracket →</button>`)}
+      ${tile("Brackets in", finals.length, "submitted before the deadline")}
+      ${tile("Crowd's champion", champ != null ? esc(teamName[champ] ?? "—") : "—", champ != null ? `${champN} of ${finals.length} brackets` : "no picks yet")}
+    </div>`;
+  })() : "";
   // One played night: each series' result and how the model, the crowd and you called it.
   const dayLabel = (t, month = "short") => new Date(t * 1000).toLocaleDateString(undefined, { weekday: "long", month, day: "numeric" });
   const nightTable = (t) => {
@@ -375,22 +392,28 @@ export async function renderPredict(src) {
       <p>The model's call takes the favourite 2–0, even when 1–1 is the likeliest single result. It only calls 1–1 when per-game odds are within ${TIE_EDGE * 100} points of 50%. The odds are more cautious: past results haven't predicted the next week much better than a coin flip, so most series look close. Replayed over the season, its calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>The two games in a series aren't independent: the better team on the night tends to win both, and only about a third of series have ended 1–1. So an even match is 33% / 33% / 33%, not 25% / 50% / 25%. Current settings: pull ${params.lambda}, medal weight ${params.beta}.</p>
     </details>`;
-  const seriesBoard = boardHtml ? `${boardHtml}<p class="table-note">Points = correct calls / series called. Columns on the right are this week's picks. <b>Click a name</b> for their pick history and bracket.</p>` : `<div class="panel empty">No picks yet.</div>`;
+  const seriesBoard = boardCard(bracketsOpen ? "Series picks" : "Leaderboard",
+    boardHtml ? `Correct calls / series called.${week.length ? " The columns on the right are this week's picks." : ""} <b>Click a name</b> for their history and bracket.` : "",
+    boardHtml || `<p class="pb-card-empty">No picks yet.</p>`);
+  const finalsCard = finalsHtml ? boardCard("Playoff brackets", `<b>Click a name or score</b> to open their bracket.`, finalsHtml, "pb-card-main")
+    : boardCard("Playoff brackets", "", `<p class="pb-card-empty">No brackets submitted yet. <button type="button" class="linkish" data-tobracket>Make yours on the Bracket tab →</button></p>`, "pb-card-main");
+  const groupCard = boardCard("Group-stage brackets", "1 point per bracket match whose winner was picked, from brackets saved before the playoffs.",
+    groupTable || `<p class="pb-card-empty">No group-stage brackets scored yet.</p>`);
   // A clicked name's picks and bracket (the model's too), folded under the series board.
   const pbFold = boardHtml ? `<details class="how pb-fold" id="pb-fold"><summary id="pb-sum">Your picks</summary><section class="pb-view" id="pb-view" aria-live="polite"><p class="muted">Loading…</p></section></details>` : "";
   // In the playoffs the bracket board comes first; series picks follow under their own heading.
+  // Wide screens: the main board on the left, the smaller boards stacked beside it.
   const boardTab = bracketsOpen ? `
-    <h2>Bracket leaderboard</h2>
-    ${finalsHtml ? `${finalsHtml}<p class="table-note keep">Points from submitted brackets${info("playoff_pts")}. <b>Click a name or score</b> to open their bracket.</p>` : `<div class="panel empty">No brackets submitted yet. <button type="button" class="linkish" data-tobracket>Make yours on the Bracket tab →</button></div>`}
-    <h2>Group-stage bracket leaderboard</h2>
-    ${groupTable || `<div class="panel empty">No group-stage brackets scored yet.</div>`}
-    <h2>Series picks</h2>
-    ${seriesBoard}
+    ${summaryHtml}
+    <div class="pb-grid">
+      ${finalsCard}
+      <div class="pb-side">${seriesBoard}${groupCard}</div>
+    </div>
     ${pbFold}` : `
-    <h2>Leaderboard</h2>
-    ${seriesBoard}
-    ${finalsHtml}
-    ${groupHtml}
+    <div class="pb-grid${finalsHtml || groupTable ? "" : " pb-grid-one"}">
+      <div class="pb-card-main">${seriesBoard}</div>
+      ${finalsHtml || groupTable ? `<div class="pb-side">${finalsHtml ? finalsCard : ""}${groupTable ? groupCard : ""}</div>` : ""}
+    </div>
     ${pbFold}
     ${past ? `<details class="how"><summary>Past weeks</summary>${past}<p class="table-note">Model: its pick that week, using only earlier results. Crowd: the most-picked call and how many made it. Picks made after a series started don't count.</p></details>` : ""}`;
   const tabs = playerTabs(pageTabs(bracketsOpen ? PREDICT_TABS.map((t) => (t[0] === "board" ? ["board", "Bracket leaderboard", ...t.slice(2)] : t)) : PREDICT_TABS, src, [

@@ -1940,6 +1940,30 @@ button.linkish:hover { text-decoration: underline; }
 .pred-board tr:has(.pb-who[aria-pressed="true"]) td { background: rgba(var(--accent-rgb), .12); }
 .pb-view { margin: 22px 0 8px; scroll-margin-top: 70px; }
 .pb-fold { margin-top: 18px; }
+/* Fantasy Leaderboard tab: headline tiles, then the main board beside the smaller ones. */
+.pb-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 4px 0 20px; }
+.pb-tile { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: linear-gradient(180deg, var(--stone-2), var(--stone)); border: 1px solid var(--seam); border-top: 2px solid var(--accent); min-width: 0; }
+.pb-tile-l { font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dust); }
+.pb-tile-v { font: 800 26px/1.05 var(--display); text-transform: uppercase; color: var(--bone); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-tile-s { font-size: 13px; color: var(--dust); }
+.pb-tile-s .linkish { font: inherit; letter-spacing: normal; text-transform: none; text-align: left; padding: 0; color: var(--accent); }
+.pb-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pb-grid-one { grid-template-columns: minmax(0, 1fr); }
+.pb-side { display: grid; gap: 20px; min-width: 0; }
+.pb-card { background: linear-gradient(180deg, var(--stone-2), var(--stone)); border: 1px solid var(--seam); min-width: 0; }
+.pb-card-h { padding: 16px 18px 12px; border-bottom: 1px solid var(--seam); }
+.pb-card-h h2 { margin: 0; }
+.pb-card-h p { margin: 6px 0 0; font-size: 13px; color: var(--dust); }
+.pb-card .table-wrap:has(> .pred-board) { width: auto; margin: 0; border: 0; }
+.pb-card .pred-board { width: 100%; }
+.pb-card-empty { margin: 0; padding: 28px 18px; text-align: center; color: var(--dust); }
+@media (max-width: 1100px) { .pb-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .pb-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .pb-tile { padding: 10px 12px; }
+  .pb-tile-v { font-size: 20px; }
+  .pb-card-h { padding: 12px 12px 10px; }
+}
 /* Player Heroes: recent pubs, pub practice and all-time totals, folded under one header. */
 details.pubs-fold { margin-top: 28px; }
 details.pubs-fold > summary { font-size: 12px; }
