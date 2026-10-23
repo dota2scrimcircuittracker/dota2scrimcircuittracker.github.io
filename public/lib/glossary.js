@@ -246,7 +246,6 @@ export const INFO = {
   hero_grid: "Dota's hero grid (the picker in the pick screen) can hold your own layouts. Boxes sit where they do in Dota, with heroes shrunk to fit. Red boxes are the enemy, grey are bans against them, green are your team (set My team here or under the settings cog). Pick a template or customise one: drag a box by its name bar, resize it from the corner, drag heroes in from anywhere on the page, onto another hero to put them there, or off a box to take them out. Click a box to rename it or change what it holds or which side it reads. Bottom-right number: games (threats: the model's chance to win with it; bans: points it adds to them). Green outline and top-left number: pubs on that hero in the last 30 days. Saved in this browser; your file never leaves it.",
   team_pairs: "Every two players who played together for this team, and their record together.",
   lead_conversion: "Record in games where they were ahead (or behind) on gold at that minute. Games that ended before it don't count.",
-  medal_rating: "Each player's PlayOn medal against their tier-list rating. The dashed line is what players of each medal usually rate here; the names are the farthest above and below it.",
   fb_win_rate: "How often the team that got the first hero kill went on to win, over every game with kill logs.",
   fb_death_rate: "Share of games where they were first blood's victim.",
   radiant_rate: "How often Radiant (bottom left) won, over every game with a draft.",

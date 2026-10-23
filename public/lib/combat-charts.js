@@ -2,7 +2,7 @@
 // (streaks reached, multi-kills, game length, deaths by source, benchmarks), the medal-vs-rating
 // scatter, a hero's skill-build grid and each player's build order. No library: SVG for the
 // timeline and scatter, plain HTML bars for the rest (they reflow on a phone). Hover = <title>.
-import { streakRuns, multiKillsOf, streakName, MULTI, STREAKS, DEATH_SOURCES, BENCH, medalFit } from "./combat.js";
+import { streakRuns, multiKillsOf, streakName, MULTI, STREAKS, DEATH_SOURCES, BENCH } from "./combat.js";
 import { heroImg } from "./hero-meta.js";
 import { itemIcon, itemCost, clock } from "./items.js";
 import { ITEMS } from "./items-data.js";
@@ -157,40 +157,6 @@ export function lengthHtml(buckets) {
   const rows = buckets.map((b) => ({ label: b.label, value: b.games ? b.wins / b.games : 0, text: b.games ? `${b.wins}–${b.games - b.wins}` : "—",
     sub: b.games ? pct(b.wins / b.games) : "no games", cls: !b.games ? "none" : b.wins * 2 > b.games ? "hot" : b.wins * 2 < b.games ? "cold" : "" }));
   return barRowsHtml(rows, { max: 1, mid: 0.5, cls: "len" });
-}
-
-// ---------- medal vs rating (Players tab) ----------
-// points: [{ key, name, medal (medalValue), rank (label), rating, tier, href }]
-const MEDALS = ["Herald", "Guardian", "Crusader", "Archon", "Legend", "Ancient", "Divine", "Immortal"];
-export function medalScatterHtml(points, { id = "medal-scatter" } = {}) {
-  const fit = medalFit(points);
-  if (!fit) return "";
-  const W = 800, H = 340, L = 44, R = 16, T = 16, B = 34;
-  const ps = fit.points, lo = Math.max(1, Math.min(...ps.map((p) => p.medal)) - 1), hi = Math.min(36, Math.max(...ps.map((p) => p.medal)) + 1);
-  const x = (v) => L + ((v - lo) / Math.max(1, hi - lo)) * (W - L - R), y = (v) => T + (1 - v / 100) * (H - T - B);
-  let grid = "";
-  for (const v of [0, 25, 50, 75, 100]) grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v}</text>`;
-  MEDALS.forEach((name, i) => {
-    const at = i * 5 + 1;
-    if (at < lo - 4 || at > hi) return;
-    grid += `<line class="grid" x1="${x(Math.max(lo, at))}" x2="${x(Math.max(lo, at))}" y1="${T}" y2="${H - B}"/><text class="tick" x="${x(Math.min(hi, Math.max(lo, at) + (i === 7 ? 0 : 2)))}" y="${H - 12}" text-anchor="middle">${name}</text>`;
-  });
-  // Spread players with the same medal sideways so they don't hide each other.
-  const seen = new Map();
-  const jitter = (p) => { const k = `${p.medal}:${Math.round(p.rating / 4)}`, n = seen.get(k) ?? 0; seen.set(k, n + 1); return (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 5; };
-  const sorted = [...ps].sort((a, b) => b.gap - a.gap), over = sorted.slice(0, 3), under = sorted.slice(-3);
-  const labelled = new Set([...over, ...under]);
-  const dots = ps.map((p) => {
-    const cx = x(p.medal) + jitter(p), cy = y(p.rating);
-    const tip = `${p.name}: ${p.rank ?? "no medal"}, rating ${p.rating} (${p.tier}) · ${p.gap >= 0 ? "+" : "−"}${Math.abs(Math.round(p.gap))} vs the line`;
-    return `<a href="${esc(p.href)}" class="ms-dot t-${p.tier}${labelled.has(p) ? " lab" : ""}"><title>${esc(tip)}</title><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${labelled.has(p) ? 5.5 : 4}"/>
-      ${labelled.has(p) ? `<text x="${(cx > W - 160 ? cx - 8 : cx + 8).toFixed(1)}" y="${(cy + 4).toFixed(1)}" text-anchor="${cx > W - 160 ? "end" : "start"}" class="${over.includes(p) ? "up" : "down"}">${esc(p.name)}</text>` : ""}</a>`;
-  }).join("");
-  const line = `<line class="ms-fit" x1="${x(lo)}" x2="${x(hi)}" y1="${y(Math.max(0, Math.min(100, fit.at(lo))))}" y2="${y(Math.max(0, Math.min(100, fit.at(hi))))}"/>`;
-  const list = (xs, cls) => xs.map((p) => `<a class="ms-chip ${cls}" href="${esc(p.href)}">${esc(p.name)} <small>${esc(p.rank ?? "")} · ${p.gap >= 0 ? "+" : "−"}${Math.abs(Math.round(p.gap))}</small></a>`).join("");
-  return `<figure class="chart ms-chart" id="${id}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Medal against tier rating">${grid}${line}${dots}</svg>
-    <figcaption class="chart-read">Each dot is a player with a tier rating: medal across, rating up, coloured by tier. Dashed: the rating players of each medal usually get here. Above the line = playing above their medal. Click a dot for the player.</figcaption></figure>
-    <div class="ms-lists"><div><span class="sum-k">Above their medal</span>${list(over, "up")}</div><div><span class="sum-k">Below their medal</span>${list([...under].reverse(), "down")}</div></div>`;
 }
 
 // ---------- skill builds (hero page) ----------

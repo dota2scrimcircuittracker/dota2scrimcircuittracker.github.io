@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { firstBloodRecord, streakRuns, bestStreakOf, multiKillsOf, firstBloodOf, deathSources, fullDeathLog, teamSplits, playerPairs, sideRecord, heroPairs, heroNeutrals, skillGrid, pubPrep, medalValue, medalFit, pausesOf, hitSource, heroOfSlug, benchSummary, combatTotals } from "../public/lib/combat.js";
 import { combatSummary } from "../public/lib/stats.js";
 import { combatFields, gameExtras, detailOf, firstBloodFrom, firstDeathOf } from "../scripts/sync/combat-fields.js";
-import { streakChartHtml, skillGridHtml, buildOrderHtml, medalScatterHtml } from "../public/lib/combat-charts.js";
+import { streakChartHtml, skillGridHtml, buildOrderHtml } from "../public/lib/combat-charts.js";
 
 // death_log entry: [second, killer, gold lost, seconds dead, x, y]
 const death = (t, killer, gold = 100) => [t, killer, gold, 20, -1, -1];
@@ -220,7 +220,6 @@ test("charts render from a game", () => {
   const bo = buildOrderHtml(m, m.players.map(() => ({ buy: ["tango", -80, "branches", -80, "blink", 600, "recipe_x", 700], skills: [] })));
   assert.match(bo, /Blink Dagger/);
   assert.doesNotMatch(bo, /recipe_x/);
-  assert.equal(medalScatterHtml([{ medal: 1, rating: 1 }]), "");
 });
 
 test("first blood from OpenDota: the flagged killer's first kill and its victim", () => {

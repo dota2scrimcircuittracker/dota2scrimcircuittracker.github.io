@@ -2127,6 +2127,40 @@ h2 > button.info { margin-left: -8px; }
 .ld-meter i { display: block; height: 100%; width: calc(var(--m) * 100%); background: var(--bc); box-shadow: 0 0 10px rgba(var(--bc-rgb), .6); }
 .ld-spill { border-style: dashed; border-top-style: solid; background: var(--stone-2); }
 .ld-spill .ld-name { color: var(--dust); }
+/* 4th–15th: one compact row each between the top and bottom 3. */
+.ld-band-mid .ld-tag { background: var(--seam-2); color: var(--bone); }
+/* Two columns read down: 4th–9th on the left, 10th–15th on the right. */
+.ld-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); grid-auto-flow: column; align-content: start; gap: 6px 8px; padding: 12px 14px 12px 18px; }
+.ld-row {
+  display: grid; grid-template-columns: 34px 52px minmax(0, 1fr) minmax(60px, 22%) 64px; align-items: center; gap: 12px;
+  padding: 8px 12px; background: var(--stone-2); border: 1px solid var(--seam-2); transition: border-color .12s;
+}
+.ld-row:hover { border-color: var(--dust); }
+.ld-row.ov { border-color: rgba(var(--accent-rgb), .5); }
+.ld-row-spill { border-style: dashed; }
+.ld-row-spill .ld-row-name { color: var(--dust); }
+.ld-row-spill .ld-row-art { opacity: 0; }
+.ld-row-n { font: 900 24px/1 var(--display); color: var(--dust); text-align: right; }
+.ld-row-n small { font: 600 11px var(--mono); margin-right: 1px; }
+.ld-row-art { width: 52px; height: 29px; object-fit: cover; opacity: .85; background: var(--stone); }
+.ld-row-who { min-width: 0; }
+.ld-row-name { display: flex; align-items: center; gap: 8px; font: 900 17px/1.1 var(--display); overflow: hidden; white-space: nowrap; }
+.ld-row-name a { color: var(--bone); overflow: hidden; text-overflow: ellipsis; }
+.ld-row-name a:hover { color: var(--accent); text-decoration: none; }
+/* A long team name shortens; the game count stays whole. */
+.ld-row .ld-meta { margin-top: 2px; display: flex; align-items: center; white-space: pre; }
+.ld-row .ld-meta > a { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ld-row-bar { height: 4px; background: rgba(255, 255, 255, .06); }
+.ld-row-bar i { display: block; height: 100%; width: calc(var(--m) * 100%); background: var(--dust); }
+.ld-row-val { font: 900 22px/1 var(--display); color: var(--bone); text-align: right; }
+@media (max-width: 1400px) { .ld-rows { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-flow: row; } }
+@media (max-width: 1000px) {
+  .ld-rows { padding: 8px; }
+  .ld-row { grid-template-columns: 26px minmax(0, 1fr) 56px; gap: 10px; padding: 8px 10px; }
+  .ld-row-art, .ld-row-bar { display: none; }
+  .ld-row-n { font-size: 20px; }
+  .ld-row-val { font-size: 19px; }
+}
 @media (max-width: 1000px) {
   .ld-band { grid-template-columns: 56px minmax(0, 1fr); }
   .ld-arrow { font-size: 30px; }
@@ -3727,19 +3761,6 @@ figure.chart .sk-multi.big circle { stroke: var(--gold); stroke-width: 2; }
 .ds-killer { display: inline-flex; align-items: center; gap: 6px; }
 .ds-killer img { width: 32px; height: 18px; object-fit: cover; border: 1px solid var(--seam); }
 
-/* Medal vs rating scatter */
-figure.chart .ms-dot circle { fill: var(--tc, var(--dust)); stroke: var(--stone); stroke-width: 1; opacity: .85; }
-figure.chart .ms-dot:hover circle { opacity: 1; stroke: var(--bone); }
-figure.chart .ms-dot text { font: 600 11px var(--mono); stroke: var(--stone); stroke-width: 3px; paint-order: stroke; }
-figure.chart .ms-dot text.up { fill: var(--jade); }
-figure.chart .ms-dot text.down { fill: var(--ember); }
-figure.chart .ms-fit { stroke: var(--bone); stroke-width: 1.4; stroke-dasharray: 6 5; opacity: .55; }
-.ms-lists { display: grid; gap: 8px; margin: 6px 0 4px; }
-.ms-lists > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.ms-chip { font-size: 13px; padding: 3px 8px; border: 1px solid var(--seam); }
-.ms-chip small { font: 500 12px var(--mono); color: var(--dust); }
-.ms-chip.up { border-color: var(--jade); }
-.ms-chip.down { border-color: var(--ember); }
 
 /* Skill-build grid */
 .sg { border-collapse: collapse; font-size: 12px; }

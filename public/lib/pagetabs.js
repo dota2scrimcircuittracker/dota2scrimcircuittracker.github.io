@@ -19,10 +19,9 @@ export const HERO_TABS = [
   ["stats", "Stats"], ["players", "Players"], ["draft", "Draft"], ["matchups", "Matchups"], ["combat", "Combat"],
   ["lanes", "Laning", { ad2l: true }], ["items", "Items & skills"], ["map", "Map"], ["games", "Games"], ["analysis", "Analysis"],
 ];
-// The league's Players page. Laning and Medal vs rating need AD2L's replays and medals.
+// The league's Players page. Laning needs AD2L's replays.
 export const PLAYERS_PAGE_TABS = [
-  ["tiers", "Tier list"], ["leaders", "Stat leaders"], ["lanes", "Laning", { ad2l: true }],
-  ["medal", "Medal vs rating", { ad2l: true }], ["stats", "All stats"],
+  ["tiers", "Tier list"], ["leaders", "Stat leaders"], ["lanes", "Laning", { ad2l: true }], ["stats", "All stats"],
 ];
 // The league's Heroes page.
 export const HEROES_PAGE_TABS = [["tiers", "Hero tiers"], ["players", "Players on heroes"], ["table", "All heroes"]];

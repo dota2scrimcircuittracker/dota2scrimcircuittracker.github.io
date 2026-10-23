@@ -1,13 +1,10 @@
-// Players tab: tier list, stat leaders, laning, medal vs rating and the full stats table, one
+// Players tab: tier list, stat leaders, laning and the full stats table, one
 // tab each (lib/pagetabs.js PLAYERS_PAGE_TABS, which the nav dropdown lists too).
 import { hasDetails, playerLeaderboard } from "../lib/stats.js";
-import { tierList, rankLabel } from "../lib/tiers.js";
 import { pubSummary, pubsSince } from "../lib/predict.js";
 import { info } from "../lib/glossary.js";
 import { RANK_STATS, rankStat, ends, placeOf, ordinal, formatStat } from "../lib/ranks.js";
-import { medalValue } from "../lib/combat.js";
-import { medalScatterHtml } from "../lib/combat-charts.js";
-import { floorOf, inLeague, portrait, overallBadge, playerLink, teamLink, esc, LEAGUE_COUNT, app, pageHead, playerTabs, wirePlayerTabs, playerHref, pubStart, sortableTable, pct, fmt, dec, PUB_DAYS, heroStrip } from "../core.js";
+import { floorOf, inLeague, portrait, overallBadge, playerLink, teamLink, esc, LEAGUE_COUNT, app, pageHead, playerTabs, wirePlayerTabs, pubStart, sortableTable, pct, fmt, dec, PUB_DAYS, heroStrip } from "../core.js";
 import { loading, errorBox, weekOfFn, lanesSection, laneCutsOf } from "../parts/lanes.js";
 import { overallStats, statRows } from "../parts/ranks.js";
 import { meter, tierSection, tierRef } from "../parts/tiers.js";
@@ -64,7 +61,39 @@ function leadersSection(src, allRows) {
         <div class="ld-tag"><span class="ld-arrow">${end === "top" ? "▲" : "▼"}</span><span>${label}</span></div>
         <div class="ld-plates reveal">${xs.length || sp ? `${xs.map((r, i) => plate(r, i, end)).join("")}${spill(sp, end, xs.length)}` : `<div class="tier-empty">Nobody with ${floorOf(src)}+ games yet</div>`}</div>
       </div>`;
-    el.querySelector(".ld-lists").innerHTML = `${band("top", stat.low ? "Top 3 · fewest" : "Top 3", top, top_spill)}${band("bottom", stat.low ? "Bottom 3 · most" : "Bottom 3", bottom, bottom_spill)}`;
+    // Between the two: the next 12, down to 15th, as compact rows.
+    const onEnds = new Set([...top, ...bottom]);
+    const upTo15 = ranked.filter((r) => !onEnds.has(r)).map((r) => [r, placeOf(ranked, (x) => x === r, val)]).filter(([, p]) => p.rank <= 15);
+    let mid = upTo15.slice(0, 12), midSpill = null;
+    // A tie that runs past the 12 is named as a group, like the ends do.
+    const cutAt = mid.at(-1)?.[1];
+    if (upTo15.length > 12 && upTo15[12][1].rank === cutAt.rank) {
+      midSpill = { place: cutAt, sample: mid.at(-1)[0] };
+      mid = mid.filter(([, p]) => p.rank !== cutAt.rank);
+    }
+    const row = ([r, mine], i) => {
+      const pl = pool && placeOf(pool, inLeague(src, r.key), val);
+      const hero = r.hero_list?.[0]?.hero;
+      return `<div class="ld-row${pl?.end ? " ov" : ""}" style="--i:${i}; --m:${meter(val(r)).toFixed(3)}">
+        <span class="ld-row-n">${mine.tied > 1 ? `<small>T</small>` : ""}${mine.rank}</span>
+        ${hero ? portrait(hero, "ld-row-art") : '<span class="ld-row-art"></span>'}
+        <div class="ld-row-who"><div class="ld-row-name">${playerLink(src, r)}${overallBadge(pl)}</div><div class="ld-meta">${r.team ? `${teamLink(src, r.team)} · ` : ""}${r.games} games</div></div>
+        <div class="ld-row-bar"><i></i></div>
+        <b class="ld-row-val">${formatStat(stat, val(r))}</b>
+      </div>`;
+    };
+    const spillRow = midSpill ? `<div class="ld-row ld-row-spill" style="--i:${mid.length}; --m:${meter(val(midSpill.sample)).toFixed(3)}">
+        <span class="ld-row-n"><small>T</small>${midSpill.place.rank}</span><span class="ld-row-art"></span>
+        <div class="ld-row-who"><div class="ld-row-name">${midSpill.place.tied} players</div><div class="ld-meta">all on the same number</div></div>
+        <div class="ld-row-bar"><i></i></div>
+        <b class="ld-row-val">${formatStat(stat, val(midSpill.sample))}</b>
+      </div>` : "";
+    const lastRank = (midSpill?.place ?? mid.at(-1)?.[1])?.rank;
+    const midBand = mid.length || midSpill ? `<div class="ld-band ld-band-mid">
+        <div class="ld-tag"><span>${ordinal((mid[0]?.[1] ?? midSpill.place).rank)}–${ordinal(lastRank)}</span></div>
+        <div class="ld-rows reveal">${mid.map(row).join("")}${spillRow}</div>
+      </div>` : "";
+    el.querySelector(".ld-lists").innerHTML = `${band("top", stat.low ? "Top 3 · fewest" : "Top 3", top, top_spill)}${midBand}${band("bottom", stat.low ? "Bottom 3 · most" : "Bottom 3", bottom, bottom_spill)}`;
     el.querySelector(".ld-note").textContent = `${ranked.length} ${{ all: "players", core: "cores", support: "supports" }[role[0]] ?? `pos ${role[0]} players`} with ${floorOf(src)}+ games${stat.map ? " and replays" : ""}${role[0] === "all" ? "" : ", by the position each plays most"}.${src.ad2l ? overall ? ` Badges: top or bottom 3 across all ${LEAGUE_COUNT} AD2L leagues (${pool.length} players).` : " Loading the other leagues…" : ""}`;
   };
   const html = `<h2 id="stat-leaders">Stat leaders${info("stat_leaders")}</h2>
@@ -96,17 +125,9 @@ export async function renderPlayers(src) {
     const weekOf = weekOfFn(await src.data()), latest = Math.max(...matches.map(weekOf));
     lanes = lanesSection(src, matches, await laneCutsOf(src), matches.filter((m) => weekOf(m) === latest));
   }
-  // Medal against tier rating (AD2L: PlayOn medals), for everyone on the tier list.
-  let scatter = "";
-  if (data.length && src.ad2l) {
-    const tl = tierList(matches, { model: await tierRef(src), minGames: floorOf(src) });
-    const pts = tl.tiers.flatMap(({ tier, players }) => players.map((p) => ({ key: p.key, name: p.name, medal: medalValue(p.rank_tier), rank: rankLabel(p.rank_tier), rating: p.rating, tier, href: playerHref(src, p.key) })));
-    const fig = medalScatterHtml(pts, { id: `medal-${src.key}` });
-    if (fig) scatter = `<h2 id="medal-rating">Medal vs rating${info("medal_rating")}</h2>${fig}`;
-  }
   const hasStandins = src.ad2l && data.some((r) => r.standin || r.standin_games);
   const tabs = data.length && playerTabs(pageTabs(PLAYERS_PAGE_TABS, src, [
-    ["tiers", tiers.html], ["leaders", leaders.html], ["lanes", lanes?.html ?? ""], ["medal", scatter],
+    ["tiers", tiers.html], ["leaders", leaders.html], ["lanes", lanes?.html ?? ""],
     ["stats", `<h2 id="player-stats">All stats</h2>
     ${hasStandins ? `<div class="row segs pl-filter" role="group" aria-label="Players shown">${[["all", "Everyone"], ["standin", "Played as a stand-in"]].map(([id, label]) => `<button type="button" class="seg${id === "all" ? " on" : ""}" data-pl-filter="${id}" aria-pressed="${id === "all"}">${label}</button>`).join("")}</div>` : ""}
     <div id="t" class="reveal"></div>

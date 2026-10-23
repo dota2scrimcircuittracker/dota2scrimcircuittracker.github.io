@@ -188,7 +188,7 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 
 ## Players tab
 
-One tab per section (Laning and Medal vs rating are AD2L only):
+One tab per section (Laning is AD2L only):
 
 - **Tier list** — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
   position, Pos 1–5 (opens on Pos 1; there's no all-players list): a player is on the list of the position
@@ -200,12 +200,10 @@ One tab per section (Laning and Medal vs rating are AD2L only):
   played most; its tooltip lists games at each.
   A breakdown has a × in its top-right corner, and its stat table sorts by Stat, 0–100 or Points
   (the order holds for every breakdown while the page is open).
-- **Stat leaders** — top and bottom 3 on any stat, with "1st overall" badges across every division.
+- **Stat leaders** — top and bottom 3 on any stat, with 4th–15th as compact rows between them, with "1st overall" badges across every division.
   A role filter (cores, supports or one position) ranks players by the position they play most.
 - **Laning** — laning ranked by position (safe, mid, off, supports; 3+ lanes), with best-laner
   cards for the latest week and the season.
-- **Medal vs rating** — a scatter of PlayOn medal against tier rating, with who plays furthest
-  above and below their medal.
 - **All stats** — the full table, with a stand-in filter; per-game map averages, combat columns
   (APM, fights, first blood %, best streak, rampages, ultras, runes, couriers, pings) and
   **recent pubs** (AD2L: each rostered player's public/ranked games since the last league night,
