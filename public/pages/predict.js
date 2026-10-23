@@ -2,7 +2,7 @@
 import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
 import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
-import { isPostseason, playoffs, ANNOUNCED, withAnnounced, postseasonRows, playedPostseason, bracketClose } from "../lib/divisions.js";
+import { isPostseason, playoffs, ANNOUNCED, withAnnounced, postseasonRows, playedPostseason, bracketClose, bracketCloseFor } from "../lib/divisions.js";
 import { postseason, bracketPoints, playoffScore, playoffPicture, seedsSettled, withFix, openPicks } from "../lib/playoffs.js";
 import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, listPlayoffBracketFixes, submitPlayoffBracketFix, currentUid, myUids, steamAccount, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
@@ -82,7 +82,9 @@ export async function renderPredict(src) {
   // Submitted playoff brackets (one per person, final once sent). One sent after the league's
   // deadline isn't scored or listed; the viewer's own is kept either way, to show it back.
   // Brackets close at the league's deadline (lib/divisions.js bracketClose), Thursday of week 9 by default.
-  const closes = bracketClose(src.key);
+  // A per-person extension (bracketCloseFor) moves the viewer's own deadline and that person's cutoff.
+  const closes = Math.max(bracketClose(src.key), ...uids.map((u) => bracketCloseFor(src.key, u)));
+  const closesFor = (uid) => bracketCloseFor(src.key, uid);
   const bracketLocked = now >= closes * 1000;
   const finals = [];
   let myFinal = null;
@@ -91,7 +93,7 @@ export async function renderPredict(src) {
   const pickMap = (json) => { let p; try { p = JSON.parse(json); } catch { return null; } return p && typeof p === "object" && !Array.isArray(p) ? Object.fromEntries(Object.entries(p).filter(([, v]) => Number.isInteger(v))) : null; };
   try {
     const [sent, fixList] = await Promise.all([listPlayoffBrackets(), listPlayoffBracketFixes().catch((e) => (console.warn(e), []))]);
-    const fixes = new Map(fixList.filter((x) => x.league === src.key && (closes == null || !x.fixedAt || x.fixedAt.getTime() < closes * 1000)).map((x) => [x.uid, pickMap(x.picks)]));
+    const fixes = new Map(fixList.filter((x) => x.league === src.key && (!x.fixedAt || x.fixedAt.getTime() < closesFor(x.uid) * 1000)).map((x) => [x.uid, pickMap(x.picks)]));
     for (const b of sent.filter((x) => x.league === src.key)) {
       const orig = pickMap(b.picks);
       if (!orig) continue;
@@ -99,7 +101,7 @@ export async function renderPredict(src) {
       const picks = withFix(orig, fix);
       const e = { name: b.name, uid: b.uid, submittedAt: b.submittedAt, picks, orig, fix, open: openPicks(full.teams, full.series, fullRatings, picks, { split }) };
       if (uids.includes(b.uid)) myFinal = e;
-      if (closes == null || !b.submittedAt || b.submittedAt.getTime() < closes * 1000) finals.push(e);
+      if (!b.submittedAt || b.submittedAt.getTime() < closesFor(b.uid) * 1000) finals.push(e);
     }
   } catch (e) { console.warn(e); }
   // Brackets are open (the seeds are settled): the Leaderboard tab leads with the bracket board.
