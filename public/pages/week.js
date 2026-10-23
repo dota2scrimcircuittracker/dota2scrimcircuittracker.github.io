@@ -5,13 +5,13 @@ import { info } from "../lib/glossary.js";
 import { clock, itemIcon } from "../lib/items.js";
 import { laneCuts, laneBoard, LANE_GROUPS, playerLane, isJungler } from "../lib/lanes.js";
 import { hasCombat, bestStreakOf, streakName, pausesOf } from "../lib/combat.js";
-import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg, subtabsMoved, sideBar, SOURCES, weekStart } from "../core.js";
+import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg, subtabsMoved, sideBar, weekStart } from "../core.js";
 import { fbOf, hitText } from "../parts/combat.js";
 import { bestLaner, loading, errorBox, weekOfFn } from "../parts/lanes.js";
 import { upNextHtml } from "./standings.js";
 import { tagContext, gameTags, tagsHtml } from "../lib/gametags.js";
 import { plusSlot } from "../lib/hero-levels.js";
-import { announcedRole, postseasonRows, playedPostseason, SEASON } from "../lib/divisions.js";
+import { announcedRole, postseasonRows, SEASON } from "../lib/divisions.js";
 
 function weekHighlights(games, src, league = games) {
   const all = games.flatMap((m) => m.players.map((p) => ({ p, m })));
@@ -92,7 +92,7 @@ export async function renderWeek(src, back = 0) {
   // AD2L games count toward their series' scheduled week, so a series played early or
   // late still lands in the right week. Anything without a scheduled series uses its date.
   // AD2L: the series still to play, at the top of the latest week.
-  const next = ad2l ? upNextHtml(src, ad2l) : "";
+  const next = ad2l ? await upNextHtml(src, ad2l) : "";
   const nextBlock = next ? `<h2 id="up-next">Up next</h2>${next}` : "";
   const weekOf = weekOfFn(ad2l);
   const cuts = src.ad2l ? laneCuts(games.filter(hasDetails)) : null;
@@ -259,14 +259,10 @@ function playoffsHtml(src, d, rows) {
     <section class="wkb-box"><h2>Bracket <span class="h-note">results so far, no picks</span></h2><p class="table-note">A dashed box marks a match whose teams could still change.</p><div id="wk-bracket"></div></section>`;
 }
 
-// The bracket from Predictions with only what has happened in it: results in, nothing picked.
-// A series PlayOn hasn't posted counts once a team has won it (so the bracket moves on); one
-// still being played shows its running score.
+// The bracket from Predictions with only what has happened in it (parts/playoffs.js).
 async function mountBracket(src, d, rows) {
-  const [{ mountPlayoffs }, { tune, fitRatings }] = await Promise.all([import("../parts/playoffs.js"), import("../lib/predict.js")]);
-  const full = src.view ? await SOURCES[src.key].data() : d;
-  const ratings = fitRatings(full.teams, full.series, tune(full.teams, full.series));
-  mountPlayoffs(document.getElementById("wk-bracket"), src, { ...full, series: [...full.series, ...playedPostseason(rows)] }, ratings, new Map(), { status: { progress: rows.filter((r) => r.played && !r.done) } });
+  const { mountResultsBracket } = await import("../parts/playoffs.js");
+  await mountResultsBracket(document.getElementById("wk-bracket"), src, d, rows);
 }
 
 // Weekly page: one series panel at a time. Arrow keys move between tabs; the "Next series"

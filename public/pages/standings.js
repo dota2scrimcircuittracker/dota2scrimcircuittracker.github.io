@@ -1,10 +1,11 @@
 // AD2L Teams tab: standings, Matches (series by week) and Crosstable.
 import { lineChart, wireCharts } from "../lib/charts.js";
-import { isPlayed, seriesOdds, postOdds, tune, fitRatings } from "../lib/predict.js";
+import { isPlayed, matchOdds, matchPostOdds, tune, fitRatings } from "../lib/predict.js";
+import { withDraft, draftDataFor, draftAt } from "../parts/cmdraft.js";
 import { strengthOfSchedule, gameWins } from "../lib/schedule.js";
 import { info } from "../lib/glossary.js";
 import { weekStart, DIVISIONS, teamLink, pct, esc, app, pageHead, playerTabs, sortableTable, SOURCES, wirePlayerTabs } from "../core.js";
-import { groupStage, isPostseason, withAnnounced, announcedRole } from "../lib/divisions.js";
+import { groupStage, isPostseason, withAnnounced, announcedRole, postseasonRows, SEASON } from "../lib/divisions.js";
 import { postseason } from "../lib/playoffs.js";
 import { pageTabs, STANDINGS_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox } from "../parts/lanes.js";
@@ -49,7 +50,7 @@ function matchesHtml(src, d, ratings) {
     const done = isPlayed(s), [h, a] = [s.home_score, s.away_score];
     const cls = (us, them) => !done ? "" : us > them ? " w" : us < them ? " l" : " t";
     const gs = gamesOf.get(s.id) ?? [];
-    const o = !done && team[s.home] && team[s.away] && !bye(s.home) && !bye(s.away) && seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0);
+    const o = !done && team[s.home] && team[s.away] && !bye(s.home) && !bye(s.away) && matchOdds(ratings, s.home, s.away);
     const title = o ? ` title="Model: 2–0 ${pct(o.home)} · 1–1 ${pct(o.tie)} · 0–2 ${pct(o.away)}"` : "";
     const isBye = bye(s.home) || bye(s.away);
     // A bye has no games, so it gets a ⦻ where G1, G2 would sit and keeps the row height.
@@ -134,7 +135,7 @@ function crossTableHtml(src, d, order) {
 
 // The series still to play (from 6 hours ago on), each with the model's odds, as on Predict.
 // "" when there are none.
-export function upNextHtml(src, d) {
+export async function upNextHtml(src, d) {
   const played = (s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0;
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   // Series the admins announced before PlayOn posts them (lib/divisions.js ANNOUNCED), for this
@@ -143,7 +144,9 @@ export function upNextHtml(src, d) {
   const upcoming = all.filter((s) => !played(s) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).sort((a, b) => a.time - b.time);
   if (!upcoming.length) return "";
   const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
-  const ratings = fitRatings(d.teams, d.series, tune(d.teams, d.series));
+  // All Divisions: only the draft files of the leagues playing next.
+  const keys = src.all ? upcoming.slice(0, 10).flatMap((s) => d.teams.filter((t) => t.id === s.home || t.id === s.away).map((t) => t.league)) : [src.key];
+  const ratings = await withDraft(fitRatings(d.teams, d.series, tune(d.teams, d.series)), keys, d);
   // Postseason series: their round and best-of (lib/playoffs.js postseason), a win bar (no tie).
   const post = upcoming.some(isPostseason) && !src.all ? postseason(d.teams, d.series, ratings, { split: !!DIVISIONS[src.key]?.views && !src.view }) : null;
   const roleOf = (s) => announcedRole(src.key, s) ?? post?.roles.get(s.id) ?? { label: "Playoffs", bestOf: 3 };
@@ -156,7 +159,7 @@ export function upNextHtml(src, d) {
   return `<div class="fixtures reveal">${upcoming.slice(0, 10).map((s, i) => {
       const real = name[s.home] && name[s.away] && !bye.has(s.home) && !bye.has(s.away);
       const ps = isPostseason(s), role = ps ? roleOf(s) : null;
-      const o = real && (ps ? postOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0, role.bestOf) : seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0));
+      const o = real && (ps ? matchPostOdds(ratings, s.home, s.away, role.bestOf) : matchOdds(ratings, s.home, s.away));
       return `<div class="fixture st-next${ps ? " st-post" : ""}" style="--i:${i}">
         <div class="fx-team a">${name[s.home] ? teamLink(src, name[s.home], s.home) : "TBD"}</div>
         <div class="fx-score"><div class="meta">${ps ? `<b class="st-round">${esc(role.label)}${role.bestOf > 1 ? ` · Bo${role.bestOf}` : ""}</b> · ` : ""}${date(s.time)}</div>
@@ -179,9 +182,13 @@ export async function renderStandings(src) {
   const played = groupStage(d.series).filter((s) => s.home_score != null && s.away_score != null && s.home_score + s.away_score > 0).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
   const bye = new Set(d.teams.filter((t) => /\bbye week\b/i.test(t.name)).map((t) => t.id));
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
-  // The model behind Predict, so Rating matches that page.
+  // The model behind Predict, so Rating matches that page; the odds average it with Sybil.
   const params = tune(d.teams, d.series);
+  const draftFile = await draftDataFor(src.all ? [...new Set(d.teams.map((t) => t.league))] : [src.key]);
   const ratings = fitRatings(d.teams, d.series, params);
+  const atNight = draftAt(draftFile, d.teams, d.games), nightReads = new Map();
+  const sybilAt = atNight && ((t) => nightReads.get(t) ?? nightReads.set(t, atNight(t)).get(t));
+  ratings.draft = sybilAt?.(Date.now() / 1000) ?? null;
   const rows = d.teams.map((t) => {
     const mine = played.filter((s) => s.home === t.id || s.away === t.id).map((s) => {
       const [us, them] = s.home === t.id ? [s.home_score, s.away_score] : [s.away_score, s.home_score];
@@ -209,7 +216,8 @@ export async function renderStandings(src) {
   const tough = sos.filter((x) => x.sos != null && byId[x.id]?.series).sort((a, b) => b.sos - a.sos)[0];
   const upset = played.filter((s) => s.home_score !== s.away_score && !bye.has(s.home) && !bye.has(s.away)).map((s) => {
     const r = fitRatings(d.teams, d.series, { ...params, before: s.time ?? 0 });
-    const o = seriesOdds(r.get(s.home) ?? 0, r.get(s.away) ?? 0), won = s.home_score > s.away_score ? "home" : "away";
+    r.draft = sybilAt?.(s.time ?? 0) ?? null;
+    const o = matchOdds(r, s.home, s.away), won = s.home_score > s.away_score ? "home" : "away";
     return { s, p: o[won], w: won === "home" ? s.home : s.away, l: won === "home" ? s.away : s.home };
   }).sort((a, b) => a.p - b.p)[0];
   const score = (s) => `${Math.max(s.home_score, s.away_score)}–${Math.min(s.home_score, s.away_score)}`;
@@ -242,6 +250,11 @@ export async function renderStandings(src) {
   // Not in All: sixty lines on one chart is noise. Before the second league night there's no
   // race yet, but the tab stays (the nav menu lists it) and says so.
   const raceHtml = src.all ? "" : nights.length >= 2 ? `<div class="race"></div>` : `<div class="panel empty">The race starts after the second league night.</div>`;
+  // Bracket: the Content tab's (results so far, no picks), drawn when the tab is first shown.
+  // Before the group stage ends there's none yet, but the tab stays (the nav menu lists it).
+  const bracketHtml = src.all ? "" : SEASON.regularEnd != null
+    ? `<section class="wkb-box"><p class="table-note">Results so far, no picks. A dashed box marks a match whose teams could still change. Pick your own on <a href="${src.root}/predict?tab=bracket">Predict</a>.</p><div id="st-bracket"></div></section>`
+    : `<div class="panel empty">The bracket shows once the group stage ends.</div>`;
 
   const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const tabs = playerTabs(pageTabs(STANDINGS_TABS, src, [
@@ -253,6 +266,7 @@ export async function renderStandings(src) {
     ["matches", matchesHtml(src, d, ratings)],
     ["cross", crossTableHtml(src, d, [...rows].sort((a, b) => b.gw - a.gw || a.gl - b.gl).map((r) => r.id))],
     ["race", raceHtml],
+    ["bracket", bracketHtml],
   ]), { store: "standingsTab", label: "Standings sections", remember: false });
   app.innerHTML = `
     ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`, tabs.bar)}
@@ -301,6 +315,13 @@ export async function renderStandings(src) {
       raceBox._ro = new ResizeObserver(() => { clearTimeout(timer); timer = setTimeout(draw, 120); });
       raceBox._ro.observe(bar);
     }
+  }
+  const brBox = app.querySelector("#st-bracket");
+  if (brBox) {
+    const panel = brBox.closest(".pp-panel");
+    const fill = () => import("../parts/playoffs.js").then(({ mountResultsBracket }) => mountResultsBracket(brBox, src, d, postseasonRows(src.key, d))).catch((e) => { brBox.innerHTML = errorBox(e); });
+    if (!panel.hidden) fill();
+    else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   }
   app.querySelector(".mx-jump")?.addEventListener("click", () => document.getElementById("mx-next")?.scrollIntoView({ block: "center" }));
 }

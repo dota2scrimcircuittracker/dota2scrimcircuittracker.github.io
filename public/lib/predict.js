@@ -67,18 +67,29 @@ export const SERIES_CORR = 1 / 3;
 // beats calling every series 33/33/33 (1.0986); 2 would not.
 export const ODDS_SPREAD = 1.5;
 
-export function seriesOdds(ra, rb) {
-  const p = sig(ODDS_SPREAD * (ra - rb)), both = SERIES_CORR * p * (1 - p);
+export function gameSeriesOdds(p) {
+  const both = SERIES_CORR * p * (1 - p);
   return { game: p, home: p * p + both, tie: 2 * p * (1 - p) - 2 * both, away: (1 - p) * (1 - p) + both };
 }
+export const seriesOdds = (ra, rb) => gameSeriesOdds(sig(ODDS_SPREAD * (ra - rb)));
 // A postseason series (tiebreakers and the bracket: lib/divisions.js) has a winner, no tie: the
 // chance each side wins a best-of-n (n odd) from the one-game chance, and the model's call is
 // the favourite.
-export function postOdds(ra, rb, bestOf = 3) {
-  const p = sig(ODDS_SPREAD * (ra - rb));
+export function gamePostOdds(p, bestOf = 3) {
   const home = bestOf === 3 ? p * p * (3 - 2 * p) : bestOf === 5 ? p ** 3 * (10 - 15 * p + 6 * p * p) : p;
   return { game: p, home, tie: 0, away: 1 - home, bestOf };
 }
+export const postOdds = (ra, rb, bestOf = 3) => gamePostOdds(sig(ODDS_SPREAD * (ra - rb)), bestOf);
+
+// The site's model: the ratings' one-game chance above and Sybil's draft model's chance before
+// the draft (lib/cmdraft.js, from each team's likely five), averaged. `ratings.draft(a, b)`
+// (parts/cmdraft.js withDraft) is Sybil's chance team a beats team b, or null where it can't
+// read them; without it, or before its file loads, the ratings stand alone.
+export const ratingsChance = (ratings, a, b) => sig(ODDS_SPREAD * ((ratings.get(a) ?? 0) - (ratings.get(b) ?? 0)));
+export const blend = (rated, sybil) => (sybil == null ? rated : (rated + sybil) / 2);
+export const gameChance = (ratings, a, b) => blend(ratingsChance(ratings, a, b), ratings.draft?.(a, b));
+export const matchOdds = (ratings, a, b) => gameSeriesOdds(gameChance(ratings, a, b));
+export const matchPostOdds = (ratings, a, b, bestOf = 3) => gamePostOdds(gameChance(ratings, a, b), bestOf);
 export const postCall = (o) => (o.home >= 0.5 ? "home" : "away");
 export const outcomeOf = (s) => (s.home_score > s.away_score ? "home" : s.home_score < s.away_score ? "away" : "tie");
 export const favourite = (o) => ["home", "tie", "away"].sort((a, b) => o[b] - o[a])[0];
@@ -86,14 +97,16 @@ export const favourite = (o) => ["home", "tie", "away"].sort((a, b) => o[b] - o[
 // League nights: distinct series start times, oldest first.
 export const nights = (series) => [...new Set(series.map((s) => s.time).filter(Boolean))].sort((a, b) => a - b);
 
-// Replay the season: predict each league night from the nights before it only.
-export function backtest(teams, series, params) {
+// Replay the season: predict each league night from the nights before it only. draftAt(t), when
+// given, is Sybil's read as of that night (parts/cmdraft.js draftAt).
+export function backtest(teams, series, params, draftAt = null) {
   const out = [];
   for (const t of nights(series)) {
     const r = fitRatings(teams, series, { ...params, before: t });
+    if (draftAt) r.draft = draftAt(t);
     for (const s of series.filter((x) => x.time === t && isPlayed(x))) {
       const post = isPostseason(s);
-      const o = post ? postOdds(r.get(s.home) ?? 0, r.get(s.away) ?? 0) : seriesOdds(r.get(s.home) ?? 0, r.get(s.away) ?? 0);
+      const o = post ? matchPostOdds(r, s.home, s.away) : matchOdds(r, s.home, s.away);
       const actual = outcomeOf(s), pick = post ? postCall(o) : modelCall(o);
       out.push({ s, odds: o, pick, actual, correct: pick === actual, p_actual: o[actual] });
     }

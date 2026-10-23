@@ -35,8 +35,9 @@ export const GALLERY_TABS = [["feed", "Feed", ""], ["gallery", "Gallery", "galle
 // The scrims' Teams page: the table built from the games, every match, and the team cards.
 export const SCRIM_TEAMS_TABS = [["table", "Table"], ["matches", "Matches"], ["teams", "Teams"]];
 // Race: AD2L divisions only, not All (sixty lines on one chart), once two league nights are in.
+// Bracket: each division's own playoffs, so not All.
 export const STANDINGS_TABS = [
-  ["table", "Table"], ["matches", "Matches"], ["cross", "Crosstable"], ["race", "Race", { div: true }],
+  ["table", "Table"], ["matches", "Matches"], ["cross", "Crosstable"], ["race", "Race", { div: true }], ["bracket", "Bracket", { div: true }],
 ];
 
 const exists = (src, opts = {}) => (!opts.ad2l || !!src.ad2l) && (!opts.div || (!!src.ad2l && !src.all));

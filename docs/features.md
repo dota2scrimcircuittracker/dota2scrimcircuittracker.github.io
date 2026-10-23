@@ -117,6 +117,9 @@ and change it: [maintaining.md](maintaining.md).
 - **Crosstable** — every team against every other in standings order: the row team's score and
   week in each cell, "vs" for the coming week, empty where two teams haven't met (AD2L isn't a
   round robin); one table per division in Combined Heroic.
+- **Bracket** (divisions only, not All) — the Content tab's bracket: results so far, no picks
+  (`parts/playoffs.js` mountResultsBracket), drawn when the tab is first opened. Before the group
+  stage ends it says the bracket shows once it does.
 - **Team pages** — record, series and game results, roster, hero pool (W–L per hero), what they
   ban and what's banned against them, split by draft phase, how often they play Radiant and
   pick first (with the record each way and the side/pick mix; scrims show pick order only), and
@@ -525,23 +528,24 @@ shrunk-resolution problem above, not a finding problem.
   One point per correct call; picks lock at the series start (the database stamps each pick with
   server time, and scoring ignores anything stamped after the start). Standings group by the
   typed name, and "The model" competes using what it would have predicted each week from earlier
-  weeks only. The model: team ratings fitted to every game result (PlayOn scores), pulled toward a
-  roster-medal starting point, with the pull and medal weight tuned by replaying the season;
-  games treated as independent (2–0 = p²). Its call never hedges: it takes the favourite 2–0 (the
+  weeks only. The model (every chance on the site, `lib/predict.js` gameChance): one game's chance
+  is the average of two models. (1) Team ratings fitted to every game result (PlayOn scores),
+  pulled toward a roster-medal starting point, with the pull and medal weight tuned by replaying
+  the season. (2) Sybil's draft model before the draft: each team's five with the most league
+  games, averaged over who takes Radiant (`lib/cmdraft.js` draftTable). Where Sybil can't read a
+  team (no draft file, a bye week) the ratings stand alone. The replay reads Sybil as of each
+  night. Series odds follow from the averaged game chance. Its call never hedges: it takes the favourite 2–0 (the
   odds bar stays honest). Each series has the model's full draft: all 24 steps in S48's Captains
   Mode order (first-pick team bans 3/2/2, the other 4/1/2), with a toggle for who has first pick.
   Bans weigh the team's recency-weighted ban habit in that phase, what the opponents still to pick
   have been playing (league games with a two-week half-life, pubs since the last league night),
   and the division's usual bans; picks give each player the best hero left in their pool.
-  Each card also carries the **draft model** (separate from the ratings, which it doesn't
-  change): its chance for one game before the draft, from the ten likely players alone (each
-  team's five with the most league games, averaged over who takes Radiant), and, at the top of
-  the card's one **Model's draft** expander ("Best draft, and the odds after it", above the
+  At the top of the card's one **Model's draft** expander is Sybil ("Best draft, and the odds after it", above the
   likely draft; one First pick switch drives both), a full draft it builds for both teams with
   the Drafter's rules (first-pick team on Radiant), with the chance before and after it, the
-  step chart, and each team's heroes, players and bans. Measured on this
-  season's games read before they were played (`scripts/measure/draft-model.js`): before
-  the draft it was no better than the ratings, which is why the ratings stay as they are.
+  step chart, and each team's heroes, players and bans; every step's chance is averaged with
+  the ratings, as the odds are. Replayed over S48 (298 series, Oct 2026), the average beat the
+  ratings alone on log loss (1.062 vs 1.103) and called 129 series exactly against 131.
 - **Playoff picture** (`lib/playoffs.js`, `parts/playoffs.js`) — Predict has four tabs, each
   its own link (`?tab=calls|board|bracket|odds`, Back works, the last one remembered): **Predictions**
   (this week's cards, then **Latest results**: the last played night's series with the model's,

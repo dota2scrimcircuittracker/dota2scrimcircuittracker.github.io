@@ -59,6 +59,14 @@ async function myPage(account) {
   const r = await myRoster(account);
   return playerHref(SOURCES[r?.div ?? viewedDiv() ?? Object.keys(DIVISIONS)[0]], String(account));
 }
+// The league home of the division whose roster has you (My team's division searched first), or
+// null when signed out or on no roster. app.js opens it in place of the hub on arrival.
+export async function myLeagueHome() {
+  const account = await steamAccount().catch(() => null);
+  if (account == null) return null;
+  const r = await myRoster(account, myTeam()?.div ?? null);
+  return r ? `${SOURCES[r.div].root}/` : null;
+}
 // My team follows your roster unless you've picked one (or None) by hand under the cog. The
 // division searched first is the one My team already points at, so a player on two rosters
 // keeps the one it had.

@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { rankValue, rowPositions, rowSupportness, assignmentMarginals, heroWinRate, bracketOf, indexHistory, lobbyRank,
   historyReading, gameContext, draftProbability, scoreHeroes, readDraft, CM_STEPS, HISTORY_FIELDS, ROLES,
-  heroRoleShare, fitsRole, playedAtRoles, sideComposition, flexPositions, openRoleFor, stateFeatures, buildDraft } from "../public/lib/cmdraft.js";
+  heroRoleShare, fitsRole, playedAtRoles, sideComposition, flexPositions, openRoleFor, stateFeatures, buildDraft, draftTable, teamFive, preDraft } from "../public/lib/cmdraft.js";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} vs ${b}`);
 const NOW = 1_790_000_000, DAY = 86400;
@@ -176,4 +176,28 @@ test("buildDraft: 24 steps, no hero twice, each side's picks to five different p
     const comp = sideComposition(ctx[side], st[side], stateFeatures(ctx, st).assignment[side]);
     assert.deepEqual([...comp.positions].sort(), [0, 1, 2, 3, 4]);
   }
+});
+
+test("draftTable: Sybil's pre-draft chance for any two teams, either way round", () => {
+  const team = (id, keys) => ({ id, players: keys.map((k) => ({ account_id: k, name: String(k), rank_tier: 71 })) });
+  const known = team(1, ["p0", "p1", "p2", "p3", "p4"]), unknown = team(2, ["u0", "u1", "u2", "u3", "u4"]), bye = { id: 3, players: [] };
+  const games = [{ team_a_id: 1, team_b_id: 2, start_time: NOW - DAY, players: ["p0", "p1", "p2", "p3", "p4"].map((k) => ({ player_key: k })) }];
+  const table = draftTable(data, [known, unknown, bye], games, NOW);
+  const p = table(1, 2);
+  assert.ok(p > 0.5, "the side with known, winning players is the favourite");
+  near(table(2, 1), 1 - p);
+  const A = teamFive(known, games), B = teamFive(unknown, games);
+  near(p, preDraft(gameContext(data, { radiant: A, dire: B }, NOW), gameContext(data, { radiant: B, dire: A }, NOW)));
+  assert.equal(table(1, 3), null, "a bye week has no players");
+  assert.equal(table(1, 1), null);
+  assert.equal(draftTable(null, [known, unknown], games, NOW)(1, 2), null, "no draft file");
+});
+
+test("gameContext reads a player once per time and medal, and the cached read is the same", () => {
+  const a = draftProbability(gameContext(data, sides, NOW), { radiant: [], dire: [] });
+  const b = draftProbability(gameContext(data, sides, NOW), { radiant: [], dire: [] });
+  assert.equal(a, b);
+  const lower = { radiant: sides.radiant.map((p) => ({ ...p, rank_tier: 41 })), dire: sides.dire };
+  const ctx = gameContext({ ...data }, lower, NOW);
+  assert.equal(gameContext(data, lower, NOW).rankLead, ctx.rankLead, "a different medal is its own read");
 });

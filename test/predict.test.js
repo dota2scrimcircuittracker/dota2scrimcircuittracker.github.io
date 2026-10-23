@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fitRatings, seriesOdds, standings, validPicks, crowd, backtest, medalSteps } from "../public/lib/predict.js";
+import { fitRatings, seriesOdds, postOdds, standings, validPicks, crowd, backtest, medalSteps, gameChance, ratingsChance, matchOdds, matchPostOdds } from "../public/lib/predict.js";
 
 const teams = [1, 2, 3].map((id) => ({ id, players: [{ rank_tier: 50 }] }));
 const T = 1_000_000;
@@ -108,4 +108,26 @@ test("night scores count only that night's played series and picks made before t
     { series_id: 12, pick: "home", name: "Dan", updatedAt: at(T) }, // another night
   ];
   assert.deepEqual(nightScores(preds, series, T).map((r) => [r.name, r.points, r.picks]), [["Ann", 2, 2], ["Bob", 0, 1]]);
+});
+
+test("the site's chance averages the ratings with Sybil; without Sybil the ratings stand alone", () => {
+  const r = new Map([[1, 0.4], [2, -0.2]]);
+  assert.deepEqual(matchOdds(r, 1, 2), seriesOdds(0.4, -0.2));
+  assert.deepEqual(matchPostOdds(r, 1, 2, 3), postOdds(0.4, -0.2, 3));
+  const rated = ratingsChance(r, 1, 2);
+  r.draft = (a, b) => (a === 1 && b === 2 ? 0.3 : a === 2 && b === 1 ? 0.7 : null);
+  assert.equal(gameChance(r, 1, 2), (rated + 0.3) / 2);
+  assert.ok(Math.abs(gameChance(r, 1, 2) + gameChance(r, 2, 1) - 1) < 1e-12, "either way round");
+  assert.equal(matchOdds(r, 1, 2).game, gameChance(r, 1, 2));
+  assert.equal(gameChance(r, 1, 3), ratingsChance(r, 1, 3), "Sybil can't read team 3: ratings alone");
+});
+
+test("the replay reads Sybil as of each night", () => {
+  const asked = [];
+  const draftAt = (t) => (asked.push(t), (a, b) => (a < b ? 0.9 : 0.1));
+  const bt = backtest(teams, series, { lambda: 1, beta: 0 }, draftAt);
+  assert.deepEqual(asked, [T, T + 604800]);
+  const plain = backtest(teams, series, { lambda: 1, beta: 0 });
+  const [x, y] = [bt.find((b) => b.s.id === 10), plain.find((b) => b.s.id === 10)];
+  assert.ok(Math.abs(x.odds.game - (y.odds.game + 0.9) / 2) < 1e-12);
 });

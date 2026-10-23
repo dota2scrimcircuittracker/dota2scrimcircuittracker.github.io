@@ -44,7 +44,7 @@ export const INFO = {
   faced: "Every series played, oldest first: green won, red lost, gold tied. Hover a square for the score.",
   remaining_sos: "Total game wins so far of the opponents still to play. Only the posted week counts, since pairings come out week by week. Higher = harder run-in.",
   series_form: "The last five series, newest on the right: green won, red lost, gold tied. Sorting ranks wins minus losses over those five.",
-  model_rating: "Team strength from game results so far, pulled toward the average medal of its top three players (medals have predicted better than results so far). 0 = an average team. The gap between two teams sets the Predict odds.",
+  model_rating: "Team strength from game results so far, pulled toward the average medal of its top three players (medals have predicted better than results so far). 0 = an average team. The gap between two teams is half of the Predict odds; the other half is Sybil's draft model reading their players.",
   standings_leader: "Most games won; game win % breaks a tie.",
   standings_streak: "Most series won in a row, counting back from the latest.",
   standings_upset: "The 2–0 result the model thought least likely, using only the results from before that series.",
@@ -213,7 +213,7 @@ export const INFO = {
   model_col: "What the model would have picked, using only results from before it. Where shown, the % is the chance it gave the actual result.",
   crowd_col: "The most-picked call, and how many people picked.",
   you_col: "Your call, matched by the name you pick with.",
-  model_draft: "Two drafts for this series, with one First pick switch for both. Best draft: Sybil's draft model drafting both teams, with the chance to win before and after it. Likely draft: the guess at all 24 steps from each team's habits, game 1 or game 2; hover any step for why it was chosen.",
+  model_draft: "Two drafts for this series, with one First pick switch for both. Best draft: Sybil's draft model drafting both teams, with the chance to win before and after it (averaged with the team ratings, as every chance on the site is). Likely draft: the guess at all 24 steps from each team's habits, game 1 or game 2; hover any step for why it was chosen.",
   player_pools: "Each player's likeliest heroes: league games (recent weeks count most) plus pubs since the last league night, discounted by the chance the other team bans it. % = rough chance they play it.",
 
   // Combat (parsed replays)
@@ -251,6 +251,7 @@ export const INFO = {
   fb_death_rate: "Share of games where they were first blood's victim.",
   radiant_rate: "How often Radiant (bottom left) won, over every game with a draft.",
   pauses: "The game with the most paused time this week.",
+  donate: "Donations go towards improving the site. Payments are handled by Ko-fi; nothing is stored here.",
 };
 
 export function info(id) {

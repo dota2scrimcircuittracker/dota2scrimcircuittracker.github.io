@@ -543,9 +543,10 @@ export async function renderTeams(src, slug) {
       try {
         // On the All Divisions view, the team's own division: its bands and only its teams.
         const own = src.all ? SOURCES[league] : src;
-        const [{ mountPlayoffs }, full] = await Promise.all([import("../parts/playoffs.js"), src.view || src.all ? SOURCES[league].data() : ad2l]);
+        const [{ mountPlayoffs }, { withDraft }, full] = await Promise.all([import("../parts/playoffs.js"), import("../parts/cmdraft.js"), src.view || src.all ? SOURCES[league].data() : ad2l]);
         if (document.getElementById("tc-box") !== tcBox) return;
-        const ratings = fitRatings(full.teams, full.series, tune(full.teams, full.series));
+        const ratings = await withDraft(fitRatings(full.teams, full.series, tune(full.teams, full.series)), [league], full);
+        if (document.getElementById("tc-box") !== tcBox) return;
         mountPlayoffs(tcBox, own, full, ratings, new Map(), { view: "team", team: team.id });
       } catch (e) { tcBox.innerHTML = errorBox(e); }
     };

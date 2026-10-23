@@ -470,11 +470,24 @@ export function openRoleFor(hero, open, players) {
 
 // Both sides from the draft file: `sides.radiant` / `sides.dire` are five { key, rank_tier }
 // (key = the account id the history is stored under; null for an unknown player), read as of
-// `now`. Returns the model's context plus what each player was read from.
+// `now`. Returns the model's context plus what each player was read from. A player's history is
+// read once per draft file, time and medal (a whole division's pairings reread the same fifty
+// players hundreds of times); the cache is dropped when it grows past READ_CACHE.
+const READ_CACHE = 4000;
+const reads = new WeakMap();
 export function gameContext(draftData, sides, now, { rating = 0 } = {}) {
   const base = draftData?.baselines ?? {};
   const baselineOf = (h, bracket) => heroWinRate(base[h], bracket);
-  const read = (list) => list.map((p) => ({ ...p, h: playerFromHistory(p?.key != null ? draftData?.history?.[p.key] : null, now, baselineOf, { fallbackRank: p?.rank_tier }) }));
+  const cache = draftData ? (reads.get(draftData) ?? reads.set(draftData, new Map()).get(draftData)) : new Map();
+  if (cache.size > READ_CACHE) cache.clear();
+  const readOne = (p) => {
+    const id = p?.key != null ? `${p.key}|${p.rank_tier ?? ""}|${now}` : null;
+    if (id && cache.has(id)) return cache.get(id);
+    const h = playerFromHistory(p?.key != null ? draftData?.history?.[p.key] : null, now, baselineOf, { fallbackRank: p?.rank_tier });
+    if (id) cache.set(id, h);
+    return h;
+  };
+  const read = (list) => list.map((p) => ({ ...p, h: readOne(p) }));
   const r = read(sides.radiant), d = read(sides.dire);
   const bracket = bracketOf([...r, ...d].map((p) => p.h.rank));
   const meanRank = (list) => { const k = list.map((p) => p.h.rank).filter((x) => x != null); return k.length ? k.reduce((a, b) => a + b, 0) / k.length : null; };
@@ -488,6 +501,37 @@ export function gameContext(draftData, sides, now, { rating = 0 } = {}) {
     info: { radiant: r.map((p) => ({ ...p, games: p.h.games, rank: p.h.rank, rankFrom: p.h.rankFrom })), dire: d.map((p) => ({ ...p, games: p.h.games, rank: p.h.rank, rankFrom: p.h.rankFrom })) },
   };
 }
+
+// A team's likely five: its roster players with the most league games for it this season.
+export function teamFive(team, games) {
+  const n = new Map();
+  for (const g of games) if (g.team_a_id === team.id || g.team_b_id === team.id) for (const p of g.players) n.set(p.player_key, (n.get(p.player_key) ?? 0) + 1);
+  return team.players.map((p) => ({ key: String(p.account_id), name: p.name, rank_tier: p.rank_tier }))
+    .sort((x, y) => (n.get(y.key) ?? 0) - (n.get(x.key) ?? 0)).slice(0, 5);
+}
+
+const EMPTY_DRAFT = { radiant: [], dire: [] };
+export const preDraft = (ctxHome, ctxAway) => (draftProbability(ctxHome, EMPTY_DRAFT) + 1 - draftProbability(ctxAway, EMPTY_DRAFT)) / 2;
+
+// Sybil's half of the site's model (lib/predict.js gameChance): its one-game chance before the
+// draft for any two teams, each as its five with the most league games before `now`, averaged
+// over who takes Radiant. A pair is worked out the first time it's asked for. null for a team
+// with no players (a bye week) or with no draft file.
+export function draftTable(data, teams, games, now = Date.now() / 1000) {
+  if (!data) return () => null;
+  const byId = new Map(teams.map((t) => [t.id, t]));
+  const before = games.filter((g) => (g.start_time ?? 0) < now);
+  const fives = new Map(), memo = new Map();
+  const five = (id) => fives.get(id) ?? fives.set(id, teamFive(byId.get(id), before)).get(id);
+  return (a, b) => {
+    if (!byId.get(a)?.players?.length || !byId.get(b)?.players?.length || a === b) return null;
+    const [x, y] = a < b ? [a, b] : [b, a], key = `${x}|${y}`;
+    if (!memo.has(key)) memo.set(key, preDraft(gameContext(data, { radiant: five(x), dire: five(y) }, now), gameContext(data, { radiant: five(y), dire: five(x) }, now)));
+    return a < b ? memo.get(key) : 1 - memo.get(key);
+  };
+}
+// Sybil's read as of any night, for replaying the season (lib/predict.js backtest).
+export const draftAt = (data, teams, games) => (data ? (t) => draftTable(data, teams, games, t) : null);
 
 // The Captains Mode order (S48, patch 7.41): F = first-pick team, S = the other.
 export const CM_STEPS = [

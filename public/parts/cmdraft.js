@@ -1,7 +1,8 @@
 // The draft model on the page (lib/cmdraft.js, Project Sybil's model): loading each division's
 // draft file, reading a game's ten players, and the game page's Draft tab.
 import { DIVISIONS, esc, pct, portrait, playerLink, divLite } from "../core.js";
-import { gameContext, readDraft, buildDraft, draftProbability, scoreHeroes, openRoleFor, CM_STEPS, FIT } from "../lib/cmdraft.js";
+import { gameContext, readDraft, buildDraft, draftProbability, scoreHeroes, openRoleFor, CM_STEPS, FIT, teamFive, preDraft, draftTable, draftAt } from "../lib/cmdraft.js";
+export { teamFive, draftTable, draftAt };
 import { heroImg } from "../lib/hero-meta.js";
 
 // <division>-draft.json: hero names and baselines, and every rostered player's games
@@ -239,16 +240,6 @@ export const oddsBars = (us, them, pre, post) => `<div class="td-odds">
   <div class="td-delta">Draft: <b class="${post - pre >= 0.005 ? "cm-up" : post - pre <= -0.005 ? "cm-down" : ""}">${pts(post - pre)}</b> for ${esc(us)}</div>
 </div>`;
 
-// ---------- the Predict page ----------
-
-// A team's likely five: its roster players with the most league games for it this season.
-export function teamFive(team, games) {
-  const n = new Map();
-  for (const g of games) if (g.team_a_id === team.id || g.team_b_id === team.id) for (const p of g.players) n.set(p.player_key, (n.get(p.player_key) ?? 0) + 1);
-  return team.players.map((p) => ({ key: String(p.account_id), name: p.name, rank_tier: p.rank_tier }))
-    .sort((x, y) => (n.get(y.key) ?? 0) - (n.get(x.key) ?? 0)).slice(0, 5);
-}
-
 // For a hero grid (parts/herogrid.js): the model's read of one side of `ctx` before any pick.
 // threats: heroes by their chance to win with it, with the positions it fits them; likely: the
 // heroes they're likeliest to play (the model's propensity: their weighted games on it plus what
@@ -335,11 +326,17 @@ async function gridModelRead(them, me, fallback) {
 // The draft model on one series: `home` and `away` are teams, read as of now. Before the draft
 // is the ten players alone, averaged over who takes Radiant; the model's draft has the
 // first-pick team on Radiant. Both are a single game's chance for `home`.
+// Fitted ratings with Sybil joined in (`ratings.draft`), from the draft files of `keys`.
+export async function withDraft(ratings, keys, d) {
+  ratings.draft = draftTable(await draftDataFor(keys), d.teams, d.games ?? []);
+  return ratings;
+}
+
 export function seriesRead(home, away, games, data, now = Date.now() / 1000) {
   const H = teamFive(home, games), A = teamFive(away, games);
   const ctxHome = gameContext(data, { radiant: H, dire: A }, now), ctxAway = gameContext(data, { radiant: A, dire: H }, now);
   const empty = { radiant: [], dire: [] };
-  const pre = (draftProbability(ctxHome, empty) + 1 - draftProbability(ctxAway, empty)) / 2;
+  const pre = preDraft(ctxHome, ctxAway);
   const heroes = Object.keys(data.heroes).map(Number);
   // The model's draft, for either team on first pick (and Radiant).
   const draft = (homeFirst) => {
@@ -355,10 +352,6 @@ export function seriesRead(home, away, games, data, now = Date.now() / 1000) {
   };
   return { pre, draft };
 }
-
-// The card's line: the draft model's pre-draft chance next to the ratings.
-export const preDraftLine = (home, away, pre) => `<div class="pcm-line"><small>Draft model · one game, before the draft</small>
-  <span class="td-us td-fit"><span class="td-nm">${esc(home.name)}</span> <b>${pct(pre)}</b></span><span class="td-track"><i style="width:${(pre * 100).toFixed(1)}%"></i><em></em></span><span class="td-them td-fit"><b>${pct(1 - pre)}</b> <span class="td-nm">${esc(away.name)}</span></span></div>`;
 
 // The model's draft for a series, from the home team's side.
 export function modelDraftHtml(home, away, d, width) {

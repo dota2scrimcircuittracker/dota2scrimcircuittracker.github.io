@@ -19,7 +19,7 @@
 // 4 teams all start upper (1 v 4, 2 v 3); with 5–6, seeds 5 and 6 start in the lower bracket,
 // 6 against the loser of seed 1's match and 5 against the other upper loser.
 
-import { seriesOdds, modelCall, ODDS_SPREAD } from "./predict.js";
+import { matchOdds, modelCall, gameChance } from "./predict.js";
 import { isPlayed, gameWins, strengthOfSchedule } from "./schedule.js";
 import { ordinal as ord } from "./ranks.js";
 import { isPostseason, groupStage, REMOVED, CONFIRMED_PICKS } from "./divisions.js";
@@ -29,9 +29,8 @@ export const isBye = (t) => /\bbye week\b/i.test(t?.name ?? "");
 // In the final table: not a bye week and not removed from the league (lib/divisions.js REMOVED).
 const inTable = (t) => !isBye(t) && !REMOVED.has(t.id);
 
-const sig = (x) => 1 / (1 + Math.exp(-x));
-// Chance the first team wins one game: the same stretched gap as the series odds on Predict.
-export const gameP = (ra, rb) => sig(ODDS_SPREAD * (ra - rb));
+// Chance the first team wins one game: the site's model, as on Predict (lib/predict.js gameChance).
+export const gameP = (ratings, a, b) => gameChance(ratings, a, b);
 // Chance to win a best-of-n from the one-game chance (games independent).
 export function bestOfP(p, n) {
   if (n === 1 || n == null) return p;
@@ -61,7 +60,7 @@ export function likelyScore(scores, side) {
 // One match: the winner (`chosen` when it's one of the two, else the model's), its chance by the
 // model, the likeliest score and every score's chance. `mine` marks a chosen winner.
 function callMatch(ratings, a, b, bestOf, chosen) {
-  const p = gameP(ratings.get(a) ?? 0, ratings.get(b) ?? 0), pa = bestOfP(p, bestOf ?? 1);
+  const p = gameP(ratings, a, b), pa = bestOfP(p, bestOf ?? 1);
   const mine = chosen === a || chosen === b;
   const winner = mine ? chosen : pa >= 0.5 ? a : b, scores = bestOfScores(p, bestOf ?? 1);
   return { winner, loser: winner === a ? b : a, p: winner === a ? pa : 1 - pa, score: likelyScore(scores, winner === a ? "a" : "b"), scores, mine, model: pa >= 0.5 ? a : b };
@@ -103,7 +102,7 @@ function callSeries(s, teamOf, ratings, call) {
   if (isBye(h)) return { ...s, home_score: 0, away_score: 1, bye: true };
   if (isBye(a)) return { ...s, home_score: 1, away_score: 0, bye: true };
   const own = call?.(s), mine = OUTCOMES.includes(own);
-  const c = mine ? own : modelCall(seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0));
+  const c = mine ? own : modelCall(matchOdds(ratings, s.home, s.away));
   return { ...s, home_score: c === "home" ? 2 : c === "tie" ? 1 : 0, away_score: c === "away" ? 2 : c === "tie" ? 1 : 0, ...(mine ? { mine: true } : {}) };
 }
 
@@ -188,14 +187,13 @@ function comparer(series, wins, sos, ratings) {
       const r = best.reduce((x, o) => x + vs(a, o) - vs(b, o), 0);
       if (r) return { d: -r, by: "highest common opponent", detail: "record against the highest common opponent", opp: best };
     }
-    const ra = ratings.get(a) ?? 0, rb = ratings.get(b) ?? 0;
     // Everything that came out level on the way here, for the 1v1 tables.
     const games = (x, y) => played.filter((s) => (s.home === x && s.away === y) || (s.home === y && s.away === x))
       .reduce(([w, l], s) => (s.home === x ? [w + s.home_score, l + s.away_score] : [w + s.away_score, l + s.home_score]), [0, 0]);
     const top = common.length ? Math.max(...common.map((o) => wins.get(o) ?? 0)) : null;
     const why = { sos: sa, h2h: oa.has(b) ? games(a, b) : null,
       hco: common.filter((o) => (wins.get(o) ?? 0) === top).map((o) => ({ opp: o, wins: top, a: games(a, o), b: games(b, o) })) };
-    return { d: rb - ra || a - b, by: "1v1 mid", detail: "1v1 mid (model: the stronger team)", why };
+    return { d: gameP(ratings, b, a) - 0.5 || a - b, by: "1v1 mid", detail: "1v1 mid (model: the stronger team)", why };
   };
 }
 
@@ -349,8 +347,7 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
     return { matches: ms, pick: null, modelPick: null, fixed: true, pickSet, champion: ms.at(-1).winner };
   }
   // Seed 1 chooses 3 or 4: the model has it take whichever is weaker.
-  const r = (id) => ratings.get(id) ?? 0;
-  const modelPick = fixed ? 4 : r(seed(4)) > r(seed(3)) ? 3 : 4, own = fixed ? null : choose?.("pick");
+  const modelPick = fixed ? 4 : gameP(ratings, seed(4), seed(3)) > 0.5 ? 3 : 4, own = fixed ? null : choose?.("pick");
   const pick = own === 3 || own === 4 ? own : modelPick;
   const u1 = M("u1", "upper", 1, seed(1), seed(pick), 3, "Upper round 1");
   const u2 = M("u2", "upper", 1, seed(2), seed(pick === 4 ? 3 : 4), 3, "Upper round 1");
@@ -656,8 +653,7 @@ function linesFor(n, split, version = HEROIC_DEFAULT) {
 // count / total, and when exact, scenarios ({ res: outcome index per open series, w, at: team
 // id → Map "place|its week 8 results" → chance within that outcome }).
 export function possibilities(teams, series, ratings, { split = false, weight = "equal", samples = 4000, rng = Math.random, maxExact = 9, version = HEROIC_DEFAULT } = {}) {
-  const r = (id) => ratings.get(id) ?? 0;
-  const odds = (s) => (weight === "model" ? seriesOdds(r(s.home), r(s.away)) : { home: 1 / 3, tie: 1 / 3, away: 1 / 3 });
+  const odds = (s) => (weight === "model" ? matchOdds(ratings, s.home, s.away) : { home: 1 / 3, tie: 1 / 3, away: 1 / 3 });
   // A division's results never move another's table, so each is worked out on its own
   // (Heroic: 3^6 and 3^5 outcomes rather than 3^11).
   const divisions = [...new Set(teams.map((t) => t.division ?? ""))].sort().map((div) => {
@@ -685,7 +681,7 @@ export function possibilities(teams, series, ratings, { split = false, weight = 
           const c = tape[used.length] ?? 0;
           used.push(c);
           // A 1v1 mid comes with its own chance (the model rates teams, not mid players).
-          const pa = p ?? (weight === "model" ? bestOfP(gameP(r(a), r(b)), bestOf ?? 1) : 0.5);
+          const pa = p ?? (weight === "model" ? bestOfP(gameP(ratings, a, b), bestOf ?? 1) : 0.5);
           bw *= c ? 1 - pa : pa;
           return c ? b : a;
         };

@@ -1,7 +1,7 @@
 // Predictions: AD2L series calls and the scrim schedule. Loaded on demand.
 import { listTeams } from "../lib/teams.js";
 import { nameKey } from "../lib/players.js";
-import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, seriesOdds, modelCall, postOdds, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
+import { tune, backtest, fitRatings, isPlayed, draftRead, predictDraft, matchOdds, matchPostOdds, ratingsChance, blend, modelCall, postCall, crowd, standings, validPicks, favourite, outcomeOf, pickHistory, nightScores, TIE_EDGE } from "../lib/predict.js";
 import { isPostseason, playoffs, ANNOUNCED, withAnnounced, postseasonRows, playedPostseason, bracketClose, bracketCloseFor } from "../lib/divisions.js";
 import { postseason, bracketPoints, playoffScore, playoffPicture, seedsSettled, withFix, openPicks } from "../lib/playoffs.js";
 import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, listPlayoffBracketFixes, submitPlayoffBracketFix, currentUid, myUids, steamAccount, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
@@ -64,9 +64,14 @@ export async function renderPredict(src) {
   }
   if (preds && alias.size) preds = preds.map((p) => (alias.has(p.series_id) ? { ...p, series_id: alias.get(p.series_id) } : p));
   const slate = [...d.series, ...pending];
+  // The model: the ratings averaged with Sybil's draft model before the draft (lib/predict.js
+  // gameChance), its replay reading Sybil as of each night.
+  const cm = await import("../parts/cmdraft.js");
+  const draftFile = await cm.draftDataFor([src.key]).catch((e) => (console.warn("draft model unavailable", e), null));
   const params = tune(d.teams, d.series);
-  const bt = backtest(d.teams, d.series, params);
+  const bt = backtest(d.teams, d.series, params, cm.draftAt(draftFile, d.teams, d.games));
   const ratings = fitRatings(d.teams, d.series, params);
+  ratings.draft = cm.draftTable(draftFile, d.teams, d.games);
   const since = lastNight(d);
   const now = Date.now();
   // The playoff picture works on the whole league: Heroic's A and B views hold one division each,
@@ -76,6 +81,7 @@ export async function renderPredict(src) {
   // Playoff series PlayOn hasn't posted count from their uploaded games (as on Content).
   const league = src.view ? await SOURCES[src.key].data() : d;
   const fullRatings = league === d ? ratings : fitRatings(league.teams, league.series, tune(league.teams, league.series));
+  if (league !== d) fullRatings.draft = cm.draftTable(draftFile, league.teams, league.games);
   const full = { ...league, series: [...league.series, ...playedPostseason(postseasonRows(src.key, league))] };
   const split = !!DIVISIONS[src.key]?.views;
   const ps = postseason(full.teams, full.series, fullRatings, { split });
@@ -173,7 +179,7 @@ export async function renderPredict(src) {
       <div class="pcm-sec">
         <div class="dr-sub">Best draft, and the odds after it</div>
         <div class="pcm-body"><div class="panel empty">Building the draft…</div></div>
-        <p class="table-note">Both teams drafted by Sybil's draft model, taking the Drafter's top suggestion each step. Each pick is the best hero for a player without one, at the open position they play most. Each ban is the hero worth most to the other team at a position it still needs. The first-pick team is Radiant. "Before the draft" rates the ten players alone; "after" adds these heroes. The series odds above don't use this.</p>
+        <p class="table-note">Both teams drafted by Sybil's draft model, taking the Drafter's top suggestion each step. Each pick is the best hero for a player without one, at the open position they play most. Each ban is the hero worth most to the other team at a position it still needs. The first-pick team is Radiant. "Before the draft" is the ten players alone, with the first-pick team on Radiant; "after" adds these heroes. Both average the team ratings with Sybil, as every chance on the site does.</p>
       </div>
       <div class="dr-sub">Likely draft, from each team's habits</div>
       <div class="pd-toggles">
@@ -192,7 +198,7 @@ export async function renderPredict(src) {
 
   // One card per series: three pick buttons, each carrying the model's odds and how many
   // people took it; the model's call is tagged on its button.
-  const oddsOf = (s) => (isPostseason(s) ? postOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0, roleOf(s).bestOf) : seriesOdds(ratings.get(s.home) ?? 0, ratings.get(s.away) ?? 0));
+  const oddsOf = (s) => (isPostseason(s) ? matchPostOdds(ratings, s.home, s.away, roleOf(s).bestOf) : matchOdds(ratings, s.home, s.away));
   const callOf = (s) => (isPostseason(s) ? postCall(oddsOf(s)) : modelCall(oddsOf(s)));
   const card = (s) => {
     const o = oddsOf(s), call = callOf(s), post = isPostseason(s);
@@ -364,6 +370,7 @@ export async function renderPredict(src) {
       : `<div class="panel empty">PlayOn hasn't posted next week's schedule yet.</div>`}
     ${lastWeekHtml}
     <details class="how explain"><summary>How the model works</summary>
+      <p>Every chance is two models averaged: the team ratings below, and Sybil's draft model (by ybabts and Fav) reading the ten likely players before the draft: each player's recent heroes and record, and the rank gap. One game's chance is the mean of the two; the series odds follow from it.</p>
       <p>Each team has a strength rating fitted to every series result so far. With only ${playedNights.length} weeks played, results alone are noisy, so each rating is pulled toward a starting point set by the average PlayOn medal of the team's top three players. The pull and the medal weight were tuned by replaying all seven divisions, predicting each week from the weeks before it. So far medals have predicted results far better than past results, so the pull is strong.</p>
       <p>The model's call takes the favourite 2–0, even when 1–1 is the likeliest single result. It only calls 1–1 when per-game odds are within ${TIE_EDGE * 100} points of 50%. The odds are more cautious: past results haven't predicted the next week much better than a coin flip, so most series look close. Replayed over the season, its calls got <b>${called} of ${bt.length}</b> series exactly right${decisive.length ? ` and picked the right team in ${decisive.filter((x) => x.pick === x.actual).length} of the ${decisive.length} that weren't 1–1` : ""}${bt.some((x) => x.pick === "tie") ? `, and called ${bt.filter((x) => x.pick === "tie").length} splits` : ""}; always calling 1–1 would have got ${ties}.</p>
       <p>The two games in a series aren't independent: the better team on the night tends to win both, and only about a third of series have ended 1–1. So an even match is 33% / 33% / 33%, not 25% / 50% / 25%. Current settings: pull ${params.lambda}, medal weight ${params.beta}.</p>
@@ -402,36 +409,31 @@ export async function renderPredict(src) {
   wirePlayerTabs();
 
 
-  // The draft model (parts/cmdraft.js): its pre-draft chance on every card once the division's
-  // draft file loads, and its own draft when a card's "Draft model's draft" is opened. Separate
-  // from the ratings: the odds, the model's call and the standings don't change.
+  // Sybil's own draft when a card's "Model's draft" is opened, every step's chance averaged with
+  // the ratings as the odds are (lib/predict.js blend).
   const cards = [...app.querySelectorAll(".pcm[data-home]")];
-  // Without the model's read (no file, a failed load, a team not found) the expander keeps just
-  // the likely draft.
+  // Without the model's read (no file, a team not found) the expander keeps just the likely draft.
   const dropBest = (scope) => scope.querySelectorAll(".pcm-sec").forEach((x) => x.remove());
-  if (cards.length) import("../parts/cmdraft.js").then(async (cm) => {
-    const data = await cm.draftData(src.key);
-    if (!document.body.contains(cards[0])) return;
-    if (!data) return dropBest(app);
+  if (cards.length && draftFile) {
     for (const box of cards) {
       const home = d.teams.find((t) => t.id === Number(box.dataset.home)), away = d.teams.find((t) => t.id === Number(box.dataset.away));
       if (!home || !away) { dropBest(box.parentElement); continue; }
-      const r = cm.seriesRead(home, away, d.games, data);
-      box.innerHTML = cm.preDraftLine(home, away, r.pre);
       const dr = box.parentElement.querySelector("details.dr"), body = dr?.querySelector(".pcm-body"), built = {};
       if (!body) continue;
+      let r;
+      const rated = ratingsChance(ratings, home.id, away.id);
       // Drawn for the First pick the expander's toggle has on (the likely draft's wiring below
       // flips the buttons; this redraws the best draft alongside).
       const fpNow = () => dr.querySelector("[data-fp][aria-pressed=true]")?.dataset.fp ?? "home";
       const show = (fp) => {
-        built[fp] ??= r.draft(fp === "home");
+        r ??= cm.seriesRead(home, away, d.games, draftFile);
+        built[fp] ??= (({ values, ...rest }) => ({ ...rest, values: values.map((v) => blend(rated, v)) }))(r.draft(fp === "home"));
         body.innerHTML = cm.modelDraftHtml(home, away, built[fp], body.clientWidth || 900);
       };
       dr.addEventListener("toggle", () => { if (dr.open && !body.dataset.done) { body.dataset.done = "1"; show(fpNow()); } });
       dr.querySelectorAll("[data-fp]").forEach((b) => b.addEventListener("click", () => { if (body.dataset.done) show(b.dataset.fp); }));
     }
-  }).catch((e) => { console.warn("draft model unavailable", e); if (document.body.contains(cards[0])) dropBest(app); });
-  if (!cards.length) dropBest(app);
+  } else dropBest(app);
 
   app.querySelectorAll("details.dr").forEach((dr) => {
     const sel = { fp: "home", g: "1" };

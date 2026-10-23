@@ -16,7 +16,7 @@ import { renderPlayers } from "./pages/players.js";
 import { renderStandings } from "./pages/standings.js";
 import { renderTeams } from "./pages/teams.js";
 import { renderWeek } from "./pages/week.js";
-import { mountMe } from "./parts/me.js";
+import { mountMe, myLeagueHome } from "./parts/me.js";
 import { mountGift } from './parts/collection.js';
 import { startPlusLevels } from "./lib/hero-levels.js";
 import { startCardMotion } from "./lib/card-motion.js";
@@ -690,13 +690,24 @@ window.addEventListener("popstate", onNav);
 wireInfo();
 // Steam sign-in (fantasy) comes back as #fantasy-token=…: take it out of the address before the
 // router reads the hash as a page, then sign in with it (lib/store.js steamSignIn).
+// Arriving on the hub signed in opens the league whose roster has you instead, unless you've
+// moved on while it looked. The Home link still opens the hub: this runs on arrival only.
+async function hubToMyLeague() {
+  if (!/^#\/(ad2l\/?)?$/.test(here())) return;
+  const at = location.href;
+  const home = await myLeagueHome().catch(() => null);
+  if (!home || location.href !== at) return;
+  history.replaceState(null, "", addressOf(home));
+  route();
+}
 const steamToken = /^#fantasy-token=([\w-]+\.[\w-]+\.[\w-]+)$/.exec(location.hash)?.[1];
 if (steamToken) {
   let back = ""; try { back = sessionStorage.getItem("steam-back") ?? ""; sessionStorage.removeItem("steam-back"); } catch { /* storage blocked */ }
   history.replaceState(history.state, "", location.pathname + location.search + (back.startsWith("#/") ? back : ""));
-  import("./lib/store.js").then((s) => s.steamSignIn(steamToken)).then(() => { mountMe(); mountGift(); route(); }).catch((e) => console.warn("Steam sign-in failed", e));
+  import("./lib/store.js").then((s) => s.steamSignIn(steamToken)).then(() => { mountMe(); mountGift(); route(); hubToMyLeague(); }).catch((e) => console.warn("Steam sign-in failed", e));
 }
 route();
+if (!steamToken) hubToMyLeague();
 mountMe();
 mountGift();
 countVisit();

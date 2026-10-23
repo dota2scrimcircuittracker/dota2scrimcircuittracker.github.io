@@ -7,8 +7,9 @@
 //    as each team's chance of each place; click a cell or team for what it takes.
 import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD, HEROIC_DEFAULT, bracketsOf, seedsSettled, playoffScore, ROUND_POINTS, withFix } from "../lib/playoffs.js";
 import { info } from "../lib/glossary.js";
-import { esc, pct, teamLink, DIVISIONS } from "../core.js";
-import { groupStage, REMOVED, SEASON } from "../lib/divisions.js";
+import { esc, pct, teamLink, DIVISIONS, SOURCES } from "../core.js";
+import { tune, fitRatings } from "../lib/predict.js";
+import { groupStage, REMOVED, SEASON, playedPostseason } from "../lib/divisions.js";
 import { ordinal as ord } from "../lib/ranks.js";
 
 const RULES = "https://dota.playon.gg/rules";
@@ -77,6 +78,17 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 // locked: when the bracket locked (unix seconds; the league's deadline, lib/divisions.js
 // bracketClose), or null. Locked, the viewer's bracket is the one saved on the Leaderboard, shown
 // read-only. Played postseason series show as results either way.
+// The bracket with only what has happened in it: results in, nothing picked (the Content tab
+// and the Teams tab's Bracket). rows: lib/divisions.js postseasonRows. A series PlayOn hasn't
+// posted counts once a team has won it (so the bracket moves on); one still being played shows
+// its running score.
+export async function mountResultsBracket(el, src, d, rows) {
+  const { withDraft } = await import("./cmdraft.js");
+  const full = src.view ? await SOURCES[src.key].data() : d;
+  const ratings = await withDraft(fitRatings(full.teams, full.series, tune(full.teams, full.series)), [src.key], full);
+  mountPlayoffs(el, src, { ...full, series: [...full.series, ...playedPostseason(rows)] }, ratings, new Map(), { status: { progress: rows.filter((r) => r.played && !r.done) } });
+}
+
 export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view = "bracket", team = null, watch = null, share = null, locked = null, status = null, final = null } = {}) {
   const split = !!DIVISIONS[src.key]?.views;
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
@@ -242,7 +254,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         if (status && unresolved.has(id)) return `<div class="po-slot tbd" title="Decided by a week 8 tiebreaker"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span>TBD</span></div>`;
         const win = m.winner === id && !m.bye && (!status || m.real);
         if (live && !m.bye && !m.pending && !m.real && !sentKey(m.key)) return `<button type="button" class="po-slot po-pick${win ? " win on" : ""}${m.mine ? " me" : ""}" data-k="${esc(m.key)}" data-w="${id}" aria-pressed="${win}"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span class="po-nm">${esc(name[id])}</span></button>`;
-        return `<div class="po-slot${win ? " win" : ""}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye || m.pending || m.open || (live && !m.real) || (status && !m.real) || (fin && !m.real) ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
+        return `<div class="po-slot${win ? " win" : ""}" title="${esc(name[id] ?? "")}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye || m.pending || m.open || (live && !m.real) || (status && !m.real) || (fin && !m.real) ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
       };
       // Your picks: an open match says "pick", a picked one "your pick"; a match still waiting
       // on an earlier pick just shows TBD.
