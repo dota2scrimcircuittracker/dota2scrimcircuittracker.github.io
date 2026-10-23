@@ -179,7 +179,7 @@ export function pickPoints(account, pos, games, matches) {
 export function scoreEntry(entry, week, matches) {
   if (!entry.updatedAt || !Number.isFinite(+entry.updatedAt) || +entry.updatedAt / 1000 >= week.lock
     || !Array.isArray(entry.picks) || entry.picks.length !== SLOTS.length || new Set(entry.picks).size !== SLOTS.length
-    || entry.picks.some((a) => !Number.isInteger(a) || a === entry.account || (week.eligible && !week.eligible.has(a)))) return null;
+    || entry.picks.some((a) => !Number.isInteger(a) || (week.eligible && !week.eligible.has(a)))) return null;
   if(entry.captain!=null&&(!Number.isInteger(entry.captain)||!entry.picks.includes(entry.captain)))return null;
   const games = weekGames(matches, week);
   const picks = entry.picks.map((account, i) => {

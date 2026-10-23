@@ -87,6 +87,8 @@ test("entries saved after the lock never count; the board adds weeks up", () => 
   const board = leaderboard([early, late], weeks, d.games, w.lock + 1);
   assert.deepEqual(board.map((r) => r.name), ["Early"]);
   assert.equal(board[0].points, scoreEntry(early, w, d.games).points);
+  // Picking yourself is allowed and still counts.
+  assert.equal(scoreEntry({ ...early, account: picks[0] }, w, d.games).points, scoreEntry(early, w, d.games).points);
   assert.deepEqual(weekBoard([early, late], w, d.games).map((r) => r.name), ["Early"]);
   // Before the lock nothing is scored yet.
   assert.deepEqual(leaderboard([early], weeks, d.games, w.lock - 1), []);
