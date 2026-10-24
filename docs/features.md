@@ -769,9 +769,9 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   edits don't change it, and it can be withdrawn and re-entered until then. Other players' entries
   stay hidden (only the count shows) until voting starts. Then each lane runs a random
   double-elimination bracket (byes fill it to a power of two; a player's two cards in one lane start
-  on opposite halves) in 48-hour rounds: a first loss drops a card to the losers bracket, a second
+  on opposite halves) in 24-hour rounds: a first loss drops a card to the losers bracket, a second
   knocks it out, and the two brackets' winners meet in one grand final (no reset). 16 cards take 8
-  rounds (16 days), 32 take 10. Pick one card per matchup, never in one with your own card. Voting
+  rounds (8 days), 32 take 10. Pick one card per matchup, never in one with your own card. Voting
   is a **stage**: one matchup at a time with a progress bar, numbered dots (voted / not / yours) and
   Previous/Next. Every matchup has a **discussion thread** (`parts/arcana-cup-thread.js`, stored at
   `cup:<id>:<lane>:thread:<match>`, one line up to 280 chars, writer or Fav can delete, Fav's feed

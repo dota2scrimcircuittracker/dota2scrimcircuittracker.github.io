@@ -1,5 +1,5 @@
 // The Arcana Cup (Gallery › Arcana Cup): a week to enter up to two card designs, then a
-// double-elimination bracket of them voted in 48-hour rounds. You can't vote in a matchup with your
+// double-elimination bracket of them voted in 24-hour rounds. You can't vote in a matchup with your
 // card in it. The top 3 of each bracket (6 in all) become Arcana player cards for the next mini's
 // packs; 1st, 2nd and 3rd of each get a legendary, epic and rare pack. While voting, people still rate each card common to legendary
 // (lib/card-ratings.js), which feeds player-pack rarities. The collection Worker
@@ -7,7 +7,7 @@
 // result; this file is the rules, no storage.
 
 // Times are UTC. Entries close and round 1 opens at votingAt: Fri Oct 30 2026, 9pm ET (EDT, so 01:00 UTC Oct 31).
-export const CUP = Object.freeze({ id: 1, name: 'Arcana Cup', votingAt: Date.UTC(2026, 9, 31, 1), roundMs: 48 * 36e5, maxEntries: 2 });
+export const CUP = Object.freeze({ id: 1, name: 'Arcana Cup', votingAt: Date.UTC(2026, 9, 31, 1), roundMs: 24 * 36e5, maxEntries: 2 });
 export const PRIZES = ['legendary', 'epic', 'rare'];
 // Top 3 of each bracket become Arcana (6 in all) and win that bracket's packs.
 export const ARCANA_PLACES = 3;
@@ -58,7 +58,7 @@ export function seedBracket(entries, random = Math.random) {
 }
 
 // Double elimination. Every match, built from the seeds and the results settled so far, grouped by
-// the 48-hour round it's voted in (round s runs from votingAt + s rounds). A match whose sides
+// the 24-hour round it's voted in (round s runs from votingAt + s rounds). A match whose sides
 // aren't known yet has a or b undefined; a bye is null.
 // - Winners bracket (w<r>-<i>): k = log2(size) rounds, round r voted in round r.
 // - Losers bracket (l<r>-<i>): 2k - 2 rounds, round r voted in round r + 1. Even rounds pair the
