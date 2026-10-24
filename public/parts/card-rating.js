@@ -12,8 +12,9 @@ function ratingHtml(r,{canVote,viewer,mine}) {
     <div class="card-rating-votes" role="group" aria-label="Rate this card">${RATINGS.map(k=>`<button type="button" data-rate="${k}" data-rarity="${k}" aria-pressed="${mine===k}"${canVote?'':' disabled'} title="${canVote?`Rate it ${RATING_NAMES[k]}`:viewer==null?'Sign in with Steam to rate cards':'You can\'t rate your own card'}">${RATING_NAMES[k]} <small>${r.counts[k]}</small></button>`).join('')}</div></div>`;
 }
 // Puts rating r (one of account's designs) under fig and wires its buttons. votes is the viewer's
-// own votes by "<owner>:<key>", updated in place; onVote runs after a vote is saved.
-export function mountRating(fig,account,r,{viewer,votes,onVote}) {
+// own votes by "<owner>:<key>", updated in place; onVote runs after a vote is saved. send saves
+// a vote (the Arcana Cup rates its frozen entries through its own action).
+export function mountRating(fig,account,r,{viewer,votes,onVote,send=pick=>collectionAction('rate',{target:Number(account),cardSlot:r.slot,rating:pick})}) {
   const canVote=viewer!=null&&String(viewer)!==String(account);
   const draw=rating=>{
     fig.querySelector('.card-rating')?.remove();
@@ -22,7 +23,7 @@ export function mountRating(fig,account,r,{viewer,votes,onVote}) {
       const pick=b.getAttribute('aria-pressed')==='true'?null:b.dataset.rate;
       fig.querySelectorAll('[data-rate]').forEach(x=>x.disabled=true);
       try {
-        const {rating:next}=await collectionAction('rate',{target:Number(account),cardSlot:rating.slot,rating:pick});
+        const {rating:next}=await send(pick);
         if(next.mine)votes[`${account}:${next.key}`]=next.mine;else delete votes[`${account}:${next.key}`];
         draw(next);onVote?.(next);
       } catch(e) {fig.querySelectorAll('[data-rate]').forEach(x=>x.disabled=!canVote);fig.querySelector('.card-rating-pick').textContent=e.message;}

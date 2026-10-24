@@ -54,7 +54,7 @@ Where features live in `public/lib/`: search `search.js` (pop-up), `sitesearch.j
 re-check them each season); the draft model `cmdraft.js` (its page part `parts/cmdraft.js`); laning `lanes.js`; combat `combat.js` (charts `combat-charts.js`); items `items.js`,
 the "Items & fights" chart `itemlead.js`; gold `timeline.js`, charts `charts.js`; maps `wardmap.js`,
 `deathmap.js`, `towermap.js`, `fightmap.js`, the shared overlays `maplayers.js`; vision `vision.js`
-(the line of sight, shared with the sync) and `visionmap.js`; unticketed uploads `unticketed.js`;
+(the line of sight, shared with the sync) and `visionmap.js`; unticketed uploads `unticketed.js`; the Arcana Cup `arcana-cup.js` (page part `parts/arcana-cup.js`; Fav removes entries there; a new cup = a new `CUP.id` and dates);
 visitor counts `visits.js`; trimmed files `lite.js`. The player page's Compare tab is
 `parts/compare.js` (picks in the address as `?vs=key,key`).
 

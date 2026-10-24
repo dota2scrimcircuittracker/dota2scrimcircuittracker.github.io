@@ -18,6 +18,7 @@ import './pack-gifts.js'; // the "Fav sent you packs" notice
 import './feed-notice.js'; // the "new comments on your posts" notice
 import { drawFeed } from './feed.js';
 import { mountRating } from './card-rating.js';
+import { drawCup } from './arcana-cup.js';
 import { SCREEN_ART } from '../lib/screen-art-data.js';
 import { ALL_SCREENS } from '../lib/legendary-screens.js';
 import { strangerNames } from '../lib/scout.js';
@@ -168,7 +169,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.dataset.collectionView=tab;body.classList.remove('feed-body'); // the Feed's two-column layout (parts/feed.js) is the Feed's alone
     tabsHost.querySelectorAll('[data-tab]').forEach(b=>{b.setAttribute(tabBar?'aria-selected':'aria-pressed',String(b.dataset.tab===tab));if(tabBar)b.tabIndex=b.dataset.tab===tab?0:-1;b.disabled=busy;});
     if(tab!=='customize')editHistory.slot=null;
-    if(tab==='packs')drawPacks();else if(tab==='collection')drawDex();else if(tab==='customize')drawEditor();else if(tab==='gallery')drawGallery(body,{viewer:own,signIn});else if(tab==='feed'){drawFeed(body,{viewer:own,signIn,action,swatch,colors,typeLabel,ago,focus});focus=null;}else drawRecycle();
+    if(tab==='packs')drawPacks();else if(tab==='collection')drawDex();else if(tab==='customize')drawEditor();else if(tab==='gallery')drawGallery(body,{viewer:own,signIn});else if(tab==='cup')drawCup(body,{viewer:own,signIn});else if(tab==='feed'){drawFeed(body,{viewer:own,signIn,action,swatch,colors,typeLabel,ago,focus});focus=null;}else drawRecycle();
   }
   function drawPacks() {
     const packs=state?.packs??[],normal=packs.filter(p=>p==='common').length;

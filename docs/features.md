@@ -761,6 +761,45 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   them (columns follow the screen width). Sort by newest (the default), voted rarity
   (legendary first; among equals, the clearer verdict, then more votes), most votes, or player
   name; the sort you pick is remembered in that browser. Signed in, "Not rated by me" leaves the cards you can still rate. Names link to profiles.
+- **Arcana Cup** (`#/gallery/cup`, the last Gallery sub-tab): a card-design contest for player
+  packs in the next mini, with two lanes in a sub-tab switcher: **Artistic** (craft and taste) and
+  **Funny** (the best joke), each its own bracket so a meme card never beats a carefully made one.
+  Signed-in players enter up to two of their saved cards in all, each as Artistic or Funny, until
+  entries close (Fri Oct 30 2026, 9pm ET); round 1 opens at once. An entry is a frozen copy, so later
+  edits don't change it, and it can be withdrawn and re-entered until then. Other players' entries
+  stay hidden (only the count shows) until voting starts. Then each lane runs a random
+  double-elimination bracket (byes fill it to a power of two; a player's two cards in one lane start
+  on opposite halves) in 48-hour rounds: a first loss drops a card to the losers bracket, a second
+  knocks it out, and the two brackets' winners meet in one grand final (no reset). 16 cards take 8
+  rounds (16 days), 32 take 10. Pick one card per matchup, never in one with your own card. Voting
+  is a **stage**: one matchup at a time with a progress bar, numbered dots (voted / not / yours) and
+  Previous/Next. Every matchup has a **discussion thread** (`parts/arcana-cup-thread.js`, stored at
+  `cup:<id>:<lane>:thread:<match>`, one line up to 280 chars, writer or Fav can delete, Fav's feed
+  comment bans apply). While a match is live its thread and its **live vote count are shut until you
+  vote in it** (taking your vote back shuts them again); the owner of a card in it and Fav see it
+  from the start. Only people who voted can post, and only while it is live; once it settles anyone
+  can read it with the final count. Tapping a matchup in the bracket (or a result under a podium
+  card) opens its thread in a dialog; a shut live one offers "Go vote". Slots show a 💬 count (never
+  the vote), your cards are outlined, "Find them in the bracket" jumps to them, and the winners
+  final, grand final and losers final are outlined as the Arcana path. More votes wins; a tie goes to
+  more rarity ratings, then a coin flip seeded by the match (entry time no longer matters). Fav can
+  **extend the open round** 24h or 48h (`cup-extend`; `cup:<id>:extend`), which pushes later rounds
+  back. Results show as a podium with each card's path (W/L, votes). Placings after 2nd go by the
+  losers round a card went out in. The Winners bracket
+  shows two-sided, March Madness style, with the winners final and grand final in the middle; the
+  losers bracket runs under it. The rules fold away after your first visit. Every matchup card has the usual Common–Legendary rating buttons, the
+  same votes as the Gallery's. When a grand final closes, that lane's 1st/2nd/3rd get a
+  Legendary/Epic/Rare pack automatically ("Fav sent you"); the top 3 of each lane (6 in all) are to
+  become Arcana player cards (not built yet) and design a signature, border or finish.
+  **Moderation:** only Fav (`ADMIN_ACCOUNT`) sees every entry, in a "Fav: review entries" panel, and
+  removes one with a Remove button (any time, either lane). Before voting the entry is deleted; during
+  voting it stays in the bracket as a forfeit (its match is settled at once and the opponent moves
+  on) and never wins a prize. Each removal is a strike against its owner; at 3 they can't enter any
+  more (withdrawing your own entry is not a strike). Rules `lib/arcana-cup.js` (dates in `CUP`,
+  lanes in `CATEGORIES`), page `parts/arcana-cup.js`, data in the collection Worker
+  (`cup:<id>:<lane>:*`, `cup:<id>:entry:*`, `cup:<id>:strikes:*`). Practice run on localhost:
+  `?cupPractice=1#/gallery/cup` plays both lanes from today's Gallery cards in the browser with
+  made-up voters, a Next round button and Fav's remove buttons; nothing is saved.
 - **Loading screen packs**: each contains five unowned screens and no card items. All 443 screens
   have equal drop chances. Every Steam player receives three packs once on their next visit,
   including new sign-ups, with a "Fav sent you" notice. Normal card packs also include two

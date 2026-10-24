@@ -82,6 +82,10 @@ export async function cardRatings(account) {
 export async function galleryCards() {
   const r=await fetch(`${COLLECTION_API}/gallery`);if(!r.ok)throw new Error('Cards unavailable.');return (await r.json()).cards;
 }
+// The Arcana Cup (lib/arcana-cup.js) as everyone sees it: entries once voting starts, the bracket and placings.
+export async function cupView() {
+  const r=await fetch(`${COLLECTION_API}/cup`);if(!r.ok)throw new Error('The Arcana Cup is unavailable. Try again shortly.');return r.json();
+}
 // The Feed (lib/feed.js): a page of posts older than before (ms), or the single post.
 export async function feedPosts({before=null,post=null,account=null,type=[],exclude=[],sort='new',range='all',offset=0,from=null}={}) {
   const params=new URLSearchParams({...(from?{from:from.join(',')}:{}),...(before?{before}:{}),...(account!=null?{account}:{}),...(type.length?{type:[].concat(type).join(',')}:{}),...(exclude.length?{exclude:[].concat(exclude).join(',')}:{}),...(sort!=='new'?{sort}:{}),...(sort==='top'&&range!=='all'?{range}:{}),...(offset?{offset}:{})}).toString();

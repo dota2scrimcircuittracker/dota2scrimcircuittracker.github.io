@@ -6,6 +6,7 @@ import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements
 import { checkImages } from './image-check.js';
 import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
+import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess } from '../../../public/lib/arcana-cup.js';
 
 // A player's Fantasy entries from Firestore. The collection is public to read (firebase/scrimleague.rules),
 // so no credentials: this asks for just their documents. Throws if Firestore can't be reached.
@@ -50,6 +51,56 @@ const isPlainDesign=design=>!design||designKey({...PLAIN_DESIGN,...design})===PL
 // writes commit together. Browser input never supplies drop odds, items or counts.
 export class CosmeticsVault {
   constructor(ctx) {this.ctx=ctx;}
+  // The Arcana Cup (lib/arcana-cup.js). Tests swap the cup's times and the clock.
+  get cup() {return this.cupConfig??CUP;}
+  now() {return this.clock?.()??Date.now();}
+  async cupEntries(txn) {return [...(await txn.list({prefix:`cup:${this.cup.id}:entry:`})).values()];}
+  // The Arcana Cup runs one double-elimination bracket per category (lib/arcana-cup.js CATEGORIES).
+  // Each is seeded the first time anyone looks after entries close, settles every match that has
+  // closed or has a removed card (in order, so winners fill the next round), and once the grand
+  // final is settled sends 1st to 3rd of that bracket their packs. Fav's removed entries are kept
+  // but forfeit, and never win a prize. Returns every category as everyone sees it.
+  async cupSettle(txn,now=this.now()) {
+    const out={},all=await this.cupEntries(txn);
+    for(const category of Object.keys(CATEGORIES))out[category]=await this.cupSettleCategory(txn,now,category,all.filter(e=>e.category===category));
+    return out;
+  }
+  async cupSettleCategory(txn,now,category,entries) {
+    const cup={...this.cup,extend:await txn.get(`cup:${this.cup.id}:extend`)??{}},p=`cup:${cup.id}:${category}:`;
+    if(now<cup.votingAt)return {entries,rounds:null,phase:'entries',order:null};
+    let seeded=await txn.get(`${p}seeds`);
+    if(!seeded){seeded={seeds:entries.length>=2?seedBracket(entries,secureRandom):null,at:now};await txn.put(`${p}seeds`,seeded);}
+    if(!seeded.seeds)return {entries,rounds:null,phase:'cancelled',order:null};
+    const info={};
+    for(const e of entries)info[e.id]={at:e.at,removed:!!e.removed,ratings:tally(await txn.get(`votes:${e.account}:${e.key}`)).total};
+    const results=await txn.get(`${p}results`)??{};
+    let rounds=buildBracket(seeded.seeds,results,cup),due,changed=false;
+    while((due=[...new Map([...dueMatches(rounds,now),...forfeits(rounds,info)].map(m=>[m.id,m])).values()]).length){
+      for(const m of due)results[m.id]=decideMatch(m,await txn.get(`${p}votes:${m.id}`),info);
+      changed=true;rounds=buildBracket(seeded.seeds,results,cup);
+    }
+    if(changed)await txn.put(`${p}results`,results);
+    const order=placings(rounds,info);
+    if(order&&!await txn.get(`${p}awarded`)) {
+      const byId=new Map(entries.map(e=>[e.id,e]));
+      const winners=order.map(id=>byId.get(id)).filter(e=>e&&!e.removed).slice(0,PRIZES.length);
+      for(const [place,e] of winners.entries()){
+        const key=`user:${e.account}`,state=await txn.get(key);
+        if(state)await txn.put(key,giftPacks(state,{kind:'pack',tier:PRIZES[place],note:`${cup.name} ${CATEGORIES[category].name}: ${['1st','2nd','3rd'][place]} place`},now));
+      }
+      await txn.put(`${p}awarded`,now);
+    }
+    return {entries,rounds,phase:phaseAt(now,rounds,cup),order};
+  }
+  // One matchup, settled as of now, with who may read and write its thread (lib/arcana-cup.js threadAccess).
+  async cupMatch(txn,now,category,matchId,account) {
+    const view=(await this.cupSettle(txn,now))[category];
+    const m=view.rounds?.flat().find(x=>x.id===matchId);
+    if(!m||!m.a||!m.b)return null;
+    const p=`cup:${this.cup.id}:${category}:`,votes=await txn.get(`${p}votes:${m.id}`)??{};
+    const owner=view.entries.some(e=>(e.id===m.a||e.id===m.b)&&e.account===account);
+    return {m,view,votes,pick:votes[account]??null,access:threadAccess(m,now,{pick:votes[account]??null,owner,admin:isAdmin(account)})};
+  }
   // The pull log, filled once from the pack receipts opened before it existed.
   async backfillPulls() {
     if(await this.ctx.storage.get('pulls-backfilled'))return;
@@ -119,6 +170,26 @@ export class CosmeticsVault {
         });
       }
       return json({cards});
+    }
+    // The Arcana Cup for everyone: the bracket, settled results and placings. Other players'
+    // entries stay hidden until entries close (only the count shows); live vote counts never show,
+    // only each settled result's.
+    if(url.pathname==='/cup') {
+      const view=await this.ctx.storage.transaction(txn=>this.cupSettle(txn)),nicknames={},categories={};
+      for(const [category,v] of Object.entries(view)) {
+        const open=v.phase==='entries';
+        categories[category]={phase:v.phase,count:v.entries.length,rounds:v.rounds,order:v.order,entries:open?[]:await Promise.all(v.entries.map(async e=>{
+          nicknames[e.account]=shownNickname(await this.ctx.storage.get(`user:${e.account}`));
+          return {...e,design:e.removed?null:e.design,...tally(await this.ctx.storage.get(`votes:${e.account}:${e.key}`))};
+        }))};
+      }
+      // How many comments each matchup's thread has (never what they say or how the vote stands).
+      const threadCounts={};
+      for(const category of Object.keys(CATEGORIES)) {
+        const pre=`cup:${this.cup.id}:${category}:thread:`;threadCounts[category]={};
+        for(const [k,v] of await this.ctx.storage.list({prefix:pre}))threadCounts[category][k.slice(pre.length)]=(v??[]).filter(c=>!c.removed).length;
+      }
+      return json({cup:this.cup,categories,nicknames,threadCounts,serverNow:this.now()});
     }
     // The newest 150 epic and legendary pulls, with each puller's shown nickname. The first call
     // fills the log from the pack receipts opened before it existed.
@@ -225,6 +296,35 @@ export class CosmeticsVault {
       const mine={};
       for(const [k,v] of await this.ctx.storage.list({prefix:'votes:',limit:20000}))if(v?.[account])mine[k.slice(6)]=v[account];
       return json({votes:mine});
+    }
+    // This player's Arcana Cup entries and their pick in each match. A read, so no receipt.
+    if(body.action==='cup-mine') {
+      const p=`cup:${this.cup.id}:`,votes={};
+      for(const category of Object.keys(CATEGORIES))for(const [k,v] of await this.ctx.storage.list({prefix:`${p}${category}:votes:`}))if(v?.[account])votes[`${category}:${k.slice(`${p}${category}:votes:`.length)}`]=v[account];
+      return json({entries:(await this.cupEntries(this.ctx.storage)).filter(e=>e.account===account&&!e.removed),votes,strikes:await this.ctx.storage.get(`${p}strikes:${account}`)??0,maxStrikes:MAX_STRIKES});
+    }
+    // A matchup's discussion thread. While the match is live it opens only once you have voted in it
+    // (or own a card in it, or are Fav); then it also shows the live vote count. A read, so no receipt.
+    if(body.action==='cup-thread') {
+      const category=categoryOf(body.category);
+      if(!category)return json({error:'Choose Artistic or Funny.'},400);
+      const now=this.now(),found=await this.ctx.storage.transaction(txn=>this.cupMatch(txn,now,category,String(body.match??''),account));
+      if(!found)return json({error:'That matchup is not in the bracket yet.'},400);
+      const {m,votes,pick,access}=found,tk=`cup:${this.cup.id}:${category}:thread:${m.id}`,comments=await this.ctx.storage.get(tk)??[];
+      if(!access.read)return json({locked:true,count:comments.filter(c=>!c.removed).length,live:isVotable(m,now),serverNow:now});
+      const counts={[m.a]:0,[m.b]:0};
+      if(m.result)Object.assign(counts,m.result.votes);else for(const v of Object.values(votes))if(v in counts)counts[v]++;
+      const nicknames={};
+      for(const a of new Set(comments.map(c=>c.account)))nicknames[a]=shownNickname(await this.ctx.storage.get(`user:${a}`));
+      return json({comments,nicknames,counts,mine:pick,canComment:access.write,live:isVotable(m,now),serverNow:now});
+    }
+    // Fav's view of every entry, hidden or not, with each player's strikes. A read, so no receipt.
+    if(body.action==='cup-all') {
+      if(!isAdmin(account))return json({error:'Only Fav can review entries.'},403);
+      const p=`cup:${this.cup.id}:strikes:`,strikes={},nicknames={},entries=await this.cupEntries(this.ctx.storage);
+      for(const [k,v] of await this.ctx.storage.list({prefix:p}))strikes[k.slice(p.length)]=v;
+      for(const a of new Set(entries.map(e=>e.account)))nicknames[a]=shownNickname(await this.ctx.storage.get(`user:${a}`));
+      return json({entries,strikes,nicknames,maxStrikes:MAX_STRIKES});
     }
     // The facts behind this player's achievements. A read, so no receipt.
     if(body.action==='achievements') {
@@ -462,6 +562,102 @@ export class CosmeticsVault {
           await txn.put(votesKey,votes);
           result={state:saved,rating:{slot:body.cardSlot,key,mine:votes[account]??null,...tally(votes)}};
         }
+        else if(body.action==='cup-enter') {
+          // One of your saved cards, copied as it is now, into Artistic or Funny. Up to two in all,
+          // different designs, until entries close; three removals by Fav and you can't enter.
+          const cup=this.cup,category=categoryOf(body.category);
+          if(this.now()>=cup.votingAt)throw new Error('Entries are closed.');
+          if(!category)throw new Error('Choose Artistic or Funny.');
+          if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=CARD_SLOTS)throw new Error('Choose one of your cards.');
+          if((await txn.get(`cup:${cup.id}:strikes:${account}`)??0)>=MAX_STRIKES)throw new Error('Fav removed too many of your entries, so you can no longer enter the cup.');
+          const prefs=cardDesignState(saved),design=prefs.cardDesigns[body.cardSlot];
+          if(isPlainDesign(design))throw new Error('Customize this card before entering it.');
+          const every=(await this.cupEntries(txn)).filter(e=>e.account===account),mine=every.filter(e=>!e.removed),key=designKey(design);
+          if(mine.length>=cup.maxEntries)throw new Error(`You can enter ${cup.maxEntries} cards. Withdraw one to enter another.`);
+          if(mine.some(e=>e.key===key))throw new Error("You have already entered this design.");
+          const n=[1,2,3,4,5].find(i=>!every.some(e=>e.id===entryId(account,i)));
+          const entry={id:entryId(account,n),account,category,slot:body.cardSlot,name:prefs.cardNames[body.cardSlot]??null,design,key,at:this.now()};
+          await txn.put(`cup:${cup.id}:entry:${entry.id}`,entry);
+          result={state:saved,entry};
+        }
+        else if(body.action==='cup-withdraw') {
+          const k=`cup:${this.cup.id}:entry:${String(body.entry??'')}`,entry=await txn.get(k);
+          if(!entry||entry.account!==account||entry.removed)throw new Error('Choose one of your entries.');
+          if(this.now()>=this.cup.votingAt)throw new Error('Entries are closed, so entries stay in.');
+          await txn.delete(k);
+          result={state:saved,removed:entry.id};
+        }
+        else if(body.action==='cup-remove') {
+          // Fav's call, any time. Before voting the entry is deleted; once voting has started it
+          // stays in the bracket as a forfeit. Either way it is a strike against its owner.
+          if(!isAdmin(account))throw new Error('Only Fav can remove entries.');
+          const k=`cup:${this.cup.id}:entry:${String(body.entry??'')}`,entry=await txn.get(k);
+          if(!entry||entry.removed)throw new Error('Choose an entry that is still in.');
+          if(this.now()<this.cup.votingAt)await txn.delete(k);else await txn.put(k,{...entry,removed:this.now()});
+          const sk=`cup:${this.cup.id}:strikes:${entry.account}`,strikes=(await txn.get(sk)??0)+1;
+          await txn.put(sk,strikes);
+          result={state:saved,removed:entry.id,owner:entry.account,strikes};
+        }
+        else if(body.action==='cup-vote') {
+          // One pick per voter per match, changeable while it is open; null takes it back.
+          const now=this.now(),category=categoryOf(body.category);
+          if(!category)throw new Error('Choose Artistic or Funny.');
+          const view=(await this.cupSettle(txn,now))[category];
+          const m=view.rounds?.flat().find(x=>x.id===body.match);
+          if(!m||!isVotable(m,now))throw new Error('That matchup is not open for votes.');
+          if(view.entries.some(e=>(e.id===m.a||e.id===m.b)&&e.account===account))throw new Error("You can't vote in a matchup with your card in it.");
+          const pick=body.pick??null;
+          if(pick!=null&&pick!==m.a&&pick!==m.b)throw new Error('Pick one of the two cards.');
+          const k=`cup:${this.cup.id}:${category}:votes:${m.id}`,votes={...(await txn.get(k)??{})};
+          if(pick==null)delete votes[account];else votes[account]=pick;
+          await txn.put(k,votes);
+          result={state:saved,match:m.id,mine:pick};
+        }
+        else if(body.action==='cup-comment') {
+          // One line in a live matchup's thread, once you have voted in it (lib/arcana-cup.js threadAccess).
+          const now=this.now(),category=categoryOf(body.category);
+          if(!category)throw new Error('Choose Artistic or Funny.');
+          if(isBanned(await txn.get('feed-bans'),account,Date.now(),'comment'))throw new Error('Fav has banned you from commenting.');
+          const found=await this.cupMatch(txn,now,category,String(body.match??''),account);
+          if(!found)throw new Error('That matchup is not open.');
+          if(!isVotable(found.m,now))throw new Error('This matchup is closed, so its thread is read-only.');
+          if(!found.access.write)throw new Error('Vote in this matchup to join its thread.');
+          if(Date.now()-(saved.lastCommentAt??0)<COMMENT_GAP)throw new Error('Wait a moment before commenting again.');
+          const tk=`cup:${this.cup.id}:${category}:thread:${found.m.id}`,{comments}=addComment(await txn.get(tk),{account,text:body.text,at:Date.now(),reply:body.reply});
+          await txn.put(tk,comments);
+          result={state:{...saved,lastCommentAt:Date.now()},match:found.m.id,comments};
+        }
+        else if(body.action==='cup-comment-delete') {
+          // The writer or Fav; a comment with replies stays as a "removed" placeholder.
+          const category=categoryOf(body.category),found=category&&await this.cupMatch(txn,this.now(),category,String(body.match??''),account);
+          if(!found)throw new Error('That matchup is not in the bracket.');
+          const tk=`cup:${this.cup.id}:${category}:thread:${found.m.id}`,comments=deleteComment(await txn.get(tk),String(body.comment??''),account,{owner:null,admin:isAdmin(account)});
+          await txn.put(tk,comments);
+          result={state:saved,match:found.m.id,comments};
+        }
+        else if(body.action==='cup-extend') {
+          // Fav gives the round that is open now more time (1 to 72 hours), for every bracket at once.
+          // Later rounds move back by the same amount.
+          if(!isAdmin(account))throw new Error('Only Fav can extend a round.');
+          const hours=Number(body.hours);
+          if(!(Number.isInteger(hours)&&hours>=1&&hours<=72))throw new Error('Choose 1 to 72 hours.');
+          const now=this.now(),views=await this.cupSettle(txn,now),open=Object.values(views).flatMap(v=>v.rounds?.flat()??[]).find(m=>isVotable(m,now));
+          if(!open)throw new Error('No round is open right now.');
+          const ek=`cup:${this.cup.id}:extend`,extend={...(await txn.get(ek)??{})};
+          extend[open.step]=(extend[open.step]??0)+hours*36e5;
+          await txn.put(ek,extend);
+          result={state:saved,step:open.step,extend};
+        }
+        else if(body.action==='cup-rate') {
+          // Rating an entry is rating its design: the same votes as the Gallery and profiles.
+          if(this.now()<this.cup.votingAt)throw new Error('Entries can be rated once voting starts.');
+          const entry=await txn.get(`cup:${this.cup.id}:entry:${String(body.entry??'')}`);
+          if(!entry)throw new Error('Choose a card in the cup.');
+          if(entry.account===account)throw new Error("Rate other players' cards, not your own.");
+          const votesKey=`votes:${entry.account}:${entry.key}`,votes=castVote(await txn.get(votesKey),account,body.rating??null);
+          await txn.put(votesKey,votes);
+          result={state:saved,rating:{slot:entry.slot,key:entry.key,mine:votes[account]??null,...tally(votes)}};
+        }
         else throw new Error('Unknown collection action.');
         await txn.put(key,result.state);
         if(['equip','card-settings','nickname'].includes(body.action)) await txn.put(`appearance:${account}`,cardAppearance(result.state));
@@ -487,6 +683,7 @@ export async function cosmeticsRequest(req,env,allowedOrigins) {
   const vault=env.COSMETICS.get(env.COSMETICS.idFromName('league-v1'));
   if(req.method==='GET' && url.pathname==='/cosmetics/appearances') return respond(await vault.fetch('https://vault/appearances'));
   if(req.method==='GET' && url.pathname==='/cosmetics/gallery') return respond(await vault.fetch('https://vault/gallery'));
+  if(req.method==='GET' && url.pathname==='/cosmetics/cup') return respond(await vault.fetch('https://vault/cup'));
   if(req.method==='GET' && url.pathname==='/cosmetics/pulls') return respond(await vault.fetch('https://vault/pulls'));
   if(req.method==='GET' && url.pathname==='/cosmetics/feed') return respond(await vault.fetch(`https://vault/feed${url.search}`));
   // Feed post images: served as stored, cached for good (a post's images never change), and
