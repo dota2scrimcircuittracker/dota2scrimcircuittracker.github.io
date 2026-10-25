@@ -2586,6 +2586,11 @@ button.ga-pg:disabled { opacity: .35; cursor: default; }
 .tier-vs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 18px; }
 .tier-vs-l { font: 600 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dust); }
 .tier-vs .seg { padding: 6px 12px; font-size: 12px; }
+.tier-find { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; }
+.tier-find-q { flex: 1 1 220px; max-width: 360px; padding: 8px 10px; background: var(--stone); color: var(--bone); border: 1px solid var(--seam); font: inherit; }
+.tier-find-n { font: 600 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dust); }
+.fantasy-tier-chip { transition: opacity .15s, filter .15s; }
+.fantasy-tier-chip.tier-miss { opacity: .25; filter: grayscale(1); }
 .ga-cmp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
 .ga-cmp-l { font: 600 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dust); }
 .ga-cmp .segs { margin: 0; }
@@ -3382,6 +3387,8 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
 .tour-invite b { font: 800 17px/1.05 var(--display); text-transform: uppercase; letter-spacing: .02em; }
 .tour-invite span { color: var(--dust); margin-bottom: 6px; }
 .tour-invite .tour-btn { padding: 8px 10px; }
+.cup-notice { width: min(320px, calc(100vw - 32px)); }
+.cup-notice em { font-style: normal; font-weight: 700; color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 @keyframes tour-in { from { transform: translateY(16px); opacity: 0; } }
 @media (max-width: 760px) {
   /* Phones: one slim bar across the bottom: the question and both buttons on a line. */
@@ -3389,6 +3396,9 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
   .tour-invite b { font-size: 15px; }
   .tour-invite span { display: none; }
   .tour-invite .tour-btns { flex-wrap: nowrap; gap: 4px; }
+  /* The cup notice keeps its message on phones: stacked, not one bar. */
+  .cup-notice { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px 12px; }
+  .cup-notice span { display: block; }
   /* Phones: the header scrolls away during the tour, and the docked caption is compact. */
   body.touring .top { position: static; }
   .tour-card.docked:not(.center) { left: 8px !important; right: 8px; bottom: 8px; padding: 10px 12px; font-size: 13px; }

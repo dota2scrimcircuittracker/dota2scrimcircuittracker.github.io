@@ -738,3 +738,8 @@ import("./lib/tour.js").then((m) => m.initTour({
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   },
 })).catch((e) => console.warn("tour unavailable", e));
+// Arcana Cup: a one-time notice to enter a card design while entries are open.
+import("./lib/cup-notice.js").then((m) => m.initCupNotice({
+  here,
+  go: (h) => { history.pushState(null, "", addressOf(h)); window.dispatchEvent(new HashChangeEvent("hashchange")); },
+})).catch((e) => console.warn("cup notice unavailable", e));

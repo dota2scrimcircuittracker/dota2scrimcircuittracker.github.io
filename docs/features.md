@@ -191,7 +191,10 @@ order, grouped by series. (Scrims have no draft: it isn't on the post-game scree
 One tab per section (Laning is AD2L only):
 
 - **Tier list** — every player with 3+ games, ranked S–D (see "Tier list scoring" below). One list per
-  position, Pos 1–5 (opens on Pos 1; there's no all-players list): a player is on the list of the position
+  position, Pos 1–5 (opens on Pos 1), plus All: every player together on the all-roles list, the tiers
+  their profiles show (only "All leagues" changes it). A search box above the bands dims every card
+  whose name or team doesn't match, keeps them in place, counts the matches and scrolls the first one
+  into view. On a position list, a player is on the list of the position
   they played most, with all their games counting. Each game is scored against the position played in
   it (that position's anchors; `lib/tiers.js` tierModels/tierList `pos`), and the list's consistency and
   rating curve come from that position's games, so only players who swap positions score differently
@@ -787,7 +790,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   back. Results show as a podium with each card's path (W/L, votes). Placings after 2nd go by the
   losers round a card went out in. The Winners bracket
   shows two-sided, March Madness style, with the winners final and grand final in the middle; the
-  losers bracket runs under it. The rules fold away after your first visit. Every matchup card has the usual Common–Legendary rating buttons, the
+  losers bracket runs under it. The rules start open and can be folded away. Every matchup card has the usual Common–Legendary rating buttons, the
   same votes as the Gallery's. When a grand final closes, that lane's 1st/2nd/3rd get a
   Legendary/Epic/Rare pack automatically ("Fav sent you"); the top 3 of each lane (6 in all) are to
   become Arcana player cards (not built yet) and design a signature, border or finish.
@@ -795,7 +798,9 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   removes one with a Remove button (any time, either lane). Before voting the entry is deleted; during
   voting it stays in the bracket as a forfeit (its match is settled at once and the opponent moves
   on) and never wins a prize. Each removal is a strike against its owner; at 3 they can't enter any
-  more (withdrawing your own entry is not a strike). Rules `lib/arcana-cup.js` (dates in `CUP`,
+  more (withdrawing your own entry is not a strike). **Launch notice** (`lib/cup-notice.js`): until entries
+  close, every visitor gets a one-time card on launch (after the tour invite, never over it) with the days
+  left and an "Enter the Cup" button; either button dismisses it for good (`cup-notice-<id>`). Rules `lib/arcana-cup.js` (dates in `CUP`,
   lanes in `CATEGORIES`), page `parts/arcana-cup.js`, data in the collection Worker
   (`cup:<id>:<lane>:*`, `cup:<id>:entry:*`, `cup:<id>:strikes:*`). Practice run on localhost:
   `?cupPractice=1#/gallery/cup` plays both lanes from today's Gallery cards in the browser with

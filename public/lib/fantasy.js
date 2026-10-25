@@ -67,9 +67,16 @@ export function onNight(s) {
   const n = nightStarts.find((t) => t >= s.time - 12 * 3600);
   return n != null && s.time < n && s.time > n - 5 * 86400 ? { ...s, time: n } : s;
 }
+// A week that locks before its first series start (a game moved earlier than PlayOn shows, or one
+// onNight would move to the playoff night), per league: week key -> unix seconds. The earlier of
+// the two counts. New season: empty it.
+export const LOCK_EARLY = {
+  conqueror: { "2026-10-26": Date.UTC(2026, 9, 27, 1) / 1000 }, // Monday 10/26 9pm ET: a game moved up from Thursday
+};
 export function playoffWeeks(league, series) {
   return fantasyWeeks(withAnnounced(league, series).filter((s) => isPostseason(s)).map(onNight)
-    .filter((s) => !TEST_WEEK || weekKey(s.time) > TEST_WEEK.key)).map((w) => ({ ...w, league }));
+    .filter((s) => !TEST_WEEK || weekKey(s.time) > TEST_WEEK.key))
+    .map((w) => ({ ...w, league, lock: Math.min(w.lock, LOCK_EARLY[league]?.[w.key] ?? Infinity) }));
 }
 export function testWeek(divisions) {
   if (!TEST_WEEK) return null;

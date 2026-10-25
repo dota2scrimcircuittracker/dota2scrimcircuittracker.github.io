@@ -10,7 +10,8 @@ import { leagueSrc, floorOf, pct, esc, teamLink, playerLink, allLeagues, leagueS
 
 // ---------- Tier list ----------
 
-let tierRole = "pos1"; // the position shown: pos1 … pos5
+let tierRole = "pos1"; // the position shown: pos1 … pos5, or all (every position together)
+let tierFind = ""; // the search box's text: players who don't match are dimmed, not hidden
 // What the shown position is rated against. `roles` (the default): every position (the all-roles
 // model and curve), so each player's tier and rating are the ones on their profile and cards;
 // off, that position's own model in this league. `leagues`: every league's games too. The list
@@ -279,12 +280,14 @@ export function tierSection(src, matches, model) {
         : tierList(matches, { model: (widePos[ver] ??= tierModels(everyGame, { minGames: min, version: ver }))[n], minGames: min, pos: n });
       posLists[lk] = made;
     }
-    const list = n ? posLists[lk] : full;
+    // All: the all-roles list, the one on profiles; with every league, that field's model.
+    const list = n ? posLists[lk] : !wide ? full
+      : (posLists[lk] ??= tierList(matches, { model: (wideAll[ver] ??= tierModel(everyGame, { minGames: floorOf(src), version: ver })), minGames: floorOf(src) }));
     const { renderer:{card}, cards } = await cardData;
     const chip = (p, i, tier) => {
       const open = tierOpen.has(p.key);
       const account = p.account_id ?? (/^\d+$/.test(p.key) ? Number(p.key) : p.key);
-      return `<div class="chip fantasy-tier-chip ${p.role}${open ? " open" : ""}" style="--i:${i}" data-key="${esc(p.key)}">
+      return `<div class="chip fantasy-tier-chip ${p.role}${open ? " open" : ""}" style="--i:${i}" data-key="${esc(p.key)}" data-find="${esc(`${p.name ?? ""} ${p.team ?? ""}`.toLowerCase())}">
         <div class="tier-card-main">${card({ account, name: p.name, team: p.team, record: { wins: p.wins, games: p.games } }, p.pos, { own: true, tier: { tier, rating: p.rating }, nameHtml: playerLink(src, p) })}
           <div class="tier-card-actions">
             <button type="button" class="chip-caret" aria-expanded="${open}" aria-label="${open ? "Close breakdown" : "Breakdown"} for ${esc(p.name)}">${open ? "×" : "&#8964;"}</button>
@@ -302,19 +305,39 @@ export function tierSection(src, matches, model) {
     const tab = (k, label) => `<button type="button" class="seg${tierRole === k ? " on" : ""}" data-role="${k}">${label}</button>`;
     const verBtn = (k) => `<button type="button" class="seg${ver === k ? " on" : ""}" data-ver="${k}" aria-pressed="${ver === k}">${esc(VERSIONS[k].label)}</button>`;
     const vsBtn = (k, label) => `<button type="button" class="seg${tierVs[k] ? " on" : ""}" data-vs="${k}" aria-pressed="${tierVs[k]}">${label}</button>`;
-    const against = waiting ? "Loading every league…" : !tierVs.roles && !wide ? "" : `Rated against ${tierVs.roles ? "every position" : `every pos ${n}`} in ${wide ? "every league" : leagueShort(src)}: the same scoring of ${leagueShort(src)}'s games, with the 100s, 0s and rating curve set by that whole field. Only ${leagueShort(src)}'s pos ${n} players are shown.`;
+    // All is always rated against every position, so only every league changes it.
+    const against = waiting ? "Loading every league…" : !wide && !(n && tierVs.roles) ? "" : `Rated against ${tierVs.roles || !n ? "every position" : `every pos ${n}`} in ${wide ? "every league" : leagueShort(src)}: the same scoring of ${leagueShort(src)}'s games, with the 100s, 0s and rating curve set by that whole field. ${n ? `Only ${leagueShort(src)}'s pos ${n} players are shown.` : `Every ${leagueShort(src)} player is shown.`}`;
+    // A redraw (a card design arriving) mustn't take the search box from someone typing in it.
+    const typing = el.contains(document.activeElement) && document.activeElement.classList.contains("tier-find-q");
     el.innerHTML = `
-      <div class="tier-bar"><div class="row segs tier-pos">${[1, 2, 3, 4, 5].map((n) => tab(`pos${n}`, `Pos ${n}`)).join("")}</div>
-        <div class="tier-vs" role="group" aria-label="Rate against"><span class="tier-vs-l">Rate against</span>${vsBtn("roles", "All roles")}${src.all ? "" : vsBtn("leagues", "All leagues")}</div>
+      <div class="tier-bar"><div class="row segs tier-pos">${tab("all", "All")}${[1, 2, 3, 4, 5].map((n) => tab(`pos${n}`, `Pos ${n}`)).join("")}</div>
+        ${n || !src.all ? `<div class="tier-vs" role="group" aria-label="Rate against"><span class="tier-vs-l">Rate against</span>${n ? vsBtn("roles", "All roles") : ""}${src.all ? "" : vsBtn("leagues", "All leagues")}</div>` : ""}
         <div class="tier-vs tier-ver" role="group" aria-label="Model"><span class="tier-vs-l">Model</span>${[LIVE, ...Object.keys(VERSIONS).filter((k) => k !== LIVE)].map(verBtn).join("")}</div></div>
+      <div class="tier-find"><input type="search" class="tier-find-q" value="${esc(tierFind)}" placeholder="Find a player or team" aria-label="Find a player or team in the tier list" autocomplete="off"><span class="tier-find-n" aria-live="polite"></span></div>
       ${ver !== LIVE ? `<p class="table-note keep tier-vs-note">Viewing the ${esc(VERSIONS[ver].label.toLowerCase())} model. Player, team and game pages use the ${esc(VERSIONS[LIVE].label.toLowerCase())} model.</p>` : ""}
-      ${n ? `<p class="table-note">Players whose main position is ${n}. Every game they played counts, each compared with the position they played in it; open a breakdown to see the score at each position.</p>` : ""}
+      ${n ? `<p class="table-note">Players whose main position is ${n}. Every game they played counts, each compared with the position they played in it; open a breakdown to see the score at each position.</p>` : `<p class="table-note">Every player at every position, at the tier on their profile.</p>`}
       ${against ? `<p class="table-note keep tier-vs-note">${against}</p>` : ""}
       ${PAINT_FILTER}<div class="tier-board">${bands}</div>
       ${list.unranked.length ? `<p class="table-note keep">Not ranked yet (needs ${floorOf(src)}+ games): ${list.unranked.map((p) => `${playerLink(src, p)} (${p.games})`).join(", ")}.</p>` : ""}`;
     el.querySelectorAll(".tier-pos .seg").forEach((b) => (b.onclick = () => { tierRole = b.dataset.role; draw(); }));
     el.querySelectorAll(".tier-vs .seg[data-vs]").forEach((b) => (b.onclick = () => { tierVs[b.dataset.vs] = !tierVs[b.dataset.vs]; draw(); }));
     el.querySelectorAll(".tier-ver .seg").forEach((b) => (b.onclick = () => { tierVer = b.dataset.ver; draw(); }));
+    // Search: dim the cards that don't match the name or team, so the tiers stay in place.
+    const box = el.querySelector(".tier-find-q");
+    const find = () => {
+      const q = tierFind.trim().toLowerCase();
+      let hits = 0;
+      el.querySelectorAll(".fantasy-tier-chip").forEach((c) => {
+        const hit = !q || c.dataset.find.includes(q);
+        c.classList.toggle("tier-miss", !hit);
+        if (q && hit) hits++;
+      });
+      el.querySelector(".tier-find-n").textContent = q ? `${hits} ${hits === 1 ? "match" : "matches"}` : "";
+    };
+    // Tier rows scroll sideways, so bring the first match into view.
+    box.oninput = () => { tierFind = box.value; find(); if (tierFind.trim()) el.querySelector(".fantasy-tier-chip:not(.tier-miss)")?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); };
+    find();
+    if (typing) { box.focus({ preventScroll: true }); box.setSelectionRange(box.value.length, box.value.length); }
     // "How it's scored" follows the model shown (kept open if it was).
     const how = document.getElementById("tier-how");
     if (how && how.dataset.ver !== ver) {

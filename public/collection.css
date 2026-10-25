@@ -575,3 +575,5 @@ html:has(dialog.collection-dialog[open]){overflow:hidden}.collection-dialog{over
 .cup-chip{display:inline-block;padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid transparent}
 .cup-lane-artistic{background:rgba(138,168,255,.22);border-color:#8aa8ff;color:#c6d4ff}.cup-lane-funny{background:rgba(255,216,121,.2);border-color:#ffd879;color:#ffe9b0}
 .cup-br-w{background:rgba(122,255,208,.14);border-color:rgba(122,255,208,.6);color:#7affd0}.cup-br-l{background:rgba(215,163,255,.16);border-color:rgba(215,163,255,.65);color:#d7a3ff}.cup-br-gf{background:rgba(234,196,126,.2);border-color:#eac47e;color:#ffd879}
+
+.cup-enter-btns{display:flex;flex-direction:column;gap:6px;margin-top:8px}.cup-enter-btns button{width:100%}

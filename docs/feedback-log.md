@@ -33,3 +33,7 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-42KTAW · 2026-10-16 · Not a code bug: game 3 was added before OpenDota parsed it, so it had no 10-minute data; the next sync filled it in and all three No Immortals games show on Lanes now.
 - FB-H6HBZV · 2026-10-16 · Not adding: stacking already feeds into the carry farm stats.
 - FB-OJWV0C · 2026-10-21 · Unsent feedback notes now open when Feedback mode starts, and the Notes list has a Clear all button
+- FB-QPEUC2 · 2026-10-25 · Added an All tab to the tier list and a player search that dims non-matches.
+- FB-XCUG6R · 2026-10-25 · Bans and picks on the team games tab now show in draft order.
+- FB-CNGMGH · 2026-10-25 · Noted: cross-division fantasy roster idea.
+- FB-3R0J2L · 2026-10-25 · Noted: note unclear and screenshot blank, nothing to act on.

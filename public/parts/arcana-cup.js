@@ -25,8 +25,8 @@ const PLACE = ['1st', '2nd', '3rd'];
 const CATS = Object.keys(CATEGORIES);
 let tab = CATS[0]; // the open sub-tab; kept while the page redraws
 const stageAt = {}; // the matchup the voting stage shows in each bracket; kept while the page redraws
-// The rules open the first time you visit and fold away after, so voting isn't under a wall of text.
-let introOpen = (() => { try { const seen = localStorage.getItem('cup-intro-seen') === '1'; localStorage.setItem('cup-intro-seen', '1'); return !seen; } catch { return true; } })();
+// The rules start open every visit; fold them away and they stay folded while the page redraws.
+let introOpen = true;
 
 function introHtml(cup, phase) {
   return `<details class="cup-intro"${introOpen ? ' open' : ''}>
@@ -209,8 +209,8 @@ export async function drawCup(body, { viewer, signIn }) {
       parts.push(`<h4>Your entries (${entered.length}/${cup.maxEntries})</h4>${strikes ? `<p class="cup-note cup-warn">Fav has removed ${strikes} of your entries. At ${mine?.maxStrikes ?? MAX_STRIKES}, you can't enter any more.${banned ? ' You can no longer enter.' : ''}</p>` : ''}<div class="gallery-grid cup-mine">${entered.map((e) => cardOf(e, tag(e))).join('') || '<p>None yet. Enter a card below.</p>'}</div>`);
       const state = collectionState(), designs = state ? cardDesignState(state).cardDesigns : [];
       const full = entered.length >= cup.maxEntries || banned;
-      parts.push(`<h4>Enter one of your cards as ${CATEGORIES[tab].name}</h4><p class="cup-note">This saves a copy of the card as it is now. Changes you make later in Customize won't change your entry; withdraw it and enter it again. Switch the tab above to enter as ${CATEGORIES[CATS.find((c) => c !== tab)].name}.</p>
-        <div class="gallery-grid cup-slots">${designs.map((d, slot) => d && `<figure data-slot="${slot}">${renderer.card({ account: Number(viewer), name: nameOf({ account: viewer }), team: roster.get(String(viewer))?.team ?? 'AD2L' }, null, { own: true, equipmentOverride: d }).replace('data-pick=', 'data-cup-entry=')}<figcaption>${esc(cardSlotName(designs, slot))}<br><button type="button" data-enter="${slot}"${full ? ` disabled title="${banned ? 'Too many removals' : 'Withdraw an entry first'}"` : ''}>Enter as ${CATEGORIES[tab].name}</button></figcaption></figure>`).filter(Boolean).join('') || '<p>Save a card in Customize first.</p>'}</div>`);
+      parts.push(`<h4>Enter one of your cards</h4><p class="cup-note">This saves a copy of the card as it is now. Changes you make later in Customize won't change your entry; withdraw it and enter it again. Pick Artistic or Funny for each card; you can enter up to ${cup.maxEntries} in all.</p>
+        <div class="gallery-grid cup-slots">${designs.map((d, slot) => d && `<figure data-slot="${slot}">${renderer.card({ account: Number(viewer), name: nameOf({ account: viewer }), team: roster.get(String(viewer))?.team ?? 'AD2L' }, null, { own: true, equipmentOverride: d }).replace('data-pick=', 'data-cup-entry=')}<figcaption>${esc(cardSlotName(designs, slot))}<div class="cup-enter-btns">${CATS.map((c) => `<button type="button" data-enter="${slot}" data-category="${c}"${full ? ` disabled title="${banned ? 'Too many removals' : 'Withdraw an entry first'}"` : ''}>Enter ${CATEGORIES[c].name}</button>`).join('')}</div></figcaption></figure>`).filter(Boolean).join('') || '<p>Save a card in Customize first.</p>'}</div>`);
     }
   } else if (cat.rounds) {
     const rounds = cat.rounds, size = rounds[0].filter((m) => m.bracket === 'w').length * 2, all = rounds.flat(), done = cat.phase === 'done';
@@ -273,7 +273,7 @@ export async function drawCup(body, { viewer, signIn }) {
   body.innerHTML = parts.join('');
   body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.cat; drawCup(body, { viewer, signIn }); }));
   body.querySelectorAll('[data-signin]').forEach((b) => b.addEventListener('click', signIn));
-  body.querySelectorAll('[data-enter]').forEach((b) => b.addEventListener('click', () => act('cup-enter', { cardSlot: Number(b.dataset.enter), category: tab }, `Entered as ${CATEGORIES[tab].name}. Good luck.`)));
+  body.querySelectorAll('[data-enter]').forEach((b) => b.addEventListener('click', () => act('cup-enter', { cardSlot: Number(b.dataset.enter), category: b.dataset.category }, `Entered as ${CATEGORIES[b.dataset.category].name}. Good luck.`)));
   body.querySelectorAll('[data-withdraw]').forEach((b) => b.addEventListener('click', () => act('cup-withdraw', { entry: b.dataset.withdraw }, 'Withdrawn.')));
   body.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => confirm('Remove this entry? It counts as a strike against its owner.') && act('cup-remove', { entry: b.dataset.remove }, 'Removed. That is a strike against its owner.')));
   body.querySelector('.cup-intro')?.addEventListener('toggle', (ev) => { introOpen = ev.currentTarget.open; });
