@@ -1,6 +1,6 @@
 // Shared Fantasy player cards, used by the picker, saved lineups, and tier list.
 import { esc } from "../core.js";
-import { playerKey } from "../lib/stats.js";
+import { playerKey, mainAccount } from "../lib/stats.js";
 import { heroById, heroImg, heroVert, HERO_META } from "../lib/hero-meta.js";
 import { cardArtwork } from "../lib/card-art.js";
 import { teamLogoHtml } from "../lib/team-logos.js";
@@ -64,7 +64,7 @@ export const PAINT_FILTER = `<svg class="ft-defs" aria-hidden="true" focusable="
 export function mainPositions(matches) {
   const c = new Map();
   for (const m of matches) for (const p of m.players ?? []) {
-    const account = p.account_id ?? playerKey(p);
+    const account = mainAccount(p) ?? playerKey(p);
     if (!p.position) continue;
     const k = c.get(account) ?? c.set(account, {}).get(account);
     k[p.position] = (k[p.position] ?? 0) + 1;
@@ -78,7 +78,7 @@ export function mainPositions(matches) {
 export function cardStats(matches) {
   const by = new Map();
   for (const m of [...matches].sort((x, y) => (x.start_time ?? 0) - (y.start_time ?? 0))) for (const p of m.players ?? []) {
-    const account = p.account_id ?? playerKey(p);
+    const account = mainAccount(p) ?? playerKey(p);
     const s = by.get(account) ?? by.set(account, { games: 0, wins: 0, k: 0, d: 0, a: 0, gpm: 0, xpm: 0, dmg: 0, lh: 0, obs: 0, sen: 0, dew: 0, stack: 0, heal: 0, pos: [0, 0, 0, 0, 0], rank: null, heroes: new Map() }).get(account);
     const won = m.winner != null && m.winner === p.team;
     s.games++; s.wins += won; s.k += p.kills ?? 0; s.d += p.deaths ?? 0; s.a += p.assists ?? 0; s.gpm += p.gpm ?? 0;

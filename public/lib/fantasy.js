@@ -2,6 +2,7 @@ import { withAnnounced, isPostseason, SEASON, DIVISIONS } from "./divisions.js";
 import { tierModels, gamePointsAt, LIVE } from "./tiers.js";
 import { playoffPicture, bracketsOf, TBD } from "./playoffs.js";
 import { fitRatings } from "./predict.js";
+import { mainAccount } from "./stats.js";
 
 // Fantasy league, one per AD2L division, over the playoffs. Each week you pick five of that
 // league's rostered players, one per position (slot 1–5), from teams with a series that week;
@@ -157,7 +158,7 @@ function rosterOf(matches, key) {
     for (const m of matches) for (const p of m.players ?? []) {
       if (p.standin || p.account_id == null) continue;
       const t = all.get(teamKey(m, p.team)) ?? all.set(teamKey(m, p.team), new Map()).get(teamKey(m, p.team));
-      const pos = t.get(p.account_id) ?? t.set(p.account_id, {}).get(p.account_id);
+      const a = mainAccount(p), pos = t.get(a) ?? t.set(a, {}).get(a);
       if (p.position) pos[p.position] = (pos[p.position] ?? 0) + 1;
     }
     rosterMemo.set(matches, all);
@@ -177,7 +178,7 @@ function subsOf(m, matches) {
     const roster = rosterOf(matches, teamKey(m, side)), on = (m.players ?? []).filter((p) => p.team === side);
     const left = on.filter((p) => p.standin), rest = [];
     for (const [a, played] of roster) {
-      if (on.some((p) => p.account_id === a)) continue;
+      if (on.some((p) => mainAccount(p) === a)) continue;
       const main = Object.entries(played).sort((x, y) => y[1] - x[1])[0]?.[0], i = main ? left.findIndex((p) => String(p.position) === main) : -1;
       if (i >= 0) out.set(a, left.splice(i, 1)[0]); else rest.push(a);
     }

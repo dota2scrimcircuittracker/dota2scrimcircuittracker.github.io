@@ -56,6 +56,9 @@ export function withDerived(match) {
 // rates, so a short game doesn't count as much as a long one.
 // One player across games: AD2L players by main account (smurfs included), scrim players by name.
 export const playerKey = (p) => p.player_key ?? p.name.trim().toLowerCase();
+// A game row's rostered account: the main one when they played on a smurf PlayOn lists (the sync
+// puts the main in player_key), else the account that played.
+export const mainAccount = (p) => (/^\d+$/.test(p.player_key ?? "") ? Number(p.player_key) : p.account_id);
 
 // Map-play fields from parsed replays (AD2L). Scrim screenshots don't have them, so they're
 // only averaged over games that do (`map_games`) and are null otherwise.
