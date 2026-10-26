@@ -72,9 +72,7 @@ export function onNight(s) {
 // A week that locks before its first series start (a game moved earlier than PlayOn shows, or one
 // onNight would move to the playoff night), per league: week key -> unix seconds. The earlier of
 // the two counts. New season: empty it.
-export const LOCK_EARLY = {
-  conqueror: { "2026-10-26": Date.UTC(2026, 9, 27, 1) / 1000 }, // Monday 10/26 9pm ET: a game moved up from Thursday
-};
+export const LOCK_EARLY = {};
 // PlayOn is slow to post playoff series, so the bracket (as played so far) fills in the rest: each
 // match whose two teams are known and PlayOn hasn't posted becomes a stand-in series on its
 // playoff week's night, as the bracket page dates it. A series PlayOn posted that week for either
