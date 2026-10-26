@@ -108,7 +108,7 @@ export async function mountFantasy(host, viewSrc, scope = null) {
     matches = loaded.flatMap((x) => x.games);
     me = localParam("fantasy_me") || account;
     entries = saved; cards = overrides;
-    weeks = shared ? [testWeek(loaded)].filter(Boolean) : playoffWeeks(src.key, loaded[0].series);
+    weeks = shared ? [testWeek(loaded)].filter(Boolean) : playoffWeeks(src.key, loaded[0].series, loaded[0].teams);
     for (const week of weeks) week.eligible = new Set(pickable(d.teams, week).map((p) => p.account));
   } catch (e) { host.innerHTML = errorBox(e); return; }
   const open = openWeek(weeks, now);
@@ -385,7 +385,7 @@ export async function mountFantasyTable(host, viewSrc, scope = null, weekIdx = n
     }));
     teams = loaded.flatMap((x) => x.teams);
     matches = loaded.flatMap((x) => x.games);
-    weeks = shared ? [testWeek(loaded)].filter(Boolean) : playoffWeeks(src.key, loaded[0].series);
+    weeks = shared ? [testWeek(loaded)].filter(Boolean) : playoffWeeks(src.key, loaded[0].series, loaded[0].teams);
   } catch (e) { host.innerHTML = errorBox(e); return; }
   // A week shows once picks lock, or earlier when some of its games are already played (a series
   // PlayOn dated before the playoff night).

@@ -171,3 +171,22 @@ test("weekGames takes a scored series' unlinked games played in the 8 days befor
   assert.equal(weekGames([g({ series_id: "other" })], w).length, 0); // linked to another series
   assert.equal(weekGames([g({ team_a_id: 30, team_b_id: 40 })], w).length, 0); // series not played yet
 });
+
+test("playoff weeks follow the bracket where PlayOn hasn't posted the series", () => {
+  const load = (k) => JSON.parse(fs.readFileSync(new URL(`../public/data/${k}.json`, import.meta.url)));
+  const week = "2026-10-26", inWeek = (s) => s.time && weekKey(s.time) === week;
+  // Conqueror lower round 2: PlayOn posted Cult v Beignet Boys only; Leo + 4 Anchors v GG. Blood comes from the bracket.
+  const c = load("conqueror"), id = (n) => c.teams.find((t) => t.name === n).id;
+  const [leo, gg] = [id("Leo + 4 Anchors"), id("GG. Blood")];
+  const cs = c.series.filter((s) => !(inWeek(s) && [s.home, s.away].includes(leo)));
+  const cw = playoffWeeks("conqueror", cs, c.teams).find((w) => w.key === week);
+  assert.ok(cw.teams.has(leo) && cw.teams.has(gg));
+  assert.ok(cw.series.some((s) => typeof s.id === "number")); // PlayOn's own series stays
+  assert.equal(playoffWeeks("conqueror", cs).find((w) => w.key === week).teams.has(leo), false); // without teams, PlayOn only
+  // Champion with nothing posted that week still gets its lower round 2 (four teams).
+  const a = load("ad2l"), as = a.series.filter((s) => !inWeek(s));
+  assert.equal(playoffWeeks("ad2l", as, a.teams).find((w) => w.key === week)?.teams.size, 4);
+  // A series PlayOn posted for a team that week wins over the model's pairing (Voyager).
+  const v = load("voyager"), vw = playoffWeeks("voyager", v.series, v.teams).find((w) => w.key === week);
+  assert.ok(vw.series.every((s) => typeof s.id === "number"));
+});

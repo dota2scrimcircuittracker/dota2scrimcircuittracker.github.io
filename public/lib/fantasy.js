@@ -1,5 +1,7 @@
-import { withAnnounced, isPostseason, SEASON } from "./divisions.js";
+import { withAnnounced, isPostseason, SEASON, DIVISIONS } from "./divisions.js";
 import { tierModels, gamePointsAt, LIVE } from "./tiers.js";
+import { playoffPicture, bracketsOf, TBD } from "./playoffs.js";
+import { fitRatings } from "./predict.js";
 
 // Fantasy league, one per AD2L division, over the playoffs. Each week you pick five of that
 // league's rostered players, one per position (slot 1–5), from teams with a series that week;
@@ -73,8 +75,30 @@ export function onNight(s) {
 export const LOCK_EARLY = {
   conqueror: { "2026-10-26": Date.UTC(2026, 9, 27, 1) / 1000 }, // Monday 10/26 9pm ET: a game moved up from Thursday
 };
-export function playoffWeeks(league, series) {
-  return fantasyWeeks(withAnnounced(league, series).filter((s) => isPostseason(s)).map(onNight)
+// PlayOn is slow to post playoff series, so the bracket (as played so far) fills in the rest: each
+// match whose two teams are known and PlayOn hasn't posted becomes a stand-in series on its
+// playoff week's night, as the bracket page dates it. A series PlayOn posted that week for either
+// team wins (Voyager's lower round 1 is paired differently from the model's). `teams`: the league's teams.
+export function bracketSeries(league, teams, series) {
+  const nights = SEASON.playoffNights ?? [];
+  if (!teams?.length || !nights.length) return [];
+  const all = withAnnounced(league, series ?? []), posted = all.filter(isPostseason);
+  const split = !!DIVISIONS.find((d) => d.key === league)?.views;
+  const pic = playoffPicture(teams, all, fitRatings(teams, all), { split, blank: true });
+  const plays = (s, a, b) => [s.home, s.away].some((t) => t === a || t === b);
+  const out = [];
+  for (const [, b] of bracketsOf(pic, split)) for (const m of b?.matches ?? []) {
+    const night = nights[m.week - 1];
+    if (m.real || m.bye || !night || [m.a, m.b].some((t) => t == null || t === TBD)) continue;
+    const time = Date.parse(`${night}T00:00:00Z`) / 1000 + 25 * 3600;
+    if (posted.some((s) => plays(s, m.a, m.b) &&Math.abs((s.time ?? 0) - time) < 5 * 86400)) continue;
+    out.push({ id: `bracket-${league}-${m.id}`, time, home: m.a, away: m.b, best_of: m.bestOf });
+  }
+  return out;
+}
+
+export function playoffWeeks(league, series, teams = null) {
+  return fantasyWeeks([...withAnnounced(league, series), ...bracketSeries(league, teams, series)].filter((s) => isPostseason(s)).map(onNight)
     .filter((s) => !TEST_WEEK || weekKey(s.time) > TEST_WEEK.key))
     .map((w) => ({ ...w, league, lock: Math.min(w.lock, LOCK_EARLY[league]?.[w.key] ?? Infinity) }));
 }
