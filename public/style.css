@@ -1040,7 +1040,7 @@ h2 .h-note { font: 400 12px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .draft-rows.draft-bottom { margin-top: 12px; }
 .draft-step.side-a { --side: var(--jade); }
 .draft-step.side-b { --side: var(--ember); }
-.draft-tag { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 0; text-align: center; font: 700 10px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ember); background: #000; pointer-events: none; }
+.draft-tag { display: block; margin-top: 2px; padding: 2px 0; text-align: center; font: 700 10px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ember); background: #000; pointer-events: none; }
 .draft-step.pick .draft-tag { color: var(--jade); }
 .draft-n { position: absolute; left: 2px; top: 1px; font: 600 10px/1 var(--mono); color: var(--bone); text-shadow: 0 1px 2px #000; }
 .draft-step.side-a .draft-n { color: var(--jade); }
@@ -2985,6 +2985,7 @@ button.tm-close:hover:not(:disabled) { border-color: var(--tc); color: var(--tc)
 .gm-chip.s-b { --c: var(--ember); }
 a.gm-chip:hover { border-color: var(--seam-2); border-left-color: var(--c); text-decoration: none; background: var(--stone-2); }
 .gm-chip.on { background: var(--stone-2); outline: 1px solid var(--accent); outline-offset: -1px; }
+.gm-series > :not(.gm-chip-other) + .gm-chip-other { margin-left: auto; }
 
 /* Casts: links to casts of the game, anyone can add */
 .gm-casts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 0; }
@@ -3098,6 +3099,7 @@ a.gm-chip:hover { border-color: var(--seam-2); border-left-color: var(--c); text
 /* Items (AD2L, parsed replays): Valve item icons, 88×64 at source. */
 .item { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; gap: 2px; }
 .item img, .item .missing, .item.empty { width: 33px; height: 24px; display: block; object-fit: cover; background: var(--stone-2); border: 1px solid var(--seam); }
+.item.empty { padding: 0; }
 .item .missing { display: grid; place-items: center; font: 600 10px var(--mono); color: var(--dust); }
 .item b { font: 500 12px/1 var(--mono); color: var(--dust); font-variant-numeric: tabular-nums; }
 .item.neutral { margin-left: 8px; }

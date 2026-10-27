@@ -218,7 +218,7 @@ export async function renderMatch(id, src) {
     const lead = (wa ?? 0) >= (wb ?? 0) ? "a" : "b";
     const stage = (s ? isPostseason(s) : playoffGame(first)) ? "Playoffs" : "Group stage";
     const date = shortDate(new Date(first.start_time * 1000));
-    return `<a class="gm-chip s-${lead}" href="${src.link(first)}"><small>${stage} series · ${date}</small>${wa === wb ? `${wa ?? "?"}–${wb ?? "?"}` : `${esc(lead === "a" ? m.team_a : m.team_b)} ${Math.max(wa, wb)}–${Math.min(wa, wb)}`}</a>`;
+    return `<a class="gm-chip gm-chip-other s-${lead}" href="${src.link(first)}"><small>${stage} series · ${date}</small>${wa === wb ? `${wa ?? "?"}–${wb ?? "?"}` : `${esc(lead === "a" ? m.team_a : m.team_b)} ${Math.max(wa, wb)}–${Math.min(wa, wb)}`}</a>`;
   }).join("");
   let seriesHtml = "";
   if (others.length > 1 || otherHtml) {
