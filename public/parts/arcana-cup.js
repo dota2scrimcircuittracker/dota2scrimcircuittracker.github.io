@@ -31,7 +31,7 @@ let introOpen = true;
 function introHtml(cup, phase) {
   return `<details class="cup-intro"${introOpen ? ' open' : ''}>
     <summary><span class="cup-intro-title">${esc(cup.name)}</span> <small>How it works and what you win</small></summary>
-    <p>Make the best card you can and enter up to ${cup.maxEntries}, each as <b>Artistic</b> or <b>Funny</b>. They're separate brackets, so a joke card never has to beat a carefully made one. Entries close <b>${esc(when(cup.votingAt))}</b>. Then each bracket is double elimination: two cards at a time, 24 hours a round. A card that loses once drops to the losers bracket, and a second loss knocks it out. You can't vote in a matchup with your card in it.</p>
+    <p>Make the best card you can and enter up to ${cup.maxEntries}, each as <b>Artistic</b> or <b>Funny</b>, two at most in one. They're separate brackets, so a joke card never has to beat a carefully made one. Entries close <b>${esc(when(cup.votingAt))}</b>. Then each bracket is double elimination: two cards at a time, 24 hours a round. A card that loses once drops to the losers bracket, and a second loss knocks it out. You can't vote in a matchup with your card in it.</p>
     <ul class="cup-prizes"><li>In each bracket: <b data-rarity="legendary">1st</b> Legendary pack</li><li><b data-rarity="epic">2nd</b> Epic pack</li><li><b data-rarity="rare">3rd</b> Rare pack</li><li><b class="cup-arcana">Top 3 of each</b> become Arcana player cards</li></ul>
     <p>The top 3 in each bracket also design a signature, border or finish that goes into the game. Fav removes troll entries from Artistic, and three removals means no more entries.</p>
     <p class="cup-why"><b>This is for player packs in the next mini.</b> While you vote, rate each card Common to Legendary too. Those ratings help set which player cards are which rarity.</p>
@@ -49,7 +49,7 @@ const LIVE = {
 };
 
 // Practice (localhost only, ?cupPractice=1): both brackets from up to 32 of the Gallery's current
-// cards, two per player at most, run in this browser. Voting is open from the start, other voters
+// cards, three per player at most, run in this browser. Voting is open from the start, other voters
 // are made up, and "Next round" closes the round. You can try Fav's removal too. Nothing is saved,
 // ratings included.
 export const isPractice = () => /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has('cupPractice');
@@ -58,7 +58,7 @@ async function practiceStart() {
   const cards = await galleryCards(), perPlayer = new Map(), count = Object.fromEntries(CATS.map((c) => [c, 0])), entries = [];
   for (const c of [...cards].sort(() => Math.random() - 0.5)) {
     const n = (perPlayer.get(c.account) ?? 0) + 1, category = CATS.reduce((a, b) => (count[a] <= count[b] ? a : b));
-    if (n > CUP.maxEntries || count[category] >= 16) continue;
+    if (n > CUP.maxEntries || count[category] >= 16 || entries.filter((e) => e.account === String(c.account) && e.category === category).length >= CUP.maxPerCategory) continue;
     perPlayer.set(c.account, n); count[category]++;
     entries.push({ id: `${c.account}-${n}`, account: String(c.account), category, slot: c.slot, name: c.name, design: c.design, key: c.key, at: c.at ?? 0, votes: {}, nickname: c.nickname });
   }
@@ -208,9 +208,9 @@ export async function drawCup(body, { viewer, signIn }) {
       const tag = (e) => `<br><small class="cup-badge">${CATEGORIES[e.category]?.name ?? ''}</small> <button type="button" class="linkish" data-withdraw="${esc(e.id)}">Withdraw</button>`;
       parts.push(`<h4>Your entries (${entered.length}/${cup.maxEntries})</h4>${strikes ? `<p class="cup-note cup-warn">Fav has removed ${strikes} of your entries. At ${mine?.maxStrikes ?? MAX_STRIKES}, you can't enter any more.${banned ? ' You can no longer enter.' : ''}</p>` : ''}<div class="gallery-grid cup-mine">${entered.map((e) => cardOf(e, tag(e))).join('') || '<p>None yet. Enter a card below.</p>'}</div>`);
       const state = collectionState(), designs = state ? cardDesignState(state).cardDesigns : [];
-      const full = entered.length >= cup.maxEntries || banned;
-      parts.push(`<h4>Enter one of your cards</h4><p class="cup-note">This saves a copy of the card as it is now. Changes you make later in Customize won't change your entry; withdraw it and enter it again. Pick Artistic or Funny for each card; you can enter up to ${cup.maxEntries} in all.</p>
-        <div class="gallery-grid cup-slots">${designs.map((d, slot) => d && `<figure data-slot="${slot}">${renderer.card({ account: Number(viewer), name: nameOf({ account: viewer }), team: roster.get(String(viewer))?.team ?? 'AD2L' }, null, { own: true, equipmentOverride: d }).replace('data-pick=', 'data-cup-entry=')}<figcaption>${esc(cardSlotName(designs, slot))}<div class="cup-enter-btns">${CATS.map((c) => `<button type="button" data-enter="${slot}" data-category="${c}"${full ? ` disabled title="${banned ? 'Too many removals' : 'Withdraw an entry first'}"` : ''}>Enter ${CATEGORIES[c].name}</button>`).join('')}</div></figcaption></figure>`).filter(Boolean).join('') || '<p>Save a card in Customize first.</p>'}</div>`);
+      const full = entered.length >= cup.maxEntries || banned, laneFull = (c) => entered.filter((e) => e.category === c).length >= cup.maxPerCategory;
+      parts.push(`<h4>Enter one of your cards</h4><p class="cup-note">This saves a copy of the card as it is now. Changes you make later in Customize won't change your entry; withdraw it and enter it again. Pick Artistic or Funny for each card; you can enter up to ${cup.maxEntries} in all, two at most in one category.</p>
+        <div class="gallery-grid cup-slots">${designs.map((d, slot) => d && `<figure data-slot="${slot}">${renderer.card({ account: Number(viewer), name: nameOf({ account: viewer }), team: roster.get(String(viewer))?.team ?? 'AD2L' }, null, { own: true, equipmentOverride: d }).replace('data-pick=', 'data-cup-entry=')}<figcaption>${esc(cardSlotName(designs, slot))}<div class="cup-enter-btns">${CATS.map((c) => `<button type="button" data-enter="${slot}" data-category="${c}"${full || laneFull(c) ? ` disabled title="${banned ? 'Too many removals' : full ? 'Withdraw an entry first' : `${cup.maxPerCategory} in ${CATEGORIES[c].name} already`}"` : ''}>Enter ${CATEGORIES[c].name}</button>`).join('')}</div></figcaption></figure>`).filter(Boolean).join('') || '<p>Save a card in Customize first.</p>'}</div>`);
     }
   } else if (cat.rounds) {
     const rounds = cat.rounds, size = rounds[0].filter((m) => m.bracket === 'w').length * 2, all = rounds.flat(), done = cat.phase === 'done';

@@ -767,7 +767,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
 - **Arcana Cup** (`#/gallery/cup`, the last Gallery sub-tab): a card-design contest for player
   packs in the next mini, with two lanes in a sub-tab switcher: **Artistic** (craft and taste) and
   **Funny** (the best joke), each its own bracket so a meme card never beats a carefully made one.
-  Signed-in players enter up to two of their saved cards in all, each as Artistic or Funny, until
+  Signed-in players enter up to three of their saved cards in all, each as Artistic or Funny with two at most in one, until
   entries close (Fri Oct 30 2026, 9pm ET); round 1 opens at once. An entry is a frozen copy, so later
   edits don't change it, and it can be withdrawn and re-entered until then. Other players' entries
   stay hidden (only the count shows) until voting starts. Then each lane runs a random

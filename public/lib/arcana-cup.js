@@ -7,7 +7,8 @@
 // result; this file is the rules, no storage.
 
 // Times are UTC. Entries close and round 1 opens at votingAt: Fri Oct 30 2026, 9pm ET (EDT, so 01:00 UTC Oct 31).
-export const CUP = Object.freeze({ id: 1, name: 'Arcana Cup', votingAt: Date.UTC(2026, 9, 31, 1), roundMs: 24 * 36e5, maxEntries: 2 });
+// Three entries a player, two at most in one category: 2+1 either way.
+export const CUP = Object.freeze({ id: 1, name: 'Arcana Cup', votingAt: Date.UTC(2026, 9, 31, 1), roundMs: 24 * 36e5, maxEntries: 3, maxPerCategory: 2 });
 export const PRIZES = ['legendary', 'epic', 'rare'];
 // Top 3 of each bracket become Arcana (6 in all) and win that bracket's packs.
 export const ARCANA_PLACES = 3;

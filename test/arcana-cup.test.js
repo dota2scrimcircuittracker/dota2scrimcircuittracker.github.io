@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {seedBracket,buildBracket,dueMatches,isVotable,decideMatch,placings,phaseAt,matchLabel,forfeits,coinFlip,threadAccess} from '../public/lib/arcana-cup.js';
 
-const cup={id:9,votingAt:1000,roundMs:100,maxEntries:2};
+const cup={id:9,votingAt:1000,roundMs:100,maxEntries:3,maxPerCategory:2};
 let seed=1;const random=()=>(seed=(seed*16807)%2147483647)/2147483647;
 const entries=n=>Array.from({length:n},(_,i)=>({id:`e${i}`,account:String(100+Math.floor(i/2))})); // pairs share an owner
 
@@ -113,7 +113,7 @@ test('vault cup: two brackets, Fav removes entries, three strikes ends entering,
   const FAV=173365627;
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
   const vault=new CosmeticsVault({storage});let now=500,n=0;
-  vault.cupConfig={id:1,name:'Arcana Cup',votingAt:1000,roundMs:100,maxEntries:2};vault.clock=()=>now;
+  vault.cupConfig={id:1,name:'Arcana Cup',votingAt:1000,roundMs:100,maxEntries:3,maxPerCategory:2};vault.clock=()=>now;
   const as=async(account,body)=>{const r=await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`cup-request-${String(++n).padStart(6,'0')}`,...body})}));return {status:r.status,...await r.json()};};
   const cup=async()=>(await vault.fetch(new Request('https://vault/cup'))).json();
   const accounts=[401,402,403,404,405,406,407,FAV];
@@ -121,13 +121,16 @@ test('vault cup: two brackets, Fav removes entries, three strikes ends entering,
   const style=async(a,hue,cardSlot=0)=>as(a,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue},cardSlot});
   assert.equal((await as(401,{action:'cup-enter',cardSlot:0,category:'artistic'})).status,400); // a plain card
   for(const [a,hue] of [[401,10],[402,20],[403,30],[404,60],[405,70],[406,80],[407,90]])await style(a,hue);
-  await style(401,40,1);await style(401,50,2);
+  await style(401,40,1);await style(401,50,2);await style(401,55,3);
   assert.equal((await as(401,{action:'cup-enter',cardSlot:0})).status,400); // no category
   assert.equal((await as(401,{action:'cup-enter',cardSlot:0,category:'serious'})).status,400);
   assert.equal((await as(401,{action:'cup-enter',cardSlot:0,category:'artistic'})).entry.id,'401-1');
   assert.equal((await as(401,{action:'cup-enter',cardSlot:0,category:'funny'})).status,400); // same design
   assert.equal((await as(401,{action:'cup-enter',cardSlot:1,category:'artistic'})).entry.id,'401-2');
-  assert.equal((await as(401,{action:'cup-enter',cardSlot:2,category:'funny'})).status,400); // two in all
+  assert.equal((await as(401,{action:'cup-enter',cardSlot:2,category:'artistic'})).status,400); // two per category
+  assert.equal((await as(401,{action:'cup-enter',cardSlot:2,category:'funny'})).entry.id,'401-3'); // the third goes in the other one
+  assert.equal((await as(401,{action:'cup-enter',cardSlot:3,category:'funny'})).status,400); // three in all
+  assert.equal((await as(401,{action:'cup-withdraw',entry:'401-3'})).removed,'401-3');
   assert.equal((await as(401,{action:'cup-withdraw',entry:'401-1'})).removed,'401-1');
   assert.equal((await as(401,{action:'cup-enter',cardSlot:2,category:'funny'})).entry.id,'401-1'); // 401: one artistic, one funny
   await as(402,{action:'cup-enter',cardSlot:0,category:'artistic'});await as(403,{action:'cup-enter',cardSlot:0,category:'artistic'});await as(405,{action:'cup-enter',cardSlot:0,category:'artistic'});

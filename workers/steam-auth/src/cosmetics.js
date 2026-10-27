@@ -563,8 +563,8 @@ export class CosmeticsVault {
           result={state:saved,rating:{slot:body.cardSlot,key,mine:votes[account]??null,...tally(votes)}};
         }
         else if(body.action==='cup-enter') {
-          // One of your saved cards, copied as it is now, into Artistic or Funny. Up to two in all,
-          // different designs, until entries close; three removals by Fav and you can't enter.
+          // One of your saved cards, copied as it is now, into Artistic or Funny. Up to three in all, two at most
+          // in one category, different designs, until entries close; three removals by Fav and you can't enter.
           const cup=this.cup,category=categoryOf(body.category);
           if(this.now()>=cup.votingAt)throw new Error('Entries are closed.');
           if(!category)throw new Error('Choose Artistic or Funny.');
@@ -574,8 +574,9 @@ export class CosmeticsVault {
           if(isPlainDesign(design))throw new Error('Customize this card before entering it.');
           const every=(await this.cupEntries(txn)).filter(e=>e.account===account),mine=every.filter(e=>!e.removed),key=designKey(design);
           if(mine.length>=cup.maxEntries)throw new Error(`You can enter ${cup.maxEntries} cards. Withdraw one to enter another.`);
+          if(mine.filter(e=>e.category===category).length>=cup.maxPerCategory)throw new Error(`You can enter ${cup.maxPerCategory} cards in ${CATEGORIES[category].name}. Enter this one in the other category, or withdraw one.`);
           if(mine.some(e=>e.key===key))throw new Error("You have already entered this design.");
-          const n=[1,2,3,4,5].find(i=>!every.some(e=>e.id===entryId(account,i)));
+          const n=[1,2,3,4,5,6].find(i=>!every.some(e=>e.id===entryId(account,i)));
           const entry={id:entryId(account,n),account,category,slot:body.cardSlot,name:prefs.cardNames[body.cardSlot]??null,design,key,at:this.now()};
           await txn.put(`cup:${cup.id}:entry:${entry.id}`,entry);
           result={state:saved,entry};
