@@ -19,6 +19,14 @@ export async function firestoreWhere(collectionId,field,value,fetcher=fetch) {
 export const fantasyEntries=async(account,fetcher=fetch)=>(await firestoreWhere('fantasy','account',{integerValue:String(account)},fetcher)).map(f=>({week:f.week?.stringValue}));
 // Predictions and brackets made while signed in are saved under uid "steam:<account>" (lib/store.js).
 export const madeCount=async(collectionId,account,fetcher=fetch)=>(await firestoreWhere(collectionId,'uid',{stringValue:`steam:${account}`},fetcher)).length;
+// A player's League achievements (public/lib/league-achievements.js), from the file the site's
+// deploy writes. Missing or unreachable: none, so they stay unearned rather than failing the count.
+const LEAGUE_FILE='https://dota2scrimcircuittracker.github.io/data/league-achievements.json';
+export async function leagueFacts(account,fetcher=fetch) {
+  const r=await fetcher(LEAGUE_FILE,{cf:{cacheTtl:300}});
+  if(!r.ok)return {};
+  return (await r.json())?.[account]??{};
+}
 const json=(value,status=200)=>Response.json(value,{status});
 const secureRandom=()=>crypto.getRandomValues(new Uint32Array(1))[0]/4294967296;
 // Feed post images arrive as base64; anything that doesn't decode is refused.
@@ -149,7 +157,7 @@ export class CosmeticsVault {
     let followers=0;
     for(const [k,u] of await txn.list({prefix:'user:',limit:20000}))if(k!==`user:${account}`&&(u?.following??[]).includes(String(account)))followers++;
     for(const d of cardDesignState(saved).cardDesigns)if(d)legendaryVotes=Math.max(legendaryVotes,tally(await txn.get(`votes:${account}:${designKey(d)}`)).counts.legendary);
-    return {...fantasyFacts(await fantasyEntries(account).catch(()=>null)),predictions:await madeCount('predictions',account).catch(()=>0),brackets:await madeCount('brackets',account).catch(()=>0),heroGrids:saved.achievementEvents?.heroGrid?1:0,packsSent:saved.packsSent??0,drafts:saved.achievementEvents?.draft?1:0,posts,comments,follows:(saved.following??[]).length,followers,rated,cards:(saved.cardDesigns??[]).filter(Boolean).length,legendaryVotes,nickname:saved.nickname?1:0,background:saved.profileBackground?1:0,signature:saved.profileBackground?.sig?1:0};
+    return {...await leagueFacts(account).catch(()=>({})),...fantasyFacts(await fantasyEntries(account).catch(()=>null)),predictions:await madeCount('predictions',account).catch(()=>0),brackets:await madeCount('brackets',account).catch(()=>0),heroGrids:saved.achievementEvents?.heroGrid?1:0,packsSent:saved.packsSent??0,drafts:saved.achievementEvents?.draft?1:0,posts,comments,follows:(saved.following??[]).length,followers,rated,cards:(saved.cardDesigns??[]).filter(Boolean).length,legendaryVotes,nickname:saved.nickname?1:0,background:saved.profileBackground?1:0,signature:saved.profileBackground?.sig?1:0};
   }
   async fetch(req) {
     const url=new URL(req.url);

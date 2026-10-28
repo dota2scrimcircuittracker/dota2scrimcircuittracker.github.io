@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fantasyFacts, rewardLabel, rewardGrantable, ACHIEVEMENTS, achievementStatus, claimAchievement, claimable } from '../public/lib/achievements.js';
-import { fantasyEntries, madeCount } from '../workers/steam-auth/src/cosmetics.js';
+import { fantasyEntries, madeCount, leagueFacts } from '../workers/steam-auth/src/cosmetics.js';
 import { packOdds, oddsText, ODDS_ROWS } from '../public/lib/pack-types.js';
 import { rollPack } from '../public/lib/cosmetics-engine.js';
 import { giftPacks, giftLabel } from '../public/lib/pack-gifts.js';
 import { itemByKey, TIERS } from '../public/lib/cosmetics-catalog.js';
+import { leagueAchievements, teamFacts, LEAGUE_FACTS } from '../public/lib/league-achievements.js';
+import { SEASON } from '../public/lib/divisions.js';
 
 test('every achievement has a unique id and a pack reward', () => {
   assert.equal(new Set(ACHIEVEMENTS.map((a) => a.id)).size, ACHIEVEMENTS.length);
@@ -63,11 +65,43 @@ test('a background achievement grants a signature pack', () => {
   assert.deepEqual(claimAchievement({ packs: [] }, 'background', { background: 1 }).packs, ['common:signature']);
 });
 
-test('league performance achievements are listed with rewards but not claimable yet', () => {
+test('league performance achievements are live and paid from the league facts', () => {
   const league = ACHIEVEMENTS.filter((a) => a.group === 'League');
   assert.deepEqual(league.map((a) => a.id), ['playoffs', 'upper-bracket', 'grand-final', 'league-win', 'tiebreaker']);
   assert.equal(league.find((a) => a.id === 'league-win').reward, 'legendary');
-  assert.ok(league.every((a) => a.soon));
+  assert.ok(league.every((a) => !a.soon && LEAGUE_FACTS.includes(a.stat)));
+  assert.deepEqual(claimAchievement({ packs: [] }, 'league-win', { leagueWin: 1 }).packs, ['legendary']);
+  assert.throws(() => claimAchievement({}, 'playoffs', {}), /haven't earned/);
+});
+
+test("the Worker reads a player's league facts from the site, none when the file is missing", async () => {
+  const file = { 42: { playoffs: 1, tiebreaker: 1 } };
+  const ok = async (url) => { assert.match(url, /data\/league-achievements\.json$/); return new Response(JSON.stringify(file)); };
+  assert.deepEqual(await leagueFacts('42', ok), { playoffs: 1, tiebreaker: 1 });
+  assert.deepEqual(await leagueFacts('7', ok), {});
+  assert.deepEqual(await leagueFacts('42', async () => new Response('', { status: 404 })), {});
+});
+
+test('league facts come from played postseason results only', () => {
+  // Four teams: a group stage, then a bracket played through the grand final (1 beats everyone).
+  const T = (id) => ({ id, name: `T${id}`, players: [{ account_id: id * 10 }] });
+  const end = SEASON.regularEnd, S = (id, time, home, away, hs, as) => ({ id, time, home, away, home_score: hs, away_score: as });
+  // Seven group-stage weeks, round robin; the lower id wins every series.
+  const rounds = [[[1, 2], [3, 4]], [[1, 3], [2, 4]], [[1, 4], [2, 3]]];
+  const group = Array.from({ length: 7 }, (_, w) => rounds[w % 3].map(([a, b], i) => S(w * 2 + i + 1, end - (7 - w) * 7 * 86400, a, b, 2, 0))).flat();
+  const d = { teams: [1, 2, 3, 4].map(T), series: group, games: [] };
+  // Seeds settled, bracket not played: all four made it, 1 and 2 start upper.
+  const before = leagueAchievements({ explorer: d });
+  assert.deepEqual(Object.keys(before).sort(), ['10', '20', '30', '40']);
+  assert.ok(Object.values(before).every((f) => f.playoffs && !f.grandFinal && !f.leagueWin));
+  const day = 86400;
+  const u = [S(11, end + day, 1, 4, 2, 0), S(12, end + day, 2, 3, 2, 0)];
+  const rest = [S(13, end + 8 * day, 4, 3, 2, 0), S(14, end + 15 * day, 1, 2, 2, 0), S(15, end + 22 * day, 2, 4, 2, 0), S(16, end + 29 * day, 1, 2, 3, 0)];
+  const after = leagueAchievements({ explorer: { ...d, series: [...group, ...u, ...rest] } });
+  assert.deepEqual(after['10'], { playoffs: 1, upperBracket: 1, grandFinal: 1, leagueWin: 1 });
+  assert.deepEqual(after['20'], { playoffs: 1, upperBracket: 1, grandFinal: 1 });
+  assert.equal(after['30'].grandFinal, undefined);
+  assert.equal(teamFacts('explorer', d)[1].leagueWin, undefined);
 });
 
 test('follow 10 is live; 25 followers pays an epic signature pack', () => {

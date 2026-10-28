@@ -1,8 +1,7 @@
 // Achievements on a player's profile: each one pays a pack the first time it's claimed.
 // The collection Worker (workers/steam-auth/src/cosmetics.js) counts the facts from what it
 // stores and grants the packs, so the browser claiming one proves nothing. Achievements marked
-// `soon` depend on data the Worker can't read yet (Firestore: predictions, Fantasy, the Drafter;
-// and the league's results for the League ones): the profile lists them with their reward but they can't be claimed.
+// `soon` depend on data the Worker can't read yet: the profile lists them with their reward but they can't be claimed.
 import { TIERS } from './cosmetics-catalog.js';
 import { parsePack, isThemedPack, themedLabel } from './pack-types.js';
 
@@ -41,11 +40,11 @@ export const ACHIEVEMENTS = [
   { id: 'background', group: 'Profile', title: 'Set the scene', text: 'Use a loading screen as your profile background.', stat: 'background', goal: 1, reward: 'common:signature' },
   { id: 'signature', group: 'Profile', title: 'Sign here', text: 'Add your signature to your profile background.', stat: 'signature', goal: 1, reward: 'common:border' },
   { id: 'send-pack', group: 'Profile', title: 'Generous', text: 'Send another player a pack from your inventory.', stat: 'packsSent', goal: 1, reward: 'common' },
-  { id: 'playoffs', group: 'League', title: 'Made the cut', text: 'Make the playoffs with your team.', reward: 'rare', soon: true },
-  { id: 'upper-bracket', group: 'League', title: 'Upper class', text: 'Start the playoffs in the upper bracket.', reward: 'epic', soon: true },
-  { id: 'grand-final', group: 'League', title: 'Grand finalist', text: 'Play in a grand final.', reward: 'epic', soon: true },
-  { id: 'league-win', group: 'League', title: 'League champion', text: 'Win your league.', reward: 'legendary', soon: true },
-  { id: 'tiebreaker', group: 'League', title: 'Clutch', text: 'Win a week 8 tiebreaker.', reward: 'rare', soon: true },
+  { id: 'playoffs', group: 'League', title: 'Made the cut', text: 'Make the playoffs with your team.', reward: 'rare', stat: 'playoffs', goal: 1 },
+  { id: 'upper-bracket', group: 'League', title: 'Upper class', text: 'Start the playoffs in the upper bracket.', reward: 'epic', stat: 'upperBracket', goal: 1 },
+  { id: 'grand-final', group: 'League', title: 'Grand finalist', text: 'Play in a grand final.', reward: 'epic', stat: 'grandFinal', goal: 1 },
+  { id: 'league-win', group: 'League', title: 'League champion', text: 'Win your league.', reward: 'legendary', stat: 'leagueWin', goal: 1 },
+  { id: 'tiebreaker', group: 'League', title: 'Clutch', text: 'Win a week 8 tiebreaker.', reward: 'rare', stat: 'tiebreaker', goal: 1 },
   { id: 'predict', group: 'Predict', title: 'Called it', text: 'Predict a match outcome.', reward: 'common', stat: 'predictions', goal: 1 },
   { id: 'fantasy-lineup', group: 'Predict', title: 'Manager', text: 'Submit a Fantasy lineup.', stat: 'fantasyWeeks', goal: 1, reward: 'common' },
   { id: 'fantasy-streak', group: 'Predict', title: 'Never miss a week', text: 'Submit a Fantasy lineup 5 weeks in a row.', stat: 'fantasyStreak', goal: 5, reward: 'epic' },
