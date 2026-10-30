@@ -2,7 +2,8 @@
 // design a card and enter it. Dismissed (either button) it never shows again for this cup.
 import { CUP } from "./arcana-cup.js";
 
-const SEEN_KEY = `cup-notice-${CUP.id}`;
+// "-ext": the entry extension shows it again to visitors who dismissed the first one.
+const SEEN_KEY = `cup-notice-${CUP.id}-ext`;
 const DAY = 864e5;
 
 // Shown only while entries are open and the visitor hasn't dismissed it.
@@ -26,8 +27,8 @@ function show(go) {
   card.className = "tour-invite cup-notice";
   card.setAttribute("role", "dialog");
   card.setAttribute("aria-label", "Arcana Cup");
-  card.innerHTML = `<b>Arcana Cup is open</b><em>${timeLeft(Date.now())}</em>
-    <span>Design a card and enter up to two in the Arcana Cup. Entries close Fri Oct 30, 9pm ET.
+  card.innerHTML = `<b>Arcana Cup: one more day</b><em>${timeLeft(Date.now())}</em>
+    <span>Entries are extended to Sat Oct 31, 9pm ET. Design a card and enter up to three in the Arcana Cup.
     The top 3 in each lane become Arcana player cards.</span>
     <div class="tour-btns"><button type="button" class="tour-btn cup-later">Later</button><button type="button" class="tour-btn tour-primary cup-go">Enter the Cup</button></div>`;
   card.querySelector(".cup-later").onclick = close;

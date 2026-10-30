@@ -768,7 +768,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   packs in the next mini, with two lanes in a sub-tab switcher: **Artistic** (craft and taste) and
   **Funny** (the best joke), each its own bracket so a meme card never beats a carefully made one.
   Signed-in players enter up to three of their saved cards in all, each as Artistic or Funny with two at most in one, until
-  entries close (Fri Oct 30 2026, 9pm ET); round 1 opens at once. An entry is a frozen copy, so later
+  entries close (Sat Oct 31 2026, 9pm ET, extended a day from Fri Oct 30); round 1 opens at once. An entry is a frozen copy, so later
   edits don't change it, and it can be withdrawn and re-entered until then. Other players' entries
   stay hidden (only the count shows) until voting starts. Then each lane runs a random
   double-elimination bracket (byes fill it to a power of two; a player's two cards in one lane start
@@ -800,7 +800,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   on) and never wins a prize. Each removal is a strike against its owner; at 3 they can't enter any
   more (withdrawing your own entry is not a strike). **Launch notice** (`lib/cup-notice.js`): until entries
   close, every visitor gets a one-time card on launch (after the tour invite, never over it) with the days
-  left and an "Enter the Cup" button; either button dismisses it for good (`cup-notice-<id>`). Rules `lib/arcana-cup.js` (dates in `CUP`,
+  left and an "Enter the Cup" button; either button dismisses it for good (`cup-notice-<id>-ext` since the extension). Rules `lib/arcana-cup.js` (dates in `CUP`,
   lanes in `CATEGORIES`), page `parts/arcana-cup.js`, data in the collection Worker
   (`cup:<id>:<lane>:*`, `cup:<id>:entry:*`, `cup:<id>:strikes:*`). Practice run on localhost:
   `?cupPractice=1#/gallery/cup` plays both lanes from today's Gallery cards in the browser with
