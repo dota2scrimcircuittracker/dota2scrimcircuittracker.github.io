@@ -28,7 +28,7 @@ function show(go) {
   card.setAttribute("role", "dialog");
   card.setAttribute("aria-label", "Arcana Cup");
   card.innerHTML = `<b>Arcana Cup: one more day</b><em>${timeLeft(Date.now())}</em>
-    <span>Entries are extended to Sat Oct 31, 9pm ET. Design a card and enter up to three in the Arcana Cup.
+    <span>Entries are extended to midnight ET tonight, Sat Oct 31. Design a card and enter up to three in the Arcana Cup.
     The top 3 in each lane become Arcana player cards.</span>
     <div class="tour-btns"><button type="button" class="tour-btn cup-later">Later</button><button type="button" class="tour-btn tour-primary cup-go">Enter the Cup</button></div>`;
   card.querySelector(".cup-later").onclick = close;
