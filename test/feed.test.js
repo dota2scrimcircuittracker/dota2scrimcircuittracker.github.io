@@ -454,3 +454,35 @@ test('dedupePulls keeps a player\'s first post of each card',async()=>{
   const out=dedupePulls([{id:'p:2',account:'1',at:2,items:['a']},{id:'p:1',account:'1',at:1,items:['a']},{id:'p:3',account:'2',at:3,items:['a']},{id:'p:4',account:'1',at:4,items:['a','b']}]);
   assert.deepEqual(out.map(p=>[p.id,p.items]),[['p:1',['a']],['p:3',['a']],['p:4',['b']]]);
 });
+
+test('packHistory lists every opened pack, duplicates too, newest first, undated last',async()=>{
+  const {packHistory}=await import('../public/lib/feed.js');
+  const out=packHistory(new Map([
+    ['receipt:1:a',{action:'open',openedAt:10,packType:'common',result:{state:{},rewards:[{key:'border:x',duplicate:true}],screens:['s1']}}],
+    ['receipt:1:b',{action:'equip',result:{state:{}}}],
+    ['receipt:1:c',{action:'open',result:{rewards:[{key:'border:y',duplicate:false}],screens:[]}}],
+    ['receipt:1:d',{action:'open',openedAt:20,packType:'rare',result:{rewards:[],screens:[]}}],
+  ]));
+  assert.deepEqual(out,[
+    {at:20,pack:'rare',rewards:[],screens:[]},
+    {at:10,pack:'common',rewards:[{key:'border:x',duplicate:true}],screens:['s1']},
+    {at:null,pack:null,rewards:[{key:'border:y',duplicate:false}],screens:[]},
+  ]);
+  assert.deepEqual(packHistory(null),[]);
+});
+test('vault pack-history: the signed-in player\'s own opened packs only',async()=>{
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let n=0;
+  const as=(account,body)=>vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`history-request-${String(++n).padStart(6,'0')}`,...body})}));
+  for(const a of [301,302])await as(a,{action:'session'});
+  const opened=[];
+  for(let i=0;i<2;i++)opened.push(await (await as(301,{action:'open',packIndex:0})).json());
+  await as(302,{action:'open',packIndex:0});
+  const {packs}=await (await as(301,{action:'pack-history'})).json();
+  assert.equal(packs.length,2);
+  assert.ok(packs.every(p=>p.pack==='common'&&p.rewards.length===3&&Number.isFinite(p.at)));
+  assert.ok(packs[0].at>=packs[1].at);
+  assert.deepEqual(new Set(packs.flatMap(p=>p.rewards.map(r=>r.key))),new Set(opened.flatMap(o=>o.rewards.map(r=>r.key))));
+  assert.equal(rows.has(`receipt:301:history-request-${String(n).padStart(6,'0')}`),false,'a read leaves no receipt');
+  assert.equal((await (await as(302,{action:'pack-history'})).json()).packs.length,1);
+});

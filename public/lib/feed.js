@@ -360,6 +360,18 @@ export function pullPost(rewards, screens, auto, rarityOf) {
   return items.length || shown.length ? { items, ...(shown.length ? { screens: shown } : {}) } : null;
 }
 
+// A player's pack history (their own feed's Pack history), from their pack receipts ([key, receipt]
+// pairs): every pack opened, with every card (duplicates too) and loading screen, newest first.
+// Receipts from before the open time was kept have no `at` and go last.
+export function packHistory(receipts) {
+  const packs = [];
+  for (const [, r] of receipts ?? []) {
+    if (r?.action !== 'open' || !r.result) continue;
+    packs.push({ at: r.openedAt ?? null, pack: r.packType ?? null, rewards: (r.result.rewards ?? []).map(({ key, duplicate }) => ({ key, duplicate: !!duplicate })), screens: [...(r.result.screens ?? [])] });
+  }
+  return packs.sort((a, b) => (b.at ?? -Infinity) - (a.at ?? -Infinity));
+}
+
 // Pull posts made before copies were skipped: keep each player's first post of a card, drop the
 // later ones (a pull left with only repeats disappears; screens-only pulls stay).
 export function dedupePulls(pulls) {

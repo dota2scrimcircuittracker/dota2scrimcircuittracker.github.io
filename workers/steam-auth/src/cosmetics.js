@@ -4,7 +4,7 @@ import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-cata
 import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
 import { checkImages } from './image-check.js';
-import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
+import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, packHistory, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
 import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess } from '../../../public/lib/arcana-cup.js';
 
@@ -340,6 +340,9 @@ export class CosmeticsVault {
       if(!saved)return json({facts:{},claims:{}});
       return json({facts:await this.achievementFacts(this.ctx.storage,account,saved),claims:saved.achievementClaims??{}});
     }
+    // Every pack this player has opened, from their pack receipts (lib/feed.js packHistory). Their own
+    // only: the account is the signed-in one. A read, so no receipt.
+    if(body.action==='pack-history')return json({packs:packHistory(await this.ctx.storage.list({prefix:`receipt:${account}:`}))});
     // Fav's list of players banned from the Feed (lib/feed.js setBan), with their shown nicknames.
     if(body.action==='feed-bans') {
       if(!isAdmin(account))return json({error:'Only Fav can see bans.'},403);

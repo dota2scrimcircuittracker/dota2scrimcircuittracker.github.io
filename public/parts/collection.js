@@ -80,7 +80,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   if(tab==='log')tab='feed'; // the Feed replaced the Log
   const own=adapter?.account??await steamAccount().catch(()=>null), target=viewAccount??own, editable=target!=null&&target===own;
   name=name??steamName(target)??'Your Name';
-  let state=editable?(adapter?.state??collectionState()):null, inventory={}, busy=false, filter='all', rarity='all', status='owned', rewards=[], rewardScreens=[], rewardRevealed=[];
+  let state=editable?(adapter?.state??collectionState()):null, inventory={}, busy=false, filter='all', rarity='all', status='owned', rewards=[], rewardScreens=[], rewardRevealed=[], confirming=false;
   const action=adapter?.action??collectionAction;
   let selectedSlot=state?.primaryCard??0, publicDesigns=null, previewItem=null, previewScreen=null, screenHero='all', dexPage=0;
   const designs=()=>cardDesignState(state??publicDesigns??{equipment});
@@ -182,6 +182,15 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelector('[data-signin]')?.addEventListener('click',signIn);
     body.querySelector('[data-claim-bonus]')?.addEventListener('click',async()=>{const source=offers[0],data=await run('claim-bonus',{source});if(data){try{localStorage.removeItem(`ad2l-pack-offer:${source}`);}catch{}markPackOfferClaimed(source);drawPacks();say(data.alreadyClaimed?'This bonus was already claimed. Your collection is up to date.':'Bonus pack added to your collection.');}});
     body.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{
+      if(confirming)return;
+      // A pack still face down: flip the rest of it first, let the flips land, then ask before opening another.
+      const left=body.querySelectorAll('.pack-results [data-reveal]:not(.revealed)');
+      if(left.length) {
+        confirming=true;left.forEach(c=>c.click());
+        await new Promise(r=>setTimeout(r,matchMedia('(prefers-reduced-motion: reduce)').matches?50:900));
+        const sure=confirm('Are you sure you want to open a new pack? The rest of this pack is revealed above.');
+        confirming=false;if(!sure||!b.isConnected)return;
+      }
       const data=await run('open',{packIndex:Number(b.dataset.open)});if(!data)return;
       rewards=data.rewards;rewardScreens=data.screens??[];rewardRevealed=[];
       drawPacks();body.querySelector('.pack-results').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
@@ -222,7 +231,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const shown=rewardScreens.map(screenArt).filter(Boolean),total=rewards.length+shown.length;
     const done=()=>Array.from({length:total}).every((_,i)=>rewardRevealed[i]);
     const faceDown=(i,rarity,label,front,flavour='')=>{const open=!!rewardRevealed[i];return `<button type="button" class="reward-card opening-prismatic ${flavour} ${open?'revealed':''}" style="--rarity:${rarity};--delay:${i*90}ms" aria-label="${open?esc(label):`Reveal card ${i+1} of ${total}`}" data-reveal="${i}"><span class="reward-back">${gift}<b>AD2L</b></span><span class="reward-front">${front}</span></button>`;};
-    const cardHtml=(r,i)=>{const item=itemByKey(r.key);return faceDown(i,colors[item.rarity],`${item.name}, ${item.rarity}, ${r.duplicate?'duplicate':'new discovery'}`,`${swatch(item,name)}<small>${item.rarity} · ${typeLabel(item.type)}</small><strong>${esc(item.name)}</strong><span>${r.duplicate?'Duplicate':'New discovery'}</span>`,item.rarity==='legendary'?'reward-legendary':'');};
+    // An item this page doesn't know yet (the server's catalog is newer): still show the slot instead of failing the whole reveal.
+    const cardHtml=(r,i)=>{const item=itemByKey(r.key);if(!item)return faceDown(i,colors.common,'New item','<small>New item</small><strong>Refresh the page to see it</strong><span>Added to your collection</span>');return faceDown(i,colors[item.rarity],`${item.name}, ${item.rarity}, ${r.duplicate?'duplicate':'new discovery'}`,`${swatch(item,name)}<small>${item.rarity} · ${typeLabel(item.type)}</small><strong>${esc(item.name)}</strong><span>${r.duplicate?'Duplicate':'New discovery'}</span>`,item.rarity==='legendary'?'reward-legendary':'');};
     const screenHtml=(sc,j)=>faceDown(rewards.length+j,sc.legendary?colors.legendary:colors[sc.rarity]??'#eac47e',`${sc.label}, loading screen for ${sc.hero??'any hero'}`,`<img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><small>${sc.legendary?'Legendary background':`Loading screen · ${esc(sc.hero??'Any hero')}`}</small><strong>${esc(sc.label)}</strong><span>New</span>`,`reward-screen-card${sc.legendary?' reward-legendary':''}`);
     const heading=()=>done()?'Pack opened':`Revealed ${rewardRevealed.filter(Boolean).length} of ${total}`;
     const extras=()=>`${shown.length?'<p class="muted">Use loading screens as your card background in Customize, on the hero shown.</p>':''}<button type="button" data-view-dex>View collection</button>`;

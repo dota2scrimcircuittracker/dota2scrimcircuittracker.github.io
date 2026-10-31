@@ -5,7 +5,8 @@
 import { esc, dur, SOURCES, allLoad } from '../core.js';
 import { divisionTiers } from './tiers.js';
 import { listCards } from '../lib/store.js';
-import { feedPosts, feedMediaUrl, feedCommentMediaUrl, createFeedComment, collectionState, cardRatings, myCardVotes } from '../lib/cosmetics.js';
+import { feedPosts, feedMediaUrl, feedCommentMediaUrl, createFeedComment, collectionState, cardRatings, myCardVotes, myPackHistory } from '../lib/cosmetics.js';
+import { packName } from '../lib/pack-types.js';
 import { designKey } from '../lib/card-ratings.js';
 import { mountRating } from './card-rating.js';
 import { shownNickname } from '../lib/cosmetics-engine.js';
@@ -327,7 +328,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       <p class="feed-ban-note" role="alert"></p>
       <div class="feed-ban-buttons"><button value="cancel" formnovalidate>Cancel</button><button value="ban" class="feed-ban-go">Ban</button></div>
     </form></dialog>` : ''}
-    <aside class="feed-side">${composeHtml}${viewBarHtml(scoped)}</aside>${PAINT_FILTER}<div class="feed-list"></div><div class="feed-more" aria-live="polite"></div>
+    <aside class="feed-side">${composeHtml}${mine ? '<button type="button" class="feed-pack-history-btn" data-pack-history aria-pressed="false">Pack history</button>' : ''}${viewBarHtml(scoped)}</aside>${PAINT_FILTER}<div class="feed-list"></div><div class="feed-more" aria-live="polite"></div>
     <dialog class="feed-zoom" aria-label="Image"><form method="dialog"><button aria-label="Close">×</button></form><img alt=""></dialog>`;
   body.classList.add('feed-body');
   const list = body.querySelector('.feed-list'), moreBox = body.querySelector('.feed-more');
@@ -445,6 +446,32 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     box.onchange = () => { view[box.dataset.feedPick] = [...box.querySelectorAll('input:checked')].map((i) => i.value); changeView(); };
   });
   body.querySelector('.feed-view select[name=range]').onchange = (e) => { view.range = e.target.value; changeView(); };
+  // Your own feed's Pack history: every pack you've opened, duplicates too, in place of the posts
+  // (lib/feed.js packHistory). Only you can see it; pressing it again brings the posts back.
+  const packHistoryHtml = (packs) => `<p class="feed-pack-count">${packs.length} pack${packs.length === 1 ? '' : 's'} opened</p>${packs.map((p) => {
+    const items = p.rewards.map((r) => {
+      const i = itemByKey(r.key);
+      return i ? `<li style="--rarity:${colors[i.rarity]}">${swatch(i, nameOf(me))}<span><strong>${esc(i.name)}</strong><small>${i.rarity} ${esc(typeLabel(i.type))} · ${r.duplicate ? 'duplicate' : 'new'}</small></span></li>`
+        : `<li style="--rarity:${colors.common}"><span></span><span><strong>New item</strong><small>Refresh the page to see it</small></span></li>`;
+    }).join('');
+    const screens = p.screens.map(screenArt).filter(Boolean).map((sc) => `<li class="feed-pull-screen" style="--rarity:${SCREEN_COLOR}"><img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async"><span><strong>${esc(sc.label)}</strong><small>loading screen</small></span></li>`).join('');
+    return `<section class="feed-pack-history"><header><strong>${esc(p.pack ? packName(p.pack) : 'Pack')}</strong>${p.at ? when(p.at) : '<small>Date not recorded</small>'}</header><ul class="feed-pulls">${items}${screens}</ul></section>`;
+  }).join('')}`;
+  const historyBtn = body.querySelector('[data-pack-history]');
+  if (historyBtn) historyBtn.onclick = async () => {
+    const on = historyBtn.getAttribute('aria-pressed') !== 'true';
+    historyBtn.setAttribute('aria-pressed', String(on));
+    body.querySelector('.feed-view').hidden = on;
+    if (!on) { changeView(); return; }
+    const mark = ++viewToken; more = false; loading = false; posts.clear();
+    list.innerHTML = ''; moreBox.innerHTML = '<p>Loading…</p>';
+    try {
+      const packs = await myPackHistory();
+      if (mark !== viewToken || !body.isConnected) return;
+      list.innerHTML = packHistoryHtml(packs);
+      moreBox.innerHTML = packs.length ? '<p>That is every pack you have opened.</p>' : '<p>You have not opened a pack yet.</p>';
+    } catch (e) { if (mark === viewToken) moreBox.innerHTML = `<p>${esc(e.message)}</p>`; }
+  };
   if (focused?.posts?.[0]) add(focused.posts, true);
   more = first.more; add(first.posts); drawMore();
   // Scrolling near the end loads the next page; the button is there for when it doesn't.

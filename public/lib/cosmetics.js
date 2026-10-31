@@ -121,6 +121,12 @@ export async function myCardVotes() {
   const r=await fetch(COLLECTION_API,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action:'my-votes'})});
   if(!r.ok)throw new Error('Your ratings are unavailable.');return (await r.json()).votes;
 }
+// The signed-in player's every opened pack, newest first (lib/feed.js packHistory).
+export async function myPackHistory() {
+  const token=await steamIdToken();if(!token)throw new Error('Sign in with Steam to see your packs.');
+  const r=await fetch(COLLECTION_API,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action:'pack-history'})});
+  if(!r.ok)throw new Error('Your pack history is unavailable. Try again shortly.');return (await r.json()).packs;
+}
 export async function cosmeticAppearances() {
   const r=await fetch(`${COLLECTION_API}/appearances`);if(!r.ok)throw new Error('Collection service unavailable.');const data=await r.json();
   for(const [id,equipment] of Object.entries(data)) {
