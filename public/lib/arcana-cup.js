@@ -1,5 +1,5 @@
 // The Arcana Cup (Gallery › Arcana Cup): a week to enter up to two card designs, then a
-// double-elimination bracket of them voted in 24-hour rounds. You can't vote in a matchup with your
+// double-elimination bracket of them voted in rounds of 48 hours, then 24. You can't vote in a matchup with your
 // card in it. The top 3 of each bracket (6 in all) become Arcana player cards for the next mini's
 // packs; 1st, 2nd and 3rd of each get a legendary, epic and rare pack. While voting, people still rate each card common to legendary
 // (lib/card-ratings.js), which feeds player-pack rarities. The collection Worker
@@ -8,8 +8,9 @@
 
 // Times are UTC. Entries close and round 1 opens at votingAt: midnight ET Sat Oct 31 2026 (EDT, so 04:00 UTC Nov 1).
 // Extended a day from Fri Oct 30.
-// Three entries a player, two at most in one category: 2+1 either way.
-export const CUP = Object.freeze({ id: 1, name: 'Arcana Cup', votingAt: Date.UTC(2026, 10, 1, 4), roundMs: 24 * 36e5, maxEntries: 3, maxPerCategory: 2 });
+// Three entries a player, two at most in one category: 2+1 either way. Round 1 runs 48 hours
+// (firstRoundMs), every later round 24; last-minute entries are taken until round 1 closes.
+export const CUP = Object.freeze({ id: 1, name: 'Arcana Cup', votingAt: Date.UTC(2026, 10, 1, 4), firstRoundMs: 48 * 36e5, roundMs: 24 * 36e5, maxEntries: 3, maxPerCategory: 2 });
 export const PRIZES = ['legendary', 'epic', 'rare'];
 // Top 3 of each bracket become Arcana (6 in all) and win that bracket's packs.
 export const ARCANA_PLACES = 3;
@@ -59,29 +60,39 @@ export function seedBracket(entries, random = Math.random) {
   });
 }
 
+// How long voting round `step` runs: round 1 is firstRoundMs, the rest roundMs, plus Fav's extension.
+export const roundLength = (step, cup = CUP) => (step === 0 ? cup.firstRoundMs ?? cup.roundMs : cup.roundMs) + (cup.extend?.[step] ?? 0);
+
+// Last-minute entries: taken while round 1 is voted, each into a seat in losers round 1 that a
+// winners round-1 bye left empty (that bye has no loser to drop). Seats are named by the bye's
+// match id; cup.late maps a taken seat to its entry. No empty seats, no last-minute entries.
+export const lateSeats = (seeds) => Array.from({ length: seeds.length / 2 }, (_, i) => `w0-${i}`).filter((_, i) => !seeds[i * 2] !== !seeds[i * 2 + 1]);
+export const lateOpen = (now, cup = CUP) => now >= cup.votingAt && now < cup.votingAt + roundLength(0, cup);
+
 // Double elimination. Every match, built from the seeds and the results settled so far, grouped by
-// the 24-hour round it's voted in (round s runs from votingAt + s rounds). A match whose sides
+// the voting round it's voted in (round s runs from votingAt + s rounds). A match whose sides
 // aren't known yet has a or b undefined; a bye is null.
 // - Winners bracket (w<r>-<i>): k = log2(size) rounds, round r voted in round r.
 // - Losers bracket (l<r>-<i>): 2k - 2 rounds, round r voted in round r + 1. Even rounds pair the
 //   losers bracket's own winners (round 0: the winners bracket's round-1 losers); odd rounds meet
 //   the cards just dropped from the winners bracket, in reverse order so rematches come late.
+//   Round 0's empty seats from byes take last-minute entries (cup.late).
 // - Grand final (gf): the winners bracket's winner against the losers bracket's, one match, no reset.
 export function buildBracket(seeds, results = {}, cup = CUP) {
   const k = Math.log2(seeds.length), rounds = [];
   const win = (id) => results[id] ? results[id].winner : undefined, lose = (id) => results[id] ? results[id].loser : undefined;
   // cup.extend ({ step: ms }) is Fav's extensions: a round that ran long pushes every later round back.
-  const offset = (step) => { let t = 0; for (let s = 0; s < step; s++) t += cup.roundMs + (cup.extend?.[s] ?? 0); return t; };
+  const offset = (step) => { let t = 0; for (let s = 0; s < step; s++) t += roundLength(s, cup); return t; };
   const add = (bracket, round, step, index, a, b) => {
     const id = bracket === 'gf' ? 'gf' : `${bracket}${round}-${index}`, opensAt = cup.votingAt + offset(step);
-    (rounds[step] ??= []).push({ id, bracket, round, step, a, b, opensAt, closesAt: opensAt + cup.roundMs + (cup.extend?.[step] ?? 0), result: results[id] ?? null });
+    (rounds[step] ??= []).push({ id, bracket, round, step, a, b, opensAt, closesAt: opensAt + roundLength(step, cup), result: results[id] ?? null });
   };
   for (let r = 0; r < k; r++) for (let i = 0; i < seeds.length / 2 ** (r + 1); i++)
     add('w', r, r, i, ...(r === 0 ? [seeds[i * 2], seeds[i * 2 + 1]] : [win(`w${r - 1}-${i * 2}`), win(`w${r - 1}-${i * 2 + 1}`)]));
   for (let r = 0; r < 2 * k - 2; r++) {
     const j = Math.floor(r / 2), count = seeds.length / 2 ** (j + 2);
     for (let i = 0; i < count; i++) {
-      if (r === 0) add('l', r, 1, i, lose(`w0-${i * 2}`), lose(`w0-${i * 2 + 1}`));
+      if (r === 0) add('l', r, 1, i, cup.late?.[`w0-${i * 2}`] ?? lose(`w0-${i * 2}`), cup.late?.[`w0-${i * 2 + 1}`] ?? lose(`w0-${i * 2 + 1}`));
       else if (r % 2 === 0) add('l', r, r + 1, i, win(`l${r - 1}-${i * 2}`), win(`l${r - 1}-${i * 2 + 1}`));
       else add('l', r, r + 1, i, win(`l${r - 1}-${i}`), lose(`w${j + 1}-${count - 1 - i}`));
     }

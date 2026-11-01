@@ -31,7 +31,7 @@ let introOpen = true;
 function introHtml(cup, phase) {
   return `<details class="cup-intro"${introOpen ? ' open' : ''}>
     <summary><span class="cup-intro-title">${esc(cup.name)}</span> <small>How it works and what you win</small></summary>
-    <p>Make the best card you can and enter up to ${cup.maxEntries}, each as <b>Artistic</b> or <b>Funny</b>, two at most in one. They're separate brackets, so a joke card never has to beat a carefully made one. Entries close <b>${esc(when(cup.votingAt))}</b>. Then each bracket is double elimination: two cards at a time, 24 hours a round. A card that loses once drops to the losers bracket, and a second loss knocks it out. You can't vote in a matchup with your card in it.</p>
+    <p>Make the best card you can and enter up to ${cup.maxEntries}, each as <b>Artistic</b> or <b>Funny</b>, two at most in one. They're separate brackets, so a joke card never has to beat a carefully made one. Entries close <b>${esc(when(cup.votingAt))}</b>. Then each bracket is double elimination: two cards at a time, 48 hours for round 1 and 24 for every round after. Missed the close? Last-minute entries are taken while round 1 is voted and go straight into the losers bracket, while its empty seats last. A card that loses once drops to the losers bracket, and a second loss knocks it out. You can't vote in a matchup with your card in it.</p>
     <ul class="cup-prizes"><li>In each bracket: <b data-rarity="legendary">1st</b> Legendary pack</li><li><b data-rarity="epic">2nd</b> Epic pack</li><li><b data-rarity="rare">3rd</b> Rare pack</li><li><b class="cup-arcana">Top 3 of each</b> become Arcana player cards</li></ul>
     <p>The top 3 in each bracket also design a signature, border or finish that goes into the game. Fav removes troll entries from Artistic, and three removals means no more entries.</p>
     <p class="cup-why"><b>This is for player packs in the next mini.</b> While you vote, rate each card Common to Legendary too. Those ratings help set which player cards are which rarity.</p>
@@ -200,19 +200,28 @@ export async function drawCup(body, { viewer, signIn }) {
   const cup = view.cup, entriesOpen = cat.phase === 'entries';
   const bar = `<div class="pp-tabs cup-tabs" role="tablist" aria-label="Arcana Cup brackets">${CATS.map((c) => `<button type="button" role="tab" data-cat="${c}" aria-selected="${c === tab}" tabindex="${c === tab ? 0 : -1}">${CATEGORIES[c].name} <small>${view.categories[c].count}</small></button>`).join('')}</div>`;
   const parts = [`<div class="cup">${PAINT_FILTER}${introHtml(cup, cat.phase)}${practicing ? `<p class="cup-practice"><b>Practice bracket.</b> Today's Gallery cards, made-up voters, nothing saved, Fav's removal included. <button type="button" data-practice="next-round"${CATS.every((c) => view.categories[c].phase === 'done') ? ' disabled' : ''}>Next round</button> <button type="button" class="linkish" data-practice="restart">Restart with new cards</button></p>` : ''}${bar}<p class="cup-lane"><b>${CATEGORIES[tab].name}.</b> ${esc(CATEGORIES[tab].blurb)}</p><p class="cup-status" role="status"></p>`];
-  if (entriesOpen) {
+  // Your entries and the cards you can enter: until entries close, then as last-minute entries while
+  // round 1 is voted. Those take an empty losers round-1 seat and can't be withdrawn.
+  const enterHtml = (late) => {
+    if (viewer == null) return '<p><button type="button" data-signin>Sign in with Steam to enter</button></p>';
     const entered = mine?.entries ?? [], strikes = mine?.strikes ?? 0, banned = strikes >= (mine?.maxStrikes ?? MAX_STRIKES);
+    const tag = (e) => `<br><small class="cup-badge">${CATEGORIES[e.category]?.name ?? ''}</small>${late ? '' : ` <button type="button" class="linkish" data-withdraw="${esc(e.id)}">Withdraw</button>`}`;
+    const state = collectionState(), designs = state ? cardDesignState(state).cardDesigns : [];
+    const full = entered.length >= cup.maxEntries || banned, laneFull = (c) => entered.filter((e) => e.category === c).length >= cup.maxPerCategory;
+    const seatless = (c) => late && !view.categories[c].late?.open;
+    const why = (c) => banned ? 'Too many removals' : full ? (late ? `You have ${cup.maxEntries} entries` : 'Withdraw an entry first') : laneFull(c) ? `${cup.maxPerCategory} in ${CATEGORIES[c].name} already` : `No ${CATEGORIES[c].name} seats left`;
+    const note = late
+      ? `A last-minute entry skips the winners bracket and goes straight into losers round 1, so one loss knocks it out. It saves a copy of the card as it is now and can't be withdrawn. It counts toward your ${cup.maxEntries}, two at most in one category.`
+      : `This saves a copy of the card as it is now. Changes you make later in Customize won't change your entry; withdraw it and enter it again. Pick Artistic or Funny for each card; you can enter up to ${cup.maxEntries} in all, two at most in one category.`;
+    return `<h4>Your entries (${entered.length}/${cup.maxEntries})</h4>${strikes ? `<p class="cup-note cup-warn">Fav has removed ${strikes} of your entries. At ${mine?.maxStrikes ?? MAX_STRIKES}, you can't enter any more.${banned ? ' You can no longer enter.' : ''}</p>` : ''}<div class="gallery-grid cup-mine">${entered.map((e) => cardOf(e, tag(e))).join('') || '<p>None yet. Enter a card below.</p>'}</div>
+      <h4>${late ? 'Enter a card last-minute' : 'Enter one of your cards'}</h4><p class="cup-note">${note}</p>
+        <div class="gallery-grid cup-slots">${designs.map((d, slot) => d && `<figure data-slot="${slot}">${renderer.card({ account: Number(viewer), name: nameOf({ account: viewer }), team: roster.get(String(viewer))?.team ?? 'AD2L' }, null, { own: true, equipmentOverride: d }).replace('data-pick=', 'data-cup-entry=')}<figcaption>${esc(cardSlotName(designs, slot))}<div class="cup-enter-btns">${CATS.map((c) => `<button type="button" data-enter="${slot}" data-category="${c}"${full || laneFull(c) || seatless(c) ? ` disabled title="${why(c)}"` : ''}>Enter ${CATEGORIES[c].name}</button>`).join('')}</div></figcaption></figure>`).filter(Boolean).join('') || '<p>Save a card in Customize first.</p>'}</div>`;
+  };
+  if (entriesOpen) {
     parts.push(`<p class="cup-clock">Entries close in <b>${left(cup.votingAt - now())}</b> · ${cat.count} card${cat.count === 1 ? '' : 's'} in ${CATEGORIES[tab].name} so far. Entries stay hidden until voting starts.</p>`);
-    if (viewer == null) parts.push('<p><button type="button" data-signin>Sign in with Steam to enter</button></p>');
-    else {
-      const tag = (e) => `<br><small class="cup-badge">${CATEGORIES[e.category]?.name ?? ''}</small> <button type="button" class="linkish" data-withdraw="${esc(e.id)}">Withdraw</button>`;
-      parts.push(`<h4>Your entries (${entered.length}/${cup.maxEntries})</h4>${strikes ? `<p class="cup-note cup-warn">Fav has removed ${strikes} of your entries. At ${mine?.maxStrikes ?? MAX_STRIKES}, you can't enter any more.${banned ? ' You can no longer enter.' : ''}</p>` : ''}<div class="gallery-grid cup-mine">${entered.map((e) => cardOf(e, tag(e))).join('') || '<p>None yet. Enter a card below.</p>'}</div>`);
-      const state = collectionState(), designs = state ? cardDesignState(state).cardDesigns : [];
-      const full = entered.length >= cup.maxEntries || banned, laneFull = (c) => entered.filter((e) => e.category === c).length >= cup.maxPerCategory;
-      parts.push(`<h4>Enter one of your cards</h4><p class="cup-note">This saves a copy of the card as it is now. Changes you make later in Customize won't change your entry; withdraw it and enter it again. Pick Artistic or Funny for each card; you can enter up to ${cup.maxEntries} in all, two at most in one category.</p>
-        <div class="gallery-grid cup-slots">${designs.map((d, slot) => d && `<figure data-slot="${slot}">${renderer.card({ account: Number(viewer), name: nameOf({ account: viewer }), team: roster.get(String(viewer))?.team ?? 'AD2L' }, null, { own: true, equipmentOverride: d }).replace('data-pick=', 'data-cup-entry=')}<figcaption>${esc(cardSlotName(designs, slot))}<div class="cup-enter-btns">${CATS.map((c) => `<button type="button" data-enter="${slot}" data-category="${c}"${full || laneFull(c) ? ` disabled title="${banned ? 'Too many removals' : full ? 'Withdraw an entry first' : `${cup.maxPerCategory} in ${CATEGORIES[c].name} already`}"` : ''}>Enter ${CATEGORIES[c].name}</button>`).join('')}</div></figcaption></figure>`).filter(Boolean).join('') || '<p>Save a card in Customize first.</p>'}</div>`);
-    }
+    parts.push(enterHtml(false));
   } else if (cat.rounds) {
+    if (cat.late?.open) parts.push(`<details class="cup-late" open><summary><b>Last-minute entries</b> · ${cat.late.seats} ${CATEGORIES[tab].name} seat${cat.late.seats === 1 ? '' : 's'} left in losers round 1 · closes in ${left(cat.late.closesAt - now())}</summary>${enterHtml(true)}</details>`);
     const rounds = cat.rounds, size = rounds[0].filter((m) => m.bracket === 'w').length * 2, all = rounds.flat(), done = cat.phase === 'done';
     live = all.filter((m) => !m.result && m.a && m.b && now() >= m.opensAt && now() < m.closesAt);
     bracket = { rounds, size };

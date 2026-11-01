@@ -769,12 +769,14 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   **Funny** (the best joke), each its own bracket so a meme card never beats a carefully made one.
   Signed-in players enter up to three of their saved cards in all, each as Artistic or Funny with two at most in one, until
   entries close (midnight ET Sat Oct 31 2026, extended from Fri Oct 30 9pm ET); round 1 opens at once. An entry is a frozen copy, so later
-  edits don't change it, and it can be withdrawn and re-entered until then. Other players' entries
+  edits don't change it, and it can be withdrawn and re-entered until then. While round 1 is voted,
+  last-minute entries (same limits, no withdrawing) go straight into losers round 1, one per seat a
+  winners round-1 bye left empty; when those seats run out, the lane is full. Other players' entries
   stay hidden (only the count shows) until voting starts. Then each lane runs a random
   double-elimination bracket (byes fill it to a power of two; a player's two cards in one lane start
-  on opposite halves) in 24-hour rounds: a first loss drops a card to the losers bracket, a second
+  on opposite halves) in rounds of 48 hours for round 1, then 24 each: a first loss drops a card to the losers bracket, a second
   knocks it out, and the two brackets' winners meet in one grand final (no reset). 16 cards take 8
-  rounds (8 days), 32 take 10. Pick one card per matchup, never in one with your own card. Voting
+  rounds (9 days, round 1 being two), 32 take 10 (11 days). Pick one card per matchup, never in one with your own card. Voting
   is a **stage**: one matchup at a time with a progress bar, numbered dots (voted / not / yours) and
   Previous/Next. Every matchup has a **discussion thread** (`parts/arcana-cup-thread.js`, stored at
   `cup:<id>:<lane>:thread:<match>`, one line up to 280 chars, writer or Fav can delete, Fav's feed

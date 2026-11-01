@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {seedBracket,buildBracket,dueMatches,isVotable,decideMatch,placings,phaseAt,matchLabel,forfeits,coinFlip,threadAccess} from '../public/lib/arcana-cup.js';
+import {seedBracket,buildBracket,dueMatches,isVotable,decideMatch,placings,phaseAt,matchLabel,forfeits,coinFlip,threadAccess,lateSeats,lateOpen,roundLength} from '../public/lib/arcana-cup.js';
 
 const cup={id:9,votingAt:1000,roundMs:100,maxEntries:3,maxPerCategory:2};
 let seed=1;const random=()=>(seed=(seed*16807)%2147483647)/2147483647;
@@ -231,4 +231,44 @@ test('vault cup: moving the close later re-seeds a bracket seeded under the old 
   assert.ok(art.rounds.flat().some(x=>x.a?.startsWith('503-')||x.b?.startsWith('503-'))); // the late entry made the new bracket
   assert.equal(rows.get(`cup:1:artistic:votes:${m.id}`),undefined); // votes from the old bracket are gone
   assert.equal(rows.get('cup:1:artistic:seeds').at,2000);
+});
+
+test('round 1 runs firstRoundMs, later rounds roundMs; last-minute entries fill losers round-1 bye seats',()=>{
+  const c={...cup,firstRoundMs:200},seeds=['a','b','c',null,'d',null,'e','f'];
+  const rounds=buildBracket(seeds,{},c);
+  assert.equal(rounds[0][0].closesAt,1200);assert.equal(rounds[1][0].opensAt,1200);assert.equal(rounds[1][0].closesAt,1300);
+  assert.equal(roundLength(0,c),200);assert.equal(roundLength(1,c),100);assert.equal(roundLength(0,cup),100); // no firstRoundMs: every round the same
+  assert.deepEqual(lateSeats(seeds),['w0-1','w0-2']);
+  assert.ok(!lateOpen(999,c)&&lateOpen(1000,c)&&lateOpen(1199,c)&&!lateOpen(1200,c));
+  let results={};
+  for(const m of dueMatches(buildBracket(seeds,{},c),1200))results[m.id]=decideMatch(m,{v:m.a});
+  const late=buildBracket(seeds,results,{...c,late:{'w0-1':'x'}}).flat(),l0=late.filter(m=>m.id.startsWith('l0-'));
+  assert.deepEqual(l0.map(m=>[m.a,m.b]),[['b','x'],[null,'f']]); // x takes the seat w0-1's bye left; w0-2's stays empty
+  assert.ok(isVotable(l0[0],1200));
+});
+
+test('vault cup: last-minute entries while round 1 is voted, into empty losers seats, then closed',async()=>{
+  const {CosmeticsVault}=await import('../workers/steam-auth/src/cosmetics.js');
+  const {DEFAULT_EQUIPMENT}=await import('../public/lib/cosmetics-catalog.js');
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let now=500,n=0;
+  vault.cupConfig={id:1,name:'Arcana Cup',votingAt:1000,firstRoundMs:200,roundMs:100,maxEntries:3,maxPerCategory:2};vault.clock=()=>now;
+  const as=async(account,body)=>{const r=await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`cup-request-${String(++n).padStart(6,'0')}`,...body})}));return {status:r.status,...await r.json()};};
+  const cup=async()=>(await vault.fetch(new Request('https://vault/cup'))).json();
+  for(const [a,hue] of [[601,10],[602,20],[603,30],[604,40],[605,50],[606,60]]){await as(a,{action:'session'});await as(a,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue},cardSlot:0});}
+  for(const a of [601,602,603])assert.ok((await as(a,{action:'cup-enter',cardSlot:0,category:'artistic'})).entry); // 3 cards: a bracket of 4, one bye
+  now=1000;
+  let art=(await cup()).categories.artistic;
+  assert.equal(art.phase,'voting');assert.deepEqual([art.late.open,art.late.seats,art.late.closesAt],[true,1,1200]);
+  const late=(await as(604,{action:'cup-enter',cardSlot:0,category:'artistic'})).entry;
+  assert.equal(late.late,art.rounds[0].find(m=>m.bracket==='w'&&(!m.a||!m.b)).id); // the seat the bye left
+  assert.match((await as(605,{action:'cup-enter',cardSlot:0,category:'artistic'})).error,/losers bracket is full/);
+  assert.equal((await as(605,{action:'cup-enter',cardSlot:0,category:'funny'})).status,400); // funny never ran: fewer than two cards
+  art=(await cup()).categories.artistic;
+  assert.equal(art.late.open,false);assert.equal(art.entries.length,4);
+  assert.ok(art.rounds.flat().find(m=>m.id==='l0-0'&&(m.a===late.id||m.b===late.id))); // straight into losers round 1
+  assert.ok(!art.rounds[0].some(m=>m.a===late.id||m.b===late.id));                  // not in the winners bracket
+  assert.equal((await as(604,{action:'cup-withdraw',entry:late.id})).status,400);
+  now=1200;
+  assert.match((await as(606,{action:'cup-enter',cardSlot:0,category:'artistic'})).error,/Entries are closed/);
 });

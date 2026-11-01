@@ -6,7 +6,7 @@ import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements
 import { checkImages } from './image-check.js';
 import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, packHistory, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
-import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess } from '../../../public/lib/arcana-cup.js';
+import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess, lateSeats, lateOpen, roundLength } from '../../../public/lib/arcana-cup.js';
 
 // A player's Fantasy entries from Firestore. The collection is public to read (firebase/scrimleague.rules),
 // so no credentials: this asks for just their documents. Throws if Firestore can't be reached.
@@ -74,14 +74,14 @@ export class CosmeticsVault {
     return out;
   }
   async cupSettleCategory(txn,now,category,entries) {
-    const cup={...this.cup,extend:await txn.get(`cup:${this.cup.id}:extend`)??{}},p=`cup:${cup.id}:${category}:`;
-    if(now<cup.votingAt)return {entries,rounds:null,phase:'entries',order:null};
+    const p=`cup:${this.cup.id}:${category}:`,cup={...this.cup,extend:await txn.get(`cup:${this.cup.id}:extend`)??{},late:await txn.get(`${p}late`)??{}};
+    if(now<cup.votingAt)return {entries,rounds:null,phase:'entries',order:null,late:null};
     let seeded=await txn.get(`${p}seeds`);
     // Seeded before the close moved later (a worker with the old close kept running): drop that
     // bracket with its results, votes and threads, and seed again now that entries have closed.
     if(seeded&&seeded.at<cup.votingAt){for(const k of (await txn.list({prefix:p})).keys())await txn.delete(k);seeded=null;}
-    if(!seeded){seeded={seeds:entries.length>=2?seedBracket(entries,secureRandom):null,at:now};await txn.put(`${p}seeds`,seeded);}
-    if(!seeded.seeds)return {entries,rounds:null,phase:'cancelled',order:null};
+    if(!seeded){const onTime=entries.filter(e=>e.at<cup.votingAt);seeded={seeds:onTime.length>=2?seedBracket(onTime,secureRandom):null,at:now};await txn.put(`${p}seeds`,seeded);}
+    if(!seeded.seeds)return {entries,rounds:null,phase:'cancelled',order:null,late:null};
     const info={};
     for(const e of entries)info[e.id]={at:e.at,removed:!!e.removed,ratings:tally(await txn.get(`votes:${e.account}:${e.key}`)).total};
     const results=await txn.get(`${p}results`)??{};
@@ -101,7 +101,9 @@ export class CosmeticsVault {
       }
       await txn.put(`${p}awarded`,now);
     }
-    return {entries,rounds,phase:phaseAt(now,rounds,cup),order};
+    // Last-minute entries: open while round 1 is voted, as long as a losers round-1 seat is empty.
+    const seats=lateSeats(seeded.seeds).filter(s=>!cup.late[s]);
+    return {entries,rounds,phase:phaseAt(now,rounds,cup),order,seeds:seeded.seeds,late:{open:lateOpen(now,cup)&&seats.length>0,seats:seats.length,closesAt:cup.votingAt+roundLength(0,cup)}};
   }
   // One matchup, settled as of now, with who may read and write its thread (lib/arcana-cup.js threadAccess).
   async cupMatch(txn,now,category,matchId,account) {
@@ -189,7 +191,7 @@ export class CosmeticsVault {
       const view=await this.ctx.storage.transaction(txn=>this.cupSettle(txn)),nicknames={},categories={};
       for(const [category,v] of Object.entries(view)) {
         const open=v.phase==='entries';
-        categories[category]={phase:v.phase,count:v.entries.length,rounds:v.rounds,order:v.order,entries:open?[]:await Promise.all(v.entries.map(async e=>{
+        categories[category]={phase:v.phase,count:v.entries.length,rounds:v.rounds,order:v.order,late:v.late,entries:open?[]:await Promise.all(v.entries.map(async e=>{
           nicknames[e.account]=shownNickname(await this.ctx.storage.get(`user:${e.account}`));
           return {...e,design:e.removed?null:e.design,...tally(await this.ctx.storage.get(`votes:${e.account}:${e.key}`))};
         }))};
@@ -579,8 +581,9 @@ export class CosmeticsVault {
         else if(body.action==='cup-enter') {
           // One of your saved cards, copied as it is now, into Artistic or Funny. Up to three in all, two at most
           // in one category, different designs, until entries close; three removals by Fav and you can't enter.
-          const cup=this.cup,category=categoryOf(body.category);
-          if(this.now()>=cup.votingAt)throw new Error('Entries are closed.');
+          // After that, while round 1 is voted, a last-minute entry takes an empty losers round-1 seat.
+          const cup=this.cup,category=categoryOf(body.category),now=this.now(),lateEntry=now>=cup.votingAt;
+          if(lateEntry&&!lateOpen(now,{...cup,extend:await txn.get(`cup:${cup.id}:extend`)??{}}))throw new Error('Entries are closed.');
           if(!category)throw new Error('Choose Artistic or Funny.');
           if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=CARD_SLOTS)throw new Error('Choose one of your cards.');
           if((await txn.get(`cup:${cup.id}:strikes:${account}`)??0)>=MAX_STRIKES)throw new Error('Fav removed too many of your entries, so you can no longer enter the cup.');
@@ -591,7 +594,17 @@ export class CosmeticsVault {
           if(mine.filter(e=>e.category===category).length>=cup.maxPerCategory)throw new Error(`You can enter ${cup.maxPerCategory} cards in ${CATEGORIES[category].name}. Enter this one in the other category, or withdraw one.`);
           if(mine.some(e=>e.key===key))throw new Error("You have already entered this design.");
           const n=[1,2,3,4,5,6].find(i=>!every.some(e=>e.id===entryId(account,i)));
-          const entry={id:entryId(account,n),account,category,slot:body.cardSlot,name:prefs.cardNames[body.cardSlot]??null,design,key,at:this.now()};
+          const entry={id:entryId(account,n),account,category,slot:body.cardSlot,name:prefs.cardNames[body.cardSlot]??null,design,key,at:now};
+          if(lateEntry) {
+            const view=await this.cupSettleCategory(txn,now,category,(await this.cupEntries(txn)).filter(e=>e.category===category));
+            if(!view.late?.open)throw new Error(view.seeds?`The ${CATEGORIES[category].name} losers bracket is full.`:'Entries are closed.');
+            // A random empty seat, not one facing your own last-minute card if another is free.
+            const lk=`cup:${cup.id}:${category}:late`,late=await txn.get(lk)??{},free=lateSeats(view.seeds).filter(s=>!late[s]);
+            const partner=s=>{const i=Number(s.split('-')[1]);return late[`w0-${i^1}`];},ownIds=new Set(mine.map(e=>e.id));
+            const pool=free.filter(s=>!ownIds.has(partner(s))),seats=pool.length?pool:free,seat=seats[Math.floor(secureRandom()*seats.length)];
+            Object.assign(entry,{late:seat});
+            await txn.put(lk,{...late,[seat]:entry.id});
+          }
           await txn.put(`cup:${cup.id}:entry:${entry.id}`,entry);
           result={state:saved,entry};
         }
