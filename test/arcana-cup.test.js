@@ -207,3 +207,28 @@ test('vault cup: two brackets, Fav removes entries, three strikes ends entering,
   const artWinners=view.categories.artistic.order.filter(id=>id!==m1.a).slice(0,3).map(owner);
   assert.ok(!artWinners.includes(owner(m1.a))||view.categories.artistic.entries.some(e=>e.account===owner(m1.a)&&!e.removed));
 });
+
+test('vault cup: moving the close later re-seeds a bracket seeded under the old close',async()=>{
+  const {CosmeticsVault}=await import('../workers/steam-auth/src/cosmetics.js');
+  const {DEFAULT_EQUIPMENT}=await import('../public/lib/cosmetics-catalog.js');
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let now=500,n=0;
+  vault.cupConfig={id:1,name:'Arcana Cup',votingAt:1000,roundMs:100,maxEntries:3,maxPerCategory:2};vault.clock=()=>now;
+  const as=async(account,body)=>{const r=await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`cup-request-${String(++n).padStart(6,'0')}`,...body})}));return {status:r.status,...await r.json()};};
+  const cup=async()=>(await vault.fetch(new Request('https://vault/cup'))).json();
+  for(const [a,hue] of [[501,10],[502,20],[503,30],[504,40]]){await as(a,{action:'session'});await as(a,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue},cardSlot:0});}
+  for(const a of [501,502])assert.ok((await as(a,{action:'cup-enter',cardSlot:0,category:'artistic'})).entry);
+  now=1000;
+  const m=(await cup()).categories.artistic.rounds[0][0];
+  assert.equal((await as(504,{action:'cup-vote',category:'artistic',match:m.id,pick:m.a})).mine,m.a);
+  vault.cupConfig={...vault.cupConfig,votingAt:2000}; // the close moved three hours later after the old one passed
+  now=1500;
+  assert.equal((await cup()).categories.artistic.phase,'entries');
+  assert.ok((await as(503,{action:'cup-enter',cardSlot:0,category:'artistic'})).entry); // entries are open again
+  now=2000;
+  const art=(await cup()).categories.artistic;
+  assert.equal(art.entries.length,3);
+  assert.ok(art.rounds.flat().some(x=>x.a?.startsWith('503-')||x.b?.startsWith('503-'))); // the late entry made the new bracket
+  assert.equal(rows.get(`cup:1:artistic:votes:${m.id}`),undefined); // votes from the old bracket are gone
+  assert.equal(rows.get('cup:1:artistic:seeds').at,2000);
+});

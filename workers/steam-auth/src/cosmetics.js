@@ -77,6 +77,9 @@ export class CosmeticsVault {
     const cup={...this.cup,extend:await txn.get(`cup:${this.cup.id}:extend`)??{}},p=`cup:${cup.id}:${category}:`;
     if(now<cup.votingAt)return {entries,rounds:null,phase:'entries',order:null};
     let seeded=await txn.get(`${p}seeds`);
+    // Seeded before the close moved later (a worker with the old close kept running): drop that
+    // bracket with its results, votes and threads, and seed again now that entries have closed.
+    if(seeded&&seeded.at<cup.votingAt){for(const k of (await txn.list({prefix:p})).keys())await txn.delete(k);seeded=null;}
     if(!seeded){seeded={seeds:entries.length>=2?seedBracket(entries,secureRandom):null,at:now};await txn.put(`${p}seeds`,seeded);}
     if(!seeded.seeds)return {entries,rounds:null,phase:'cancelled',order:null};
     const info={};
