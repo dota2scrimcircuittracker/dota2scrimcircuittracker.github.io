@@ -4,7 +4,14 @@
 [data-card-editor] .emblem-wheel .sig-wheel-handle{transition:none}
 [data-card-editor] .emblem-wheel{backface-visibility:hidden}
 .ft-card[data-texture^="exp-"] .ft-front{background-image:linear-gradient(#0d0c0b,#0d0c0b);background-clip:border-box}
-.ft-front>.exp-finish{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:hidden;filter:none;max-height:none}
+.ft-front>.exp-finish,.ft-front>.finish-layer>.exp-finish{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:hidden;filter:none;max-height:none}
+/* A stacked finish that repaints the art (it carries its own <image>) or washes over the whole card blends with the
+   layers under it instead of hiding them. */
+.ft-front>.finish-layer~.finish-layer>.exp-finish:has(image),.ft-front>.finish-layer~.finish-layer:is([data-finish=spotlight],[data-finish=disco-ball],[data-finish=magma-veins],[data-finish=halftone-print],[data-finish=aurora-veil])>.exp-finish{mix-blend-mode:hard-light}
+/* Over a near-white finish, pale layers above it would vanish (white on white): over X-Ray they invert; over Sketchbook's
+   paper a screen-blended overlay draws normally, and stronger, instead. */
+.ft-front>.finish-layer[data-finish=x-ray]~.finish-layer>:is(.cosmetic-overlay,.particles,.exp-finish:not(:has(image))){mix-blend-mode:difference}
+.ft-front>.finish-layer[data-finish=sketchbook]~.finish-layer>.cosmetic-overlay{mix-blend-mode:normal;opacity:min(1,calc(var(--finish-opacity,.4) * 2.5))}
 .ft-card .exp-autograph{width:min(90%,calc(var(--signature-size) * 5.5));filter:drop-shadow(0 1px 1px #0008);line-height:0}
 .exp-autograph>.exp-signature-svg{display:block;width:100%;height:auto;overflow:visible}
 .exp-signature-svg svg{overflow:visible}

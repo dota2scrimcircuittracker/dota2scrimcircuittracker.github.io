@@ -32,11 +32,11 @@ test('eight-hour refill accrues offline up to three, pauses at capacity and resu
   assert.equal(grantLogin(withUpgrade,new Date('2026-11-01')).packs.length,5);
 });
 test('roll boundaries follow exact odds; packs contain three and do not mutate input',()=>{
-  const first=grantLogin(null),seq=[.68999,0,.69,0,.86,0];let at=0;
+  const first=grantLogin(null),seq=[.6865,0,.6866,0,.8558,0];let at=0;
   const result=rollPack(first,0,()=>seq[at++]);
   assert.deepEqual(result.rewards.map(r=>CATALOG.find(i=>i.key===r.key).rarity),['common','rare','epic']);
   assert.equal(result.state.packs.length,2);assert.equal(first.packs.length,3);
-  const legend=rollPack(first,0,()=>.999999);assert.ok(legend.rewards.every(r=>CATALOG.find(i=>i.key===r.key).rarity==='legendary'));
+  const legend=rollPack(first,0,()=>.994);assert.ok(legend.rewards.every(r=>CATALOG.find(i=>i.key===r.key).rarity==='legendary'));
   assert.throws(()=>rollPack(first,-1));assert.throws(()=>rollPack(first,3));
 });
 test('recycling protects last copies and only accepts ten extras of one tier',()=>{
@@ -54,7 +54,7 @@ test('recycling protects last copies and only accepts ten extras of one tier',()
   finally{ARCANA_CARDS.length=0;}
   for(const minimum of TIERS.slice(1)) {
     const upgraded={...state,packs:[minimum]};
-    for(let n=0;n<50;n++)assert.ok(rollPack(upgraded,0).rewards.every(r=>TIERS.indexOf(CATALOG.find(i=>i.key===r.key).rarity)>=TIERS.indexOf(minimum)));
+    for(let n=0;n<50;n++)assert.ok(rollPack(upgraded,0).rewards.every(r=>r.arcana||TIERS.indexOf(CATALOG.find(i=>i.key===r.key).rarity)>=TIERS.indexOf(minimum)));
   }
 });
 test('equipment requires ownership and bounded placement; signatures only use the player name',()=>{
@@ -284,4 +284,24 @@ test('the signature size slider ends where the signature stops growing',()=>{
   // Expansion styles stop at 90% of the card's width.
   const exp=CATALOG.find(i=>i.type==='autograph'&&i.expansion);
   assert.equal(maxSignatureSize({...e,autograph:exp.id},'Your Name'),16.5);
+});
+
+test('any pack card can be an arcana: the top 0.5% of its roll, owed while there are no arcana designs',()=>{
+  for(const pack of ['common','legendary','common:border','epic:signature']){
+    const hit=rollPack({packs:[pack],inventory:{},screens:[]},0,()=>.996);
+    assert.equal(hit.rewards.length,3);
+    assert.ok(hit.rewards.every(r=>r.arcana&&r.key==='arcana:owed'));
+    assert.equal(hit.state.arcanaOwed,3);
+    assert.equal(Object.keys(hit.state.inventory).length,0);
+    const miss=rollPack({packs:[pack],inventory:{},screens:[]},0,()=>.994);
+    assert.ok(miss.rewards.every(r=>!r.arcana&&CATALOG.find(i=>i.key===r.key)));
+    assert.equal(miss.state.arcanaOwed,undefined);
+  }
+  // An arcana is always dealt last: a hit on the first card moves behind the other two.
+  let at=0;const firstHit=rollPack({packs:['common'],inventory:{},screens:[]},0,()=>[.996,0,0,0,0,0,0,0,0,0][at++]??0);
+  assert.deepEqual(firstHit.rewards.map(r=>!!r.arcana),[false,false,true]);
+  assert.equal(firstHit.state.arcanaSealed,1);
+  let cards=0,arcana=0;
+  for(let n=0;n<40000;n++)for(const r of rollPack({packs:['common'],inventory:{},screens:[]},0).rewards){cards++;if(r.arcana)arcana++;}
+  assert.ok(Math.abs(arcana/cards-.005)<.0015,`arcana rate ${arcana/cards}`);
 });

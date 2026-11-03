@@ -50,6 +50,9 @@ export function playerEquipment(id,fallback) {
 export const collectionState=()=>state;
 // The nickname a player shows in place of their in-game name, or null (cosmetics-engine.js).
 export const playerNickname=id=>appearances.get(String(id))?.nickname??null;
+// Where a player shows their shop supporter badge ({profile, card}), or null (lib/shop.js).
+export const playerSupporter=id=>appearances.get(String(id))?.supporter??null;
+export const supporterBadgeHtml=()=>'<span class="supporter-badge" title="Supports the site">Supporter</span>';
 export async function collectionAction(action,details={}) {
   const token=await steamIdToken();if(!token)throw new Error('Sign in with Steam to collect cards.');
   account=await steamAccount();

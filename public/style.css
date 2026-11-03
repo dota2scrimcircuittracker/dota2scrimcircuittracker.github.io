@@ -5412,3 +5412,7 @@ dialog.pb-modal { width: min(1320px, 96vw); }
 .card-order-hint { margin: 6px 0 0; color: var(--dust); font-size: 13px; }
 .pp-head.pbg-text .pp-follows .pp-follow, .pp-head.pbg-text .pp-follows .pp-follow * { color: var(--on-accent); text-shadow: none; }
 .pp-head.pbg-text .pp-follows .pp-follow.is-following, .pp-head.pbg-text .pp-follows .pp-follow.is-following * { color: var(--pbg-text); }
+
+/* Shop supporter badge (lib/shop.js), beside the name on a profile or a card, where the player chose. */
+.supporter-badge { display: inline-block; margin-left: .4em; padding: .1em .45em; border: 1px solid #ffd879; border-radius: 999px; color: #ffd879; font-size: .45em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; line-height: 1.4; }
+.ft-name .supporter-badge { font-size: .5em; }

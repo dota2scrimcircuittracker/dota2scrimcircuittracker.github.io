@@ -1,4 +1,4 @@
-import { grantLogin, applyPackGrants, rollPack, recycleCards, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
+import { grantLogin, applyPackGrants, rollPack, recycleCards, openArcanaUpgrade, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, slotCount, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
 import { designKey, castVote, tally } from '../../../public/lib/card-ratings.js';
 import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-catalog.js';
 import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
@@ -7,6 +7,7 @@ import { checkImages } from './image-check.js';
 import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, packHistory, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
 import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess, lateSeats, lateOpen, roundLength } from '../../../public/lib/arcana-cup.js';
+import { buyItem, buyArcana, creditTokens, tokensForPayment, bundleFor, giftItem, buySlot, setSupporterBadge, orderCommission, refundCommission } from '../../../public/lib/shop.js';
 
 // A player's Fantasy entries from Firestore. The collection is public to read (firebase/scrimleague.rules),
 // so no credentials: this asks for just their documents. Throws if Firestore can't be reached.
@@ -58,7 +59,23 @@ const isPlainDesign=design=>!design||designKey({...PLAIN_DESIGN,...design})===PL
 // One serialized vault for this league. Inventory, receipts, daily grants and appearance
 // writes commit together. Browser input never supplies drop odds, items or counts.
 export class CosmeticsVault {
-  constructor(ctx) {this.ctx=ctx;}
+  constructor(ctx,env={}) {this.ctx=ctx;this.env=env;}
+  // The token shop (lib/shop.js) is off until the Worker's SHOP_ENABLED variable is "on".
+  get shopOn() {return this.env?.SHOP_ENABLED==='on';}
+  // A paid Stripe checkout, once per session. The Worker made the checkout with the player's account on
+  // it, so a bundle credits that account; one whose account has no collection waits for Fav to assign it.
+  // Paid means paid: it credits even if the shop has been switched off since.
+  async stripePayment(p) {
+    return this.ctx.storage.transaction(async txn=>{
+      const key=`stripe:${p.id}`;
+      if(await txn.get(key))return {duplicate:true};
+      const tokens=tokensForPayment(p.cents,p.currency),user=p.account&&await txn.get(`user:${p.account}`);
+      const row={at:this.now(),amount:(p.cents/100).toFixed(2),currency:String(p.currency).toUpperCase(),tokens,account:p.account??null,status:!tokens?'ignored':user?'credited':'unmatched'};
+      if(row.status==='credited')await txn.put(`user:${p.account}`,creditTokens(user,tokens,key));
+      await txn.put(key,row);
+      return row;
+    });
+  }
   // The Arcana Cup (lib/arcana-cup.js). Tests swap the cup's times and the clock.
   get cup() {return this.cupConfig??CUP;}
   now() {return this.clock?.()??Date.now();}
@@ -166,6 +183,7 @@ export class CosmeticsVault {
   }
   async fetch(req) {
     const url=new URL(req.url);
+    if(req.method==='POST' && url.pathname==='/stripe') return json(await this.stripePayment(await req.json()));
     if(url.pathname==='/appearances') {
       const rows=await this.ctx.storage.list({prefix:'appearance:',limit:5000});
       return json(Object.fromEntries([...rows].map(([k,v])=>[k.slice(11),v])));
@@ -394,12 +412,72 @@ export class CosmeticsVault {
         }
         else if(body.action==='claim-achievement')result={state:claimAchievement(saved,String(body.id??''),await this.achievementFacts(txn,account,saved)),id:String(body.id)};
         else if(body.action==='recycle') result=recycleCards(saved,body.selections);
+        else if(body.action==='open-arcana') result=openArcanaUpgrade(saved);
+        else if(['buy','buy-arcana','shop-payments','shop-assign','buy-slot','gift-item','supporter-badge','commission','shop-orders','shop-order-close'].includes(body.action)&&!this.shopOn) throw new Error('The shop is not open yet.');
+        else if(body.action==='buy') result=buyItem(saved,String(body.item??''));
+        else if(body.action==='buy-arcana') result=buyArcana(saved);
+        else if(body.action==='buy-slot') result=buySlot(saved);
+        else if(body.action==='supporter-badge') result={state:setSupporterBadge(saved,body)};
+        // A card bought for another player (lib/shop.js giftItem); they get the gift notice.
+        else if(body.action==='gift-item') {
+          const target=String(body.target??'');
+          if(!/^\d{1,10}$/.test(target))throw new Error('Choose a player.');
+          if(target===account)throw new Error('Buy it in the shop instead.');
+          const to=await txn.get(`user:${target}`);
+          if(!to)throw new Error("That player hasn't connected Steam yet.");
+          const sent=giftItem(saved,to,{key:String(body.item??''),from:account,fromName:shownNickname(saved),note:body.note});
+          await txn.put(`user:${target}`,sent.recipient);
+          result={state:sent.sender,sent:{target,item:body.item,price:sent.price}};
+        }
+        // A commission (lib/shop.js orderCommission): tokens now, Fav makes it with the player.
+        else if(body.action==='commission') {
+          const {state,order}=orderCommission(saved,body,this.now());
+          const id=`${order.at}:${account}`;
+          await txn.put(`order:${id}`,{...order,account});
+          result={state,order:{id,...order}};
+        }
+        else if(body.action==='shop-orders') {
+          if(!isAdmin(account))throw new Error('Only Fav can see orders.');
+          const orders=[...await txn.list({prefix:'order:'})].map(([k,o])=>({id:k.slice(6),...o}));
+          const nicknames={};for(const o of orders)nicknames[o.account]??=shownNickname(await txn.get(`user:${o.account}`));
+          result={state:saved,orders,nicknames};
+        }
+        // Fav closes an order as done, or refunds its tokens.
+        else if(body.action==='shop-order-close') {
+          if(!isAdmin(account))throw new Error('Only Fav can close orders.');
+          const id=String(body.order??''),order=await txn.get(`order:${id}`);
+          if(order?.status!=='open')throw new Error('That order is not open.');
+          if(!['done','refunded'].includes(body.status))throw new Error('Choose done or refunded.');
+          // A refund needs somewhere to go: the order stays open rather than losing the tokens.
+          const owner=order.account===String(account)?null:await txn.get(`user:${order.account}`);
+          if(body.status==='refunded'&&order.account!==String(account)&&!owner)throw new Error("That player's collection is gone, so there's nowhere to refund to.");
+          await txn.put(`order:${id}`,{...order,status:body.status,closedAt:this.now()});
+          if(body.status==='refunded') {
+            if(!owner)result={state:refundCommission(saved,order)};
+            else {await txn.put(`user:${order.account}`,refundCommission(owner,order));result={state:saved};}
+          } else result={state:saved};
+        }
+        // Fav: paid checkouts whose account has no collection, and giving one to a player.
+        else if(body.action==='shop-payments') {
+          if(!isAdmin(account))throw new Error('Only Fav can see payments.');
+          result={state:saved,payments:Object.fromEntries([...await txn.list({prefix:'stripe:'})].filter(([,r])=>r.status==='unmatched').map(([k,r])=>[k.slice(7),r]))};
+        }
+        else if(body.action==='shop-assign') {
+          if(!isAdmin(account))throw new Error('Only Fav can assign payments.');
+          const id=String(body.payment??''),row=await txn.get(`stripe:${id}`),target=String(body.target??''),user=await txn.get(`user:${target}`);
+          if(row?.status!=='unmatched')throw new Error('That payment is not waiting.');
+          if(!/^\d{1,10}$/.test(target)||!user)throw new Error('That player has no collection yet.');
+          const credited=creditTokens(user,row.tokens,`stripe:${id}`);
+          await txn.put(`stripe:${id}`,{...row,status:'credited',account:target,assignedAt:this.now()});
+          if(target===String(account))result={state:credited};
+          else {await txn.put(`user:${target}`,credited);result={state:saved};}
+        }
         // cardSavedAt: when each card's design last changed (the Gallery's Newest sort).
         else if(body.action==='equip') {
           const slot=body.cardSlot??saved.primaryCard??0,before=cardDesignState(saved).cardDesigns[slot];
-          const next=saveCardDesign(saved,body.equipment,body.cardSlot),savedAt=Array.from({length:CARD_SLOTS},(_,i)=>saved.cardSavedAt?.[i]??null);
+          const next=saveCardDesign(saved,body.equipment,body.cardSlot),savedAt=Array.from({length:slotCount(saved)},(_,i)=>saved.cardSavedAt?.[i]??null);
           const design=next.cardDesigns[slot],changed=!before||designKey(before)!==designKey(design);
-          let posts=Array.from({length:CARD_SLOTS},(_,i)=>saved.lastPosts?.[i]??null);
+          let posts=Array.from({length:slotCount(saved)},(_,i)=>saved.lastPosts?.[i]??null);
           if(changed) {
             const now=Date.now();savedAt[slot]=now;
             // A changed design goes in the Feed (lib/feed.js cardPostId), unless the player turned
@@ -585,7 +663,7 @@ export class CosmeticsVault {
           const cup=this.cup,category=categoryOf(body.category),now=this.now(),lateEntry=now>=cup.votingAt;
           if(lateEntry&&!lateOpen(now,{...cup,extend:await txn.get(`cup:${cup.id}:extend`)??{}}))throw new Error('Entries are closed.');
           if(!category)throw new Error('Choose Artistic or Funny.');
-          if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=CARD_SLOTS)throw new Error('Choose one of your cards.');
+          if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=slotCount(saved))throw new Error('Choose one of your cards.');
           if((await txn.get(`cup:${cup.id}:strikes:${account}`)??0)>=MAX_STRIKES)throw new Error('Fav removed too many of your entries, so you can no longer enter the cup.');
           const prefs=cardDesignState(saved),design=prefs.cardDesigns[body.cardSlot];
           if(isPlainDesign(design))throw new Error('Customize this card before entering it.');
@@ -695,7 +773,7 @@ export class CosmeticsVault {
         }
         else throw new Error('Unknown collection action.');
         await txn.put(key,result.state);
-        if(['equip','card-settings','nickname'].includes(body.action)) await txn.put(`appearance:${account}`,cardAppearance(result.state));
+        if(['equip','card-settings','nickname','supporter-badge','buy-slot'].includes(body.action)) await txn.put(`appearance:${account}`,cardAppearance(result.state));
         const openedAt=Date.now();
         // Feed receipts keep only the post: its comments can be long and are read fresh anyway.
         await txn.put(receipt,{action:body.action,result:['react','comment','comment-delete','comment-react','poll-vote'].includes(body.action)?{post:result.post}:body.action==='post'?{post:result.post.id}:body.action==='post-delete'?{post:result.removed}:result,...(body.action==='open'?{openedAt,packType:saved.packs[body.packIndex]}:{})});
@@ -710,6 +788,19 @@ export class CosmeticsVault {
 
 export async function cosmeticsRequest(req,env,allowedOrigins) {
   const origin=req.headers.get('origin'), url=new URL(req.url);
+  // Stripe's webhook (server to server, signed with STRIPE_WEBHOOK_SECRET). Off until that secret is
+  // set. Only a paid checkout counts; every other event is acknowledged and dropped.
+  if(url.pathname==='/cosmetics/stripe') {
+    if(req.method!=='POST'||!env.STRIPE_WEBHOOK_SECRET||!env.COSMETICS) return json({error:'Not found.'},404);
+    const event=await stripeEvent(req,String(env.STRIPE_WEBHOOK_SECRET).trim());
+    if(!event) return json({error:'Unknown sender.'},403);
+    const s=event.data?.object;
+    if(!['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)||s?.payment_status!=='paid') return json({ignored:true});
+    if(!/^cs_\w{6,200}$/.test(String(s.id??''))||!Number.isSafeInteger(s.amount_total)) return json({error:'Invalid request.'},400);
+    const vault=env.COSMETICS.get(env.COSMETICS.idFromName('league-v1'));
+    const payment={id:s.id,account:/^\d{1,10}$/.test(s.client_reference_id??'')?s.client_reference_id:null,cents:s.amount_total,currency:String(s.currency??'')};
+    return vault.fetch(new Request('https://vault/stripe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payment)}));
+  }
   if(origin && !allowedOrigins.includes(origin)) return json({error:'Unknown origin.'},403);
   const headers={'Access-Control-Allow-Origin':origin??allowedOrigins[0],'Vary':'Origin','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type','Cache-Control':'no-store'};
   const respond=r=>new Response(r.body,{status:r.status,headers:{...Object.fromEntries(r.headers),...headers}});
@@ -761,6 +852,7 @@ export async function cosmeticsRequest(req,env,allowedOrigins) {
     let parsed;try {parsed=JSON.parse(body);} catch {parsed=null;}
     const hasImages=parsed?.action==='post'||(parsed?.action==='comment'&&parsed.image!=null);
     if(hasImages && url.pathname!=='/cosmetics/post') return respond(json({error:'Invalid request.'},400));
+    if(parsed?.action==='stripe-checkout') return respond(await stripeCheckout(parsed,account,env,origin??allowedOrigins[0]));
     if(url.pathname==='/cosmetics/post') {
       if(!['post','comment'].includes(parsed?.action)) return respond(json({error:'Invalid request.'},400));
       const images=parsed.action==='comment'?(typeof parsed.image==='string'?[parsed.image]:[]):parsed.images;
@@ -768,4 +860,42 @@ export async function cosmeticsRequest(req,env,allowedOrigins) {
     }
     return respond(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',headers:{'Content-Type':'application/json'},body})));
   } catch {return respond(json({error:'The collection service is temporarily unavailable.'},503));}
+}
+
+// A Stripe Checkout for one bundle (lib/shop.js BUNDLES), made here so the price and the account on it
+// can't be changed by the browser. Stripe sends the player back to the page they left from.
+export async function stripeCheckout(body,account,env,site) {
+  if(env.SHOP_ENABLED!=='on') return json({error:'The shop is not open yet.'},400);
+  if(!env.STRIPE_SECRET_KEY) return json({error:'Payments are not set up yet.'},503);
+  const bundle=bundleFor(body.dollars);
+  if(!bundle) return json({error:'Choose a bundle.'},400);
+  const path=/^\/(?!\/)[\w/.-]{0,80}$/.test(body.path??'')?body.path:'/', hash=/^#\/[\w/?=&.-]{0,120}$/.test(body.hash??'')?body.hash:'';
+  const form=new URLSearchParams({
+    mode:'payment',
+    'line_items[0][quantity]':'1',
+    'line_items[0][price_data][currency]':'usd',
+    'line_items[0][price_data][unit_amount]':String(bundle.dollars*100),
+    'line_items[0][price_data][product_data][name]':`${bundle.tokens} tokens`,
+    client_reference_id:account,
+    'metadata[account]':account,
+    'payment_intent_data[metadata][account]':account,
+    success_url:`${site}${path}?paid=1${hash}`,
+    cancel_url:`${site}${path}${hash}`,
+  });
+  const r=await fetch('https://api.stripe.com/v1/checkout/sessions',{method:'POST',headers:{'Authorization':`Bearer ${env.STRIPE_SECRET_KEY}`,'Content-Type':'application/x-www-form-urlencoded'},body:form});
+  const s=await r.json().catch(()=>({}));
+  if(!r.ok||!s.url) {console.log('stripe checkout failed',r.status,s.error?.code??'');return json({error:'Checkout could not start. Try again.'},502);}
+  return json({url:s.url});
+}
+
+// A Stripe webhook's body, if its Stripe-Signature is ours and under five minutes old; otherwise null.
+export async function stripeEvent(req,secret,now=Date.now()) {
+  const body=await req.text(),sig=req.headers.get('stripe-signature')??'';
+  const t=/(?:^|,)t=(\d+)/.exec(sig)?.[1],sent=[...sig.matchAll(/(?:^|,)v1=([0-9a-f]{64})/g)].map(m=>m[1]);
+  if(!t||!sent.length||Math.abs(now/1000-Number(t))>300) return null;
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const mac=[...new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(`${t}.${body}`)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+  // Every character compared, so the time taken says nothing about how much matched.
+  if(!sent.some(v=>[...v].reduce((d,c,i)=>d|(c.charCodeAt(0)^mac.charCodeAt(i)),0)===0)) return null;
+  try {return JSON.parse(body);} catch {return null;}
 }

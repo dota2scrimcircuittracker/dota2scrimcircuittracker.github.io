@@ -23,6 +23,7 @@ import { mountProfileCollection, mountProfileFeed } from '../parts/collection.js
 import { mountProfileAchievements } from '../parts/achievements.js';
 import { mountProfileTickets } from '../parts/profile-tickets.js';
 import { mountGiftPanel } from '../parts/pack-gifts.js';
+import { playerSupporter, supporterBadgeHtml } from '../lib/cosmetics.js';
 import { plusSlot, startPlusLevels } from "../lib/hero-levels.js";
 
 // ---------- Player page ----------
@@ -143,7 +144,7 @@ export async function renderPlayer(src, key) {
     <header class="page-head pp-head reveal">
       <div class="kicker" style="--i:0">${crumbs(src, ["Players", `${src.root}/players`], s.name)}</div>
       <div class="pp-row" style="--i:1">
-        <h1><span class="h1-name">${esc(s.name)}</span>${tierOf ? `<button type="button" class="tier-badge t-${tierOf.tier}" id="tier-open" aria-haspopup="dialog"
+        <h1><span class="h1-name">${esc(s.name)}</span>${playerSupporter(key)?.profile ? supporterBadgeHtml() : ""}${tierOf ? `<button type="button" class="tier-badge t-${tierOf.tier}" id="tier-open" aria-haspopup="dialog"
           aria-label="${tierOf.tier} tier, rating ${tierOf.rating}. Open the breakdown" title="${tierOf.tier} tier · ${tierOf.rating} rating · click for the breakdown">
           <span class="tb-letter">${tierOf.tier}</span><span class="tb-pop" aria-hidden="true">↗</span></button>` : ""}</h1>
         ${sub ? `<p class="pp-sub">${sub}</p>` : ""}

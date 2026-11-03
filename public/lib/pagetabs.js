@@ -1,3 +1,4 @@
+import { shopVisible } from "./shop-flag.js";
 // The tabs on the team, player, hero and standings pages, in order: the one list both the page
 // (its tab bar) and, for the league pages, the nav dropdowns read, so the two can't drift apart.
 // Each entry: [id, label or (src) => label, { ad2l: true } if the tab only exists on AD2L].
@@ -30,7 +31,7 @@ export const PREDICT_TABS = [["fantasy", "Fantasy"], ["ftable", "Fantasy table"]
 // The Drafter's starting points (buttons on the page, not tabs, but linked the same way).
 export const DRAFTER_MODES = [["upcoming", "Upcoming series"], ["teams", "Any two teams"], ["game", "Past game"]];
 // The Gallery: [collection.js tab, label, address segment]; the sub-tab is in the path (#/gallery/packs), not ?tab=.
-export const GALLERY_TABS = [["feed", "Feed", ""], ["gallery", "Gallery", "gallery"], ["packs", "Packs", "packs"], ["collection", "Collection", "collection"], ["customize", "Customize", "customize"], ["recycle", "Recycle", "recycle"], ["cup", "Arcana Cup", "cup"]];
+export const GALLERY_TABS = [["feed", "Feed", ""], ["gallery", "Gallery", "gallery"], ["packs", "Packs", "packs"], ["collection", "Collection", "collection"], ["customize", "Customize", "customize"], ["recycle", "Recycle", "recycle"], ["cup", "Arcana Cup", "cup"], ...(shopVisible() ? [["shop", "Shop", "shop"]] : [])]; // Shop: local dev hosts only until it opens (lib/shop.js)
 // The scrims' Teams page: the table built from the games, every match, and the team cards.
 export const SCRIM_TEAMS_TABS = [["table", "Table"], ["matches", "Matches"], ["teams", "Teams"]];
 // Race: AD2L divisions only, not All (sixty lines on one chart), once two league nights are in.

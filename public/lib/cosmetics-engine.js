@@ -1,4 +1,4 @@
-import { CATALOG, TIERS, PACK_ODDS, DEFAULT_EQUIPMENT, itemByKey } from './cosmetics-catalog.js';
+import { CATALOG, TIERS, PACK_ODDS, ARCANA_ODDS, DEFAULT_EQUIPMENT, itemByKey } from './cosmetics-catalog.js';
 import { PACK_KIND_TYPES, parsePack, isThemedPack } from './pack-types.js';
 import { heroById } from './hero-meta.js';
 import { CARD_ART } from './card-art-data.js';
@@ -14,36 +14,39 @@ import {hasExpansionEmblems} from './cosmetics-expansion-symbols.js';
 
 export const PACK_INTERVAL_MS=8*60*60*1000;
 export const NORMAL_PACK_CAP=3;
-// How many card designs a player can save.
+// How many card designs a player can save: CARD_SLOTS free, plus any bought in the shop (lib/shop.js).
 export const CARD_SLOTS=5;
-const slotList=list=>Array.from({length:CARD_SLOTS},(_,i)=>list?.[i]??null);
+export const slotCount=state=>CARD_SLOTS+(state?.extraSlots??0);
+const slotList=(list,n=CARD_SLOTS)=>Array.from({length:n},(_,i)=>list?.[i]??null);
 export function cardDesignState(state) {
-  const designs=Array.from({length:CARD_SLOTS},(_,i)=>state.cardDesigns?.[i]??(i===0?state.equipment:null));
-  return {cardDesigns:designs,cardNames:slotList(state.cardNames),primaryCard:state.primaryCard??0,shuffleCards:state.shuffleCards??false,cardOrder:cardOrderOf(state.cardOrder)};
+  const n=slotCount(state),designs=Array.from({length:n},(_,i)=>state.cardDesigns?.[i]??(i===0?state.equipment:null));
+  return {cardDesigns:designs,cardNames:slotList(state.cardNames,n),primaryCard:state.primaryCard??0,shuffleCards:state.shuffleCards??false,cardOrder:cardOrderOf(state.cardOrder,n)};
 }
 // The order your card slots show on your profile: every slot once. Only the display moves, so a
 // slot's ratings, Feed posts and name stay with it. Anything else reads as the plain order.
-const isCardOrder=order=>Array.isArray(order)&&order.length===CARD_SLOTS&&[...order].sort((a,b)=>a-b).every((n,i)=>n===i);
-export const cardOrderOf=order=>isCardOrder(order)?[...order]:Array.from({length:CARD_SLOTS},(_,i)=>i);
+const isCardOrder=(order,n=CARD_SLOTS)=>Array.isArray(order)&&order.length===n&&[...order].sort((a,b)=>a-b).every((v,i)=>v===i);
+export const cardOrderOf=(order,n=CARD_SLOTS)=>isCardOrder(order,n)?[...order]:Array.from({length:n},(_,i)=>i);
 export function setCardOrder(state,order) {
-  if(!isCardOrder(order))throw new Error('Choose an order for all of your cards.');
+  if(!isCardOrder(order,slotCount(state)))throw new Error('Choose an order for all of your cards.');
   return {...state,cardOrder:[...order]};
 }
 // What a saved card is called in the slot list and under it on the profile: its name, else "Card 2".
 export const cardSlotName=(prefs,slot)=>prefs?.cardNames?.[slot]??`Card ${slot+1}`;
 // Names one of your card slots (null or blank clears it, back to "Card 2"). Same rules as nicknames.
 export function setCardName(state,slot,raw) {
-  if(!Number.isInteger(slot)||slot<0||slot>=CARD_SLOTS)throw new Error('Choose one of your cards.');
+  if(!Number.isInteger(slot)||slot<0||slot>=slotCount(state))throw new Error('Choose one of your cards.');
   const name=raw==null?'':String(raw).replace(/\s+/g,' ').trim();
   if(name&&([...name].length>MAX_NAME||/[\u0000-\u001f\u007f<>]/.test(name)))throw new Error(`Card names are 1 to ${MAX_NAME} characters, plain text.`);
-  const cardNames=slotList(state.cardNames);cardNames[slot]=name||null;
+  const cardNames=slotList(state.cardNames,slotCount(state));cardNames[slot]=name||null;
   return {...state,cardNames};
 }
-// The public look of a player's cards; nickname is the name they chose to show, else null.
+// The public look of a player's cards; nickname is the name they chose to show, else null;
+// supporter is where their shop supporter badge shows (lib/shop.js), else null.
 export function cardAppearance(state) {
   const preferences=cardDesignState(state);
-  return {...state.equipment,...preferences,nickname:shownNickname(state)};
+  return {...state.equipment,...preferences,nickname:shownNickname(state),supporter:supporterShown(state)};
 }
+export const supporterShown=state=>state?.supporter?{profile:!!state.supporterBadge?.profile,card:!!state.supporterBadge?.card}:null;
 // Your name on the site: a nickname, and whether it shows in place of your in-game name (on your
 // cards and your profile, where the in-game name follows in brackets). Same rules as card names.
 export function setNickname(state,{nickname=null,showNickname=false}={}) {
@@ -93,7 +96,7 @@ export function setProfileBackground(state,{background=null}={}) {
   return {...state,profileBackground:bg};
 }
 export function saveCardDesign(state,raw,slot=state.primaryCard??0) {
-  if(!Number.isInteger(slot)||slot<0||slot>=CARD_SLOTS)throw new Error('Choose one of your cards.');
+  if(!Number.isInteger(slot)||slot<0||slot>=slotCount(state))throw new Error('Choose one of your cards.');
   const preferences=cardDesignState(state);
   const validated=equipCosmetics({...state,equipment:preferences.cardDesigns[slot]??state.equipment},raw).equipment;
   preferences.cardDesigns[slot]=validated;
@@ -101,7 +104,7 @@ export function saveCardDesign(state,raw,slot=state.primaryCard??0) {
 }
 export function setCardPreferences(state,{primaryCard=state.primaryCard??0,shuffleCards=state.shuffleCards??false}) {
   const preferences=cardDesignState(state);
-  if(!Number.isInteger(primaryCard)||primaryCard<0||primaryCard>=CARD_SLOTS||!preferences.cardDesigns[primaryCard])throw new Error('Save this card before making it primary.');
+  if(!Number.isInteger(primaryCard)||primaryCard<0||primaryCard>=slotCount(state)||!preferences.cardDesigns[primaryCard])throw new Error('Save this card before making it primary.');
   if(typeof shuffleCards!=='boolean')throw new Error('Choose a valid shuffle setting.');
   return {...state,...preferences,primaryCard,shuffleCards,equipment:preferences.cardDesigns[primaryCard]};
 }
@@ -145,7 +148,9 @@ function rollThemedPack(state, packIndex, random) {
   const groups=TIERS.slice(TIERS.indexOf(tier)).map(rarity=>({rarity,weight:PACK_ODDS[rarity],items:CATALOG.filter(i=>types.includes(i.type)&&i.rarity===rarity)}));
   if(!groups.some(g=>g.items.length)) throw new Error('That pack has nothing to give.');
   for(let n=0;n<3;n++) {
-    let r=random()*groups.reduce((s,g)=>s+g.weight,0), at=groups.length-1;
+    const u=random();
+    if(u>=1-ARCANA_ODDS){rewards.push(dropArcana(next,random));continue;}
+    let r=u/(1-ARCANA_ODDS)*groups.reduce((s,g)=>s+g.weight,0), at=groups.length-1;
     for(let i=0;i<groups.length;i++) {r-=groups[i].weight;if(r<0){at=i;break;}}
     const group=groups.slice(at).find(g=>g.items.length)??groups.findLast(g=>g.items.length);
     const item=preferNew(group.items[Math.min(group.items.length-1,Math.floor(random()*group.items.length))],group.items,next.inventory,random);
@@ -161,7 +166,7 @@ function rollThemedPack(state, packIndex, random) {
   }
   if(screens.length)next.screens=[...(next.screens??[]),...screens];
   next.packs.splice(packIndex,1);
-  return {state:next,rewards,screens};
+  return {state:next,rewards:arcanaLast(rewards),screens};
 }
 export function rollPack(state, packIndex, random = Math.random, now = new Date()) {
   if(!Number.isInteger(packIndex) || packIndex<0 || packIndex>=state.packs.length) throw new Error('Choose an available pack.');
@@ -177,7 +182,9 @@ export function rollPack(state, packIndex, random = Math.random, now = new Date(
   const groups=TIERS.slice(min).map(rarity=>({rarity,weight:PACK_ODDS[rarity],items:CATALOG.filter(i=>i.rarity===rarity)}));
   if(groups.some(g=>!g.items.length)) throw new Error('The collection is missing a rarity.');
   for(let n=0;n<3;n++) {
-    let r=random()*groups.reduce((s,g)=>s+g.weight,0), group=groups.at(-1);
+    const u=random();
+    if(u>=1-ARCANA_ODDS){rewards.push(dropArcana(next,random));continue;}
+    let r=u/(1-ARCANA_ODDS)*groups.reduce((s,g)=>s+g.weight,0), group=groups.at(-1);
     for(const g of groups) {r-=g.weight;if(r<0){group=g;break;}}
     const item=preferNew(group.items[Math.min(group.items.length-1,Math.floor(random()*group.items.length))],group.items,next.inventory,random);
     rewards.push({key:item.key,duplicate:(next.inventory[item.key]??0)>0});
@@ -187,7 +194,7 @@ export function rollPack(state, packIndex, random = Math.random, now = new Date(
   if(screens.length)next.screens=[...(next.screens??[]),...screens];
   next.packs.splice(packIndex,1);
   if(next.nextPackAt==null && next.packs.filter(p=>p==='common').length<NORMAL_PACK_CAP)next.nextPackAt=now.getTime()+PACK_INTERVAL_MS;
-  return {state:next,rewards,screens};
+  return {state:next,rewards:arcanaLast(rewards),screens};
 }
 // Bonus loading screens (screen-art-data.js): two per pack, always ones the player doesn't have,
 // until they own them all. Usable as card art with any hero.
@@ -202,6 +209,23 @@ export const RECYCLE_COST=10;
 // random one from this pool into state.arcana; while it's empty the card is owed (state.arcanaOwed)
 // and handed out once the pool is filled.
 export const ARCANA_CARDS=[];
+// Any card in any pack can instead be an arcana card: the top ARCANA_ODDS of its roll, above legendary.
+// The pack reward's key is "arcana:<card>", or "arcana:owed" while the pool is empty.
+function giveArcana(next,random) {
+  // The first arcana also brings the Arcana upgrade, sealed until it's opened in Packs.
+  if(!hasArcanaUpgrade(next))next.arcanaSealed=1;
+  const arcana=ARCANA_CARDS.length?ARCANA_CARDS[Math.min(ARCANA_CARDS.length-1,Math.floor(random()*ARCANA_CARDS.length))]:null;
+  if(arcana)next.arcana=[...(next.arcana??[]),arcana];else next.arcanaOwed=(next.arcanaOwed??0)+1;
+  return arcana;
+}
+// An arcana card on its own (bought in the shop, lib/shop.js buyArcana).
+export function grantArcana(state, random=Math.random) {
+  const next=structuredClone(state);
+  return {state:next,arcana:giveArcana(next,random)};
+}
+// Arcana cards are always dealt last in the pack.
+const arcanaLast=rewards=>[...rewards.filter(r=>!r.arcana),...rewards.filter(r=>r.arcana)];
+const dropArcana=(next,random)=>({key:`arcana:${giveArcana(next,random)??'owed'}`,arcana:true,duplicate:false});
 export function recycleCards(state, selections, random=Math.random) {
   if(!selections || typeof selections!=='object' || Array.isArray(selections)) throw new Error(`Choose ${RECYCLE_COST} duplicates.`);
   const entries=Object.entries(selections).filter(([,n])=>n!==0);
@@ -212,20 +236,31 @@ export function recycleCards(state, selections, random=Math.random) {
   for(const [key,n] of entries) {
     if(itemByKey(key)?.rarity!==rarity) throw new Error(`Use ${RECYCLE_COST} duplicates of the same rarity.`);
     if(n>Math.max(0,(next.inventory[key]??0)-1)) throw new Error('Your last copy is protected.');
+    // Copies bought with tokens (lib/shop.js) can't be turned into a random pack.
+    if(n>Math.max(0,(next.inventory[key]??0)-1-(next.bought?.[key]??0))) throw new Error('Copies bought in the shop cannot be recycled.');
     next.inventory[key]-=n;
   }
   if(rarity==='legendary') {
-    const arcana=ARCANA_CARDS.length?ARCANA_CARDS[Math.min(ARCANA_CARDS.length-1,Math.floor(random()*ARCANA_CARDS.length))]:null;
-    if(arcana)next.arcana=[...(next.arcana??[]),arcana];else next.arcanaOwed=(next.arcanaOwed??0)+1;
-    return {state:next,arcana};
+    return {state:next,arcana:giveArcana(next,random)};
   }
   next.packs.push(TIERS[tier+1]);
   return {state:next,minimum:TIERS[tier+1]};
 }
-// The Arcana upgrade lets a card wear MAX_FINISH_STACK finishes on top of its main one. It comes with
-// an arcana card, one still owed from recycling legendaries, or a grant (state.arcanaUpgrade).
-export const MAX_FINISH_STACK=2;
-export const hasArcanaUpgrade=state=>!!state?.arcanaUpgrade||(state?.arcana?.length??0)>0||(state?.arcanaOwed??0)>0;
+// The Arcana upgrade lets a card wear more finishes on top of its main one: one layer per arcana card
+// owned, up to MAX_FINISH_LAYERS in all. The first arcana card brings it sealed (state.arcanaSealed);
+// opening it sets state.arcanaUpgrade. Accounts that earned arcana before the sealed box existed (arcana, none
+// sealed) already have it.
+export const MAX_FINISH_LAYERS=5;
+export const MAX_FINISH_STACK=MAX_FINISH_LAYERS-1;
+export const arcanaCount=state=>(state?.arcana?.length??0)+(state?.arcanaOwed??0);
+export const hasArcanaUpgrade=state=>!!state?.arcanaUpgrade||(!state?.arcanaSealed&&arcanaCount(state)>0);
+// How many finishes this account can stack over the main one.
+export const finishStackLimit=state=>hasArcanaUpgrade(state)?Math.min(MAX_FINISH_STACK,Math.max(1,arcanaCount(state))):0;
+export function openArcanaUpgrade(state) {
+  if(!state?.arcanaSealed)throw new Error('There is no sealed Arcana upgrade to open.');
+  const next=structuredClone(state);delete next.arcanaSealed;next.arcanaUpgrade=true;
+  return {state:next};
+}
 export const MAX_EMBLEMS=12;
 function validEmblems(emblems){
   if(!Array.isArray(emblems)||emblems.length<1||emblems.length>MAX_EMBLEMS)throw new Error(`Place 1 to ${MAX_EMBLEMS} border symbols.`);
@@ -248,11 +283,15 @@ export function equipCosmetics(state, raw) {
   }
   // Arcana upgrade: finishes stacked over the main one, each in its own layer. A stacked copy of
   // the main finish is dropped, so swapping the main finish never breaks a saved stack.
-  const stack=raw.finishStack!==undefined?raw.finishStack:state.equipment?.finishStack;
+  // A saved stack carried over from an earlier edit keeps its bottom layers if the limit is lower.
+  const limit=finishStackLimit(state),kept=raw.finishStack===undefined;
+  let stack=kept?state.equipment?.finishStack:raw.finishStack;
   if(stack!=null) {
     if(!Array.isArray(stack)||stack.length>MAX_FINISH_STACK)throw new Error(`Stack up to ${MAX_FINISH_STACK} finishes.`);
-    const ids=stack.filter(id=>id!==equipment.finish);
+    let ids=stack.filter(id=>id!==equipment.finish);
+    if(kept)ids=ids.slice(0,limit);
     if(ids.length&&!hasArcanaUpgrade(state))throw new Error('Stacking finishes needs the Arcana upgrade.');
+    if(ids.length>limit)throw new Error(`You can stack ${limit} finish${limit===1?'':'es'}. Each arcana card adds one more, up to ${MAX_FINISH_STACK}.`);
     if(new Set(ids).size!==ids.length)throw new Error('Stack each finish once.');
     for(const id of ids) {
       if(typeof id!=='string'||id===DEFAULT_EQUIPMENT.finish||!itemByKey(`finish:${id}`))throw new Error('Unknown cosmetic.');

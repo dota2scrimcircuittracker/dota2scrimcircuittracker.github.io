@@ -1143,6 +1143,8 @@ export const PEN_MARKS = {
 };
 export const TIERS = ['common','rare','epic','legendary'];
 export const PACK_ODDS = {common:69,rare:17,epic:10,legendary:4};
+// Any card in any pack can instead be an arcana card (lib/cosmetics-engine.js): this fraction, above legendary.
+export const ARCANA_ODDS = 0.005;
 export const DEFAULT_EQUIPMENT = {border:'grey',finish:'none',autograph:'none',translation:'none',text:'',x:50,y:60,size:15,rotation:-7,particleSpeed:100,particleAmount:100,borderSpeed:100};
 export const itemByKey = key => CATALOG.find(item=>item.key===key);
 

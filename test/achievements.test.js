@@ -183,9 +183,9 @@ test('designer pays a common border pack that opens to three borders', () => {
 test('themed packs: finish and signature draw only their types, never below their rarity', () => {
   for (let n = 0; n < 40; n++) {
     const finish = rollPack({ packs: ['epic:finish'], inventory: {}, screens: [] }, 0, Math.random);
-    assert.ok(finish.rewards.every((r) => itemByKey(r.key).type === 'finish' && ['epic', 'legendary'].includes(itemByKey(r.key).rarity)));
+    assert.ok(finish.rewards.every((r) => r.arcana || itemByKey(r.key).type === 'finish' && ['epic', 'legendary'].includes(itemByKey(r.key).rarity)));
     const sig = rollPack({ packs: ['common:signature'], inventory: {}, screens: [] }, 0, Math.random);
-    assert.ok(sig.rewards.every((r) => ['autograph', 'translation'].includes(itemByKey(r.key).type)));
+    assert.ok(sig.rewards.every((r) => r.arcana || ['autograph', 'translation'].includes(itemByKey(r.key).type)));
   }
 });
 
@@ -218,7 +218,7 @@ test('border and signature packs hold exactly three items; only a border pack ca
 test('a themed pack keeps the site odds: a common signature pack is 4% legendary, empty rarities move up', () => {
   const share = (pack, n = 20000) => {
     const c = { common: 0, rare: 0, epic: 0, legendary: 0 };
-    for (let i = 0; i < n / 3; i++) for (const r of rollPack({ packs: [pack], inventory: {}, screens: [] }, 0, Math.random).rewards) c[itemByKey(r.key).rarity]++;
+    for (let i = 0; i < n / 3; i++) for (const r of rollPack({ packs: [pack], inventory: {}, screens: [] }, 0, Math.random).rewards) if (!r.arcana) c[itemByKey(r.key).rarity]++;
     const t = Object.values(c).reduce((a, b) => a + b, 0);
     return Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v / t]));
   };
@@ -238,9 +238,9 @@ test('packOdds and oddsText give the odds shown on the site', () => {
   near(packOdds('rare:border').rare, 17 / 31); near(packOdds('rare:finish').legendary, 4 / 31);
   near(packOdds('epic').epic, 10 / 14);
   near(packOdds('common:signature').rare, 0.86); near(packOdds('common:signature').common, 0);
-  assert.equal(oddsText('common'), 'Common 69% · Rare 17% · Epic 10% · Legendary 4%');
-  assert.equal(oddsText('legendary:signature'), 'Legendary 100%');
-  assert.equal(oddsText('common:signature'), 'Rare 86% · Epic 10% · Legendary 4%');
+  assert.equal(oddsText('common'), 'Common 69% · Rare 17% · Epic 10% · Legendary 4% · Arcana 0.5%');
+  assert.equal(oddsText('legendary:signature'), 'Legendary 100% · Arcana 0.5%');
+  assert.equal(oddsText('common:signature'), 'Rare 86% · Epic 10% · Legendary 4% · Arcana 0.5%');
   assert.equal(ODDS_ROWS.length, 16);
   for (const [pack] of ODDS_ROWS) near(Object.values(packOdds(pack)).reduce((a, b) => a + b, 0), 1);
 });

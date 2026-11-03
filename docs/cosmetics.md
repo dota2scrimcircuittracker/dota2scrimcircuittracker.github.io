@@ -2,11 +2,26 @@
 
 ## Arcana upgrade: stacked finishes
 
-A card can wear up to `MAX_FINISH_STACK` (2) finishes on top of its main one, saved as
-`equipment.finishStack`. The upgrade comes with an arcana card, one still owed from recycling ten
-legendaries (`arcanaOwed`), or a grant (`state.arcanaUpgrade`); see `hasArcanaUpgrade` in
-`lib/cosmetics-engine.js`. Every stacked finish must be owned. A stacked copy of the main finish is
-dropped, so changing the main finish never breaks a saved stack.
+A card can stack one finish over its main one per arcana card the player owns (`arcanaCount`:
+owned designs plus owed ones), up to `MAX_FINISH_LAYERS` (5) layers in all, so at most
+`MAX_FINISH_STACK` (4) stacked. `finishStackLimit(state)` gives the count; a saved stack carried
+into a later edit keeps its bottom layers if it's over the limit. Every finish can be stacked. Saved as
+`equipment.finishStack`. Players see it as the "Double finish" item. The first arcana card a player
+gets brings it sealed (`state.arcanaSealed`); it shows as a box in Packs, and opening it (`open-arcana`,
+`openArcanaUpgrade`) plays the full-screen reveal and sets `state.arcanaUpgrade`. Accounts that earned
+arcana before the sealed box existed (arcana or `arcanaOwed`, nothing sealed) count as upgraded already
+(`hasArcanaUpgrade`), and a later arcana doesn't seal a box for them. Every stacked finish must be owned.
+
+Arcana cards come from recycling ten spare legendaries, from packs, or from the shop for
+`ARCANA_PRICE` tokens (30, draft; `buy-arcana`, `buyArcana` in `lib/shop.js`). Every card in every
+pack has `ARCANA_ODDS` (0.5%, `lib/cosmetics-catalog.js`) to be an arcana instead, the top of its
+roll, and arcana cards are always dealt last. While `ARCANA_CARDS` is empty they're owed
+(`arcanaOwed`, reward key `arcana:owed`). The Arcana chip in the Collection rarity filter shows the
+Double finish tile, and in the Shop the arcana card for sale (`parts/arcana.js`). A stacked copy of
+the main finish is dropped, so changing the main finish never breaks a saved stack.
+
+Layers draw bottom to top: the main finish, then `finishStack` in order. Under the picker, a layer
+list (top first) moves each one up or down; moving one to the bottom makes it the main finish.
 
 When a stack is on, the card reads `data-finish="stack"` and each finish, the main one too, draws in
 its own `<span class="finish-layer" data-finish="…">` (`display:contents`) with its own overlay and

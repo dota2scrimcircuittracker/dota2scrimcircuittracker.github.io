@@ -657,6 +657,18 @@ function onKey(e) {
 // Feedback mode from inside a modal (the collection's own Feedback button).
 export function startFeedback() { setOn(true); }
 
+// A ticket the site files itself rather than one the visitor draws: one "click" item on `el` with
+// the note and no screenshot, through the same rules and rate limit. Commission orders use it
+// (parts/shop.js) so they reach Fav like any ticket. Returns submitFeedback's { id } or { retryAt }.
+export function fileTicket(name, note, el) {
+  const r = el.getBoundingClientRect(), box = { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height };
+  return submitFeedback(name.trim().slice(0, 40) || "Player", [{
+    kind: "click", page: location.href.slice(0, 400), league: document.body.dataset.league ?? "", theme: themeNow(),
+    viewport: { w: innerWidth, h: innerHeight }, note: note.slice(0, 1000), area: round(around(box, 32, 360, 200)),
+    target: { sel: selectorOf(el), text: textOf(el) }, strokes: null, shot: null,
+  }]);
+}
+
 // Any other modal dialog (a full-size card, the tier breakdown, an image zoom) blocks the top-bar
 // button, so each one gets its own Feedback button in its corner when it opens.
 function addDialogButtons() {

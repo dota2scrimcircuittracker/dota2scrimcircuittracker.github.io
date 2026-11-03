@@ -450,6 +450,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   // (lib/feed.js packHistory). Only you can see it; pressing it again brings the posts back.
   const packHistoryHtml = (packs) => `<p class="feed-pack-count">${packs.length} pack${packs.length === 1 ? '' : 's'} opened</p>${packs.map((p) => {
     const items = p.rewards.map((r) => {
+      if (String(r.key).startsWith('arcana:')) return `<li style="--rarity:#ff5ab4"><span></span><span><strong>Arcana card</strong><small>arcana · ${r.key === 'arcana:owed' ? 'arrives on release' : 'new'}</small></span></li>`;
       const i = itemByKey(r.key);
       return i ? `<li style="--rarity:${colors[i.rarity]}">${swatch(i, nameOf(me))}<span><strong>${esc(i.name)}</strong><small>${i.rarity} ${esc(typeLabel(i.type))} · ${r.duplicate ? 'duplicate' : 'new'}</small></span></li>`
         : `<li style="--rarity:${colors.common}"><span></span><span><strong>New item</strong><small>Refresh the page to see it</small></span></li>`;

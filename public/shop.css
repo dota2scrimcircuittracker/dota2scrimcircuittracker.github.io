@@ -1,0 +1,100 @@
+/* The Gallery's Shop tab (parts/shop.js). Loaded by that file on first draw. */
+.shop-bar{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;margin-bottom:12px}
+.shop-bar small{display:block;text-transform:uppercase;letter-spacing:.08em;font-size:10px;opacity:.7;margin-bottom:6px}
+.shop-balance{display:flex;flex-direction:column;justify-content:center;min-width:150px;padding:12px 16px;border:1px solid color-mix(in srgb,#ffd879 45%,transparent);border-radius:10px;background:color-mix(in srgb,#ffd879 7%,transparent)}
+.shop-balance small{margin-bottom:2px}
+.shop-balance strong{font-size:32px;line-height:1.1;color:#ffd879}
+.shop-balance span{font-size:12px;opacity:.75}
+.shop-balance button{align-self:flex-start;margin-top:4px}
+.shop-bundles{flex:1 1 320px;padding:12px 16px;border:1px solid color-mix(in srgb,currentColor 15%,transparent);border-radius:10px}
+.shop-bundle-list{display:flex;flex-wrap:wrap;gap:8px}
+.shop-bundle{display:flex;align-items:baseline;gap:6px;padding:7px 14px;border:1px solid color-mix(in srgb,#ffd879 55%,transparent);border-radius:999px;text-decoration:none;color:inherit}
+.shop-bundle strong{color:#ffd879}
+.shop-bundle strong::after{content:' tokens';font-weight:400;color:currentColor;opacity:.75}
+.shop-bundle span{opacity:.75}
+.shop-bundle em{font-style:normal;font-size:12px;font-weight:600;color:#7be0a0}
+.shop-bundle:hover{background:color-mix(in srgb,#ffd879 12%,transparent)}
+.shop-code{margin:10px 0 0;font-size:13px;max-width:70ch}
+.shop-why{margin-bottom:20px;font-size:13px}
+.shop-why summary{cursor:pointer;opacity:.8;width:max-content}
+.shop-why summary:hover{opacity:1}
+.shop-why p{margin:8px 0 0;max-width:70ch;opacity:.85}
+.shop-items-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.shop-items-head h3{margin:0}
+.shop-items-head h3 span{font-size:13px;font-weight:400;opacity:.6;margin-left:4px}
+.shop-filters{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.shop-filters label,.collection-body .shop-filters label{display:flex;flex-direction:row;align-items:center;gap:6px;font-size:13px}
+.shop-chips{display:flex;flex-wrap:wrap;gap:6px}
+.shop-chips button{--rarity:currentColor;padding:5px 12px;border:1px solid color-mix(in srgb,var(--rarity) 50%,transparent);border-radius:999px;background:none;color:inherit;font-size:12px;text-transform:capitalize;cursor:pointer}
+.shop-chips button[aria-pressed=true]{background:color-mix(in srgb,var(--rarity) 22%,transparent);border-color:var(--rarity)}
+.shop-item button.confirm{outline:2px solid var(--rarity)}
+.shop-pager{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:16px}
+.shop-pager button{min-width:34px;padding:5px 10px;border:1px solid color-mix(in srgb,currentColor 30%,transparent);border-radius:6px;background:none;color:inherit;font-size:13px;cursor:pointer}
+.shop-pager button[aria-current=page]{background:color-mix(in srgb,#ffd879 22%,transparent);border-color:#ffd879}
+.shop-pager button:disabled{opacity:.35;cursor:default}
+.shop-price{font-weight:600}
+.shop-note{margin:12px 0 28px;font-size:12px}
+.shop-admin{margin-bottom:24px}
+.shop-admin h3{margin:0 0 8px}
+.shop-admin button.confirm{outline:2px solid #ffd879}
+/* Extras and commissions: four tiles under the balance */
+.shop-features{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.shop-feature{--accent:#ffd879;position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);border-radius:12px;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 13%,transparent),transparent 65%);overflow:hidden}
+.shop-feature::before{content:'';position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.7}
+.shop-feature header{display:flex;align-items:center;gap:12px}
+.shop-feature header div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.shop-feature header strong{font-size:15px;line-height:1.2}
+.shop-feature-icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+.shop-feature-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.shop-feature-price{align-self:flex-start;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);font-size:12px;font-weight:700}
+.shop-feature>p{margin:0;font-size:13px;line-height:1.45;opacity:.82}
+.shop-feature-cta{margin-top:auto;width:100%;padding:9px 12px;border:1px solid var(--accent);border-radius:8px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:inherit;font-weight:600;cursor:pointer}
+.shop-feature-cta:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 28%,transparent)}
+.shop-feature-cta:disabled{opacity:.45;cursor:default}
+.shop-feature-cta.confirm{background:var(--accent);color:#141414}
+.shop-feature-done{margin-top:auto;font-size:12px;opacity:.6}
+.shop-pips{display:flex;gap:5px}
+.shop-pips i{flex:1;height:22px;border:1px dashed color-mix(in srgb,var(--accent) 45%,transparent);border-radius:4px}
+.shop-pips i.base{border:1px solid color-mix(in srgb,currentColor 30%,transparent);background:color-mix(in srgb,currentColor 10%,transparent)}
+.shop-pips i.bought{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 35%,transparent)}
+.shop-badge-preview{display:flex;align-items:center;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,currentColor 6%,transparent);font-size:22px;font-weight:700}
+.shop-toggles{display:flex;gap:8px;margin-top:auto}
+.shop-toggles label,.collection-body .shop-toggles label{flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;padding:7px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:8px;font-size:13px;cursor:pointer}
+.shop-toggles label:has(:checked){background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:var(--accent)}
+.shop-order-form{display:flex;flex-direction:column;gap:8px;margin-top:auto}
+.shop-order-form label,.collection-body .shop-order-form label{display:flex;flex-direction:column;gap:4px;font-size:12px}
+.shop-order-form input,.shop-order-form select{width:100%}
+.shop-order-actions{display:flex;gap:8px}
+.shop-order-actions>button:first-child{padding:9px 12px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);border-radius:8px;background:none;color:inherit;cursor:pointer}
+.shop-features-note{grid-column:1/-1;margin:0;font-size:12px;opacity:.6}
+@media(max-width:1100px){.shop-features{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.shop-features{grid-template-columns:1fr}}
+.shop-order{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)}
+.shop-order span{opacity:.75}
+@media(max-width:650px){.shop-balance{flex:1 1 100%}.shop-items-head{flex-direction:column;align-items:flex-start}}
+/* Demo card beside the items (parts/shop.js demoHtml) */
+.shop-layout{margin-bottom:28px}
+.shop-item{cursor:pointer}
+.shop-item.previewing{border-color:var(--rarity);box-shadow:0 0 0 1px var(--rarity),0 0 18px color-mix(in srgb,var(--rarity) 35%,transparent)}
+.shop-demo h3{margin:0 0 4px}
+.shop-demo-note{margin:0 0 12px;min-height:2.6em}
+.shop-demo-bases{display:flex;justify-content:center;gap:10px;margin-top:14px}
+.dex-card-preview .shop-demo-bases button{width:30px;height:30px;padding:0;border:2px solid transparent;border-radius:50%;background:none;cursor:pointer}
+.shop-demo-bases i{display:block;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--dot) 60%,#fff),var(--dot) 55%,color-mix(in srgb,var(--dot) 50%,#000))}
+.dex-card-preview .shop-demo-bases button[aria-pressed=true]{border-color:#ffd879}
+.shop-demo-base-name{display:block;margin:6px 0 10px;text-align:center;font-size:11px;text-transform:capitalize;opacity:.6}
+.shop-thumb{pointer-events:none}.shop-thumb .ft-card{width:100%;margin:0}
+/* The demo item's sliders under the base dots (parts/shop.js tuneHtml) */
+.shop-demo-tune{display:grid;gap:10px;margin:4px 0 12px;font-size:12px}
+.shop-demo-tune label{display:grid;grid-template-columns:1fr auto;gap:4px 8px}
+.shop-demo-tune input[type=range]{grid-column:1/-1;width:100%;accent-color:#a86dff}
+.shop-demo-tune output{color:#eac47e;font-weight:700}
+.shop-demo-tune .effect-settings{margin:0;padding:10px}
+.shop-demo-tune .effect-settings h3{font-size:12px;margin:0 0 8px}
+.shop-demo-tune :is(.effect-position,.effect-particles){display:grid;grid-template-columns:1fr;gap:8px}
+/* Sticky, so long slider lists scroll inside it */
+.shop-demo{max-height:calc(100vh - 110px);overflow-y:auto}
+.shop-demo-tune fieldset{display:grid;gap:8px;margin:0 0 8px;padding:8px 10px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px}
+.shop-demo-tune legend{padding:0 4px;font-weight:600}
+.shop-demo [data-demo-card]{position:sticky;top:-18px;z-index:2;padding-top:4px;background:#211b27}
+.shop-demo-tune .effect-settings label,.shop-demo-tune fieldset label{margin:0;padding:0;min-height:0;gap:2px 8px;text-transform:none;font-size:12px}

@@ -1,6 +1,6 @@
 // Explicit loopback-only review mode in the normal Gallery UI. No collection API writes.
 import {CATALOG,DEFAULT_EQUIPMENT} from './cosmetics-catalog.js';
-import {grantLogin,rollPack,recycleCards,saveCardDesign,setCardPreferences,setCardName,setCardOrder,setNickname} from './cosmetics-engine.js';
+import {grantLogin,rollPack,recycleCards,openArcanaUpgrade,saveCardDesign,setCardPreferences,setCardName,setCardOrder,setNickname} from './cosmetics-engine.js';
 import {createPlayerCards,PAINT_FILTER} from '../parts/player-card.js';
 const key='ad2l-local-expansion-site-v1';
 export function localCosmeticsReview(){
@@ -24,6 +24,7 @@ export function localCosmeticsReview(){
   else if(action==='nickname')result={state:setNickname(state,details)};
   else if(action==='open')result=rollPack(state,details.packIndex);
   else if(action==='recycle')result=recycleCards(state,details.selections);
+  else if(action==='open-arcana')result=openArcanaUpgrade(state);
   else if(action==='session')result={state:grantLogin(state)};
   else throw Error('This action is unavailable in local cosmetics review.');
   state=result.state;localStorage.setItem(key,JSON.stringify(state));return result;

@@ -4,7 +4,7 @@ import { playerKey, mainAccount } from "../lib/stats.js";
 import { heroById, heroImg, heroVert, HERO_META } from "../lib/hero-meta.js";
 import { cardArtwork } from "../lib/card-art.js";
 import { teamLogoHtml } from "../lib/team-logos.js";
-import { cosmeticAttributes, cosmeticLayers, cosmeticBorder, cosmeticEmblems, playerEquipment, playerNickname, setArtAspect } from '../lib/cosmetics.js';
+import { cosmeticAttributes, cosmeticLayers, cosmeticBorder, cosmeticEmblems, playerEquipment, playerNickname, playerSupporter, supporterBadgeHtml, setArtAspect } from '../lib/cosmetics.js';
 import { BACK_STATS, backStats, backPartShown, partState } from '../lib/card-layout.js';
 import { plusSlot } from "../lib/hero-levels.js";
 
@@ -148,7 +148,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
     const pickBtn = (cls, hidden) => `<button type="button" class="ft-pickbtn ${cls}"${hidden ? ' tabindex="-1"' : ""} ${locked ? 'data-act="signin">Sign in to pick' : `data-act="pick" aria-pressed="false">Pick for pos ${slot}`}</button>`;
     // The plate's parts; placed ones sit on the face itself, after the plate.
     const plateParts = [
-      ["name", part("name", "ft-name", nameShown, "span", ` title="${esc(cardName)}"`)],
+      ["name", part("name", "ft-name", nameShown + (playerSupporter(p.account)?.card ? supporterBadgeHtml() : ""), "span", ` title="${esc(cardName)}"`)],
       ["record", part("record", "ft-record", recordHtml, "span", ' aria-label="Win-loss record"')],
       ["team", part("team", "ft-tm", `${teamMark}<span class="ft-team-name">${esc(p.team)}</span>`)],
       ["hero", face ? part("hero", "ft-sig", `${esc(face)}${faceRec ? ` · ${faceRec.games} game${faceRec.games === 1 ? "" : "s"}` : ""}`) : ""],
