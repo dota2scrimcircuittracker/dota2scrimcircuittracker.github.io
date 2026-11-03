@@ -17,7 +17,7 @@
 // had it the other way round).
 // Smaller divisions (fewer than 8 teams) put everyone in, as PlayOn's S48 brackets drew them:
 // 4 teams all start upper (1 v 4, 2 v 3); with 5–6, seeds 5 and 6 start in the lower bracket,
-// 6 against the loser of seed 1's match and 5 against the other upper loser.
+// 6 against the loser of seed 1's match and 5 against the other upper loser (or as PlayOn posts it).
 
 import { matchOdds, modelCall, gameChance } from "./predict.js";
 import { isPlayed, gameWins, strengthOfSchedule } from "./schedule.js";
@@ -309,10 +309,10 @@ export function resolveTable(ids, series, ratings, lines, choose) {
 // (3 or 4); otherwise the model's, or with `blank` nobody yet: the match's winner and loser
 // are TBD, and so is every slot they feed. `fixed`: no choice, seed 1 plays seed 4.
 // `pairs`: Heroic/Aegis's 8-team bracket where everyone starts upper, its four round 1 matches
-// [a, b] in PlayOn's order. Each match's `from` names the matches on its own side whose winners
+// [a, b] in PlayOn's order. `posted(a, b)`: PlayOn has posted a postseason series between them. Each match's `from` names the matches on its own side whose winners
 // play in it (the bracket's lines; a team dropping from upper to lower has none).
 export const TBD = "tbd";
-export function bracket(seeds, ratings, choose, { fixed = false, blank = false, pickSet = false, pairs = null } = {}) {
+export function bracket(seeds, ratings, choose, { fixed = false, blank = false, pickSet = false, pairs = null, posted = null } = {}) {
   const n = seeds.length;
   if (n < 4) return null;
   const ms = [];
@@ -360,9 +360,12 @@ export function bracket(seeds, ratings, choose, { fixed = false, blank = false, 
     const lf = M("lf", "lower", 4, uf.loser, lbWinner, 3, "Lower final", [l1]);
     M("gf", "final", 5, uf.winner, lf.winner, 5, "Grand final", [uf, lf]);
   } else if (n <= 6) {
-    // The loser of seed 1's match meets seed 6, the other upper loser seed 5.
-    const l1 = M("l1", "lower", 2, u1.loser, seed(6), 3, "Lower round 1");
-    const l2 = M("l2", "lower", 2, u2.loser, seed(5), 3, "Lower round 1");
+    // The loser of seed 1's match meets seed 6, the other upper loser seed 5, unless PlayOn posted
+    // it the other way round (S48 Voyager: seeds 5 and 6 were level on wins, and PlayOn's order
+    // of the two wasn't the site's).
+    const [x, y] = posted?.(u1.loser, seed(5)) || posted?.(u2.loser, seed(6)) ? [5, 6] : [6, 5];
+    const l1 = M("l1", "lower", 2, u1.loser, seed(x), 3, "Lower round 1");
+    const l2 = M("l2", "lower", 2, u2.loser, seed(y), 3, "Lower round 1");
     const uf = M("uf", "upper", 3, u1.winner, u2.winner, 3, "Upper final", [u1, u2]);
     const l3 = M("l3", "lower", 4, l1.winner, l2.winner, 3, "Lower semifinal", [l1, l2]);
     const lf = M("lf", "lower", 5, uf.loser, l3.winner, 3, "Lower final", [l3]);
@@ -415,7 +418,7 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
       const seeds = table.rows.slice(0, 8).map((r) => r.id);
       for (const tb of table.tiebreakers) for (const m of tb.matches) actual.mark(m);
       if (split) return { division: div, lines, ...table, bracket: null };
-      return { division: div, lines, ...table, bracket: asPicked ? bracket(seeds, ratings, own, { blank }) : actual.markAll(bracket(seeds, ratings, actual.chooser(seeds, choose), { blank, pickSet: actual.seedPick(seeds) != null })) };
+      return { division: div, lines, ...table, bracket: asPicked ? bracket(seeds, ratings, own, { blank }) : actual.markAll(bracket(seeds, ratings, actual.chooser(seeds, choose), { blank, pickSet: actual.seedPick(seeds) != null, posted: actual.posted })) };
     }),
   };
   if (split) {
@@ -483,6 +486,17 @@ function postResults(series) {
   const metAt = (a, b) => (a == null || b == null ? Infinity : confirmed(a, b) ? -Infinity : firstMet.get(pairKey(a, b)) ?? Infinity);
   const seedPick = ([s1, , s3, s4]) => { const t3 = metAt(s1, s3), t4 = metAt(s1, s4); return t3 === Infinity && t4 === Infinity ? null : t3 <= t4 ? 3 : 4; };
   const winnerOf = (s) => (s.home_score > s.away_score ? s.home : s.away);
+  // A week 8 tiebreaker with no result on PlayOn (the admins announced it, PlayOn never posted it)
+  // is settled by the bracket: when only one of its two teams plays a postseason series against
+  // anyone else, that team won it. (Champion S48: Helmets On got the 8th seed over SWM.Twinks.)
+  // Only PlayOn's own series count: the announced ones (lib/divisions.js ANNOUNCED, string ids)
+  // are the tiebreakers themselves, like Heroic's two-step play-in.
+  const inPost = (t, other) => series.some((s) => typeof s.id === "number" && isPostseason(s) && (s.home === t || s.away === t) && s.home !== other && s.away !== other && s.home != null && s.away != null);
+  const tbWinner = (key, a, b) => {
+    if (!key?.startsWith("tb:") || a == null || b == null || a === TBD || b === TBD) return undefined;
+    const ia = inPost(a, b), ib = inPost(b, a);
+    return ia === ib ? undefined : ia ? a : b;
+  };
   const mark = (m) => {
     const s = m.key ? taken.get(m.key) : null;
     if (!s) return m;
@@ -490,11 +504,12 @@ function postResults(series) {
     return Object.assign(m, { real: true, mine: false, series_id: s.id, score: [Math.max(x, y), Math.min(x, y)], result: [x, y] });
   };
   return {
-    any: byPair.size > 0,
-    winner: (key, a, b) => { const s = seriesFor(key, a, b); return s ? winnerOf(s) : undefined; },
+    any: byPair.size > 0 || series.some(isPostseason),
+    winner: (key, a, b) => { const s = seriesFor(key, a, b); return s ? winnerOf(s) : tbWinner(key, a, b); },
     mark,
     markAll: (b) => { if (b) for (const m of b.matches) mark(m); return b; },
     seedPick,
+    posted: (a, b) => a != null && b != null && a !== TBD && b !== TBD && firstMet.has(pairKey(a, b)),
     chooser: (seeds, choose) => (k, ...rest) => (k === "pick" ? seedPick(seeds) ?? choose?.(k, ...rest) : choose?.(k, ...rest)),
   };
 }

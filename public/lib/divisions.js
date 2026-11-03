@@ -100,12 +100,17 @@ export function postseasonRows(key, d) {
   for (const s of withAnnounced(key, d.series).filter((x) => x.time && (typeof x.id === "string" || isPostseason(x)))) {
     if (!(name[s.home] || name[s.away])) continue;
     const role = announcedRole(key, s), bestOf = role?.bestOf ?? 3;
-    const gs = typeof s.id === "string" ? d.games.filter((g) => g.series_id === s.id) : [];
+    // A posted series PlayOn hasn't scored yet takes its score from the two teams' unticketed
+    // games since the day before it (Warrior's Rats and Bunnies v 9 to 5 Guys, played late).
+    const unscored = typeof s.id === "number" && !s.home_score && !s.away_score && s.home != null && s.away != null;
+    const gs = typeof s.id === "string" ? d.games.filter((g) => g.series_id === s.id)
+      : unscored ? d.games.filter((g) => g.series_id == null && !covered.has(g.match_id) && (g.start_time ?? 0) >= s.time - 86400 && [g.team_a_id, g.team_b_id].sort().join("-") === [s.home, s.away].sort().join("-")) : [];
     gs.forEach((g) => covered.add(g.match_id));
     const home = s.home ?? gs[0]?.team_a_id ?? null, away = s.away ?? (gs[0] && gs[0].team_a_id === home ? gs[0].team_b_id : gs[0]?.team_a_id) ?? null;
     const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
-    const [sa, sb] = typeof s.id === "string" ? [wins(home), wins(away)] : [s.home_score ?? 0, s.away_score ?? 0];
-    rows.push({ unposted: typeof s.id === "string", t: s.time, label: role?.label ?? "Playoffs", bestOf, home, away, sa, sb, played: sa + sb > 0, done: Math.max(sa, sb) >= Math.ceil(bestOf / 2), last: Math.max(0, ...gs.map((g) => g.start_time ?? 0)), when: s.time });
+    const fromGames = typeof s.id === "string" || gs.length > 0;
+    const [sa, sb] = fromGames ? [wins(home), wins(away)] : [s.home_score ?? 0, s.away_score ?? 0];
+    rows.push({ unposted: fromGames, t: s.time, label: role?.label ?? "Playoffs", bestOf, home, away, sa, sb, played: sa + sb > 0, done: Math.max(sa, sb) >= Math.ceil(bestOf / 2), last: Math.max(0, ...gs.map((g) => g.start_time ?? 0)), when: s.time });
   }
   // Games with no series at all (a playoff match PlayOn hasn't posted): grouped by the pair.
   const loose = new Map();

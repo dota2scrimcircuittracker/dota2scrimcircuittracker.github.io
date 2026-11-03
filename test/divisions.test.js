@@ -58,3 +58,15 @@ test("the Firestore rules know every division (edited by hand)", () => {
     assert.ok(rules.includes(`'${d.key}'`), `the rules' league lists are missing '${d.key}'`);
   }
 });
+
+test("a posted bracket series PlayOn hasn't scored takes its score from the teams' unticketed games", async () => {
+  const { postseasonRows, playedPostseason } = await import("../public/lib/divisions.js");
+  const t = SEASON.regularEnd + 14 * 86400;
+  const g = (id, at, winner) => ({ match_id: id, series_id: null, start_time: at, team_a_id: 1, team_b_id: 2, winner });
+  const d = { teams: [{ id: 1, name: "A" }, { id: 2, name: "B" }], series: [{ id: 500, time: t, home: 2, away: 1, home_score: 0, away_score: 0 }], games: [g(1, t - 3 * 86400, "b"), g(2, t + 4 * 86400, "a"), g(3, t + 4 * 86400 + 3600, "a")] };
+  const [row] = postseasonRows("warrior", d);
+  assert.deepEqual([row.home, row.sa, row.sb, row.done, row.unposted], [2, 0, 2, true, true]); // the game 3 days early isn't this series
+  assert.deepEqual(playedPostseason([row]).map((s) => [s.home, s.home_score, s.away_score]), [[2, 0, 2]]);
+  d.series[0] = { ...d.series[0], home_score: 1, away_score: 2 }; // once PlayOn scores it, its score wins
+  assert.deepEqual((({ sa, sb, unposted }) => [sa, sb, unposted])(postseasonRows("warrior", d)[0]), [1, 2, false]);
+});

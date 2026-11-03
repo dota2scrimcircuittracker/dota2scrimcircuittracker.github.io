@@ -321,6 +321,31 @@ test("a posted bracket series settles seed 1's pick before it's played", async (
   assert.deepEqual([u.uf.a, u.uf.b], [4, 2]);
 });
 
+test("a 6-team lower round 1 follows PlayOn's posted pairing when it crosses the other way", async () => {
+  const { SEASON } = await import("../public/lib/divisions.js");
+  const teams = [1, 2, 3, 4, 5, 6].map((id) => ({ id, name: `T${id}`, players: [] }));
+  const before = SEASON.regularEnd - 86400, night = SEASON.regularEnd + 10 * 86400, week = 7 * 86400;
+  // Higher id 2–0 every time: seeds 6, 5, 4, 3, 2, 1.
+  const rr = []; for (let a = 6; a > 1; a--) for (let b = a - 1; b >= 1; b--) rr.push([a, b]);
+  const series = rr.map(([a, b], i) => ({ ...S(a, b, 2, 0), id: i, time: before }));
+  const round1 = [{ ...S(6, 4, 0, 2), id: 100, time: night }, { ...S(5, 3, 2, 0), id: 101, time: night }]; // seed 1 loses
+  const lowers = (extra) => { const b = playoffPicture(teams, [...series, ...round1, ...extra], rate([1, 2, 3, 4, 5, 6])).divisions[0].bracket; return ["l1", "l2"].map((id) => { const m = b.matches.find((x) => x.id === id); return [m.a, m.b]; }); };
+  assert.deepEqual(lowers([]), [[6, 1], [3, 2]]); // seed 6 v seed 1's loser
+  assert.deepEqual(lowers([{ ...S(6, 2, null, null), id: 102, time: night + week }]), [[6, 2], [3, 1]]); // PlayOn: seed 5 v seed 1's loser
+});
+
+test("an announced tiebreaker with no result goes to the team PlayOn put in the bracket", async () => {
+  const { SEASON } = await import("../public/lib/divisions.js");
+  const teams = Array.from({ length: 9 }, (_, i) => ({ id: i + 1, name: `T${i + 1}`, players: [] }));
+  const before = SEASON.regularEnd - 86400, night = SEASON.regularEnd + 10 * 86400;
+  // Higher id 2–0, except 1 and 2 split every game: 1 and 2 tie for 8th.
+  const rr = []; for (let a = 9; a > 1; a--) for (let b = a - 1; b >= 1; b--) rr.push(a === 2 && b === 1 ? S(2, 1, 1, 1) : S(a, b, 2, 0));
+  const series = rr.map((s, i) => ({ ...s, id: i, time: before }));
+  const eighth = (extra) => playoffPicture(teams, [...series, { id: "tb-x", time: SEASON.regularEnd + 3 * 86400, home: 1, away: 2, best_of: 3 }, ...extra], rate([2, 1, 3, 4, 5, 6, 7, 8, 9])).divisions[0].rows[7].id;
+  assert.equal(eighth([]), 2); // the model's call: 2 is rated higher
+  assert.equal(eighth([{ ...S(5, 1, 2, 0), id: 200, time: night }]), 1); // PlayOn has 1 in lower round 1
+});
+
 test("Heroic/Aegis take round 1 from PlayOn's posted series", async () => {
   const { SEASON } = await import("../public/lib/divisions.js");
   const teams = Array.from({ length: 16 }, (_, i) => ({ id: i + 1, name: `T${i + 1}`, players: [], division: i % 2 ? "B" : "A" }));
