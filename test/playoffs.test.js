@@ -312,6 +312,13 @@ test("a posted bracket series settles seed 1's pick before it's played", async (
   assert.deepEqual([pick([]).pick, pick([]).pickSet], [4, false]); // the model takes the weaker seed 4
   const posted = pick([{ ...S(4, 2, null, null), id: 99, time: after }]); // PlayOn: seed 1 v seed 3, unplayed
   assert.deepEqual([posted.pick, posted.pickSet], [3, true]);
+  // Warrior S48: seed 1 picked 4 and won, seed 3 won too, and PlayOn posted their upper final a
+  // week early. Round 1 is the earlier meeting, so the pick stays 4 and both results count.
+  const week = 7 * 86400;
+  const warrior = pick([{ ...S(4, 1, 2, 1), id: 100, time: after }, { ...S(2, 3, 2, 0), id: 101, time: after }, { ...S(4, 2, null, null), id: 102, time: after + week }]);
+  const u = Object.fromEntries(warrior.matches.map((x) => [x.id, x]));
+  assert.deepEqual([warrior.pick, u.u1.real, u.u1.winner, u.u2.real, u.u2.winner], [4, true, 4, true, 2]);
+  assert.deepEqual([u.uf.a, u.uf.b], [4, 2]);
 });
 
 test("Heroic/Aegis take round 1 from PlayOn's posted series", async () => {

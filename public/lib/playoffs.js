@@ -474,10 +474,14 @@ function postResults(series) {
     if (s) { used.set(pk, n + 1); taken.set(key, s); }
     return s;
   };
-  // A bracket series PlayOn has posted settles the pairing before it's played.
-  const posted = new Set(series.filter(isPostseason).map((s) => pairKey(s.home, s.away)));
-  const met = (a, b) => a != null && b != null && (posted.has(pairKey(a, b)) || CONFIRMED_PICKS.some(([x, y]) => pairKey(x, y) === pairKey(a, b)));
-  const seedPick = ([s1, , s3, s4]) => (met(s1, s3) ? 3 : met(s1, s4) ? 4 : null);
+  // A bracket series PlayOn has posted settles the pairing before it's played. Seed 1 can meet
+  // the other one later too (Warrior's upper final, posted a week early, was seed 1 v seed 3
+  // after seed 1 picked 4), so the earlier of the two first meetings is round 1.
+  const firstMet = new Map();
+  for (const s of series.filter(isPostseason)) { const k = pairKey(s.home, s.away); firstMet.set(k, Math.min(firstMet.get(k) ?? Infinity, s.time ?? 0)); }
+  const confirmed = (a, b) => CONFIRMED_PICKS.some(([x, y]) => pairKey(x, y) === pairKey(a, b));
+  const metAt = (a, b) => (a == null || b == null ? Infinity : confirmed(a, b) ? -Infinity : firstMet.get(pairKey(a, b)) ?? Infinity);
+  const seedPick = ([s1, , s3, s4]) => { const t3 = metAt(s1, s3), t4 = metAt(s1, s4); return t3 === Infinity && t4 === Infinity ? null : t3 <= t4 ? 3 : 4; };
   const winnerOf = (s) => (s.home_score > s.away_score ? s.home : s.away);
   const mark = (m) => {
     const s = m.key ? taken.get(m.key) : null;
