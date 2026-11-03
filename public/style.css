@@ -326,6 +326,9 @@ nav a.nav-cta:hover { background: #f5c862; color: var(--on-accent); }
 /* The header's menus can't rise above the header itself (its z-index is the ceiling), so while
    one is open the header goes above everything else on the page. */
 header.top:has(.nav-drop:not([hidden]), #search-pop:not([hidden]), #league-menu:not([hidden]), #settings-pop:not([hidden])) { z-index: 2147483000; }
+/* Except during the tour: its click blocker (z-index 90) must stay on top, or a pick from the
+   league menu goes straight to the link and the tour never hears of it (stuck at 1 of 9). */
+body.touring header.top:has(.nav-drop:not([hidden]), #search-pop:not([hidden]), #league-menu:not([hidden]), #settings-pop:not([hidden])) { z-index: 10; }
 /* A bridge over the gap, so moving the mouse from the tab down into the menu keeps it open. */
 .nav-drop::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 8px; }
 .nav-drop a {
