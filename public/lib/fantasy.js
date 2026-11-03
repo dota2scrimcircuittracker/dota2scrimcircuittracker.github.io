@@ -87,12 +87,16 @@ export function bracketSeries(league, teams, series) {
   const split = !!DIVISIONS.find((d) => d.key === league)?.views;
   const pic = playoffPicture(teams, all, fitRatings(teams, all), { split, blank: true });
   const plays = (s, a, b) => [s.home, s.away].some((t) => t === a || t === b);
+  // The same two teams posted for another week (Warrior's lower round 3, Rubick's Cube v Rats and
+  // Bunnies: PlayOn put it on Nov 5, the model on Nov 12): PlayOn's week wins.
+  const same = (s, a, b) => [s.home, s.away].includes(a) && [s.home, s.away].includes(b);
   const out = [];
   for (const [, b] of bracketsOf(pic, split)) for (const m of b?.matches ?? []) {
     const night = nights[m.week - 1];
     if (m.real || m.bye || !night || [m.a, m.b].some((t) => t == null || t === TBD)) continue;
     const time = Date.parse(`${night}T00:00:00Z`) / 1000 + 25 * 3600;
     if (posted.some((s) => plays(s, m.a, m.b) &&Math.abs((s.time ?? 0) - time) < 5 * 86400)) continue;
+    if (posted.some((s) => same(s, m.a, m.b) && Math.abs((s.time ?? 0) - time) < 8 * 86400)) continue;
     out.push({ id: `bracket-${league}-${m.id}`, time, home: m.a, away: m.b, best_of: m.bestOf });
   }
   return out;
@@ -133,7 +137,7 @@ export function checkPicks(picks, pool) {
 }
 
 // The week's games: those of its series, or (a series PlayOn hadn't posted, see
-// divisions.js ANNOUNCED) played that week between two of its teams, or (a series played before
+// divisions.js ANNOUNCED) unlinked games played that week between two of its teams, or (a series played before
 // its date: Champion's No Immortals v Piranhas, dated Oct 23, played Oct 16) unlinked games
 // between a scored series' two teams in the 8 days before the lock.
 export function weekGames(matches, week) {
@@ -142,7 +146,8 @@ export function weekGames(matches, week) {
     && done.some((s) => (s.home === m.team_a_id && s.away === m.team_b_id) || (s.home === m.team_b_id && s.away === m.team_a_id));
   return matches.filter((m) => (!week.league || week.league === "all" || m.league === week.league)
     && (week.seriesIds.has(m.series_id)
-    || (m.start_time && weekKey(m.start_time) === week.key && week.teams.has(m.team_a_id) && week.teams.has(m.team_b_id))
+    // A game linked to a series counts for that series' week only, however early or late it's played.
+    || (m.series_id == null && m.start_time && weekKey(m.start_time) === week.key && week.teams.has(m.team_a_id) && week.teams.has(m.team_b_id))
     || early(m)));
 }
 

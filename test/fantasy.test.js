@@ -172,6 +172,16 @@ test("weekGames takes a scored series' unlinked games played in the 8 days befor
   assert.equal(weekGames([g({ team_a_id: 30, team_b_id: 40 })], w).length, 0); // series not played yet
 });
 
+test("a game linked to a series counts for its scheduled week, not the week it's played", () => {
+  const lock = Date.parse("2026-10-30T01:00:00Z") / 1000, next = lock + 7 * 86400;
+  // Rats and Bunnies v 9 to 5 Guys: scheduled Oct 29 (US), played Mon Nov 2. Both teams also play the next week.
+  const [w1, w2] = fantasyWeeks([{ id: 1, time: lock, home: 10, away: 20 }, { id: 2, time: next, home: 10, away: 30 }, { id: 3, time: next, home: 20, away: 40 }]);
+  const late = { id: "g", series_id: 1, start_time: lock + 4 * 86400, team_a_id: 10, team_b_id: 20 };
+  assert.equal(weekGames([late], w1).length, 1);
+  assert.equal(weekGames([late], w2).length, 0);
+  assert.equal(weekGames([{ ...late, series_id: null }], w2).length, 1); // unlinked: by the week it's played
+});
+
 test("playoff weeks follow the bracket where PlayOn hasn't posted the series", () => {
   const load = (k) => JSON.parse(fs.readFileSync(new URL(`../public/data/${k}.json`, import.meta.url)));
   const week = "2026-10-26", inWeek = (s) => s.time && weekKey(s.time) === week;

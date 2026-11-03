@@ -386,8 +386,11 @@ async function buildGame(id) {
   const DAY4 = 4 * 86400;
   const pairOf = (s) => (s.home === rad && s.away === dire) || (s.home === dire && s.away === rad);
   // A playoff series can be played up to 8 days before PlayOn's time (Champion's Suck my Drama
-  // Piranhas v No Immortals: played Oct 16, posted for Oct 23).
-  const near = (s) => (s.time ?? 0) - d.start_time < (isPostseason(s) ? 8 * 86400 : DAY4) && d.start_time - (s.time ?? 0) < DAY4;
+  // Piranhas v No Immortals: played Oct 16, posted for Oct 23), or delayed up to 6 days after it
+  // (Warrior's Rats and Bunnies v 9 to 5 Guys: posted Thu Oct 29, played Mon Nov 2 US). A rematch
+  // a week later is 7 days on, so it doesn't fall back to the old series.
+  const near = (s) => (s.time ?? 0) - d.start_time < (isPostseason(s) ? 8 * 86400 : DAY4)
+    && d.start_time - (s.time ?? 0) < (isPostseason(s) ? 6 * 86400 : DAY4);
   const seriesOf = series
     .filter((s) => pairOf(s) && near(s))
     .sort((x, y) => Math.abs((x.time ?? 0) - d.start_time) - Math.abs((y.time ?? 0) - d.start_time))[0]
