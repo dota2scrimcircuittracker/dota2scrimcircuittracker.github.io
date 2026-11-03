@@ -1,6 +1,7 @@
 // Pack gifts (lib/pack-gifts.js). Fav sees a "Gift packs" box on other players' profiles; the
 // recipient gets a notice on their next page load, which stays until they open or dismiss it.
 import { esc } from '../core.js';
+import { pushCard } from './notice-stack.js';
 import { steamAccount } from '../lib/store.js';
 import { collectionAction, collectionState } from '../lib/cosmetics.js';
 import { TIERS, CATALOG } from '../lib/cosmetics-catalog.js';
@@ -90,10 +91,10 @@ let shown = '';
 function showGiftNotice(state) {
   const gifts = state?.gifts ?? [];
   const id = gifts.map((g) => g.at).join(',');
-  if (!gifts.length) { document.querySelector('.gift-notice')?.remove(); shown = ''; return; }
+  if (!gifts.length) { document.querySelector('.gift-notice:not(.comment-notice)')?.remove(); shown = ''; return; }
   if (id === shown) return;
   shown = id;
-  document.querySelector('.gift-notice')?.remove();
+  document.querySelector('.gift-notice:not(.comment-notice)')?.remove();
   const notes = gifts.map((g) => g.note).filter(Boolean);
   const box = document.createElement('aside');
   box.className = 'gift-notice';
@@ -102,7 +103,7 @@ function showGiftNotice(state) {
   box.innerHTML = `<strong>${gifts.map((g) => `${esc(from(g))} sent you ${esc(giftLabel(g))}`).join(', ')}</strong>
     ${notes.map((n) => `<q>${esc(n)}</q>`).join('')}
     <div><button type="button" data-gift-open>View gifts</button><button type="button" class="link-btn" data-gift-dismiss>Dismiss</button></div>`;
-  document.body.append(box);
+  pushCard(box);
   const seen = () => { box.remove(); collectionAction('gifts-seen').catch(() => {}); };
   box.querySelector('[data-gift-dismiss]').onclick = seen;
   box.querySelector('[data-gift-open]').onclick = async () => {

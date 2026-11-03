@@ -37,3 +37,13 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-XCUG6R · 2026-10-25 · Bans and picks on the team games tab now show in draft order.
 - FB-CNGMGH · 2026-10-25 · Noted: cross-division fantasy roster idea.
 - FB-3R0J2L · 2026-10-25 · Noted: note unclear and screenshot blank, nothing to act on.
+- FB-G09AQY · 2026-10-27 · By design: Piranhas have no series the week of Oct 26, so their players (teammates included) aren't pickable that week. They're back in the pool for the week of Nov 2.
+- FB-4ZO28A · 2026-10-27 · Footer now sits below the Matches grid on combined pages (class clash with the win/loss bar fixed)
+- FB-RFYPEQ · 2026-10-27 · Matches tab shows newest weeks first; the next week is still highlighted
+- FB-PC5JML · 2026-10-27 · Team ward maps: Active wards toggle (on by default) shows only wards up at the slider's minute; off shows every ward placed up to it
+- FB-5EQLRD · 2026-10-31 · Pack reveal crashed on new items the live site didn't know yet. Fixed: packs only roll released items, reveals never go blank, and a new Pack history on your feed shows every pack you've opened.
+- FB-L3X4L9 · 2026-10-31 · The rare pack from recycling did open, but its reveal crashed on an unreleased item (Frozen in Amber, which is in your collection). Fixed so reveals never go blank; Pack history on your feed shows every pack you've opened.
+- FB-DXSWYH · 2026-11-01 · Test commission order filed by mistake while testing the local shop; not a real request
+- FB-16WJIG · 2026-11-02 · Fixed the tour getting stuck on step 1 when picking a division from the league menu (7be3a5f).
+- FB-6T98QQ · 2026-11-02 · Working as intended: two entries per category. The Enter button now says why it's disabled.
+- FB-P4WZA7 · 2026-11-02 · Praise, no change needed.

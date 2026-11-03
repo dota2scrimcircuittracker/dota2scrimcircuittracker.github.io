@@ -89,12 +89,21 @@ export function renderedName(text,translation='none',letterCase='lower') {
 export const writingOf=text=>/[\u3040-\u30ff]/u.test(text)?'ja':/[\uac00-\ud7af]/u.test(text)?'ko':/[\u3400-\u9fff]/u.test(text)?'zh':/[\u0400-\u04ff]/u.test(text)?'cyrl':/[\u0370-\u03ff]/u.test(text)?'greek':/[\u16a0-\u16ff]/u.test(text)?'runic':/[฀-๿]/u.test(text)?'thai':'latin';
 // The most a name's signature may grow before it runs off the card: long names stop sooner.
 export const signatureSize=(size,text)=>Math.min(size,200/Math.max(8,[...text].length));
+// The largest size setting (5 to 30) that still makes this signature bigger, so the size slider ends
+// where the signature stops growing. Expansion signatures stop at 90% of the card's width
+// (cosmetics-expansion-native.css .exp-autograph); the rest at signatureSize's cap.
+export const SIGNATURE_SIZE_MAX=30;
+export function maxSignatureSize(equipment,name){
+  const item=itemByKey(`autograph:${equipment.autograph}`);
+  const cap=item?.expansion?90/5.5:200/Math.max(8,[...renderedName(name,equipment.translation,equipment.letterCase)].length);
+  return Math.max(5,Math.min(SIGNATURE_SIZE_MAX,Math.ceil(cap*2)/2));
+}
 export function signatureHtml(equipment,name) {
   const item=itemByKey(`autograph:${equipment.autograph}`);if(!item)return '';
   const text=renderedName(name,equipment.translation,equipment.letterCase);
   // Expansion SVGs already fit lettering to their viewBox. Applying the text-font cap here
   // shrinks long names a second time, including their ornaments and animation.
-  if(item.expansion)return `<span class="card-autograph exp-autograph" data-autograph="${item.id}" data-writing="${equipment.translation==='kanji'?'ja':writingOf(text)}" style="left:${equipment.x}%;top:${equipment.y}%;--signature-size:${equipment.size}cqi;--placement-rotation:${equipment.rotation}deg;--sig-text:${(equipment.textSize??100)/100}" aria-label="Signature: ${escape(text)}">${expansionSignatureHtml(item,text)}</span>`;
+  if(item.expansion)return `<span class="card-autograph exp-autograph" data-autograph="${item.id}" data-writing="${equipment.translation==='kanji'?'ja':writingOf(text)}" style="left:${equipment.x}%;top:${equipment.y}%;--signature-size:${equipment.size}cqi;--placement-rotation:${equipment.rotation}deg;--sig-text:${(equipment.textSize??100)/100}" aria-label="Signature: ${escape(text)}">${expansionSignatureHtml(item,text,{plate:equipment.plateText})}</span>`;
   const glyphs=item.rough?[...text].map((c,i)=>`<span class="signature-glyph" style="--glyph-lift:${(i%3)-1}px;--glyph-tilt:${(i%5-2)*2}deg">${escape(c)}</span>`).join(''):escape(text);
   const paths=(PEN_MARKS[item.flourish]??PEN_MARKS.simple).map(d=>`<path d="${d}"/>`).join('');
   const size=signatureSize(equipment.size,text);

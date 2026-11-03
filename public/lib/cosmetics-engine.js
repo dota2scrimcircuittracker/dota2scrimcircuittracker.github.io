@@ -198,21 +198,34 @@ function rollScreens(owned,random,count=SCREENS_PER_PACK) {
   return picked;
 }
 export const RECYCLE_COST=10;
-export function recycleCards(state, selections) {
+// Arcana cards (the Arcana Cup winners, lib/arcana-cup.js) aren't made yet. Ten legendaries draw a
+// random one from this pool into state.arcana; while it's empty the card is owed (state.arcanaOwed)
+// and handed out once the pool is filled.
+export const ARCANA_CARDS=[];
+export function recycleCards(state, selections, random=Math.random) {
   if(!selections || typeof selections!=='object' || Array.isArray(selections)) throw new Error(`Choose ${RECYCLE_COST} duplicates.`);
   const entries=Object.entries(selections).filter(([,n])=>n!==0);
   if(entries.some(([,n])=>!Number.isSafeInteger(n)||n<1) || entries.reduce((s,[,n])=>s+n,0)!==RECYCLE_COST) throw new Error(`Choose exactly ${RECYCLE_COST} duplicates.`);
   const rarity=itemByKey(entries[0]?.[0])?.rarity, tier=TIERS.indexOf(rarity);
-  if(tier<0 || tier===3) throw new Error('Legendary cards cannot be recycled into a higher tier.');
+  if(tier<0) throw new Error(`Use ${RECYCLE_COST} duplicates of the same rarity.`);
   const next=structuredClone(state);
   for(const [key,n] of entries) {
     if(itemByKey(key)?.rarity!==rarity) throw new Error(`Use ${RECYCLE_COST} duplicates of the same rarity.`);
     if(n>Math.max(0,(next.inventory[key]??0)-1)) throw new Error('Your last copy is protected.');
     next.inventory[key]-=n;
   }
+  if(rarity==='legendary') {
+    const arcana=ARCANA_CARDS.length?ARCANA_CARDS[Math.min(ARCANA_CARDS.length-1,Math.floor(random()*ARCANA_CARDS.length))]:null;
+    if(arcana)next.arcana=[...(next.arcana??[]),arcana];else next.arcanaOwed=(next.arcanaOwed??0)+1;
+    return {state:next,arcana};
+  }
   next.packs.push(TIERS[tier+1]);
   return {state:next,minimum:TIERS[tier+1]};
 }
+// The Arcana upgrade lets a card wear MAX_FINISH_STACK finishes on top of its main one. It comes with
+// an arcana card, one still owed from recycling legendaries, or a grant (state.arcanaUpgrade).
+export const MAX_FINISH_STACK=2;
+export const hasArcanaUpgrade=state=>!!state?.arcanaUpgrade||(state?.arcana?.length??0)>0||(state?.arcanaOwed??0)>0;
 export const MAX_EMBLEMS=12;
 function validEmblems(emblems){
   if(!Array.isArray(emblems)||emblems.length<1||emblems.length>MAX_EMBLEMS)throw new Error(`Place 1 to ${MAX_EMBLEMS} border symbols.`);
@@ -232,6 +245,20 @@ export function equipCosmetics(state, raw) {
     if(id!==DEFAULT_EQUIPMENT[type] && !(state.inventory[`${type}:${id}`]>0)) throw new Error('Collect this cosmetic before equipping it.');
     if(id!==DEFAULT_EQUIPMENT[type] && !itemByKey(`${type}:${id}`)) throw new Error('Unknown cosmetic.');
     equipment[type]=id;
+  }
+  // Arcana upgrade: finishes stacked over the main one, each in its own layer. A stacked copy of
+  // the main finish is dropped, so swapping the main finish never breaks a saved stack.
+  const stack=raw.finishStack!==undefined?raw.finishStack:state.equipment?.finishStack;
+  if(stack!=null) {
+    if(!Array.isArray(stack)||stack.length>MAX_FINISH_STACK)throw new Error(`Stack up to ${MAX_FINISH_STACK} finishes.`);
+    const ids=stack.filter(id=>id!==equipment.finish);
+    if(ids.length&&!hasArcanaUpgrade(state))throw new Error('Stacking finishes needs the Arcana upgrade.');
+    if(new Set(ids).size!==ids.length)throw new Error('Stack each finish once.');
+    for(const id of ids) {
+      if(typeof id!=='string'||id===DEFAULT_EQUIPMENT.finish||!itemByKey(`finish:${id}`))throw new Error('Unknown cosmetic.');
+      if(!(state.inventory[`finish:${id}`]>0))throw new Error('Collect this cosmetic before equipping it.');
+    }
+    if(ids.length)equipment.finishStack=ids;
   }
   // Signatures use the card's name: the player's, or the owner's own (layout.name, checked there).
   equipment.text='';
@@ -256,6 +283,10 @@ export function equipCosmetics(state, raw) {
   const textSize=raw.textSize??state.equipment?.textSize??100;
   if(!Number.isInteger(textSize)||textSize<50||textSize>200)throw new Error('Choose a signature text size from 50% to 200%.');
   if(textSize!==100)equipment.textSize=textSize;
+  // The License Plate signature's top band: up to 20 plain capitals, digits and a little punctuation; only set text is stored.
+  const plateText=String(raw.plateText??state.equipment?.plateText??'').trim().toUpperCase();
+  if([...plateText].length>20||!/^[A-Z0-9 .·'&!-]*$/.test(plateText))throw new Error('Plate text is up to 20 letters, digits, spaces and . · \' & ! -');
+  if(plateText)equipment.plateText=plateText;
   // The border's corner symbol shows unless the owner turns it off; only false is stored.
   const emblem=raw.emblem??state.equipment?.emblem??true;
   if(typeof emblem!=='boolean')throw new Error('Choose whether to show the border symbol.');

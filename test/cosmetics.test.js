@@ -1,13 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {CATALOG,TIERS,PACK_ODDS,DEFAULT_EQUIPMENT} from '../public/lib/cosmetics-catalog.js';
-import {grantLogin,rollPack,recycleCards,equipCosmetics,saveCardDesign,setCardPreferences,setCardName,setCardOrder,cardSlotName,CARD_SLOTS,cardDesignState,cardAppearance,selectedCardDesign,setProfileBackground,profileBackgroundOf} from '../public/lib/cosmetics-engine.js';
-import {japaneseName,cyrillicName,greekName,runicName,koreanName,chineseName,thaiName,renderedName,signatureHtml} from '../public/lib/signatures.js';
+import {grantLogin,rollPack,recycleCards,ARCANA_CARDS,equipCosmetics,saveCardDesign,setCardPreferences,setCardName,setCardOrder,cardSlotName,CARD_SLOTS,cardDesignState,cardAppearance,selectedCardDesign,setProfileBackground,profileBackgroundOf} from '../public/lib/cosmetics-engine.js';
+import {japaneseName,cyrillicName,greekName,runicName,koreanName,chineseName,thaiName,renderedName,signatureHtml,maxSignatureSize} from '../public/lib/signatures.js';
 import {CosmeticsVault,cosmeticsRequest} from '../workers/steam-auth/src/cosmetics.js';
 
 test('approved collection has all tiers, no language samples in signature drops',()=>{
   assert.equal(new Set(CATALOG.map(i=>i.key)).size,CATALOG.length);
-  assert.equal(CATALOG.length,190);
+  assert.equal(CATALOG.length,283);
   assert.deepEqual(PACK_ODDS,{common:69,rare:17,epic:10,legendary:4});
   for(const tier of TIERS)assert.ok(CATALOG.some(i=>i.rarity===tier));
   for(const item of CATALOG.filter(i=>i.type==='autograph')) {assert.equal(item.sample,undefined);assert.equal(item.script,undefined);}
@@ -46,7 +46,12 @@ test('recycling protects last copies and only accepts ten extras of one tier',()
   assert.throws(()=>recycleCards({...state,inventory:{[common.key]:10}},{[common.key]:10}),/last copy/);
   assert.throws(()=>recycleCards(state,{[common.key]:9,[rare.key]:1}),/same rarity/);
   assert.throws(()=>recycleCards(state,{[common.key]:5}),/exactly 10/);
-  assert.throws(()=>recycleCards(state,{[legend.key]:10}),/Legendary/);
+  const arcana=recycleCards(state,{[legend.key]:10});
+  assert.equal(arcana.state.inventory[legend.key],1);assert.equal(arcana.state.arcanaOwed,1);assert.equal(arcana.arcana,null);assert.equal(arcana.minimum,undefined);
+  assert.deepEqual(arcana.state.packs,state.packs);
+  ARCANA_CARDS.push('a1','a2');
+  try{const drawn=recycleCards(state,{[legend.key]:10},()=>0.9);assert.equal(drawn.arcana,'a2');assert.deepEqual(drawn.state.arcana,['a2']);assert.equal(drawn.state.arcanaOwed,undefined);}
+  finally{ARCANA_CARDS.length=0;}
   for(const minimum of TIERS.slice(1)) {
     const upgraded={...state,packs:[minimum]};
     for(let n=0;n<50;n++)assert.ok(rollPack(upgraded,0).rewards.every(r=>TIERS.indexOf(CATALOG.find(i=>i.key===r.key).rarity)>=TIERS.indexOf(minimum)));
@@ -268,4 +273,15 @@ test('card order: a profile display order of every slot, defaulting to the slot 
   assert.deepEqual(cardDesignState({...state,cardOrder:[9,9,9,9,9]}).cardOrder,[0,1,2,3,4]);
   // Saving a design or primary card keeps the order.
   assert.deepEqual(saveCardDesign(moved,{hue:40},1).cardOrder,[2,0,1,4,3]);
+});
+
+test('the signature size slider ends where the signature stops growing',()=>{
+  const e={...DEFAULT_EQUIPMENT,autograph:'brush-ink'};
+  // Classic styles cap the font at 200 / letters (min 8), rounded up to the slider's half step.
+  assert.equal(maxSignatureSize(e,'Your Name'),22.5);
+  assert.equal(maxSignatureSize(e,'Scionarathegreat'),12.5);
+  assert.equal(maxSignatureSize(e,'Fav'),25);
+  // Expansion styles stop at 90% of the card's width.
+  const exp=CATALOG.find(i=>i.type==='autograph'&&i.expansion);
+  assert.equal(maxSignatureSize({...e,autograph:exp.id},'Your Name'),16.5);
 });

@@ -674,7 +674,14 @@ export class CosmeticsVault {
           const ek=`cup:${this.cup.id}:extend`,extend={...(await txn.get(ek)??{})};
           extend[open.step]=(extend[open.step]??0)+hours*36e5;
           await txn.put(ek,extend);
-          result={state:saved,step:open.step,extend};
+          // Every signed-in player hears about it. A newer cup notice replaces the last one.
+          const closesAt=open.closesAt+hours*36e5,notice={kind:'cup',step:open.step,closesAt,from:account,fromName:'Fav',text:`Round ${open.step+1} has ${hours} more hours: voting closes in ${Math.round((closesAt-now)/36e5)} hours.${open.step<Math.max(...Object.values(views).flatMap(v=>v.rounds?.flat()??[]).map(m=>m.step))?' The next round opens right after.':''}`,at:now};
+          let sent=0;
+          for(const [k,state] of await txn.list({prefix:'user:',limit:5000})) {
+            if(k===`user:${account}`)continue;
+            await txn.put(k,pushNotice({...state,notices:(state.notices??[]).filter(n=>n.kind!=='cup')},notice));sent++;
+          }
+          result={state:saved,step:open.step,extend,sent};
         }
         else if(body.action==='cup-rate') {
           // Rating an entry is rating its design: the same votes as the Gallery and profiles.

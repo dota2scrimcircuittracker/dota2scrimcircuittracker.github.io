@@ -208,10 +208,12 @@ export const CARD_DESIGN_WIDTH = 280;
 function fitCard(card) {
   card.classList.remove("ft-fit");
   card.style.removeProperty("zoom");
+  card.style.removeProperty("--fit");
   const w = card.offsetWidth;
   if (!w) return; // hidden (another page of the Gallery): measured when it shows
   card.classList.add("ft-fit");
   card.style.zoom = (w / CARD_DESIGN_WIDTH).toFixed(4);
+  card.style.setProperty("--fit", card.style.zoom); // collection.css undoes it on SVG layers in Firefox
 }
 const fitBoxes = new ResizeObserver((entries) => {
   for (const { target } of entries) {

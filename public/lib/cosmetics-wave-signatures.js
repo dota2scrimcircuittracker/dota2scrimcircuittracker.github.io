@@ -1,12 +1,14 @@
 // Signatures for the October 20 wave. Same frame as the expansion signatures: a 300-wide strip, viewBox 0 185 300 110,
 // with the name centred near y 250. Long names shrink to fit rather than overflow.
 let serial=0;
+import {ENSO_SIGNATURES} from './cosmetics-enso.js';
+import {WAVE2_SIGNATURES} from './cosmetics-wave2-signatures.js';
 const rnd=n=>{const v=Math.sin(n*12.9898+78.233)*43758.5453;return v-Math.floor(v);};
 const f=v=>Number(v.toFixed(2));
-const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Font size for a name of n characters at an average advance of `advance` em, capped by `max` width.
-const sizeFor=(n,advance,size,max=230)=>Math.min(size,max/Math.max(1,n*advance));
-const wrap=(item,id,glow,defs,body)=>`<svg class="exp-layer exp-signature-svg wave-signature" data-signature-id="${item.id}" viewBox="0 185 300 110" style="--signature-glow:${glow}" aria-hidden="true"><defs>${defs}</defs>${body}</svg>`;
+export const sizeFor=(n,advance,size,max=230)=>Math.min(size,max/Math.max(1,n*advance));
+export const wrap=(item,id,glow,defs,body)=>`<svg class="exp-layer exp-signature-svg wave-signature" data-signature-id="${item.id}" viewBox="0 185 300 110" style="--signature-glow:${glow}" aria-hidden="true"><defs>${defs}</defs>${body}</svg>`;
 
 function ransomNote(item,id,text){
  const chars=[...text],cell=Math.min(30,232/chars.length),x0=150-chars.length*cell/2;
@@ -97,4 +99,5 @@ function liquidChrome(item,id,text){
 }
 
 const SIGNATURES={'ransom-note':ransomNote,'spray-tag':sprayTag,'wax-seal':waxSeal,'morse-code':morseCode,typewriter,constellation,'varsity-patch':varsityPatch,barcode,sparkler,'liquid-chrome':liquidChrome};
-export const waveSignatureHtml=(item,text)=>SIGNATURES[item.id]?.(item,`wave-signature-${++serial}`,String(text||'Fav'))??'';
+// opts carries per-card extras a design reads, such as the License Plate's top text (opts.plate).
+export const waveSignatureHtml=(item,text,opts={})=>(SIGNATURES[item.id]??ENSO_SIGNATURES[item.id]??WAVE2_SIGNATURES[item.id])?.(item,`wave-signature-${++serial}`,String(text||'Fav'),opts)??'';

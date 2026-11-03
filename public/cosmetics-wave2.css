@@ -1,0 +1,221 @@
+/* October 30 wave (lib/cosmetics-wave2-*.js). Every animated element carries .w2 and one motion class, reads its
+   cycle from --t and is drawn around its own origin, so rotations and scales pivot there. Borders pace on
+   --border-speed, finishes on --particle-speed, signatures at a fixed pace. Reduced motion and offscreen pausing
+   come from the shared .exp-layer rules in cosmetics-expansion-native.css. */
+.w2b{--spd:var(--border-speed,1)}.w2f{--spd:var(--particle-speed,1)}.w2s{--spd:1}
+.w2{animation-duration:calc(var(--t,4s) / var(--spd,1));animation-iteration-count:infinite;animation-timing-function:linear}
+
+/* Travel */
+.w2.move{animation-name:w2-move}
+@keyframes w2-move{0%{transform:translate(0,0);opacity:0}10%{opacity:var(--o,1)}85%{opacity:var(--o,1)}100%{transform:translate(var(--dx,0px),var(--dy,0px));opacity:0}}
+.w2.slide{animation-name:w2-slide}
+@keyframes w2-slide{to{transform:translate(var(--dx,0px),var(--dy,0px))}}
+.w2.ride{animation-name:w2-ride}
+@keyframes w2-ride{from{offset-distance:0%}to{offset-distance:100%}}
+.w2.bob{animation-name:w2-bob;animation-direction:alternate;animation-timing-function:ease-in-out}
+@keyframes w2-bob{to{transform:translate(var(--dx,0px),var(--dy,3px))}}
+.w2.jitter{animation-name:w2-jitter;animation-timing-function:steps(1)}
+@keyframes w2-jitter{0%{transform:translate(0,0)}25%{transform:translate(var(--dx,7px),var(--dy,-5px))}50%{transform:translate(calc(var(--dx,7px) * -1),var(--dy,-5px))}75%{transform:translate(var(--dx,7px),calc(var(--dy,-5px) * -1))}}
+.w2.wander{animation-name:w2-wander;animation-timing-function:ease-in-out}
+@keyframes w2-wander{0%,100%{transform:translate(0,0)}25%{transform:translate(var(--dx,60px),var(--dy,40px))}50%{transform:translate(calc(var(--dx,60px) * .2),calc(var(--dy,40px) * 2.2))}75%{transform:translate(calc(var(--dx,60px) * -1),calc(var(--dy,40px) * .8))}}
+.w2.wander-back{animation-name:w2-wander-back;animation-timing-function:ease-in-out}
+@keyframes w2-wander-back{0%,100%{transform:translate(0,0)}25%{transform:translate(calc(var(--dx,60px) * -1),calc(var(--dy,40px) * -1))}50%{transform:translate(calc(var(--dx,60px) * -.2),calc(var(--dy,40px) * -2.2))}75%{transform:translate(var(--dx,60px),calc(var(--dy,40px) * -.8))}}
+
+/* Turning */
+.w2.sway{animation-name:w2-sway;animation-direction:alternate;animation-timing-function:ease-in-out}
+@keyframes w2-sway{from{transform:rotate(calc(var(--a,8deg) * -1))}to{transform:rotate(var(--a,8deg))}}
+.w2.flutter{animation-name:w2-flutter;animation-direction:alternate;animation-timing-function:ease-in-out}
+@keyframes w2-flutter{from{transform:skewX(calc(var(--a,10deg) * -1))}to{transform:skewX(var(--a,10deg)) scaleY(.94)}}
+.w2.spin{animation-name:w2-spin}
+@keyframes w2-spin{to{transform:rotate(var(--turn,360deg))}}
+.w2.flick{animation-name:w2-flick;animation-timing-function:ease-out}
+@keyframes w2-flick{0%,14%,100%{transform:rotate(0)}5%{transform:rotate(var(--a,-28deg))}}
+.w2.turn{animation-name:w2-turn;animation-timing-function:ease-in-out}
+@keyframes w2-turn{0%,88%{transform:rotate(0)}100%{transform:rotate(180deg)}}
+.w2.topple{animation-name:w2-topple;animation-timing-function:ease-in}
+@keyframes w2-topple{0%{transform:scaleX(.16)}4%,50%{transform:scaleX(1)}54%,100%{transform:scaleX(.16)}}
+
+/* Scale */
+.w2.pop{animation-name:w2-pop;animation-timing-function:ease-out}
+@keyframes w2-pop{0%{transform:scale(var(--s0,.1));opacity:0}8%{opacity:var(--o,1)}100%{transform:scale(var(--s1,1));opacity:0}}
+.w2.hit{animation-name:w2-hit}
+@keyframes w2-hit{0%,12%,100%{transform:scale(1)}4%{transform:scale(var(--s,1.25))}}
+.w2.thump{animation-name:w2-thump;animation-timing-function:ease-out}
+@keyframes w2-thump{0%{transform:scale(1.5);opacity:0}5%{transform:scale(1);opacity:var(--o,.9)}80%{transform:scale(1);opacity:var(--o,.9)}100%{transform:scale(1);opacity:0}}
+.w2.flap{animation-name:w2-flap;animation-direction:alternate;animation-timing-function:ease-in-out}
+@keyframes w2-flap{to{transform:scaleY(var(--fy,.2))}}
+.w2.flapx{animation-name:w2-flapx;animation-direction:alternate;animation-timing-function:ease-in-out}
+@keyframes w2-flapx{to{transform:scaleX(var(--fx,.15))}}
+.w2.grow{animation-name:w2-grow;animation-timing-function:ease-in-out}
+@keyframes w2-grow{0%{transform:scaleX(0);opacity:1}35%,85%{transform:scaleX(1);opacity:1}100%{transform:scaleX(1);opacity:0}}
+.w2.swipe{animation-name:w2-swipe;animation-timing-function:ease-out}
+@keyframes w2-swipe{0%{transform:scaleX(0)}25%,100%{transform:scaleX(1)}}
+.w2.bloom{animation-name:w2-bloom;animation-timing-function:ease-out}
+@keyframes w2-bloom{0%{transform:scale(0)}18%,86%{transform:scale(1)}100%{transform:scale(0)}}
+.w2.drain{animation-name:w2-drain}
+@keyframes w2-drain{0%{transform:scaleY(1)}88%,100%{transform:scaleY(0)}}
+.w2.fill{animation-name:w2-fill}
+@keyframes w2-fill{0%{transform:scaleY(0)}88%,100%{transform:scaleY(1)}}
+.w2.flipy{animation-name:w2-flipy;animation-timing-function:ease-in-out}
+@keyframes w2-flipy{0%,7%,100%{transform:scaleY(1)}3.5%{transform:scaleY(0)}}
+.w2.blinkeye{animation-name:w2-blinkeye}
+@keyframes w2-blinkeye{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(.06)}}
+.w2.lob{animation-name:w2-lob;animation-timing-function:ease-in-out}
+@keyframes w2-lob{0%,100%{transform:scale(1)}50%{transform:scale(var(--s,1.8))}}
+
+/* Light */
+.w2.pulse{animation-name:w2-pulse;animation-direction:alternate;animation-timing-function:ease-in-out}
+@keyframes w2-pulse{from{opacity:var(--lo,.3)}to{opacity:var(--hi,1)}}
+.w2.blink{animation-name:w2-blink;animation-timing-function:steps(1)}
+@keyframes w2-blink{0%{opacity:1}50%,100%{opacity:var(--lo,0)}}
+.w2.chase{animation-name:w2-chase;animation-timing-function:steps(1)}
+@keyframes w2-chase{0%{opacity:1}33.3%,100%{opacity:var(--lo,.25)}}
+.w2.press{animation-name:w2-press}
+@keyframes w2-press{0%,12%,100%{opacity:0}4%{opacity:var(--o,.8)}}
+.w2.flash{animation-name:w2-flash}
+@keyframes w2-flash{0%,86%,100%{opacity:0}90%{opacity:var(--o,1)}}
+.w2.flicker{animation-name:w2-flicker;animation-timing-function:steps(1)}
+@keyframes w2-flicker{0%,100%{opacity:var(--hi,1)}12%{opacity:var(--lo,.55)}14%{opacity:var(--hi,1)}47%{opacity:var(--lo,.55)}48%{opacity:var(--hi,1)}49%{opacity:var(--lo,.55)}51%{opacity:var(--hi,1)}83%{opacity:var(--lo,.55)}85%{opacity:var(--hi,1)}}
+.w2.fade{animation-name:w2-fade;animation-timing-function:ease-in-out}
+@keyframes w2-fade{0%{opacity:0}20%,70%{opacity:var(--o,1)}100%{opacity:0}}
+.w2.night{animation-name:w2-night;animation-timing-function:ease-in-out}
+@keyframes w2-night{0%,30%{opacity:0}50%,80%{opacity:1}92%,100%{opacity:0}}
+.w2.skyhi{animation-name:w2-skyhi;animation-timing-function:ease-in-out}
+@keyframes w2-skyhi{0%,30%{stop-color:#3d9cf5}42%{stop-color:#ff8a4a}50%,80%{stop-color:#0b1033}92%{stop-color:#ff9a6a}100%{stop-color:#3d9cf5}}
+.w2.skylo{animation-name:w2-skylo;animation-timing-function:ease-in-out}
+@keyframes w2-skylo{0%,30%{stop-color:#cdeeff}42%{stop-color:#ffd18a}50%,80%{stop-color:#1d2a6b}92%{stop-color:#ffd0a0}100%{stop-color:#cdeeff}}
+.w2.cool{animation-name:w2-cool;animation-timing-function:ease-in-out}
+@keyframes w2-cool{0%{opacity:0}30%{opacity:1}55%,100%{opacity:0}}
+
+/* Strokes */
+.w2.draw{stroke-dasharray:1;animation-name:w2-draw;animation-timing-function:ease-in-out}
+@keyframes w2-draw{0%{stroke-dashoffset:1;opacity:1}35%,85%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+.w2.dash{animation-name:w2-dash}
+@keyframes w2-dash{to{stroke-dashoffset:var(--d,-10)}}
+.w2.write{stroke-dasharray:var(--len,600);animation-name:w2-write;animation-timing-function:ease-in-out}
+@keyframes w2-write{0%{stroke-dashoffset:var(--len,600);fill-opacity:0;opacity:1}40%{stroke-dashoffset:0;fill-opacity:0}55%,88%{stroke-dashoffset:0;fill-opacity:1;opacity:1}100%{stroke-dashoffset:0;fill-opacity:1;opacity:0}}
+
+/* Synced pairs: a launcher and its payload share --t and delay. */
+.w2.rocket{animation-name:w2-rocket;animation-timing-function:ease-out}
+@keyframes w2-rocket{0%{transform:translate(0,0);opacity:1}40%{transform:translate(0,var(--dy,-200px));opacity:1}41%,100%{transform:translate(0,var(--dy,-200px));opacity:0}}
+.w2.burst{animation-name:w2-burst;animation-timing-function:ease-out}
+@keyframes w2-burst{0%,40%{transform:scale(.05);opacity:0}42%{opacity:1}70%{transform:scale(1);opacity:.85}88%,100%{transform:scale(1.08);opacity:0}}
+.w2.impact{animation-name:w2-impact;animation-timing-function:ease-out}
+@keyframes w2-impact{0%,93%{transform:scale(.2);opacity:0}95%{opacity:1}100%{transform:scale(1.4);opacity:0}}
+.w2.fly{animation-name:w2-fly;animation-timing-function:linear}
+@keyframes w2-fly{0%{transform:translateX(0);opacity:1}35%{transform:translateX(var(--dx,200px));opacity:1}38%,100%{transform:translateX(var(--dx,200px));opacity:0}}
+.w2.wash{animation-name:w2-wash;animation-timing-function:ease-in-out}
+@keyframes w2-wash{0%{transform:translateX(-340px)}30%{transform:translateX(0)}45%,100%{transform:translateX(340px)}}
+.w2.rewrite{animation-name:w2-rewrite;animation-timing-function:ease-in-out}
+@keyframes w2-rewrite{0%,12%{opacity:1}28%,55%{opacity:0}80%,100%{opacity:1}}
+.w2.lens{animation-name:w2-lens;animation-timing-function:ease-in-out}
+@keyframes w2-lens{0%,100%{transform:translate(0,0)}25%{transform:translate(-62px,48px)}50%{transform:translate(8px,118px)}75%{transform:translate(64px,36px)}}
+.w2.lens-anti{animation-name:w2-lens-anti;animation-timing-function:ease-in-out}
+@keyframes w2-lens-anti{0%,100%{transform:translate(0,0)}25%{transform:translate(62px,-48px)}50%{transform:translate(-8px,-118px)}75%{transform:translate(-64px,-36px)}}
+
+/* October 30 revisions */
+.w2.eq{animation-name:w2-eq;animation-timing-function:ease-in-out}
+@keyframes w2-eq{0%,100%{transform:scaleY(.25)}15%{transform:scaleY(.75)}30%{transform:scaleY(.1)}45%{transform:scaleY(.6)}60%{transform:scaleY(.2)}75%{transform:scaleY(.9)}90%{transform:scaleY(.35)}}
+.w2.zap{animation-name:w2-zap}
+@keyframes w2-zap{0%,100%{opacity:0}3%{opacity:1}6%{opacity:.2}9%{opacity:1}14%{opacity:0}}
+/* Sweeps across a line once a cycle, then hides: laser heads. */
+.w2.sweep{animation-name:w2-sweep}
+@keyframes w2-sweep{0%{transform:translateX(0);opacity:1}32%{transform:translateX(var(--dx,200px));opacity:1}34%,100%{transform:translateX(var(--dx,200px));opacity:0}}
+/* Staggered letters: each one's cycle starts as it is reached, so every letter is shown for the same stretch. */
+.w2.etch{animation-name:w2-etch}
+@keyframes w2-etch{0%{opacity:0}2%,62%{opacity:1}66%,100%{opacity:0}}
+.w2.etchhot{animation-name:w2-etchhot}
+@keyframes w2-etchhot{0%{opacity:0}1%,5%{opacity:1}16%,100%{opacity:0}}
+.w2.type{animation-name:w2-type;animation-timing-function:steps(1)}
+@keyframes w2-type{0%{opacity:0}1%,70%{opacity:1}71%,100%{opacity:0}}
+/* Skywriting: the plane crosses under the name while its trail draws in behind it, then the trail fades. */
+.w2.skyplane{animation-name:w2-skyplane}
+@keyframes w2-skyplane{0%{transform:translateX(0);opacity:0}3%{opacity:1}45%{transform:translateX(var(--dx,200px));opacity:1}48%,100%{transform:translateX(var(--dx,200px));opacity:0}}
+.w2.trail{stroke-dasharray:1;animation-name:w2-trail}
+@keyframes w2-trail{0%{stroke-dashoffset:1;opacity:1}45%{stroke-dashoffset:0;opacity:1}75%{stroke-dashoffset:0;opacity:.8}95%,100%{stroke-dashoffset:0;opacity:0}}
+/* Ink Bloom: drop, blot, soak. */
+.w2.inkdrop{animation-name:w2-inkdrop;animation-timing-function:ease-in}
+@keyframes w2-inkdrop{0%{transform:translateY(-40px);opacity:0}2%{opacity:1}8%{transform:translateY(0);opacity:1}9%,100%{transform:translateY(0);opacity:0}}
+.w2.inkblot{animation-name:w2-inkblot;animation-timing-function:ease-out}
+@keyframes w2-inkblot{0%,8%{transform:scale(0);opacity:0}9%{opacity:var(--o,.35)}24%{transform:scale(1);opacity:var(--o,.35)}82%{transform:scale(1.06);opacity:var(--o,.35)}94%,100%{transform:scale(1.08);opacity:0}}
+.w2.soak{animation-name:w2-soak;animation-timing-function:ease-in-out}
+@keyframes w2-soak{0%,18%{opacity:0;filter:blur(5px)}40%{opacity:1;filter:blur(0)}82%{opacity:1;filter:blur(0)}94%,100%{opacity:0;filter:blur(2px)}}
+/* Title Card. */
+.w2.zoomin{animation-name:w2-zoomin;animation-timing-function:ease-out}
+@keyframes w2-zoomin{0%{transform:scale(1.35);opacity:0}10%{opacity:1}60%{transform:scale(1)}88%{transform:scale(1);opacity:1}100%{transform:scale(.98);opacity:0}}
+.w2.flare{animation-name:w2-flare;animation-timing-function:ease-in-out}
+@keyframes w2-flare{0%,30%{transform:translateX(-120px);opacity:0}38%{opacity:1}55%,100%{transform:translateX(120px);opacity:0}}
+/* Bubble Gum. */
+.w2.gum{animation-name:w2-gum;animation-timing-function:ease-in}
+@keyframes w2-gum{0%{transform:scale(.08);opacity:1}68%{transform:scale(1);opacity:1}71%{transform:scale(1.12);opacity:0}100%{transform:scale(.08);opacity:0}}
+/* Dragon Fire: the stream unrolls from the mouth while the jaw hangs open. */
+.w2.breath{animation-name:w2-breath;animation-timing-function:ease-out}
+@keyframes w2-breath{0%{transform:scaleX(0);opacity:1}30%{transform:scaleX(1);opacity:1}40%{transform:scaleX(1);opacity:.9}48%,100%{transform:scaleX(1);opacity:0}}
+.w2.jaw{animation-name:w2-jaw;animation-timing-function:ease-in-out}
+@keyframes w2-jaw{0%,100%{transform:rotate(0)}5%,40%{transform:rotate(18deg)}50%{transform:rotate(0)}}
+/* Warp Speed: stars stretch and fly out, a flash, then the tunnel. One shared cycle. */
+.w2.jump{animation-name:w2-jump;animation-timing-function:ease-in}
+@keyframes w2-jump{0%{transform:translateX(0) scaleX(1.5);opacity:0}6%,30%{transform:translateX(0) scaleX(1.5);opacity:1}50%{transform:translateX(var(--far,200px)) scaleX(var(--long,80));opacity:1}54%,100%{transform:translateX(var(--far,200px)) scaleX(var(--long,80));opacity:0}}
+.w2.jumpflash{animation-name:w2-jumpflash}
+@keyframes w2-jumpflash{0%,50%{opacity:0}54%{opacity:var(--o,.85)}64%,100%{opacity:0}}
+.w2.jumptunnel{animation-name:w2-jumptunnel}
+@keyframes w2-jumptunnel{0%,52%{opacity:0}58%,90%{opacity:1}98%,100%{opacity:0}}
+/* Solar Eclipse: moon crossing, sky darkening and sun glare, all on one cycle with totality from 40% to 60%. */
+.w2.eclipse-moon{animation-name:w2-eclipse-moon;animation-timing-function:ease-in-out}
+@keyframes w2-eclipse-moon{0%{transform:translateX(-72px);opacity:0}12%{opacity:1}40%,60%{transform:translateX(0)}88%{opacity:1}100%{transform:translateX(72px);opacity:0}}
+.w2.eclipse-dark{animation-name:w2-eclipse-dark;animation-timing-function:ease-in-out}
+@keyframes w2-eclipse-dark{0%,18%{opacity:0}40%,60%{opacity:1}82%,100%{opacity:0}}
+.w2.eclipse-glare{animation-name:w2-eclipse-glare;animation-timing-function:ease-in-out}
+@keyframes w2-eclipse-glare{0%,10%{opacity:.85}39%,61%{opacity:0}90%,100%{opacity:.85}}
+
+/* Round 3 */
+/* Kaleidoscope: the plain art, then the kaleidoscope, then back. */
+.w2.kaleido{animation-name:w2-kaleido;animation-timing-function:ease-in-out}
+@keyframes w2-kaleido{0%,16%{opacity:0}30%,76%{opacity:1}90%,100%{opacity:0}}
+/* Frost Bloom: arms grow slowly, the frost holds, then melts away with water running down. One shared cycle. */
+.w2.frostgrow{stroke-dasharray:1;animation-name:w2-frostgrow;animation-timing-function:cubic-bezier(.3,.1,.6,1)}
+@keyframes w2-frostgrow{0%{stroke-dashoffset:1;opacity:1}48%,70%{stroke-dashoffset:0;opacity:1}86%,100%{stroke-dashoffset:0;opacity:0}}
+.w2.frostcover{animation-name:w2-frostcover;animation-timing-function:ease-in-out}
+@keyframes w2-frostcover{0%,10%{opacity:0}52%,70%{opacity:var(--o,1)}86%,100%{opacity:0}}
+.w2.melt{animation-name:w2-melt;animation-timing-function:ease-in}
+@keyframes w2-melt{0%,68%{transform:translateY(0);opacity:0}72%{opacity:var(--o,.8)}92%,100%{transform:translateY(var(--dy,60px));opacity:0}}
+
+/* Round 3 signatures. */
+/* Scribe: one linear run per cycle. The element's dash pattern (0 G D 0) and its --a/--b offsets decide when it
+   draws, so letters can take turns without per-letter delays. */
+.w2.scribe{animation-name:w2-scribe}
+@keyframes w2-scribe{from{stroke-dashoffset:var(--a)}to{stroke-dashoffset:var(--b)}}
+/* Bubble Gum: each letter swells inside a bubble, pops into splats, and puffs back. */
+.w2.gumletter{animation-name:w2-gumletter;animation-timing-function:ease-out}
+@keyframes w2-gumletter{0%{transform:scale(1);opacity:1}9%{transform:scale(1.45);opacity:1}10%{transform:scale(1.6);opacity:0}34%{transform:scale(.4);opacity:0}42%{transform:scale(1.08);opacity:1}46%,100%{transform:scale(1);opacity:1}}
+.w2.gumbubble{animation-name:w2-gumbubble;animation-timing-function:ease-out}
+@keyframes w2-gumbubble{0%{transform:scale(.2);opacity:0}2%{opacity:.9}9%{transform:scale(1);opacity:.9}10%,100%{transform:scale(1.25);opacity:0}}
+.w2.gumsplat{animation-name:w2-gumsplat;animation-timing-function:ease-out}
+@keyframes w2-gumsplat{0%,9%{transform:scale(.3);opacity:0}10%{opacity:1}18%{transform:scale(1);opacity:1}30%,100%{transform:scale(1.05);opacity:0}}
+/* Laser Etch: a fresh plate slides in, the head writes, the plate is tossed off to the left. */
+.w2.platetoss{animation-name:w2-platetoss}
+@keyframes w2-platetoss{0%{transform:translate(330px,0) rotate(0);opacity:1;animation-timing-function:ease-out}7%,82%{transform:translate(0,0) rotate(0);opacity:1;animation-timing-function:ease-in}88%{transform:translate(-50px,-22px) rotate(-12deg)}95%{transform:translate(-300px,70px) rotate(-50deg);opacity:1}96%,100%{transform:translate(-300px,70px) rotate(-50deg);opacity:0}}
+.w2.laserhead{animation-name:w2-laserhead}
+@keyframes w2-laserhead{0%,8%{transform:translateX(0);opacity:0}9%{transform:translateX(0);opacity:1}64%{transform:translateX(var(--dx,200px));opacity:1}66%,100%{transform:translateX(var(--dx,200px));opacity:0}}
+.w2.etchfill{animation-name:w2-etchfill}
+@keyframes w2-etchfill{0%,64%{opacity:0}70%,100%{opacity:1}}
+.w2.etchglow{animation-name:w2-etchglow}
+@keyframes w2-etchglow{0%,64%{opacity:0}67%{opacity:1}76%,100%{opacity:0}}
+/* Skywriting: plane, trail and letters keep pace from 5% to 70%, then the smoke fades. */
+.w2.skyplane2{animation-name:w2-skyplane2}
+@keyframes w2-skyplane2{0%{transform:translateX(0);opacity:0}5%{transform:translateX(0);opacity:1}70%{transform:translateX(var(--dx,200px));opacity:1}73%,100%{transform:translateX(var(--dx,200px));opacity:0}}
+.w2.skytrail{stroke-dasharray:1;animation-name:w2-skytrail}
+@keyframes w2-skytrail{0%,5%{stroke-dashoffset:1;opacity:1}70%{stroke-dashoffset:0;opacity:1}86%{stroke-dashoffset:0;opacity:.8}96%,100%{stroke-dashoffset:0;opacity:0}}
+.w2.skyfill{animation-name:w2-skyfill;animation-timing-function:ease-in-out}
+@keyframes w2-skyfill{0%,68%{opacity:0}78%,86%{opacity:1}96%,100%{opacity:0}}
+.w2.skyfade{animation-name:w2-skyfade}
+@keyframes w2-skyfade{0%,86%{opacity:1}96%,100%{opacity:0}}
+/* Written in Sand: the wave runs up over the whole strip and draws back; the name goes under it and is carved again. */
+.w2.sandwave{animation-name:w2-sandwave}
+@keyframes w2-sandwave{0%{transform:translateY(80px);animation-timing-function:ease-out}30%{transform:translateY(0);animation-timing-function:ease-in-out}40%{transform:translateY(-3px);animation-timing-function:ease-in}64%,100%{transform:translateY(80px)}}
+.w2.sandname{animation-name:w2-sandname}
+@keyframes w2-sandname{0%,7%{opacity:1}18%,68%{opacity:0}84%,100%{opacity:1}}
+.w2.sandwet{animation-name:w2-sandwet}
+@keyframes w2-sandwet{0%,20%{opacity:0}34%,58%{opacity:1}90%,100%{opacity:0}}
+.w2.etchcool{animation-name:w2-etchcool}
+@keyframes w2-etchcool{0%,62%{opacity:1}74%,100%{opacity:0}}

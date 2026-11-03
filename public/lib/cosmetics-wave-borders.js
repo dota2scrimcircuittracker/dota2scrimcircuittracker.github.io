@@ -4,6 +4,8 @@
 let serial=0;
 import {groupOf,groupPace} from './cosmetics-particle-groups.js';
 import {DOTA_BORDERS} from './cosmetics-dota-borders.js';
+import {ENSO_BORDERS} from './cosmetics-enso.js';
+import {WAVE2_BORDERS} from './cosmetics-wave2-borders.js';
 export const rnd=n=>{const v=Math.sin(n*12.9898+78.233)*43758.5453;return v-Math.floor(v);};
 export const f=v=>Number(v.toFixed(2));
 export const OUTER='M19 9H281Q292 9 292 21V379Q292 391 280 391H20Q8 391 8 379V21Q8 9 19 9Z';
@@ -138,4 +140,4 @@ function laneCreeps(item,id,settings){
 }
 
 const BORDERS={'tape-measure':tapeMeasure,'knit-scarf':knitScarf,'bubble-wrap':bubbleWrap,'caution-tape':cautionTape,'film-reel':filmReel,'cathedral-glass':cathedralGlass,'neon-sign':neonSign,overgrowth,'molten-gilding':moltenGilding,'lane-creeps':laneCreeps,...DOTA_BORDERS};
-export const waveBorderHtml=(item,settings)=>BORDERS[item.id]?.(item,`wave-border-${++serial}`,settings)??'';
+export const waveBorderHtml=(item,settings)=>(BORDERS[item.id]??ENSO_BORDERS[item.id]??WAVE2_BORDERS[item.id])?.(item,`wave-border-${++serial}`,settings)??'';

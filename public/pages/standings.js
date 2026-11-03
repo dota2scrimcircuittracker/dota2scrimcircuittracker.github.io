@@ -64,17 +64,18 @@ function matchesHtml(src, d, ratings) {
       ${extra ? `<span class="mx-x">${extra}</span>` : ""}
     </div>`;
   };
-  // The next box with anything left to play, so the tab can point at it.
+  // The next box with anything left to play gets highlighted. Newest week first, divisions
+  // in their usual order within a week.
   const all = [...boxes.values()];
   const next = all.find((b) => b.list.some(soon));
   const left = series.filter(soon).length;
-  const html = all.map((b, i) => {
+  const html = all.sort((x, y) => y.n - x.n).map((b, i) => {
     // The week's league night: the time most of its series share.
     const counts = new Map();
     for (const s of b.list) counts.set(s.time, (counts.get(s.time) ?? 0) + 1);
     const night = [...counts].sort((x, y) => y[1] - x[1] || x[0] - y[0])[0][0];
     const played = b.list.filter(isPlayed).length, state = played === b.list.length ? "done" : played ? "live" : "up";
-    return `<section class="mx-box ${state}${b === next ? " next" : ""}" style="--i:${Math.min(i, 12)}"${b === next ? ' id="mx-next"' : ""}>
+    return `<section class="mx-box ${state}${b === next ? " next" : ""}" style="--i:${Math.min(i, 12)}">
       <header class="mx-head"><span class="mx-wk">Week ${b.n}${b.div ? ` · ${src.all ? "" : "Division "}${esc(b.div)}` : ""}</span>
         <span class="mx-date">${state === "done" ? dayOnly(night) : dayTime(night)}</span>
         ${state !== "done" ? `<span class="mx-tag">${state === "live" ? `${played}/${b.list.length} played` : "Upcoming"}</span>` : ""}</header>
@@ -82,9 +83,8 @@ function matchesHtml(src, d, ratings) {
     </section>`;
   }).join("");
   return `<p class="table-note keep mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
-      PlayOn posts pairings about a week ahead.
-      ${next ? `<button type="button" class="week-btn mx-jump">Jump to the next week ↓</button>` : ""}</p>
-    <div class="mx-grid${split ? " split" : ""} reveal">${html}</div>`;
+      PlayOn posts pairings about a week ahead.</p>
+    <div class="mx-grid${split ? " mx-split" : ""} reveal">${html}</div>`;
 }
 
 // Crosstable: every team against every other, like a Liquipedia group table. Teams run in
@@ -323,5 +323,4 @@ export async function renderStandings(src) {
     if (!panel.hidden) fill();
     else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   }
-  app.querySelector(".mx-jump")?.addEventListener("click", () => document.getElementById("mx-next")?.scrollIntoView({ block: "center" }));
 }

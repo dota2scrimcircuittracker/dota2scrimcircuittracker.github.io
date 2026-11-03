@@ -1,5 +1,51 @@
 # Card collection
 
+## Arcana upgrade: stacked finishes
+
+A card can wear up to `MAX_FINISH_STACK` (2) finishes on top of its main one, saved as
+`equipment.finishStack`. The upgrade comes with an arcana card, one still owed from recycling ten
+legendaries (`arcanaOwed`), or a grant (`state.arcanaUpgrade`); see `hasArcanaUpgrade` in
+`lib/cosmetics-engine.js`. Every stacked finish must be owned. A stacked copy of the main finish is
+dropped, so changing the main finish never breaks a saved stack.
+
+When a stack is on, the card reads `data-finish="stack"` and each finish, the main one too, draws in
+its own `<span class="finish-layer" data-finish="…">` (`display:contents`) with its own overlay and
+particles (`finishLayersHtml` in `lib/cosmetics.js`). Finish CSS keys on the nearest `data-finish`
+ancestor, so each layer keeps its own particle rules. The editor shows an "Arcana stack" picker under
+Finish; players without the upgrade see a one-line note instead.
+
+## October 30 wave
+
+Ninety new designs: ten rare, ten epic and ten legendary each of borders, finishes and signatures, listed as
+`WAVE2_CATALOG` in `lib/cosmetics-wave-catalog.js` with `expansion:{wave:2}`. They are drawn by
+`lib/cosmetics-wave2-borders.js`, `-finishes.js` and `-signatures.js`, which the October 20 renderers look up by id.
+Motion lives in `cosmetics-wave2.css`: every animated element has `.w2` plus one motion class and reads its cycle
+from `--t`, and each is drawn around its own origin so rotations and scales pivot there. Nothing animates inside a
+`<mask>`: Chrome paints a mask once and does not repaint it, so reveals use stroke drawing, fades or overlays instead
+(a test enforces this). Review page: `public/_review/wave2-review.html` (gitignored) steps through them one at a
+time with Keep / Needs changes / Reject and a note, saving to `scripts/debug/wave2-review.json`.
+
+After the October 31 review, 17 were rejected and replaced with new designs of the same type:
+- **Borders:** Equalizer (epic); Celestial Dragon, Aegis of Champions, Light Cycles, Clockwork (`cog-train`, because
+  `clockwork` is the Orrery's id) and Manga Panel (legendary).
+- **Finishes:** Anaglyph 3D (rare); Power Surge, Meteor Shower and Rising Phoenix (legendary).
+- **Signatures:** Hello Badge (rare); Arcade High Score, Title Card and Bubble Gum (epic); Dragon Fire, Northern
+  Lights and Kintsugi (legendary).
+
+Changes to existing designs:
+- 24 were reworked from the review notes.
+- Speed Lines moved up to legendary, and License Plate up to epic.
+- Paper Cranes and Overture moved down to epic, so finishes now split 10 rare, 11 epic and 9 legendary.
+
+Two designs take owner settings:
+- **License Plate** prints `equipment.plateText` in its top band. That is up to 20 capitals, digits, spaces and
+  `. · ' & ! -`, set in the editor's Text & signature section; blank shows the league's name.
+- **Kaleidoscope** is in `EDITABLE_FINISHES`, so the finish placement controls set its mirror centre, zoom, starting
+  turn and strength.
+
+Letters that appear one at a time (Laser Etch, Dragon Fire, Arcade High Score) each start their cycle when they are
+reached, so every letter shows for the same stretch and they clear in the same order they came in.
+
 ## October 20 wave
 
 Thirty new designs, ten each of borders, finishes and signatures, listed in `lib/cosmetics-wave-catalog.js`.

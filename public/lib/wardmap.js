@@ -91,13 +91,16 @@ export function wardMapHtml(layers, { mirrored = false, mode = null, id = "wards
   const pick = people.length > 1
     ? `<select class="wm-player" aria-label="Player"><option value="all">All players</option>${people.map(([, n, label], i) => `<option value="${i}">${attr(label)} (${n})</option>`).join("")}</select>`
     : "";
-  return `<figure class="wardmap" id="${id}" data-mode="${start}" data-side="${side}" data-mirrored="${mirrored ? 1 : 0}" data-time="${Math.ceil(maxTime / 60) * 60}" data-people="${attr(JSON.stringify(people.map(([, , label]) => label)))}" data-wards="${attr(JSON.stringify(compact))}">
+  // Active wards (on by default) shows what was up at the slider's minute, so it starts at 10:00
+  // rather than at the end, where hardly anything is still up.
+  const end = Math.ceil(maxTime / 60) * 60, at = Math.min(600, end);
+  return `<figure class="wardmap" id="${id}" data-mode="${start}" data-side="${side}" data-mirrored="${mirrored ? 1 : 0}" data-time="${mirrored && maxTime ? at : end}" data-active="${mirrored && maxTime ? 1 : 0}" data-people="${attr(JSON.stringify(people.map(([, , label]) => label)))}" data-wards="${attr(JSON.stringify(compact))}">
     <div class="wm-controls">
       ${sides.length ? seg("side", [...(sides.length > 1 ? [["all", "Both sides"]] : []), ...sides.map(([v, l, n]) => [v, `As ${l} (${n})`])], side) : ""}
       ${seg("kind", [["all", "All wards"], ["obs", "Observers"], ["sen", "Sentries"]], "all")}
       ${seg("phase", [["all", "Whole game"], ["0", "0–10'"], ["1", "10–20'"], ["2", "20–35'"], ["3", "35'+"]], "all")}
       ${pick}
-      ${mirrored && maxTime ? `<label class="wm-time"><span>Through <output>${clock(maxTime)}</output></span><input class="wm-time-slider" type="range" min="0" max="${Math.ceil(maxTime / 60) * 60}" step="30" value="${Math.ceil(maxTime / 60) * 60}"></label>` : ""}
+      ${mirrored && maxTime ? `<div class="wm-time"><span><span class="wm-time-word">At</span> <output>${clock(at)}</output><label class="wm-active" title="On: only wards up at that minute. Off: every ward placed up to it."><input type="checkbox" checked> Active wards</label></span><input class="wm-time-slider" type="range" min="0" max="${end}" step="30" value="${at}" aria-label="Game time"></div>` : ""}
       ${seg("mode", [["dots", "Dots"], ["heat", "Heat"], ...(mirrored ? [["vision", "Vision"]] : [])], start)}
     </div>
     <div class="wm-body"><div class="wm-map"></div><div class="wm-side"></div></div>
@@ -176,9 +179,13 @@ function draw(fig) {
   const mode = fig.dataset.mode, kind = fig.dataset.kind ?? "all", phase = fig.dataset.phase ?? "all", who = fig.dataset.who ?? "all";
   const people = JSON.parse(fig.dataset.people ?? "[]");
   const mirrored = fig.dataset.mirrored === "1", side = mirrored ? fig.dataset.side ?? "all" : "all";
-  const time = Number(fig.dataset.time ?? Infinity);
-  const keep = (w) => (kind === "all" || (kind === "obs") === (w[0] === 1)) && w[3] <= time &&
-    (phase === "all" || (w[3] >= PHASES[+phase][0] && w[3] < PHASES[+phase][1])) &&
+  const time = Number(fig.dataset.time ?? Infinity), active = fig.dataset.active === "1";
+  // Up at `time`: placed by then and not yet expired or dewarded (as obsUpAt in lib/vision.js).
+  const up = (w) => time < w[3] + Math.min(w[0] === 1 ? 360 : 420, w[4] >= 0 ? w[4] : Infinity);
+  // With Active wards on, the phase only bounds the slider (fitSlider), so a ward placed at 9:00
+  // still shows at 12:00 under 10–20'.
+  const keep = (w) => (kind === "all" || (kind === "obs") === (w[0] === 1)) && w[3] <= time && (!active || up(w)) &&
+    (active || phase === "all" || (w[3] >= PHASES[+phase][0] && w[3] < PHASES[+phase][1])) &&
     (who === "all" || w[6] === +who) &&
     (side === "all" || w[7] === (side === "b" ? 1 : 0));
   // One side only: Dire wards go back to their real spots (mirroring twice is the identity).
@@ -227,6 +234,20 @@ function draw(fig) {
   if (mode === "vision") drawVision(fig, shown, side);
 }
 
+// Active wards on: the slider runs over the picked phase only (whole game when none), so it can't
+// sit at 36:30 while 10–20' is picked and show nothing. Off: the whole game, as before.
+function fitSlider(fig) {
+  const sl = fig.querySelector(".wm-time-slider");
+  if (!sl) return;
+  const end = Number(sl.dataset.end ?? (sl.dataset.end = sl.max)), phase = fig.dataset.phase ?? "all";
+  const [lo, hi] = fig.dataset.active === "1" && phase !== "all" ? PHASES[+phase] : [0, end];
+  sl.min = Math.min(Math.max(0, lo), end);
+  sl.max = Math.min(hi, end);
+  sl.value = Math.min(Math.max(Number(sl.value), Number(sl.min)), Number(sl.max));
+  fig.dataset.time = sl.value;
+  fig.querySelector(".wm-time output").textContent = clock(Number(sl.value));
+}
+
 export function wireWardMaps(root) {
   root.querySelectorAll("figure.wardmap[data-wards]").forEach((fig) => {
     draw(fig);
@@ -236,12 +257,19 @@ export function wireWardMaps(root) {
       if (!b) return;
       fig.dataset[seg.dataset.ctl] = b.dataset.v;
       seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      if (seg.dataset.ctl === "phase") fitSlider(fig);
       draw(fig);
     }));
     fig.querySelector(".wm-player")?.addEventListener("change", (e) => { fig.dataset.who = e.target.value; draw(fig); });
     fig.querySelector(".wm-time-slider")?.addEventListener("input", (e) => {
       fig.dataset.time = e.target.value;
       const out = fig.querySelector(".wm-time output"); if (out) out.textContent = clock(Number(e.target.value));
+      draw(fig);
+    });
+    fig.querySelector(".wm-active input")?.addEventListener("change", (e) => {
+      fig.dataset.active = e.target.checked ? "1" : "0";
+      fig.querySelector(".wm-time-word").textContent = e.target.checked ? "At" : "Through";
+      fitSlider(fig);
       draw(fig);
     });
   });

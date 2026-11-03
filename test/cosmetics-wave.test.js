@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {CATALOG as ALL,DEFAULT_EQUIPMENT} from '../public/lib/cosmetics-catalog.js';
-import {WAVE_CATALOG,DOTA_CATALOG,WAVE_ANIMATED_FINISHES,WAVE_PARTICLE_FINISHES} from '../public/lib/cosmetics-wave-catalog.js';
+import {WAVE_CATALOG,DOTA_CATALOG,ENSO_CATALOG,WAVE_ANIMATED_FINISHES,WAVE_PARTICLE_FINISHES} from '../public/lib/cosmetics-wave-catalog.js';
 import {redrawnBorderHtml,REDRAWN_BORDERS} from '../public/lib/cosmetics-redrawn-borders.js';
 import {hasExpansionEmblems} from '../public/lib/cosmetics-expansion-symbols.js';
 import {PARTICLE_GROUPS,normalizeParticles,validBorderSettings,particleDefaults,particleControlsHtml} from '../public/lib/cosmetics-particle-groups.js';
@@ -97,4 +97,17 @@ test('the six redrawn codex borders draw their own frame with no placeable corne
  assert.equal(count(redrawnBorderHtml(item('clockwork'),{planets:12}),'wave-planet'),12);
  assert.equal(count(redrawnBorderHtml(item('tectonic'),{embers:40,steam:0}),'wave-gild-ember'),40);
  assert.equal(count(redrawnBorderHtml(item('tectonic'),{steam:0}),'wave-steam'),0);
+});
+
+test('the Enso commission set: a border, finish and team signature, all rendering, none in the shop',()=>{
+ assert.deepEqual(ENSO_CATALOG.map(i=>i.key),['border:enso-ink-border','finish:enso-ink-finish','autograph:enso-ink-sig']);
+ for(const item of ENSO_CATALOG){
+  assert.equal(ALL.find(i=>i.key===item.key),item);
+  assert.ok(item.commission&&item.expansion.wave);
+  const html=item.type==='border'?waveBorderHtml(item):item.type==='finish'?waveFinishHtml(item):waveSignatureHtml(item,'Fav <3');
+  assert.match(html,new RegExp(`data-(border|finish|signature)-id="${item.id}"`));
+  assert.doesNotMatch(html,/NaN|undefined/,item.id);
+  if(item.type==='finish')assert.ok(WAVE_ANIMATED_FINISHES.includes(item.id));
+  if(item.type==='autograph')assert.ok(html.includes('Fav &lt;3')&&html.split('class="wave-enso-sign"').length-1===5);
+ }
 });

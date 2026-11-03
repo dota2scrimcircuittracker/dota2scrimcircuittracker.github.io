@@ -3421,7 +3421,6 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
 }
 
 /* ---------- AD2L Matches: one box per week, like a Liquipedia group stage ---------- */
-.mx-jump { margin-left: 8px; vertical-align: middle; }
 .mx-lead { margin: 0 0 14px; }
 .mx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 14px; align-items: start; }
 .mx-box { background: var(--stone); border: 1px solid var(--seam); }
@@ -3453,8 +3452,8 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
 .mx-nog { border-style: dashed; cursor: default; }
 .mx-nog:hover { color: var(--dust); border-color: var(--seam-2); }
 /* Combined Heroic: Division A left, Division B right, one week per row. */
-.mx-grid.split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 1000px) { .mx-grid.split { grid-template-columns: minmax(0, 1fr); } }
+.mx-grid.mx-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .mx-grid.mx-split { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- AD2L Crosstable: every team against every other, like a Liquipedia group table ---------- */
 .ct-wrap { overflow-x: auto; margin-bottom: 18px; }
@@ -5061,6 +5060,9 @@ div.me { display: flex; align-items: center; }
 .inline-team-logo { width: 18px; height: 18px; padding: 2px; border-radius: 3px; background: #171512; }
 .wm-time { display: inline-flex; flex-direction: column; gap: 3px; min-width: 150px; color: var(--dust); font: 600 11px var(--mono); }
 .wm-time input { accent-color: var(--accent); width: 150px; }
+.wm-time > span { display: flex; align-items: center; gap: 6px; }
+.wm-active { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; cursor: pointer; font-weight: 500; }
+.wm-active input { width: auto; margin: 0; }
 .team-title { display: flex; align-items: center; gap: 14px; }
 .team-page-logo { width: clamp(38px, 5vw, 56px); height: clamp(38px, 5vw, 56px); padding: 4px; border-radius: 8px; background: #171512; }
 .tc-logo { width: 28px; height: 28px; margin-right: 8px; }

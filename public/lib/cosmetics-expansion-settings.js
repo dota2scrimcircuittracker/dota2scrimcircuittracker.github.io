@@ -1,7 +1,7 @@
 import {borderSymbolDefaults} from './cosmetics-expansion-symbols.js';
 import {hasParticleGroups,particleDefaults,normalizeParticles} from './cosmetics-particle-groups.js';
-export const EDITABLE_FINISHES=Object.freeze(['velvet','lenticular','ink-water','etched','shattered-time','supernova','deep-sea','reality-rift','aurora-veil','disco-ball']);
-const finishCenters={'shattered-time':[50,40],supernova:[154/3,133/4],'deep-sea':[50,42],'reality-rift':[50,50],'aurora-veil':[50,22],'disco-ball':[50,14]};
+export const EDITABLE_FINISHES=Object.freeze(['velvet','lenticular','ink-water','etched','shattered-time','supernova','deep-sea','reality-rift','aurora-veil','disco-ball','enso-ink-finish','kaleidoscope']);
+const finishCenters={'shattered-time':[50,40],supernova:[154/3,133/4],'deep-sea':[50,42],'reality-rift':[50,50],'aurora-veil':[50,22],'disco-ball':[50,14],'enso-ink-finish':[50,42],kaleidoscope:[50,42.5]};
 export function finishPlacement(id,settings){
  const s=normalizeSettings('finish-'+id,settings),[x,y]=finishCenters[id]??[50,50];
  return {transform:`translate(${s.x*3} ${s.y*4}) rotate(${s.rotation}) scale(${s.size/100}) translate(${-x*3} ${-y*4})`,opacity:s.opacity/100};

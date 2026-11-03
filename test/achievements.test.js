@@ -204,11 +204,14 @@ test('signing your profile pays a border pack; best bracket is listed for later'
   assert.throws(() => claimAchievement({}, 'best-bracket', {}), /isn't available/);
 });
 
-test('border and signature packs hold exactly three items and no bonus screens', () => {
+test('border and signature packs hold exactly three items; only a border pack can add a legendary background', () => {
+  // A roll of 0 lands every chance (the background's 4% included), .99 misses them.
   for (const pack of ['common:border', 'rare:border', 'common:signature', 'legendary:signature']) {
-    const o = rollPack({ packs: [pack], inventory: {}, screens: [] }, 0, Math.random);
-    assert.equal(o.rewards.length, 3);
-    assert.deepEqual(o.screens, []);
+    for (const roll of [0, 0.99]) {
+      const o = rollPack({ packs: [pack], inventory: {}, screens: [] }, 0, () => roll);
+      assert.equal(o.rewards.length, 3);
+      assert.equal(o.screens.length, pack.endsWith(':border') && roll === 0 ? 1 : 0);
+    }
   }
 });
 

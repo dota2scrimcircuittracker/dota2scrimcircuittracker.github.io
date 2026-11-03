@@ -19,6 +19,7 @@
 [data-texture=aurora] .ft-face,[data-texture=rainbow] .ft-face,[data-texture=portal] .ft-face{background-size:100% 100%,200% 200%;animation:frame-flow 7s linear infinite}
 [data-texture=lightning] .ft-face{animation:charge 2.3s steps(4) infinite}[data-texture=lava] .ft-face{animation:charge 4s ease-in-out infinite alternate}
 .cosmetic-overlay{position:absolute;inset:0;z-index:2;pointer-events:none;background:var(--finish-paint,none);opacity:var(--finish-opacity,.4);mix-blend-mode:screen;background-size:var(--finish-size,200% 200%);background-position:var(--px,50%) var(--py,50%);animation:foil-drift 8s ease-in-out infinite alternate}
+.finish-layer{display:contents}
 [data-finish=none]{--finish-paint:none;--finish-opacity:0}
 [data-finish=satin]{--finish-paint:linear-gradient(130deg,transparent 15%,#ffefd4 47%,transparent 70%);--finish-opacity:.13}
 [data-finish=paper]{--finish-paint:repeating-linear-gradient(3deg,#efdcc077 0 1px,transparent 1px 3px),repeating-linear-gradient(94deg,#fff1d044 0 1px,transparent 1px 4px);--finish-opacity:.22;--finish-size:6px 7px}

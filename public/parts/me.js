@@ -31,6 +31,11 @@ export function steamName(account) {
   try { const c = JSON.parse(localStorage.getItem(PROFILE_KEY)); return c?.account === account ? c.name : null; } catch { return null; }
 }
 
+// The signed-in visitor's Steam name, once the top bar has loaded it; null signed out. Signature
+// previews sign with it, whoever's collection or post they're on.
+let signedInName = null;
+export const myName = () => signedInName;
+
 // Leaves the visitor where they are after Steam sends them back (app.js puts the route back).
 export function startSteamSignIn() {
   try { sessionStorage.setItem("steam-back", location.hash); } catch { /* lands on the path */ }
@@ -88,6 +93,7 @@ export async function mountMe() {
   }
   autoMyTeam(account).catch((e) => console.warn("my team from sign-in", e));
   const p = await profileOf(account);
+  signedInName = p.name;
   // On no roster: save their scout and Steam name (re-scouted at most every few hours), so their
   // profile, the Gallery, Feed and search show them.
   myRoster(account).then((r) => r || saveMyScout(account, p)).catch((e) => console.warn("scout", e));

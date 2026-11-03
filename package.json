@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node --watch-path=server.js server.js",
     "test": "node --test test/*.test.js",
     "ocr:check": "node scripts/ocr/ocr-check.js",
     "ocr:robustness": "node scripts/ocr/ocr-robustness.js",

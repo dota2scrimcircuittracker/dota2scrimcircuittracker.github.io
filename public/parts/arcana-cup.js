@@ -255,7 +255,7 @@ export async function drawCup(body, { viewer, signIn }) {
       </div>`);
     } else parts.push('<p class="cup-clock">The next round is about to open.</p>');
     const slot = (m, label = '') => {
-      const row = (id) => { const e = byId.get(id); if (id === null) return '<li class="cup-bye">Bye</li>'; if (!e) return '<li class="cup-tbd">To be decided</li>'; const won = m.result?.winner === id; return `<li class="${won ? 'cup-won' : m.result ? 'cup-lost' : ''}${e.removed ? ' cup-removed' : ''}${myIds.has(id) ? ' cup-mine-row' : ''}"><span>${esc(nameOf(e))}${cardTag(e)}${e.removed ? ' · removed' : ''}</span>${m.result && m.a && m.b ? `<small>${m.result.votes[id] ?? 0}</small>` : ''}</li>`; };
+      const row = (id) => { const e = byId.get(id); if (id === null) return '<li class="cup-bye">Bye</li>'; if (!e) return '<li class="cup-tbd">To be decided</li>'; const won = m.result?.winner === id; return `<li data-row="${esc(id)}" class="${won ? 'cup-won' : m.result ? 'cup-lost' : ''}${e.removed ? ' cup-removed' : ''}${myIds.has(id) ? ' cup-mine-row' : ''}"><span>${esc(nameOf(e))}${cardTag(e)}${e.removed ? ' · removed' : ''}</span>${m.result && m.a && m.b ? `<small>${m.result.votes[id] ?? 0}</small>` : ''}</li>`; };
       const open = m.a && m.b; // both cards known: the thread can be opened
       return `<ol class="cup-slot${m.bracket === 'gf' ? ' cup-gf' : ''}${ownsMatch(m) ? ' cup-own' : ''}${open ? ' cup-click' : ''}"${open ? ` data-thread="${esc(m.id)}" tabindex="0" role="button" aria-label="Open the thread: ${esc(labelOf(m.a))} vs ${esc(labelOf(m.b))}"` : ''}>${label ? `<li class="cup-tbd">${label}</li>` : ''}${row(m.a)}${row(m.b)}${open ? `<li class="cup-chat"><small>💬 ${threadCounts[m.id] ?? 0}</small></li>` : ''}</ol>`;
     };
@@ -362,6 +362,24 @@ export async function drawCup(body, { viewer, signIn }) {
     el.addEventListener('click', () => openThread(el.dataset.thread));
     if (el.tagName !== 'BUTTON') el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openThread(el.dataset.thread); } });
   });
+  // The live count in the bracket, for matchups you've voted in or have a card in: a filled bar and
+  // the votes on each row. It comes from the thread read, which the Worker opens only to those.
+  const paintCounts = async (m) => {
+    const slotEl = body.querySelector(`.cup-bracket .cup-slot[data-thread="${CSS.escape(m.id)}"]`);
+    if (!slotEl) return;
+    const clear = () => slotEl.querySelectorAll('li[data-row]').forEach((li) => { li.classList.remove('cup-live'); li.style.removeProperty('--share'); li.querySelector('.cup-live-n')?.remove(); });
+    if (!pickOf(m) && !ownsMatch(m)) return clear();
+    const r = await src.act('cup-thread', { category: tab, match: m.id }).catch(() => null);
+    if (!r?.counts || !slotEl.isConnected) return;
+    const total = Object.values(r.counts).reduce((s, n) => s + n, 0);
+    clear();
+    for (const li of slotEl.querySelectorAll('li[data-row]')) {
+      const n = r.counts[li.dataset.row] ?? 0;
+      li.classList.add('cup-live'); li.style.setProperty('--share', `${total ? (n / total) * 100 : 0}%`);
+      li.insertAdjacentHTML('beforeend', `<small class="cup-live-n">${n}</small>`);
+    }
+  };
+  live.filter((m) => pickOf(m) || ownsMatch(m)).forEach(paintCounts);
   // A vote only changes its own matchup's buttons, so it updates them in place: no reload, no jump.
   body.querySelectorAll('[data-vote]').forEach((b) => b.addEventListener('click', async () => {
     const pair = body.querySelectorAll(`[data-vote="${CSS.escape(b.dataset.vote)}"]`), pick = b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.pick;
@@ -371,6 +389,7 @@ export async function drawCup(body, { viewer, signIn }) {
       if (mine) (mine.votes ??= {})[`${tab}:${b.dataset.vote}`] = pick;
       pair.forEach((x) => { const on = x.dataset.pick === pick; x.setAttribute('aria-pressed', String(on)); x.textContent = on ? 'Your vote' : 'Vote'; });
       stageApi?.voted(b.dataset.vote);
+      const lm = live.find((x) => x.id === b.dataset.vote); if (lm) paintCounts(lm);
       say(pick ? 'Vote saved. The count and the discussion are open below.' : 'Vote taken back. The discussion is shut again.');
     } catch (e) { say(e.message); }
     pair.forEach((x) => { x.disabled = false; });

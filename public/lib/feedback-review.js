@@ -23,13 +23,13 @@ export async function initReview() {
   if (id) {
     try {
       const r = await fetch(`/_dev/feedback/${encodeURIComponent(id.toUpperCase())}.json`, { cache: "no-store" });
-      if (!r.ok) throw new Error(`${r.status}`);
+      if (!r.ok) throw new Error(await r.text());
       const t = await r.json();
       sessionStorage.setItem(KEY, JSON.stringify(t));
       sessionStorage.setItem(`${KEY}-focus`, "0");
       location.replace(localOf(t.items[0].page));
-    } catch {
-      alert(`No replay file for ${id}. Run: node scripts/feedback.cjs show ${id}`);
+    } catch (e) {
+      alert(`No replay file for ${id}. Run: node scripts/feedback.cjs show ${id}\n\n${e.message}`);
     }
     return;
   }

@@ -272,3 +272,26 @@ test('vault cup: last-minute entries while round 1 is voted, into empty losers s
   now=1200;
   assert.match((await as(606,{action:'cup-enter',cardSlot:0,category:'artistic'})).error,/Entries are closed/);
 });
+
+test('vault cup: Fav extending a round sends every other player one cup notice, the newest only',async()=>{
+  const {CosmeticsVault}=await import('../workers/steam-auth/src/cosmetics.js');
+  const {DEFAULT_EQUIPMENT}=await import('../public/lib/cosmetics-catalog.js');
+  const FAV=173365627;
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let now=500,n=0;
+  vault.cupConfig={id:1,name:'Arcana Cup',votingAt:1000,roundMs:100,maxEntries:3,maxPerCategory:2};vault.clock=()=>now;
+  const as=async(account,body)=>{const r=await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`cup-request-${String(++n).padStart(6,'0')}`,...body})}));return {status:r.status,...await r.json()};};
+  for(const [a,hue] of [[401,10],[402,20],[403,30],[404,40]]){await as(a,{action:'session'});await as(a,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue},cardSlot:0});await as(a,{action:'cup-enter',cardSlot:0,category:'artistic'});}
+  await as(FAV,{action:'session'});
+  now=1000;
+  const first=await as(FAV,{action:'cup-extend',hours:24});
+  assert.equal(first.sent,4);
+  const cupNotices=async(a)=>((await storage.get(`user:${a}`)).notices??[]).filter(x=>x.kind==='cup');
+  let got=await cupNotices(401);
+  assert.equal(got.length,1);assert.equal(got[0].closesAt,1100+24*36e5);
+  assert.match(got[0].text,/Round 1 has 24 more hours: voting closes in 24 hours\. The next round opens right after\./);
+  assert.equal((await cupNotices(FAV)).length,0); // Fav sent it
+  now=2000;await as(FAV,{action:'cup-extend',hours:12});
+  got=await cupNotices(402);
+  assert.equal(got.length,1);assert.match(got[0].text,/12 more hours/); // replaced, not piled up
+});

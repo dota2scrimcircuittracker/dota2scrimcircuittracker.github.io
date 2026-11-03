@@ -18,7 +18,7 @@ const MIME = {
 // Dev only: the hero-art picker (public/_dev/cards.html) and the loading-screen sorter
 // (public/_dev/screen-sort.html) save their choices here, so Claude can read them.
 // public/_dev/ is gitignored and never deployed.
-const DEV_SAVES = new Set(["/_dev/hero-art.json", "/_dev/screen-sort.json", "/_dev/cosmetics-expansion-votes.json", "/_dev/cosmetics-expansion-v2-votes.json", "/_dev/cosmetics-expansion-v3-votes.json", "/_dev/cosmetics-expansion-v4-votes.json", "/_dev/cosmetics-expansion-v5-votes.json", "/_dev/cosmetics-expansion-v6-votes.json", "/_review/cosmetics-tier-ranks.json"]);
+const DEV_SAVES = new Set(["/_dev/hero-art.json", "/_dev/screen-sort.json", "/_dev/cosmetics-expansion-votes.json", "/_dev/cosmetics-expansion-v2-votes.json", "/_dev/cosmetics-expansion-v3-votes.json", "/_dev/cosmetics-expansion-v4-votes.json", "/_dev/cosmetics-expansion-v5-votes.json", "/_dev/cosmetics-expansion-v6-votes.json", "/_review/cosmetics-tier-ranks.json", "/_review/wave2-review.json"]);
 
 http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, "http://localhost");
@@ -26,8 +26,8 @@ http.createServer(async (req, res) => {
     let body = "";
     for await (const c of req) { body += c; if (body.length > 100_000) { res.writeHead(413).end(); return; } }
     try { JSON.parse(body); } catch { res.writeHead(400).end(); return; }
-    // The tier ranking (public/_review/tier-rank.html) saves outside public/ so Claude can read it.
-    const target = pathname === "/_review/cosmetics-tier-ranks.json" ? path.join(root, "..", "scripts", "debug", "cosmetics-tier-ranks.json") : path.join(root, pathname);
+    // Review pages (public/_review/) save outside public/ so Claude can read them.
+    const target = pathname.startsWith("/_review/") ? path.join(root, "..", "scripts", "debug", path.basename(pathname)) : path.join(root, pathname);
     try { await mkdir(path.dirname(target), { recursive: true }); await writeFile(target, body); }
     catch { res.writeHead(500).end("Could not save review"); return; }
     res.writeHead(204).end();
@@ -38,7 +38,9 @@ http.createServer(async (req, res) => {
   const review = pathname.match(/^\/_dev\/feedback\/(FB-[A-Z0-9]{6})\.json$/);
   if (review) {
     const have = await readFile(path.join(root, pathname)).then(() => true, () => false);
-    if (!have) await new Promise((done) => execFile(process.execPath, [path.join(root, "..", "scripts", "feedback.cjs"), "show", review[1]], { cwd: path.join(root, "..") }, done));
+    // If `show` fails (closed ticket, expired login), the 404 says why instead of a bare "Not found".
+    const failed = have ? "" : await new Promise((done) => execFile(process.execPath, [path.join(root, "..", "scripts", "feedback.cjs"), "show", review[1]], { cwd: path.join(root, "..") }, (err, _out, stderr) => done(err ? (stderr || err.message).trim() : "")));
+    if (failed) { res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }).end(failed.slice(-500)); return; }
   }
   const file = path.normalize(path.join(root, decodeURIComponent(pathname === "/" ? "/index.html" : pathname)));
   if (!file.startsWith(root)) { res.writeHead(403).end(); return; }

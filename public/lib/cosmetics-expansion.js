@@ -172,9 +172,9 @@ export function expansionFinishHtml(item,e={}){
  applySettings(host,idea,e.finishSettings?.[item.id]||item.expansion.settings||{});
  return host.innerHTML;
 }
-export function expansionSignatureHtml(item,text){
+export function expansionSignatureHtml(item,text,opts={}){
  if(!item?.expansion)return '';
- if(item.expansion.wave)return waveSignatureHtml(item,text);
+ if(item.expansion.wave)return waveSignatureHtml(item,text,opts);
  const idea=ideaOf(item),id=`exp-signature-${++serial}`,b=item.expansion.variant==='B';
  let art=item.expansion.source===3?signatureSVG(idea,id,item.expansion.variant,text):item.expansion.source===2?`<svg viewBox="0 0 300 400"><g>${signature(idea,id,text)}</g></svg>`:restoredSignature(idea,id,b,text);
  if(item.id==='stacked'){

@@ -26,6 +26,14 @@ export function particleLayerHtml(finish,e={},count=24) {
   if(hasParticleAmount(finish))count=Math.round(count*tuning(e).amount);
   return PARTICLE_FINISHES.includes(finish)?`<span class="particles" aria-hidden="true">${Array.from({length:count},(_,i)=>`<i style="--i:${i};left:${(i*43+13)%100}%;top:${(i*29+7)%100}%;animation-delay:-${i*.39}s"></i>`).join('')}</span>`:'';
 }
+// Stacked finishes (the Arcana upgrade, lib/cosmetics-engine.js). Each finish, the main one too, gets its
+// own data-finish layer so one finish's particle rules never reach another's; the card reads "stack".
+export const finishStackOf=e=>(e.finishStack??[]).filter(id=>id!==e.finish&&itemByKey(`finish:${id}`));
+export function finishLayersHtml(e) {
+  const stack=finishStackOf(e);
+  if(!stack.length)return particleLayerHtml(e.finish,e);
+  return [e.finish,...stack].filter(id=>id!==DEFAULT_EQUIPMENT.finish).map(id=>`<span class="finish-layer" data-finish="${id}"><span class="cosmetic-overlay" aria-hidden="true"></span>${particleLayerHtml(id,e)}</span>`).join('');
+}
 import { syncPackOfferClaims } from './bonus-offers.js';
 import { applyLayout } from './card-layout.js';
 import { setPlayerNickname } from './nicknames.js';
@@ -137,11 +145,11 @@ export async function cosmeticAppearances() {
 }
 export function cosmeticAttributes(raw) {
   const e={...DEFAULT_EQUIPMENT,...raw}, border=itemByKey(`border:${e.border}`);
-  return ` data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${tuning(e).speed};--border-speed:${tuning(e).border};--particle-speed-base:${tuning(e).speed};--border-speed-base:${tuning(e).border}"`;
+  return ` data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${finishStackOf(e).length?'stack':itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${tuning(e).speed};--border-speed:${tuning(e).border};--particle-speed-base:${tuning(e).speed};--border-speed-base:${tuning(e).border}"`;
 }
 export function cosmeticLayers(e,name) {
   const equipment={...DEFAULT_EQUIPMENT,...e};
-  return `<span class="cosmetic-overlay" aria-hidden="true"></span>${particleLayerHtml(equipment.finish,equipment)}${symbolLayers(equipment,false)}${signatureHtml(equipment,name)}`;
+  return `<span class="cosmetic-overlay" aria-hidden="true"></span>${finishLayersHtml(equipment)}${symbolLayers(equipment,false)}${signatureHtml(equipment,name)}`;
 }
 function symbolLayers(e,outside){
   const equipment={...DEFAULT_EQUIPMENT,...e},border=itemByKey(`border:${equipment.border}`);
@@ -168,7 +176,7 @@ export function applyEquipment(card,e,name) {
   if(!card)return;
   const keys=equipmentUpdateKeys(e,name),previous=renderedEquipment.get(card)??{};
   const border=itemByKey(`border:${e.border}`);
-  card.dataset.cosmetic='true';card.dataset.texture=border?.texture??'metal';card.dataset.finish=e.finish;card.dataset.rarity=border?.rarity??'free';
+  card.dataset.cosmetic='true';card.dataset.texture=border?.texture??'metal';card.dataset.finish=finishStackOf(e).length?'stack':e.finish;card.dataset.rarity=border?.rarity??'free';
   card.style.setProperty('--a',border?.a??'#92969c');card.style.setProperty('--b',border?.b??'#41454c');
   card.style.setProperty('--art-hue',`${Number(e.hue)||0}deg`);
   for(const [k,v] of [['particle-speed',tuning(e).speed],['border-speed',tuning(e).border]]){card.style.setProperty(`--${k}`,v);card.style.setProperty(`--${k}-base`,v);}
@@ -198,8 +206,8 @@ export function applyEquipment(card,e,name) {
   const face=card.querySelector('.ft-front');
   if(!face.querySelector('.cosmetic-overlay'))face.insertAdjacentHTML('beforeend','<span class="cosmetic-overlay" aria-hidden="true"></span>');
   if(keys.finish!==previous.finish){
-    face.querySelectorAll('.particles,.exp-finish').forEach(n=>n.remove());
-    face.insertAdjacentHTML('beforeend',particleLayerHtml(e.finish,e));
+    face.querySelectorAll('.finish-layer,.particles,.exp-finish').forEach(n=>n.remove());
+    face.insertAdjacentHTML('beforeend',finishLayersHtml(e));
   }
   for(const canvas of face.querySelectorAll('.fx-canvas')){canvas.dataset.spd=tuning(e).speed;canvas.dataset.amt=tuning(e).amount;}
   if(keys.signature!==previous.signature){

@@ -1,5 +1,5 @@
 import {EXPANSION_CATALOG} from './cosmetics-expansion-catalog.js';
-import {WAVE_CATALOG,DOTA_CATALOG} from './cosmetics-wave-catalog.js';
+import {WAVE_CATALOG,DOTA_CATALOG,ENSO_CATALOG,WAVE2_CATALOG} from './cosmetics-wave-catalog.js';
 // Approved collection. Edit rarity here to change future drops.
 export const CATALOG = [
   {
@@ -1094,7 +1094,7 @@ export const CATALOG = [
     "key": "finish:fx-rot"
   }
 ];
-CATALOG.push(...EXPANSION_CATALOG,...WAVE_CATALOG,...DOTA_CATALOG);
+CATALOG.push(...EXPANSION_CATALOG,...WAVE_CATALOG,...DOTA_CATALOG,...ENSO_CATALOG,...WAVE2_CATALOG);
 export const PEN_MARKS = {
   "simple": [
     "M55 65 Q145 85 260 53"

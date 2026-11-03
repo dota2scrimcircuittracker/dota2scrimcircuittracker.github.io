@@ -4,12 +4,12 @@ import { steamAccount, steamLoginUrl, listCards } from '../lib/store.js';
 import { CATALOG, DEFAULT_EQUIPMENT, PARTICLE_FINISHES, particleLayerHtml, hasParticleAmount, isFxBorder, collectionState, collectionAction, publicCollection, applyEquipment, cardRatings, galleryCards, myCardVotes } from '../lib/cosmetics.js';
 import { isThemedPack, parsePack, themedLabel, oddsText, ODDS_ROWS } from '../lib/pack-types.js';
 import { TIERS, itemByKey } from '../lib/cosmetics-catalog.js';
-import { signatureHtml, renderedName, signatureSize } from '../lib/signatures.js';
+import { signatureHtml, renderedName, signatureSize, maxSignatureSize } from '../lib/signatures.js';
 import { createPlayerCards, PAINT_FILTER, wirePlayerCards, fitDesignCards } from './player-card.js';
-import { startSteamSignIn, steamName } from './me.js';
+import { startSteamSignIn, steamName, myName } from './me.js';
 import { HERO_META } from '../lib/hero-meta.js';
 import { cardArtOptions, CARD_STYLES, defaultCardCrop, cardArtwork, screenArt, SCREEN_COUNT } from '../lib/card-art.js';
-import { cardDesignState, cardSlotName, shownNickname, RECYCLE_COST, MAX_EMBLEMS, CARD_SLOTS } from '../lib/cosmetics-engine.js';
+import { cardDesignState, cardSlotName, shownNickname, RECYCLE_COST, MAX_EMBLEMS, CARD_SLOTS, MAX_FINISH_STACK, hasArcanaUpgrade } from '../lib/cosmetics-engine.js';
 import { availablePackOffers, completedPackOffers, markPackOfferClaimed } from '../lib/bonus-offers.js';
 import { startFeedback } from '../lib/feedback.js';
 import { showProfileBackground, mountBackgroundButton, letterCaseHtml, drawLetterCase } from './profile-background.js';
@@ -45,7 +45,7 @@ const COLLECTION_TOTAL=CATALOG.length+SCREEN_COUNT;
 // `translation` is the legacy save/inventory key; players know these as modifiers.
 const typeLabel=type=>type==='translation'?'modifier':type;
 export function swatch(item,name='Scionara') {
-  if(item.type==='autograph') return `<span class="collection-swatch signature-sample">${signatureHtml({...DEFAULT_EQUIPMENT,autograph:item.id,text:name},name).replace('card-autograph','collection-signature')}</span>`;
+  if(item.type==='autograph') return `<span class="collection-swatch signature-sample">${signatureHtml({...DEFAULT_EQUIPMENT,autograph:item.id},myName()??name).replace('card-autograph','collection-signature')}</span>`;
   if(item.type==='translation')return `<span class="collection-swatch translation-swatch ${item.id}">${esc(item.preview)}</span>`;
   if(item.expansion){
     if(item.type==='border')return `<span class="collection-swatch expansion-swatch expansion-border-swatch">${expansionBorderSwatchHtml(item)}</span>`;
@@ -249,6 +249,25 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       dialog._revealTimer=setTimeout(()=>{const slot=host.querySelector('[data-reward-extras]');if(!slot?.isConnected)return;slot.innerHTML=extras();wireExtras();},matchMedia('(prefers-reduced-motion: reduce)').matches?0:760);
     });
   }
+  // Each design's tile shows it on your card, so its animation plays as it would for real. A tile
+  // draws its card when it scrolls into view: the whole collection at once would be hundreds of cards.
+  let dexThumbs=null;
+  function drawDexThumbs(grid,savedEquipment) {
+    dexThumbs?.disconnect();
+    const face=Object.assign(document.createElement('template'),{innerHTML:cardHtml}).content.querySelector('.ft-card');
+    if(!face)return;
+    dexThumbs=new IntersectionObserver(entries=>entries.forEach(({isIntersecting,target})=>{
+      if(!isIntersecting)return;dexThumbs.unobserve(target);
+      const item=itemByKey(target.dataset.preview),eq={...savedEquipment,[item.type]:item.id};
+      if(item.type==='translation'&&eq.autograph==='none')eq.autograph='brush-ink';
+      const card=face.cloneNode(true),box=document.createElement('span');box.className='dex-thumb';box.append(card);
+      card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');card.querySelectorAll('button').forEach(b=>b.remove());
+      target.querySelector('.collection-swatch')?.replaceWith(box);
+      applyEquipment(card,eq,shownName());
+    }),{rootMargin:'300px'});
+    grid.querySelectorAll('.dex-item:not(.dex-screen) [data-preview]').forEach(b=>dexThumbs.observe(b));
+  }
+  const dexPills=(key,label,options,current)=>`<div class="dex-chips" role="group" aria-label="${label}">${options.map(([v,text,color])=>`<button type="button" data-dex-pill="${key}" data-value="${v}" aria-pressed="${v===current}"${color?` style="--rarity:${color}"`:''}>${esc(text)}</button>`).join('')}</div>`;
   function drawDex() {
     const reviewCatalog=adapter?.expansionReview?CATALOG.filter(i=>i.expansion):CATALOG;
     const count=reviewCatalog.filter(i=>inventory[i.key]>0).length;
@@ -259,22 +278,21 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     if(screen)previewEquipment.baseCard={...(savedEquipment.baseCard??{}),hero:screen.hero?HERO_META.find(([,n])=>n===screen.hero)?.[0]??null:savedEquipment.baseCard?.hero??null,art:screen.id,crop:null};
     // A name-rendering preview needs a signature to make the script visible.
     if(previewItem?.type==='translation'&&previewEquipment.autograph==='none')previewEquipment.autograph='brush-ink';
-    body.innerHTML=`${cardSlotsHtml()}<div class="dex-progress"><strong>${count+owned.size} / ${total} collected</strong><progress max="${total}" value="${count+owned.size}" aria-label="Collection completion"></progress></div><div class="dex-layout"><div><div class="dex-filters"><label>Type <select data-filter>${(adapter?.expansionReview?['all','border','finish','autograph']:['all','border','finish','autograph','translation']).map(t=>`<option value="${t}">${t}</option>`).join('')}${adapter?.expansionReview?'':'<option value="screen">loading screens</option>'}</select></label>${filter==='screen'?`<label>Hero <select data-screen-hero><option value="all">all</option><option value="any">any hero (events, teams)</option>${SCREEN_HEROES.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('')}</select></label>`:`<label>Rarity <select data-rarity-filter><option value="all">all</option>${TIERS.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></label>`}<label>Show <select data-status><option value="all">All designs</option><option value="owned">Collected</option><option value="missing">Not collected</option></select></label></div><div class="dex-grid">${filter==='screen'?screenDexHtml(owned,status,screenHero,previewScreen):dexHtml(inventory,filter,status,name,savedEquipment,editable,rarity,!!adapter?.expansionReview)+(!adapter?.expansionReview&&filter==='all'&&rarity==='all'?screenDexHtml(owned,status,'all',previewScreen,''):'')}</div></div><aside class="dex-card-preview"><h3>${previewItem||screen?'Card preview':editable?'Your equipped card':'Equipped card'}</h3>${previewItem||screen?`<p class="dex-preview-note">Previewing ${esc(previewItem?.name??screen.label)}${(previewItem?inventory[previewItem.key]>0:owned.has(screen.id))?'':' - Not collected'}. Your saved card is unchanged.</p><button type="button" data-clear-preview>Show equipped card</button>`:''}<div data-dex-card>${cardHtml}</div><dl>${['border','finish','autograph','translation'].map(type=>`<dt>${type==='autograph'?'Signature':type==='translation'?'Name rendering':type}</dt><dd>${esc(itemByKey(`${type}:${previewEquipment[type]}`)?.name??({border:'Default grey',finish:'No finish',autograph:'No signature',translation:'Original name'}[type]))}</dd>`).join('')}</dl>${editable?'<button type="button" data-customize-card>Edit card design</button><p>Equip an item to save and update your card immediately.</p>':''}</aside></div>`;
+    body.innerHTML=`${cardSlotsHtml()}<div class="dex-progress"><strong>${count+owned.size} / ${total} collected</strong><progress max="${total}" value="${count+owned.size}" aria-label="Collection completion"></progress></div><div class="dex-layout"><div><div class="dex-filters">${dexPills('type','Type',[['all','All'],...(adapter?.expansionReview?['border','finish','autograph']:['border','finish','autograph','translation','screen']).map(t=>[t,t==='screen'?'Loading screens':typeLabel(t)])],filter)}${filter==='screen'?`<label>Hero <select data-screen-hero><option value="all">all</option><option value="any">any hero (events, teams)</option>${SCREEN_HEROES.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('')}</select></label>`:dexPills('rarity','Rarity',[['all','All'],...TIERS.map(t=>[t,t,colors[t]])],rarity)}${dexPills('status','Show',[['all','All'],['owned','Collected'],['missing','Not collected']],status)}</div><div class="dex-grid">${filter==='screen'?screenDexHtml(owned,status,screenHero,previewScreen):dexHtml(inventory,filter,status,name,savedEquipment,editable,rarity,!!adapter?.expansionReview)+(!adapter?.expansionReview&&filter==='all'&&rarity==='all'?screenDexHtml(owned,status,'all',previewScreen,''):'')}</div></div><aside class="dex-card-preview"><h3>${previewItem||screen?'Card preview':editable?'Your equipped card':'Equipped card'}</h3>${previewItem||screen?`<p class="dex-preview-note">Previewing ${esc(previewItem?.name??screen.label)}${(previewItem?inventory[previewItem.key]>0:owned.has(screen.id))?'':' - Not collected'}. Your saved card is unchanged.</p><button type="button" data-clear-preview>Show equipped card</button>`:''}<div data-dex-card>${cardHtml}</div><dl>${['border','finish','autograph','translation'].map(type=>`<dt>${type==='autograph'?'Signature':type==='translation'?'Name rendering':type}</dt><dd>${esc(itemByKey(`${type}:${previewEquipment[type]}`)?.name??({border:'Default grey',finish:'No finish',autograph:'No signature',translation:'Original name'}[type]))}</dd>`).join('')}</dl>${editable?'<button type="button" data-customize-card>Edit card design</button><p>Equip an item to save and update your card immediately.</p>':''}</aside></div>`;
     wireCardSlots();
     const preview=body.querySelector('[data-dex-card] .ft-card');preview.dataset.designSlot=selectedSlot;preview.classList.remove('flipped');preview.querySelectorAll('button').forEach(b=>b.remove());applyEquipment(preview,previewEquipment,shownName());
     body.querySelectorAll('[data-preview]').forEach(b=>{b.setAttribute('aria-pressed',String(previewItem?.key===b.dataset.preview));b.onclick=()=>{previewItem=itemByKey(b.dataset.preview);previewScreen=null;drawDex();};});
     body.querySelectorAll('[data-preview-screen]').forEach(b=>b.onclick=()=>{previewScreen=b.dataset.previewScreen;previewItem=null;drawDex();});
     body.querySelector('[data-clear-preview]')?.addEventListener('click',()=>{previewItem=null;previewScreen=null;drawDex();});
     body.querySelector('[data-customize-card]')?.addEventListener('click',()=>{equipment={...savedEquipment};initialEquipment=JSON.stringify(equipment);tab='customize';draw();});
-    const oldStatus=body.querySelector('[data-status]');oldStatus.parentElement.innerHTML=`<span>Show only collected</span><input type="checkbox" data-status ${status==='owned'?'checked':''}>`;
-    const f=body.querySelector('[data-filter]'),s=body.querySelector('[data-status]'),rr=body.querySelector('[data-rarity-filter]'),sh=body.querySelector('[data-screen-hero]');f.value=filter;f.querySelector('option[value="translation"]')?.replaceChildren('modifier');
+    const sh=body.querySelector('[data-screen-hero]');
     // Three rows of designs a page, however many columns fit; a new filter starts at page 1.
     const grid=body.querySelector('.dex-grid'),cols=getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length||4;
     pageList(grid,{size:cols*3,page:dexPage,onChange:p=>dexPage=p});
+    drawDexThumbs(grid,savedEquipment);
     const refilter=()=>{if(dexPage>0)dexPage=0;drawDex();};
-    if(rr){rr.value=rarity;rr.onchange=()=>{rarity=rr.value;refilter();};}
     if(sh){sh.value=screenHero;sh.onchange=()=>{screenHero=sh.value;refilter();};}
-    f.onchange=()=>{filter=f.value;refilter();};s.onchange=()=>{status=s.checked?'owned':'all';refilter();};
+    body.querySelectorAll('[data-dex-pill]').forEach(b=>b.onclick=()=>{const v=b.dataset.value;if(b.dataset.dexPill==='type')filter=v;else if(b.dataset.dexPill==='rarity')rarity=v;else status=v;refilter();});
     body.querySelectorAll('[data-equip]').forEach(b=>{b.onclick=async()=>{
       const item=itemByKey(b.dataset.equip),next={...savedEquipment,[item.type]:item.id};
       const data=await run('equip',{equipment:next});
@@ -285,7 +303,13 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   function visualStyleChoices(type) {
     const fallback=type==='border'?{id:DEFAULT_EQUIPMENT.border,name:'Default grey',type,rarity:'standard',texture:'metal',a:'#92969c',b:'#41454c'}:{id:DEFAULT_EQUIPMENT.finish,name:'No finish',type,rarity:'standard',texture:'metal',a:'#536282',b:'#151a29'};
     const items=[...(adapter?.expansionReview&&type==='border'?[]:[fallback]),...ownedStyles(type)];
-    return `<fieldset class="visual-style-options"><legend>${type==='border'?'Border':'Finish'}</legend><p>${type==='border'?'Choose the frame around your card.':'Choose the animated surface treatment.'}</p><div class="visual-style-strip">${items.map(item=>`<button type="button" data-style-choice="${type}" data-choice="${item.id}" aria-pressed="${equipment[type]===item.id}" ${editable?'':'disabled'}>${swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status>${equipment[type]===item.id?'Selected':esc(item.rarity)}</small></button>`).join('')}</div></fieldset>`;
+    return `<fieldset class="visual-style-options"><legend>${type==='border'?'Border':'Finish'}</legend><p>${type==='border'?'Choose the frame around your card.':'Choose the animated surface treatment.'}</p><div class="visual-style-strip">${items.map(item=>`<button type="button" data-style-choice="${type}" data-choice="${item.id}" aria-pressed="${equipment[type]===item.id}" ${editable?'':'disabled'}>${swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status>${equipment[type]===item.id?'Selected':esc(item.rarity)}</small></button>`).join('')}</div>${type==='finish'?finishStackChoices():''}</fieldset>`;
+  }
+  // The Arcana upgrade (lib/cosmetics-engine.js): up to MAX_FINISH_STACK more finishes drawn over the main one.
+  function finishStackChoices() {
+    if(!hasArcanaUpgrade(state))return `<p class="finish-stack-locked">Arcana upgrade: stack up to ${MAX_FINISH_STACK} more finishes on one card. It comes with an arcana card.</p>`;
+    const items=ownedStyles('finish');
+    return `<div class="finish-stack-options"><strong>Arcana stack</strong><p>Layer up to ${MAX_FINISH_STACK} more finishes over your main one.</p><div class="visual-style-strip finish-stack-strip">${items.map(item=>`<button type="button" data-stack-choice="${item.id}" aria-pressed="false" ${editable?'':'disabled'}>${swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status></small></button>`).join('')||'<p>Collect finishes to stack them.</p>'}</div></div>`;
   }
   function visualTextChoices(type) {
     if(adapter?.expansionReview&&type==='translation')return '';
@@ -312,7 +336,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     // Any-hero screens (events, teams, couriers) sit under their own Miscellaneous entry, not every hero's list.
     const misc=miscSlot===selectedSlot||(()=>{const s=String(base.art??'').startsWith('scr:')&&screenArt(base.art);return !!s&&s.hero==null;})();
     const artOptions=cardArtOptions(effectiveHero,state?.screens??(String(base.art??'').startsWith('scr:')?[base.art]:[]));
-    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option><option value="misc">Miscellaneous</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,30],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar">${[['particleSpeed','Finish speed'],['particleAmount','Particle amount'],['borderSpeed','Border speed']].map(([k,label])=>`<label class="particle-speed-control" data-tune-control="${k}">${label} <output data-tune-value="${k}">${equipment[k]}%</output><input type="range" data-tune="${k}" min="50" max="200" step="10" value="${equipment[k]}" ${editable?'':'disabled'}></label>`).join('')}<div class="particle-group-host" data-particle-controls="border" hidden></div><div class="particle-group-host" data-particle-controls="finish" hidden></div><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
+    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option><option value="misc">Miscellaneous</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<label class="plate-text" data-plate-text-wrap ${equipment.autograph==='license-plate'?'':'hidden'}>Plate top text <input type="text" data-plate-text maxlength="20" placeholder="AD2L · SCRIM LEAGUE" value="${esc(equipment.plateText??'')}" ${editable?'':'disabled'}></label><p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,maxSignatureSize(equipment,shownName())],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar">${[['particleSpeed','Finish speed'],['particleAmount','Particle amount'],['borderSpeed','Border speed']].map(([k,label])=>`<label class="particle-speed-control" data-tune-control="${k}">${label} <output data-tune-value="${k}">${equipment[k]}%</output><input type="range" data-tune="${k}" min="50" max="200" step="10" value="${equipment[k]}" ${editable?'':'disabled'}></label>`).join('')}<div class="particle-group-host" data-particle-controls="border" hidden></div><div class="particle-group-host" data-particle-controls="finish" hidden></div><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
     wireCardSlots();
     if(editable)mountNameEditor(body.querySelector('[data-name-editor]'),{state,inGame:name,action,onSaved:next=>{state=next;draw();say(shownNickname(next)?`Showing ${shownNickname(next)} on your cards and profile.`:'Showing your in-game name.');}});
     const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');fitDesignCards(card);
@@ -407,15 +431,34 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       const type=button.dataset.textChoice,id=button.dataset.choice,selected=equipment[type]===id;
       button.setAttribute('aria-pressed',String(selected));button.querySelector('[data-choice-status]').textContent=selected?'Selected':'Select';
       const preview=button.querySelector('[data-text-choice-preview]');
-      if(type==='autograph')preview.innerHTML=id==='none'?'<span class="no-signature-preview">—</span>':`<span class="collection-swatch signature-sample">${signatureHtml({...equipment,autograph:id},shownName()).replace('card-autograph','collection-signature')}</span>`;
+      if(type==='autograph')preview.innerHTML=id==='none'?'<span class="no-signature-preview">—</span>':`<span class="collection-swatch signature-sample">${signatureHtml({...equipment,autograph:id},myName()??shownName()).replace('card-autograph','collection-signature')}</span>`;
       else {preview.className=`name-rendering-preview ${id}`;preview.textContent=renderedName(shownName(),id,equipment.letterCase);}
-    });drawLetterCase(body,equipment.translation,equipment.letterCase,shownName());};
+    });drawLetterCase(body,equipment.translation,equipment.letterCase,shownName());const plate=body.querySelector('[data-plate-text-wrap]');if(plate)plate.hidden=equipment.autograph!=='license-plate';};
     body.querySelectorAll('[data-text-choice]').forEach(button=>button.onclick=()=>{equipment[button.dataset.textChoice]=button.dataset.choice;refreshTextChoices();update();});
     body.querySelectorAll('[data-letter-case]').forEach(button=>button.onclick=()=>{if(button.dataset.letterCase==='upper')equipment.letterCase='upper';else delete equipment.letterCase;refreshTextChoices();update();});
+    // License Plate's top band (lib/cosmetics-wave2-signatures.js): blank shows the league's name.
+    const plateInput=body.querySelector('[data-plate-text]');
+    if(plateInput)plateInput.oninput=()=>{const v=plateInput.value.toUpperCase().replace(/[^A-Z0-9 .·'&!-]/g,'');if(plateInput.value!==v)plateInput.value=v;if(v.trim())equipment.plateText=v.trim();else delete equipment.plateText;update();};
     refreshTextChoices();
     const refreshStyleChoices=()=>body.querySelectorAll('[data-style-choice]').forEach(button=>{const type=button.dataset.styleChoice,selected=equipment[type]===button.dataset.choice;button.setAttribute('aria-pressed',String(selected));button.querySelector('[data-choice-status]').textContent=selected?'Selected':itemByKey(`${type}:${button.dataset.choice}`)?.rarity??'standard';});
     body.querySelectorAll('[data-style-choice]').forEach(button=>button.onclick=()=>{if(button.dataset.styleChoice==='border')body.querySelector('[data-em-close]')?.click();if(button.dataset.styleChoice==='finish')movingFinish=false;equipment[button.dataset.styleChoice]=button.dataset.choice;refreshStyleChoices();syncTuneControls();drawEffects();update();});
     refreshStyleChoices();
+    const refreshStackChoices=()=>{
+      const stack=(equipment.finishStack??[]).filter(id=>id!==equipment.finish);
+      body.querySelectorAll('[data-stack-choice]').forEach(button=>{
+        const id=button.dataset.stackChoice,main=id===equipment.finish,on=stack.includes(id);
+        button.setAttribute('aria-pressed',String(on));button.disabled=!editable||main||(!on&&stack.length>=MAX_FINISH_STACK);
+        button.querySelector('[data-choice-status]').textContent=main?'Main finish':on?`Layer ${stack.indexOf(id)+2}`:'Stack';
+      });
+    };
+    body.querySelectorAll('[data-stack-choice]').forEach(button=>button.onclick=()=>{
+      const id=button.dataset.stackChoice,stack=(equipment.finishStack??[]).filter(f=>f!==equipment.finish);
+      const next=stack.includes(id)?stack.filter(f=>f!==id):[...stack,id].slice(0,MAX_FINISH_STACK);
+      if(next.length)equipment.finishStack=next;else delete equipment.finishStack;
+      refreshStackChoices();update();
+    });
+    body.querySelectorAll('[data-style-choice="finish"]').forEach(button=>button.addEventListener('click',refreshStackChoices));
+    refreshStackChoices();
     function drawImageGallery() {
       const host=body.querySelector('[data-image-gallery]'),scrolls=[...host.querySelectorAll('.image-choice-strip')].map(el=>el.scrollLeft);
       const currentArt=cardArtwork(effectiveHero,base);
@@ -441,7 +484,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelector('[data-crop-flip]').onclick=()=>{const c=cropOf();c.flip=!c.flip;update();};
     body.querySelector('[data-crop-turn]').onclick=()=>{const c=cropOf();c.flip=!c.flip;c.rot=((c.rot??0)+180>180)?(c.rot??0)-180:(c.rot??0)+180;body.querySelector('[data-crop="rot"]').value=c.rot;update();};
     body.querySelectorAll('[data-position]').forEach(input=>input.oninput=()=>{equipment[input.dataset.position]=Number(input.value);syncControls();update();});
-    const syncControls=()=>{body.querySelectorAll('[data-position]').forEach(input=>{input.value=equipment[input.dataset.position];body.querySelector(`[data-value="${input.dataset.position}"]`).textContent=Math.round(equipment[input.dataset.position]);});};
+    const syncControls=()=>{body.querySelectorAll('[data-position]').forEach(input=>{if(input.dataset.position==='size')input.max=maxSignatureSize(equipment,shownName());input.value=equipment[input.dataset.position];body.querySelector(`[data-value="${input.dataset.position}"]`).textContent=Math.round(equipment[input.dataset.position]);});};
     const front=card.querySelector('.ft-front');let pan=null;
     front.onpointerdown=e=>{
       if(!editable||busy||!effectiveHero||e.button!==0||e.target.closest('.card-autograph,[data-part],.cosmetic-emblem,.sig-wheel,a,button'))return;
@@ -459,6 +502,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const stopPan=e=>{if(pan?.id!==e.pointerId)return;pan=null;front.classList.remove('panning');if(front.hasPointerCapture(e.pointerId))front.releasePointerCapture(e.pointerId);};
     front.onpointerup=stopPan;front.onpointercancel=stopPan;front.onlostpointercapture=()=>{pan=null;front.classList.remove('panning');};
     function wireSignature() {
+      // A new style, modifier or case moves where the signature stops growing.
+      const sizeInput=body.querySelector('[data-position="size"]');if(sizeInput){sizeInput.max=maxSignatureSize(equipment,shownName());sizeInput.value=equipment.size;}
       const prior=card.querySelector('.card-autograph');if(prior?._editorMoveSync)prior.removeEventListener('pointermove',prior._editorMoveSync);
       card.querySelectorAll('.sig-wheel:not(.part-wheel)').forEach(w=>w.remove());
       const sig=card.querySelector('.card-autograph');if(!sig)return;sig.tabIndex=editable?0:-1;sig.setAttribute('role','img');
@@ -492,7 +537,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
           const r=wheel.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dist=ev=>Math.max(8,Math.hypot(ev.clientX-cx,ev.clientY-cy));
           const d0=dist(e),size0=equipment.size;
           grow.onpointermove=ev=>{
-            equipment.size=Math.round(Math.max(5,Math.min(30,size0*dist(ev)/d0))*2)/2;
+            equipment.size=Math.round(Math.max(5,Math.min(maxSignatureSize(equipment,shownName()),size0*dist(ev)/d0))*2)/2;
             sig.style.setProperty('--signature-size',(sig.classList.contains('exp-autograph')?equipment.size:signatureSize(equipment.size,renderedName(shownName(),equipment.translation,equipment.letterCase)))+'cqi');place();syncControls();say('Unsaved card changes');
           };
           grow.onpointerup=grow.onpointercancel=()=>{grow.onpointermove=null;wheel.classList.remove('turning');};
@@ -782,16 +827,17 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const spare=k=>(inventory[k]??0)-1-bin.filter(x=>x===k).length;
     const binTier=()=>bin.length?itemByKey(bin[0]).rarity:null;
     const fits=i=>bin.length<RECYCLE_COST&&spare(i.key)>0&&(!binTier()||binTier()===i.rarity);
+    const prize=t=>t==='legendary'?'1 arcana card':`${TIERS[TIERS.indexOf(t)+1]} pack`;
     const binIcon=`<svg class="recycle-bin-icon" viewBox="0 0 64 64" aria-hidden="true"><g class="recycle-bin-lid"><path d="M10 15h44"/><path d="M25 15v-5h14v5"/></g><path d="M14 21l4 35h28l4-35z"/><path d="M26 29v20M32 29v20M38 29v20"/></svg>`;
-    body.innerHTML=`<div class="recycle-head"><h3>${RECYCLE_COST} duplicates → an upgrade pack</h3><p>Drag spare copies into the bin, or click them. ${RECYCLE_COST} of one rarity make an upgrade pack whose three cards are all at least the next rarity. Your last copy of each card stays safe. Legendary cards can't be recycled.</p></div><div class="recycle-layout"><div class="recycle-pool"></div><aside class="recycle-bin" data-bin aria-label="Recycle bin"><div class="recycle-bin-drop">${binIcon}<strong data-bin-label></strong></div><ol class="recycle-slots"></ol><button type="button" data-recycle disabled>Recycle 0 / ${RECYCLE_COST}</button><button type="button" class="linkish" data-empty-bin hidden>Empty bin</button></aside></div>`;
+    body.innerHTML=`<div class="recycle-head"><h3>${RECYCLE_COST} duplicates → an upgrade pack</h3><p>Drag spare copies into the bin, or click them. ${RECYCLE_COST} of one rarity make an upgrade pack whose three cards are all at least the next rarity. Your last copy of each card stays safe. ${RECYCLE_COST} legendaries make 1 random arcana card.</p></div><div class="recycle-layout"><div class="recycle-pool"></div><aside class="recycle-bin" data-bin aria-label="Recycle bin"><div class="recycle-bin-drop">${binIcon}<strong data-bin-label></strong></div><ol class="recycle-slots"></ol><button type="button" data-recycle disabled>Recycle 0 / ${RECYCLE_COST}</button><button type="button" class="linkish" data-empty-bin hidden>Empty bin</button></aside></div>`;
     const pool=body.querySelector('.recycle-pool'),binEl=body.querySelector('[data-bin]');
     const paint=()=>{
-      const groups=TIERS.slice(0,3).map(t=>[t,CATALOG.filter(i=>i.rarity===t&&(inventory[i.key]??0)>1)]).filter(([,items])=>items.length);
-      pool.innerHTML=groups.map(([t,items])=>`<section class="recycle-group"><h4 style="--rarity:${colors[t]}">${t} <small>→ ${TIERS[TIERS.indexOf(t)+1]} pack</small></h4><div class="recycle-grid">${items.map(i=>{const n=spare(i.key);return `<button type="button" class="recycle-card${n?'':' spent'}" data-key="${i.key}" style="--rarity:${colors[i.rarity]}" ${fits(i)?'':'aria-disabled="true"'} title="${n?(fits(i)?'Drag into the bin':bin.length>=RECYCLE_COST?'The bin is full':`The bin holds ${binTier()} cards`):'No spare copies left'}">${swatch(i,name)}<small>${i.type}</small><strong>${esc(i.name)}</strong><span class="recycle-spare">${n} spare</span></button>`;}).join('')}</div></section>`).join('')||'<p class="recycle-empty">No duplicates yet. Open packs, and any card you get twice shows up here.</p>';
+      const groups=TIERS.map(t=>[t,CATALOG.filter(i=>i.rarity===t&&(inventory[i.key]??0)>1)]).filter(([,items])=>items.length);
+      pool.innerHTML=groups.map(([t,items])=>`<section class="recycle-group"><h4 style="--rarity:${colors[t]}">${t} <small>→ ${prize(t)}</small></h4><div class="recycle-grid">${items.map(i=>{const n=spare(i.key);return `<button type="button" class="recycle-card${n?'':' spent'}" data-key="${i.key}" style="--rarity:${colors[i.rarity]}" ${fits(i)?'':'aria-disabled="true"'} title="${n?(fits(i)?'Drag into the bin':bin.length>=RECYCLE_COST?'The bin is full':`The bin holds ${binTier()} cards`):'No spare copies left'}">${swatch(i,name)}<small>${i.type}</small><strong>${esc(i.name)}</strong><span class="recycle-spare">${n} spare</span></button>`;}).join('')}</div></section>`).join('')||'<p class="recycle-empty">No duplicates yet. Open packs, and any card you get twice shows up here.</p>';
       const tier=binTier();
       binEl.style.setProperty('--rarity',tier?colors[tier]:'#7d7489');
       binEl.classList.toggle('full',bin.length===RECYCLE_COST);
-      binEl.querySelector('[data-bin-label]').textContent=tier?`${bin.length} / ${RECYCLE_COST} ${tier} → ${TIERS[TIERS.indexOf(tier)+1]} pack`:'Drop duplicates here';
+      binEl.querySelector('[data-bin-label]').textContent=tier?`${bin.length} / ${RECYCLE_COST} ${tier} → ${prize(tier)}`:'Drop duplicates here';
       binEl.querySelector('.recycle-slots').innerHTML=Array.from({length:RECYCLE_COST},(_,s)=>{const i=bin[s]&&itemByKey(bin[s]);return i?`<li><button type="button" class="recycle-slot filled" data-slot="${s}" style="--rarity:${colors[i.rarity]}" aria-label="Take ${esc(i.name)} out of the bin">${swatch(i,name)}<span>${esc(i.name)}</span><b aria-hidden="true">×</b></button></li>`:'<li><span class="recycle-slot"></span></li>';}).join('');
       const go=binEl.querySelector('[data-recycle]');go.textContent=`Recycle ${bin.length} / ${RECYCLE_COST}`;go.disabled=busy||bin.length!==RECYCLE_COST;
       binEl.querySelector('[data-empty-bin]').hidden=!bin.length;
@@ -834,7 +880,11 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       const selections={};bin.forEach(k=>selections[k]=(selections[k]??0)+1);
       const data=await run('recycle',{selections});if(!data)return;
       binEl.classList.add('crushing');
-      const done=()=>{if(!dialog.isConnected||tab!=='recycle')return;tab='packs';onTab?.(tab);draw();say(`Upgrade pack ready: ${data.minimum} or better on all three cards.`);};
+      const done=()=>{
+        if(!dialog.isConnected||tab!=='recycle')return;
+        if(!data.minimum){draw();say(data.arcana?'Arcana card added to your collection.':'Arcana card earned. It arrives when arcana cards are released.');return;}
+        tab='packs';onTab?.(tab);draw();say(`Upgrade pack ready: ${data.minimum} or better on all three cards.`);
+      };
       setTimeout(done,matchMedia('(prefers-reduced-motion: reduce)').matches?0:900);
     };
     paint();

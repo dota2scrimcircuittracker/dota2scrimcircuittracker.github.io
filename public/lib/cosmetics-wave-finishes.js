@@ -4,19 +4,21 @@
 let serial=0;
 import {groupOf,groupPace} from './cosmetics-particle-groups.js';
 import {finishPlacement} from './cosmetics-expansion-settings.js';
+import {ENSO_FINISHES} from './cosmetics-enso.js';
+import {WAVE2_FINISHES} from './cosmetics-wave2-finishes.js';
 const rnd=n=>{const v=Math.sin(n*12.9898+78.233)*43758.5453;return v-Math.floor(v);};
 const f=v=>Number(v.toFixed(2));
 const ART='/img/hero-art/invoker.webp';
 const art=(extra='')=>`<image href="${ART}" x="0" y="0" width="300" height="400" preserveAspectRatio="xMidYMid slice" ${extra}/>`;
-const layer=(item,id,defs,body)=>`<svg class="exp-layer exp-finish wave-finish" data-finish-id="${item.id}" viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true"><defs>${defs}</defs>${body}</svg>`;
+export const layer=(item,id,defs,body)=>`<svg class="exp-layer exp-finish wave-finish" data-finish-id="${item.id}" viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true"><defs>${defs}</defs>${body}</svg>`;
 // Luminance into every channel, so a component transfer can remap brightness to any palette.
 const GREY='<feColorMatrix type="matrix" values=".3 .59 .11 0 0 .3 .59 .11 0 0 .3 .59 .11 0 0 0 0 0 1 0"/>';
 // A particle group's count, size and speed from the card's finish settings (lib/cosmetics-particle-groups.js).
 const group=(item,e,key)=>groupOf('finish',item.id,e.finishSettings?.[item.id],key);
 // The movable part of a finish, placed by the card's saved position, size, rotation and strength.
-const placed=(item,e,body)=>{const p=finishPlacement(item.id,e.finishSettings?.[item.id]);return `<g data-finish-transform transform="${p.transform}" opacity="${p.opacity}">${body}</g>`;};
+export const placed=(item,e,body)=>{const p=finishPlacement(item.id,e.finishSettings?.[item.id]);return `<g data-finish-transform transform="${p.transform}" opacity="${p.opacity}">${body}</g>`;};
 // Keeps busy finishes lighter behind the name plate.
-const readable=(id,from=.62,to=.82,floor=.35)=>`<linearGradient id="${id}-fade" x2="0" y2="1"><stop offset="${from}" stop-color="#fff"/><stop offset="${to}" stop-color="#fff" stop-opacity="${floor}"/></linearGradient><mask id="${id}-read" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="400"><rect width="300" height="400" fill="url(#${id}-fade)"/></mask>`;
+export const readable=(id,from=.62,to=.82,floor=.35)=>`<linearGradient id="${id}-fade" x2="0" y2="1"><stop offset="${from}" stop-color="#fff"/><stop offset="${to}" stop-color="#fff" stop-opacity="${floor}"/></linearGradient><mask id="${id}-read" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="400"><rect width="300" height="400" fill="url(#${id}-fade)"/></mask>`;
 
 function halftone(item,id){
  const dots=(name,angle,size,r)=>`<pattern id="${id}-${name}" width="${size}" height="${size}" patternUnits="userSpaceOnUse" patternTransform="rotate(${angle})"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="#000"/></pattern>`;
@@ -99,4 +101,4 @@ function discoBall(item,id,e){
 }
 
 const FINISHES={'halftone-print':halftone,'blueprint-sheet':blueprint,risograph,'confetti-pop':confetti,sketchbook,'thermal-cam':thermal,'vhs-tracking':vhs,'rain-glass':rainGlass,'aurora-veil':aurora,'disco-ball':discoBall};
-export const waveFinishHtml=(item,e={})=>FINISHES[item.id]?.(item,`wave-finish-${++serial}`,e)??'';
+export const waveFinishHtml=(item,e={})=>(FINISHES[item.id]??ENSO_FINISHES[item.id]??WAVE2_FINISHES[item.id])?.(item,`wave-finish-${++serial}`,e)??'';

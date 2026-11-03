@@ -175,3 +175,9 @@
 @keyframes wave-pull{0%,45%{transform:translateX(0)}62%{transform:translateX(var(--pull))}85%,100%{transform:translateX(0)}}
 .wave-colon{animation:wave-colon calc(1s / var(--border-speed,1)) step-end infinite}
 @keyframes wave-colon{50%{fill-opacity:0}}
+
+/* Enso commission (lib/cosmetics-enso.js) */
+.wave-enso-draw{stroke-dasharray:1;animation:wave-doodle calc(9s / var(--border-speed,1)) ease-in-out infinite both}
+.wave-enso-paint{stroke-dasharray:1;animation:wave-doodle calc(10s / var(--particle-speed,1)) ease-in-out infinite both}
+.wave-enso-sign{stroke-dasharray:1;animation:wave-doodle 8s ease-in-out infinite both}
+.wave-enso-swirl{animation:wave-spin calc(90s / var(--particle-speed,1)) linear infinite}

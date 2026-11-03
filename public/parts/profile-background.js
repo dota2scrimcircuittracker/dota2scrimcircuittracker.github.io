@@ -6,6 +6,7 @@ import { collectionAction } from '../lib/cosmetics.js';
 import { screenArt, CARD_STYLES } from '../lib/card-art.js';
 import { profileBackgroundOf } from '../lib/cosmetics-engine.js';
 import { PAINT_FILTER } from './player-card.js';
+import { myName } from './me.js';
 import { CATALOG } from '../lib/cosmetics-catalog.js';
 import { signatureHtml, renderedName, CASED_MODIFIERS, LETTER_CASES } from '../lib/signatures.js';
 
@@ -267,7 +268,7 @@ export function openBackgroundEditor({state,name,onSaved}) {
     $$('[data-sig-choice]').forEach(b=>{
       const type=b.dataset.sigChoice,id=b.dataset.choice,current=sig?.[type]??'none',preview=b.querySelector('[data-sig-preview]');
       b.setAttribute('aria-pressed',String(current===id));b.disabled=!bg||(type==='translation'&&!sig);
-      if(type==='autograph')preview.innerHTML=id==='none'?'<span class="no-signature-preview">—</span>':`<span class="collection-swatch signature-sample">${signatureHtml({translation:sig?.translation??'none',x:50,y:50,size:15,rotation:-7,autograph:id},name).replace('card-autograph','collection-signature')}</span>`;
+      if(type==='autograph')preview.innerHTML=id==='none'?'<span class="no-signature-preview">—</span>':`<span class="collection-swatch signature-sample">${signatureHtml({translation:sig?.translation??'none',x:50,y:50,size:15,rotation:-7,autograph:id},myName()??name).replace('card-autograph','collection-signature')}</span>`;
       else {preview.className=`name-rendering-preview ${id}`;preview.textContent=renderedName(name,id,sig?.letterCase);}
     });
     drawLetterCase(dialog,sig?.translation,sig?.letterCase,name);
