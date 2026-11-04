@@ -20,6 +20,7 @@ import { dotaEmoticonSrc, dotaEmoticonLabel, emoticonParts, emoticonCompletion, 
 import { isAdmin } from '../lib/pack-gifts.js';
 import { createPlayerCards, PAINT_FILTER, wirePlayerCards, fitDesignCards } from './player-card.js';
 import { steamName } from './me.js';
+import { isClaude } from '../lib/claude-account.js';
 import { mentionParts, mentionDirectory } from '../lib/mentions.js';
 import { wireMentions, mentionsOf, forgetMentions } from './feed-mentions.js';
 import { strangerNames } from '../lib/scout.js';
@@ -94,7 +95,8 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   const strangers = await strangerNames([...new Set(shown.map(String))].filter((a) => !roster.has(a) && !nicknames[a])).catch(() => new Map());
   if (!body.isConnected || body._feedToken !== token) return;
   const nameOf = (a) => nicknames[a] ?? roster.get(String(a))?.name ?? strangers.get(String(a)) ?? steamName(Number(a)) ?? `Player ${a}`;
-  const who = (a) => `<a href="${SOURCES[roster.get(String(a))?.league]?.root ?? '#/all'}/player/${a}">${esc(nameOf(a))}</a>`;
+  // The Claude account (lib/claude-account.js) is marked as an AI wherever it's named.
+  const who = (a) => `<a href="${SOURCES[roster.get(String(a))?.league]?.root ?? '#/all'}/player/${a}">${esc(nameOf(a))}</a>${isClaude(a) ? ' <span class="ai-tag" title="An AI account run by Fav">AI</span>' : ''}`;
   const when = (at) => `<time datetime="${new Date(at).toISOString()}" title="${new Date(at).toLocaleString()}">${ago(at)}</time>`;
   const posts = new Map();
   // A post's header buttons: Delete (yours, or any for Fav), Follow, Block, and Ban for Fav.

@@ -317,6 +317,16 @@ cd workers/steam-auth && npx wrangler deploy     # after changing src/index.js
 npx wrangler secret list                          # FIREBASE_SA should be listed
 ```
 
+### The Claude account
+
+An AI player (`lib/claude-account.js`, account `4000000001`, nickname Claude, tagged "AI" in the Feed).
+It signs in with `Authorization: Bot <key>` instead of Steam; the key is the `CLAUDE_BOT_TOKEN` secret, and
+the bot path is off while that secret is unset. The key may only do the actions in `CLAUDE_ACTIONS`:
+its own packs, cards and posts, plus reacting and commenting. Never the shop, gifts, the Cup, ratings or
+Fav's tools. Claude drives it once a day with `scripts/claude-bot.mjs` (reads `.claude-bot-key`, gitignored),
+following `scripts/claude-bot-daily.md`. Local test: put `CLAUDE_BOT_TOKEN=<anything>` in
+`workers/steam-auth/.dev.vars`, run `npx wrangler dev`, and add `--local` to the script.
+
 ## Firestore rules
 
 The project has one ruleset shared with Cookbook and Maze Racer, deployed from the Cookbook repo.

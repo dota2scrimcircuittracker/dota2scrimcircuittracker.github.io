@@ -365,9 +365,11 @@ export function equipCosmetics(state, raw) {
 }
 // One-time grants, applied on the player's next visit (the Worker's session action) and to new
 // players. Each shows in the "Fav sent you" notice (parts/pack-gifts.js).
-export const PACK_GRANTS=[{id:'screens-2026-10',packs:['screens','screens','screens'],note:"Loading screens are here. Each pack has five you don't have yet."}];
-export function applyPackGrants(state,now=Date.now()) {
-  const due=PACK_GRANTS.filter(g=>!(state.grants??[]).includes(g.id));
+// A grant with an account goes to that account only (the Claude account's starter packs, lib/claude-account.js).
+export const PACK_GRANTS=[{id:'screens-2026-10',packs:['screens','screens','screens'],note:"Loading screens are here. Each pack has five you don't have yet."},
+  {id:'claude-start-2026-11',account:'4000000001',packs:Array(10).fill('common'),note:'Ten common packs to start your collection.'}];
+export function applyPackGrants(state,now=Date.now(),account=null) {
+  const due=PACK_GRANTS.filter(g=>!(state.grants??[]).includes(g.id)&&(!g.account||g.account===String(account??'')));
   if(!due.length)return state;
   return {...state,packs:[...state.packs,...due.flatMap(g=>g.packs)],grants:[...(state.grants??[]),...due.map(g=>g.id)],
     gifts:[...(state.gifts??[]),...due.map(g=>({kind:'pack',tier:g.packs[0],count:g.packs.length,note:g.note,at:now}))].slice(-20)};

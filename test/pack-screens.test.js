@@ -98,3 +98,11 @@ test('owned screens work as card art; hero screens only on their hero', () => {
   assert.ok(!cardArtOptions(elsewhere,state.screens).some(o=>o.id===tagged.id));
   assert.ok(!cardArtOptions(1).some(o=>o.id===any.id));
 });
+
+test('an account grant goes to that account only: the Claude account starts with ten common packs',async()=>{
+  const {applyPackGrants,grantLogin}=await import('../public/lib/cosmetics-engine.js');
+  const start=grantLogin(null),claude=applyPackGrants(start,1,'4000000001'),player=applyPackGrants(start,1,'101');
+  assert.equal(claude.packs.filter(p=>p==='common').length-player.packs.filter(p=>p==='common').length,10);
+  assert.ok(claude.grants.includes('claude-start-2026-11'));assert.ok(!player.grants.includes('claude-start-2026-11'));
+  assert.deepEqual(applyPackGrants(claude,2,'4000000001'),claude);
+});

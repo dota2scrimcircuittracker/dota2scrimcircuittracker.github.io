@@ -4,6 +4,7 @@ import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-cata
 import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
 import { checkImages } from './image-check.js';
+import { CLAUDE_ACCOUNT, CLAUDE_ACTIONS } from '../../../public/lib/claude-account.js';
 import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, packHistory, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
 import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess, lateSeats, lateOpen, roundLength } from '../../../public/lib/arcana-cup.js';
@@ -379,7 +380,7 @@ export class CosmeticsVault {
         if(body.action==='session') {
           let state=grantLogin(saved);
           if(state.screenPackRecovery!=='images-v1')state=restoreScreenPacks(state,await txn.list({prefix:`receipt:${account}:`}));
-          state=applyPackGrants(state);await txn.put(key,state);return {state};
+          state=applyPackGrants(state,Date.now(),account);await txn.put(key,state);return {state};
         }
         if(!saved) throw new Error('Load your collection first.');
         if(!/^[\w-]{16,80}$/.test(body.requestId??'')) throw new Error('Invalid request ID.');
@@ -786,6 +787,13 @@ export class CosmeticsVault {
   }
 }
 
+// Compares two secrets in constant time (both hashed first, so length doesn't leak either).
+async function sameSecret(a,b) {
+  const [x,y]=await Promise.all([a,b].map(v=>crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))));
+  const u=new Uint8Array(x),v=new Uint8Array(y);let diff=0;for(let i=0;i<u.length;i++)diff|=u[i]^v[i];
+  return diff===0;
+}
+
 export async function cosmeticsRequest(req,env,allowedOrigins) {
   const origin=req.headers.get('origin'), url=new URL(req.url);
   // Stripe's webhook (server to server, signed with STRIPE_WEBHOOK_SECRET). Off until that secret is
@@ -833,23 +841,31 @@ export async function cosmeticsRequest(req,env,allowedOrigins) {
   // Feed posts carry images, so they go to their own path with a larger size limit.
   const limit=url.pathname==='/cosmetics/post'?Math.ceil(MAX_IMAGES*MAX_IMAGE_BYTES*4/3)+16000:12000;
   if(req.method!=='POST' || !['/cosmetics','/cosmetics/post'].includes(url.pathname)) return respond(json({error:'Not found.'},404));
-  if(!env.FIREBASE_WEB_API_KEY) return respond(json({error:'Collection authentication is not configured yet.'},503));
+  // The Claude account (lib/claude-account.js) signs in with its bot key instead of Steam. Off
+  // until the CLAUDE_BOT_TOKEN secret is set; a wrong key is refused, never tried as a Steam token.
+  const botKey=/^Bot (.+)$/.exec(req.headers.get('authorization')??'')?.[1];
+  if(botKey!=null&&!(env.CLAUDE_BOT_TOKEN&&await sameSecret(botKey,String(env.CLAUDE_BOT_TOKEN).trim()))) return respond(json({error:'Unknown bot key.'},401));
+  if(botKey==null&&!env.FIREBASE_WEB_API_KEY) return respond(json({error:'Collection authentication is not configured yet.'},503));
   const token=/^Bearer (.+)$/.exec(req.headers.get('authorization')??'')?.[1];
-  if(!token) return respond(json({error:'Sign in with Steam first.'},401));
+  if(botKey==null&&!token) return respond(json({error:'Sign in with Steam first.'},401));
   try {
-    // The site's Firebase web key requires an allowed HTTP referrer. Use only the
-    // origin validated above; the Firebase ID token still verifies account identity.
-    const verification=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(env.FIREBASE_WEB_API_KEY)}`,{method:'POST',headers:{'Content-Type':'application/json','Referer':`${origin??allowedOrigins[0]}/`},body:JSON.stringify({idToken:token})});
-    const data=await verification.json(), user=data.users?.[0];
-    if(!verification.ok && !['INVALID_ID_TOKEN','TOKEN_EXPIRED','USER_DISABLED','USER_NOT_FOUND'].includes(data.error?.message)) return respond(json({error:'Collection authentication is temporarily unavailable. Please try again.'},503));
-    const account=/^steam:(\d{1,10})$/.exec(user?.localId??'')?.[1];
-    if(!verification.ok || !account || user.disabled) return respond(json({error:'Your Steam session expired. Sign in again.'},401));
+    let account=CLAUDE_ACCOUNT;
+    if(botKey==null) {
+      // The site's Firebase web key requires an allowed HTTP referrer. Use only the
+      // origin validated above; the Firebase ID token still verifies account identity.
+      const verification=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(env.FIREBASE_WEB_API_KEY)}`,{method:'POST',headers:{'Content-Type':'application/json','Referer':`${origin??allowedOrigins[0]}/`},body:JSON.stringify({idToken:token})});
+      const data=await verification.json(), user=data.users?.[0];
+      if(!verification.ok && !['INVALID_ID_TOKEN','TOKEN_EXPIRED','USER_DISABLED','USER_NOT_FOUND'].includes(data.error?.message)) return respond(json({error:'Collection authentication is temporarily unavailable. Please try again.'},503));
+      account=/^steam:(\d{1,10})$/.exec(user?.localId??'')?.[1];
+      if(!verification.ok || !account || user.disabled) return respond(json({error:'Your Steam session expired. Sign in again.'},401));
+    }
     if(Number(req.headers.get('content-length')??0)>limit) return respond(json({error:'Request too large.'},413));
     const body=await req.text();if(body.length>limit) return respond(json({error:'Request too large.'},413));
     // Images are checked by the AI filter (image-check.js) before the vault sees the post.
     // Anything carrying a picture (a post, or a comment with an image) must come through
     // /cosmetics/post, so it can't reach the vault from /cosmetics without being checked.
     let parsed;try {parsed=JSON.parse(body);} catch {parsed=null;}
+    if(botKey!=null&&!CLAUDE_ACTIONS.has(parsed?.action)) return respond(json({error:"The Claude account can't do that."},403));
     const hasImages=parsed?.action==='post'||(parsed?.action==='comment'&&parsed.image!=null);
     if(hasImages && url.pathname!=='/cosmetics/post') return respond(json({error:'Invalid request.'},400));
     if(parsed?.action==='stripe-checkout') return respond(await stripeCheckout(parsed,account,env,origin??allowedOrigins[0]));

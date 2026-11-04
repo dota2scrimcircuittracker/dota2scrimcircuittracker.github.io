@@ -26,3 +26,7 @@ _site/
 
 firebase-debug.log
 workers/steam-auth/.wrangler/
+
+# The Claude account's bot key (scripts/claude-bot.mjs) and wrangler dev secrets. Never commit.
+.claude-bot-key
+.dev.vars

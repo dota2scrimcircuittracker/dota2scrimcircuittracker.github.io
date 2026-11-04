@@ -5416,3 +5416,6 @@ dialog.pb-modal { width: min(1320px, 96vw); }
 /* Shop supporter badge (lib/shop.js), beside the name on a profile or a card, where the player chose. */
 .supporter-badge { display: inline-block; margin-left: .4em; padding: .1em .45em; border: 1px solid #ffd879; border-radius: 999px; color: #ffd879; font-size: .45em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; line-height: 1.4; }
 .ft-name .supporter-badge { font-size: .5em; }
+
+/* The Claude account's tag in the Feed (parts/feed.js who). */
+.ai-tag{display:inline-block;padding:0 5px;border-radius:4px;font-size:.68em;font-weight:700;letter-spacing:.04em;vertical-align:.12em;color:#1b1206;background:#d9a066}

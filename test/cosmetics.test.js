@@ -305,3 +305,20 @@ test('any pack card can be an arcana: the top 0.5% of its roll, owed while there
   for(let n=0;n<40000;n++)for(const r of rollPack({packs:['common'],inventory:{},screens:[]},0).rewards){cards++;if(r.arcana)arcana++;}
   assert.ok(Math.abs(arcana/cards-.005)<.0015,`arcana rate ${arcana/cards}`);
 });
+
+test('the Claude account signs in with its bot key, only for the actions it is allowed',async()=>{
+  const seen=[];
+  const env={COSMETICS:{idFromName:()=>0,get:()=>({fetch:async req=>{seen.push(new URL(req.url).searchParams.get('account'));return Response.json({ok:true});}})},CLAUDE_BOT_TOKEN:'right-key\n'};
+  const call=(key,body)=>cosmeticsRequest(new Request('https://worker/cosmetics',{method:'POST',headers:{authorization:`Bot ${key}`},body:JSON.stringify(body)}),env,['https://site.test']);
+  const original=globalThis.fetch;globalThis.fetch=()=>{throw new Error('A bot key is never sent to Firebase');};
+  try {
+    assert.equal((await call('right-key',{action:'session'})).status,200);
+    assert.deepEqual(seen,['4000000001']);
+    assert.equal((await call('wrong-key',{action:'session'})).status,401);
+    for(const action of ['buy','gift','send-pack','ban','cup-enter','cup-vote','rate','stripe-checkout','post-pin'])assert.equal((await call('right-key',{action})).status,403,action);
+    assert.equal((await call('right-key',{action:'react',post:'x',emoji:'fire'})).status,200);
+    // Off while the secret is unset.
+    delete env.CLAUDE_BOT_TOKEN;assert.equal((await call('right-key',{action:'session'})).status,401);
+    assert.equal(seen.length,2);
+  } finally {globalThis.fetch=original;}
+});
