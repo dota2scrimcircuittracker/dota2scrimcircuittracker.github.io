@@ -6,6 +6,7 @@ import {groupOf,groupPace} from './cosmetics-particle-groups.js';
 import {finishPlacement} from './cosmetics-expansion-settings.js';
 import {ENSO_FINISHES} from './cosmetics-enso.js';
 import {WAVE2_FINISHES} from './cosmetics-wave2-finishes.js';
+import {WAVE3_FINISHES} from './cosmetics-wave3-finishes.js';
 const rnd=n=>{const v=Math.sin(n*12.9898+78.233)*43758.5453;return v-Math.floor(v);};
 const f=v=>Number(v.toFixed(2));
 const ART='/img/hero-art/invoker.webp';
@@ -101,4 +102,4 @@ function discoBall(item,id,e){
 }
 
 const FINISHES={'halftone-print':halftone,'blueprint-sheet':blueprint,risograph,'confetti-pop':confetti,sketchbook,'thermal-cam':thermal,'vhs-tracking':vhs,'rain-glass':rainGlass,'aurora-veil':aurora,'disco-ball':discoBall};
-export const waveFinishHtml=(item,e={})=>(FINISHES[item.id]??ENSO_FINISHES[item.id]??WAVE2_FINISHES[item.id])?.(item,`wave-finish-${++serial}`,e)??'';
+export const waveFinishHtml=(item,e={})=>(FINISHES[item.id]??ENSO_FINISHES[item.id]??WAVE2_FINISHES[item.id]??WAVE3_FINISHES[item.id])?.(item,`wave-finish-${++serial}`,e)??'';

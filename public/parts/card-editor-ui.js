@@ -1,5 +1,7 @@
 import {itemByKey} from '../lib/cosmetics-catalog.js';
 import {rangeNumber} from '../lib/card-editor-workspace.js';
+// The Collection's rarity colours, for the pickers' rarity pills (same look as its .dex-chips).
+const RARITY_COLORS={common:'#abb3be',rare:'#80c4ff',epic:'#d7a3ff',legendary:'#ffd879'};
 
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!=null)node.textContent=text;return node;};
 const button=(text,action)=>{const b=el('button','',text);b.type='button';if(action)b.onclick=action;return b;};
@@ -7,7 +9,7 @@ const pressed=(node,value)=>{if(node.getAttribute('aria-pressed')!==String(value
 const text=(node,value)=>{if(node.textContent!==value)node.textContent=value;};
 let workspaceSequence=0;
 
-export function mountCardEditorUI({body,card,view={},getState,onUndo,onRedo,onRevert,onDuplicate,onTarget,onCompare,onSettled,onDestroy}){
+export function mountCardEditorUI({body,card,view={},getState,onFace,twinBack,onUndo,onRedo,onRevert,onDuplicate,onTarget,onCompare,onSettled,onDestroy}){
  const abort=new AbortController(),signal=abort.signal;
  const q=s=>body.querySelector(s),preview=q('[data-card-editor]'),grid=q('.card-editor');
  body.classList.add('editor-workspace');
@@ -60,7 +62,8 @@ export function mountCardEditorUI({body,card,view={},getState,onUndo,onRedo,onRe
  const zoom=el('select');zoom.setAttribute('aria-label','Preview size');
  for(const [value,label]of [['fit','Fit'],['large','Large']]){const o=el('option','',label);o.value=value;zoom.append(o);}zoom.value=view.zoom??'fit';zoom.onchange=()=>preview.dataset.previewSize=zoom.value;preview.dataset.previewSize=zoom.value;
  previewTools.append(front,back,pause,compare);const previewHeading=preview.querySelector('.editor-preview-heading');previewHeading.append(zoom);previewHeading.after(previewTools);
- function flip(value){card.classList.toggle('flipped',value);pressed(front,!value);pressed(back,value);}
+ // A Twin Card replaces the stats back: onFace takes the switch (and redraws the editor) when it returns true.
+ function flip(value,user=true){if(user&&onFace?.(value))return;card.classList.toggle('flipped',value);const b=value||!!twinBack?.();pressed(front,!b);pressed(back,b);}
  function motion(){card.toggleAttribute('data-preview-paused',paused);pause.textContent=paused?'Resume animation':'Pause animation';pressed(pause,paused);document.dispatchEvent(new Event('card-preview-motion'));}
  function compareTo(value){if(comparing===value)return;comparing=value;card.classList.toggle('editor-comparing',value);pressed(compare,value);compare.textContent=value?'Saved version':'Hold to compare';onCompare(value);}
  compare.onpointerdown=e=>{if(e.button!==0||compare.disabled)return;e.preventDefault();compare.setPointerCapture(e.pointerId);compareTo(true);};
@@ -94,21 +97,34 @@ export function mountCardEditorUI({body,card,view={},getState,onUndo,onRedo,onRe
   else if(active==='symbols'&&e.target.closest('[data-style-choice="border"]'))selectTarget('symbols',true);
  },{signal});
 
- // Browsing stays on the page. Expanded grids avoid horizontal hunting when desired.
+ // Pickers show a page at a time (rows of as many columns as fit), so only that page's swatches animate;
+ // rarity pills filter, Show all lists every one.
  for(const type of ['border','finish']){
   const field=q(`.visual-style-options:has([data-style-choice="${type}"])`),strip=field.querySelector('.visual-style-strip');
   const picked=el('p','editor-picked-style'),controls=el('div','editor-picker-tools');
-  const previous=button('‹',()=>strip.scrollBy({left:-250,behavior:'smooth'})),next=button('›',()=>strip.scrollBy({left:250,behavior:'smooth'}));
+  const previous=button('‹',()=>turn(-1)),next=button('›',()=>turn(1)),count=el('span','editor-picker-page');
   previous.setAttribute('aria-label',`Previous ${type} styles`);next.setAttribute('aria-label',`Next ${type} styles`);
-  const rarity=el('select');rarity.setAttribute('aria-label',`${type==='border'?'Border':'Finish'} rarity`);
-  for(const tier of ['all','common','rare','epic','legendary']){const option=el('option','',tier==='all'?'All rarities':tier[0].toUpperCase()+tier.slice(1));option.value=tier;rarity.append(option);}
+  const rarity=el('div','dex-chips editor-rarity-pills');rarity.setAttribute('role','group');rarity.setAttribute('aria-label',`${type==='border'?'Border':'Finish'} rarity`);
+  for(const tier of ['all','common','rare','epic','legendary']){const pill=button(tier==='all'?'All':tier[0].toUpperCase()+tier.slice(1),()=>{pickerState[type].rarity=tier;pickerState[type].page=0;filter();});pill.dataset.rarity=tier;if(tier!=='all')pill.style.setProperty('--rarity',RARITY_COLORS[tier]);rarity.append(pill);}
   const all=button('Show all',()=>{pickerState[type].expanded=!pickerState[type].expanded;filter();});
-  pickerState[type]={expanded:false,rarity:'all',scroll:0,...pickerState[type]};rarity.value=pickerState[type].rarity;
-  function filter(){const settings=pickerState[type];settings.rarity=rarity.value;strip.classList.toggle('editor-picker-expanded',settings.expanded);all.textContent=settings.expanded?'Compact view':'Show all';pressed(all,settings.expanded);previous.hidden=next.hidden=settings.expanded;
-   for(const choice of strip.children){const item=itemByKey(`${type}:${choice.dataset.choice}`);choice.hidden=settings.rarity!=='all'&&!!item&&item.rarity!==settings.rarity;}
+  pickerState[type]={expanded:false,rarity:'all',scroll:0,page:null,...pickerState[type]};
+  const rows=strip.classList.contains('style-rows-3')?3:2;
+  const shown=()=>[...strip.children].filter(c=>{const item=itemByKey(`${type}:${c.dataset.choice}`);return pickerState[type].rarity==='all'||!item||item.rarity===pickerState[type].rarity;});
+  const perPage=()=>Math.max(1,(getComputedStyle(strip).gridTemplateColumns.split(' ').filter(Boolean).length||4)*rows);
+  function turn(step){const pages=Math.ceil(shown().length/perPage());pickerState[type].page=Math.min(pages-1,Math.max(0,(pickerState[type].page??0)+step));filter();}
+  function filter(){const settings=pickerState[type];strip.classList.toggle('editor-picker-expanded',settings.expanded);all.textContent=settings.expanded?'Compact view':'Show all';pressed(all,settings.expanded);
+   for(const pill of rarity.children)pressed(pill,pill.dataset.rarity===settings.rarity);
+   const list=shown(),size=perPage(),pages=Math.max(1,Math.ceil(list.length/size));
+   // The first time, open on the page with the selected style.
+   if(settings.page==null){const at=list.findIndex(c=>c.getAttribute('aria-pressed')==='true');settings.page=at>0?Math.floor(at/size):0;}
+   settings.page=Math.min(settings.page,pages-1);
+   const from=settings.page*size,visible=new Set(settings.expanded?list:list.slice(from,from+size));
+   for(const choice of strip.children)choice.hidden=!visible.has(choice);
+   previous.hidden=next.hidden=count.hidden=settings.expanded||pages<2;previous.disabled=settings.page===0;next.disabled=settings.page>=pages-1;count.textContent=`${settings.page+1} / ${pages}`;
   }
-  rarity.onchange=filter;controls.append(previous,next,rarity,all);strip.before(picked,controls);strip.scrollLeft=pickerState[type].scroll;filter();
-  if(!view.pickers?.[type]){const selected=strip.querySelector('[aria-pressed=true]');if(selected)strip.scrollLeft=Math.max(0,strip.scrollLeft+selected.getBoundingClientRect().left-strip.getBoundingClientRect().left-strip.clientWidth/2+selected.offsetWidth/2);}
+  controls.append(previous,count,next,all);strip.before(picked,rarity,controls);filter();
+  // A new column count changes the page size; keep the first style on the page in view.
+  let cols=0;const resized=new ResizeObserver(()=>{const c=getComputedStyle(strip).gridTemplateColumns.split(' ').length;if(c!==cols){cols=c;filter();}});resized.observe(strip);signal.addEventListener('abort',()=>resized.disconnect());
   field.dataset.editorPicker=type;
  }
 
@@ -142,7 +158,7 @@ export function mountCardEditorUI({body,card,view={},getState,onUndo,onRedo,onRe
  const activeSection=Object.hasOwn(view,'activeSection')?view.activeSection:'treatment';
  for(const [i,section]of mainSections.entries()){
   section.dataset.editorAccordion=sectionKeys[i];section.open=false;section.setAttribute('name',sectionGroup);
-  if(section.dataset.layoutFace)section.addEventListener('toggle',()=>{if(section.open)flip(section.dataset.layoutFace==='back');},{signal});
+  if(section.dataset.layoutFace)section.addEventListener('toggle',()=>{if(section.open)flip(section.dataset.layoutFace==='back',false);},{signal});
  }
  const selectedSection=mainSections.find(section=>section.dataset.editorAccordion===activeSection);if(selectedSection)selectedSection.open=true;
  function refresh(){
@@ -164,7 +180,7 @@ export function mountCardEditorUI({body,card,view={},getState,onUndo,onRedo,onRe
   for(const field of body.querySelectorAll('[data-editor-picker]'))pickerState[field.dataset.editorPicker].scroll=field.querySelector('.visual-style-strip').scrollLeft;
   return {...remembered,target:active,selection:active==='text'?panel.dataset.for:active==='symbols'?panel.dataset.symbolIndex:null,paused,back:card.classList.contains('flipped'),zoom:zoom.value,pickers:structuredClone(pickerState),activeSection:mainSections.find(section=>section.open)?.dataset.editorAccordion??null,sections:Object.fromEntries([...body.querySelectorAll('[data-editor-section]')].map(d=>[d.dataset.editorSection,d.open]))};
  }
- numbers();flip(!!view.back);motion();selectTarget(active,false);refresh();
+ numbers();flip(!!view.back,false);motion();selectTarget(active,false);refresh();
  if(active!=='none')onTarget(active,view.selection);
  return {refresh,select:selectTarget,capture,destroy(){dead=true;observer.disconnect();sizing.disconnect();abort.abort();onDestroy?.();if(comparing)onCompare(false);}};
 }

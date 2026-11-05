@@ -3,6 +3,7 @@
 let serial=0;
 import {ENSO_SIGNATURES} from './cosmetics-enso.js';
 import {WAVE2_SIGNATURES} from './cosmetics-wave2-signatures.js';
+import {WAVE3_SIGNATURES} from './cosmetics-wave3-signatures.js';
 const rnd=n=>{const v=Math.sin(n*12.9898+78.233)*43758.5453;return v-Math.floor(v);};
 const f=v=>Number(v.toFixed(2));
 export const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -100,4 +101,4 @@ function liquidChrome(item,id,text){
 
 const SIGNATURES={'ransom-note':ransomNote,'spray-tag':sprayTag,'wax-seal':waxSeal,'morse-code':morseCode,typewriter,constellation,'varsity-patch':varsityPatch,barcode,sparkler,'liquid-chrome':liquidChrome};
 // opts carries per-card extras a design reads, such as the License Plate's top text (opts.plate).
-export const waveSignatureHtml=(item,text,opts={})=>(SIGNATURES[item.id]??ENSO_SIGNATURES[item.id]??WAVE2_SIGNATURES[item.id])?.(item,`wave-signature-${++serial}`,String(text||'Fav'),opts)??'';
+export const waveSignatureHtml=(item,text,opts={})=>(SIGNATURES[item.id]??ENSO_SIGNATURES[item.id]??WAVE2_SIGNATURES[item.id]??WAVE3_SIGNATURES[item.id])?.(item,`wave-signature-${++serial}`,String(text||'Fav'),opts)??'';

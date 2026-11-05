@@ -2,9 +2,9 @@
 // "<rarity>" (a normal card pack of that rarity or better), "screens" (loading screens) or
 // "<rarity>:<kind>" for a themed pack. Kinds and the card item types each draws from: signature
 // packs hold signatures and their modifiers. Player card packs come later.
-import { TIERS, CATALOG, PACK_ODDS, ARCANA_ODDS } from './cosmetics-catalog.js';
+import { TIERS, CATALOG, PACK_ODDS, arcanaOdds } from './cosmetics-catalog.js';
 
-export const PACK_KIND_TYPES = { border: ['border'], finish: ['finish'], signature: ['autograph', 'translation'] };
+export const PACK_KIND_TYPES = { border: ['border', 'living'], finish: ['finish'], signature: ['autograph', 'translation'] };
 export const KIND_NAMES = { border: 'border', finish: 'finish', signature: 'signature', player: 'player card' };
 export const THEMED_PACKS = TIERS.flatMap((t) => Object.keys(PACK_KIND_TYPES).map((k) => `${t}:${k}`));
 
@@ -32,9 +32,9 @@ export function packOdds(pack) {
 }
 const pct = (x) => `${Math.round(x * 1000) / 10}%`;
 // "Rare 54.8% · Epic 32.3% · Legendary 12.9%": the rarities that can come up.
-// Plus the arcana chance every card has on top (ARCANA_ODDS); the rarities
+// Plus the arcana chance every card has on top (arcanaOdds, by the pack's rarity); the rarities
 // above are the odds when it misses.
-export const oddsText = (pack) => [...Object.entries(packOdds(pack)).filter(([, v]) => v > 0).map(([t, v]) => `${cap(t)} ${pct(v)}`), `Arcana ${pct(ARCANA_ODDS)}`].join(' · ');
+export const oddsText = (pack) => [...Object.entries(packOdds(pack)).filter(([, v]) => v > 0).map(([t, v]) => `${cap(t)} ${pct(v)}`), `Arcana ${pct(arcanaOdds(pack))}`].join(' · ');
 // What a pack holds, for the odds table: [pack, name, what's in it].
 export const ODDS_ROWS = ['common', 'rare', 'epic', 'legendary'].flatMap((t) => [[t, `${cap(t)} pack`, '3 cards + 2 screens'], ...Object.keys(PACK_KIND_TYPES).map((k) => [`${t}:${k}`, themedLabel(`${t}:${k}`), k === 'border' ? `3 border items + ${PACK_ODDS.legendary}% legendary background` : `3 ${k} items`])]);
 

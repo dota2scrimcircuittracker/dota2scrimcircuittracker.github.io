@@ -13,16 +13,15 @@ test('the first arcana brings the Arcana upgrade sealed; opening it unlocks stac
   assert.equal(hasArcanaUpgrade({...first,arcanaOwed:1,arcanaSealed:1}),false);
   assert.equal(hasArcanaUpgrade({...first,arcanaUpgrade:true}),true);
   assert.throws(()=>openArcanaUpgrade(first),/no sealed/);
-  // Ten spare legendaries: an owed arcana plus the sealed upgrade.
-  const legend=CATALOG.find(i=>i.rarity==='legendary');
-  const recycled=recycleCards({...first,inventory:{[legend.key]:11}},{[legend.key]:10}).state;
-  assert.equal(recycled.arcanaSealed,1);assert.equal(hasArcanaUpgrade(recycled),false);
-  const opened=openArcanaUpgrade(recycled).state;
+  // A sealed box (from before arcana were tools) opens into the upgrade.
+  const sealed={...first,arcanaOwed:1,arcanaSealed:1};
+  const opened=openArcanaUpgrade(sealed).state;
   assert.equal(hasArcanaUpgrade(opened),true);assert.equal('arcanaSealed' in opened,false);
-  assert.equal(recycled.arcanaSealed,1,'input untouched');
-  // A later arcana doesn't seal another upgrade.
-  const again=recycleCards({...opened,inventory:{[legend.key]:11}},{[legend.key]:10}).state;
-  assert.equal(again.arcanaSealed,undefined);assert.equal(again.arcanaOwed,2);
+  assert.equal(sealed.arcanaSealed,1,'input untouched');
+  // Ten spare legendaries now give an arcana tool, never a sealed box.
+  const legend=CATALOG.find(i=>i.rarity==='legendary');
+  const recycled=recycleCards({...first,inventory:{[legend.key]:11}},{[legend.key]:10},()=>0).state;
+  assert.equal(recycled.arcanaSealed,undefined);assert.equal(recycled.inventory['tool:double-finish'],1);assert.equal(hasArcanaUpgrade(recycled),true);
 });
 
 test('stacking finishes needs the upgrade, owned finishes, and at most MAX_FINISH_STACK',()=>{
@@ -95,7 +94,7 @@ test('accounts that earned arcana before the sealed box keep the upgrade',()=>{
   const legacy={...grantLogin(null),arcanaOwed:1};
   assert.equal(hasArcanaUpgrade(legacy),true);assert.equal(finishStackLimit(legacy),1);
   const legend=CATALOG.find(i=>i.rarity==='legendary');
-  const again=recycleCards({...legacy,inventory:{[legend.key]:11}},{[legend.key]:10}).state;
+  const again=recycleCards({...legacy,inventory:{[legend.key]:11}},{[legend.key]:10},()=>0).state;
   assert.equal(again.arcanaSealed,undefined,'no box to open for an account that already stacks');
-  assert.equal(finishStackLimit(again),2);
+  assert.equal(finishStackLimit(again),2,'the Double finish it drew adds a layer');
 });

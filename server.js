@@ -18,7 +18,7 @@ const MIME = {
 // Dev only: the hero-art picker (public/_dev/cards.html) and the loading-screen sorter
 // (public/_dev/screen-sort.html) save their choices here, so Claude can read them.
 // public/_dev/ is gitignored and never deployed.
-const DEV_SAVES = new Set(["/_dev/hero-art.json", "/_dev/screen-sort.json", "/_dev/cosmetics-expansion-votes.json", "/_dev/cosmetics-expansion-v2-votes.json", "/_dev/cosmetics-expansion-v3-votes.json", "/_dev/cosmetics-expansion-v4-votes.json", "/_dev/cosmetics-expansion-v5-votes.json", "/_dev/cosmetics-expansion-v6-votes.json", "/_review/cosmetics-tier-ranks.json", "/_review/wave2-review.json"]);
+const DEV_SAVES = new Set(["/_dev/hero-art.json", "/_dev/screen-sort.json", "/_dev/cosmetics-expansion-votes.json", "/_dev/cosmetics-expansion-v2-votes.json", "/_dev/cosmetics-expansion-v3-votes.json", "/_dev/cosmetics-expansion-v4-votes.json", "/_dev/cosmetics-expansion-v5-votes.json", "/_dev/cosmetics-expansion-v6-votes.json", "/_review/cosmetics-tier-ranks.json", "/_review/wave2-review.json", "/_review/wave3-votes.json"]);
 
 http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, "http://localhost");

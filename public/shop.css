@@ -38,7 +38,7 @@
 .shop-admin h3{margin:0 0 8px}
 .shop-admin button.confirm{outline:2px solid #ffd879}
 /* Extras and commissions: four tiles under the balance */
-.shop-features{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.shop-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;margin-bottom:14px}
 .shop-feature{--accent:#ffd879;position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);border-radius:12px;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 13%,transparent),transparent 65%);overflow:hidden}
 .shop-feature::before{content:'';position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.7}
 .shop-feature header{display:flex;align-items:center;gap:12px}
@@ -57,18 +57,14 @@
 .shop-pips i{flex:1;height:22px;border:1px dashed color-mix(in srgb,var(--accent) 45%,transparent);border-radius:4px}
 .shop-pips i.base{border:1px solid color-mix(in srgb,currentColor 30%,transparent);background:color-mix(in srgb,currentColor 10%,transparent)}
 .shop-pips i.bought{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 35%,transparent)}
-.shop-badge-preview{display:flex;align-items:center;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,currentColor 6%,transparent);font-size:22px;font-weight:700}
-.shop-toggles{display:flex;gap:8px;margin-top:auto}
-.shop-toggles label,.collection-body .shop-toggles label{flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;padding:7px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:8px;font-size:13px;cursor:pointer}
-.shop-toggles label:has(:checked){background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:var(--accent)}
 .shop-order-form{display:flex;flex-direction:column;gap:8px;margin-top:auto}
 .shop-order-form label,.collection-body .shop-order-form label{display:flex;flex-direction:column;gap:4px;font-size:12px}
 .shop-order-form input,.shop-order-form select{width:100%}
 .shop-order-actions{display:flex;gap:8px}
 .shop-order-actions>button:first-child{padding:9px 12px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);border-radius:8px;background:none;color:inherit;cursor:pointer}
 .shop-features-note{grid-column:1/-1;margin:0;font-size:12px;opacity:.6}
-@media(max-width:1100px){.shop-features{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.shop-features{grid-template-columns:1fr}}
+
+
 .shop-order{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)}
 .shop-order span{opacity:.75}
 @media(max-width:650px){.shop-balance{flex:1 1 100%}.shop-items-head{flex-direction:column;align-items:flex-start}}
@@ -98,3 +94,9 @@
 .shop-demo-tune legend{padding:0 4px;font-weight:600}
 .shop-demo [data-demo-card]{position:sticky;top:-18px;z-index:2;padding-top:4px;background:#211b27}
 .shop-demo-tune .effect-settings label,.shop-demo-tune fieldset label{margin:0;padding:0;min-height:0;gap:2px 8px;text-transform:none;font-size:12px}
+
+/* Bundles bought in the last 24 hours, each with its refund request (parts/shop.js refundsHtml). */
+.shop-refunds{margin-top:12px;padding-top:10px;border-top:1px dashed color-mix(in srgb,currentColor 25%,transparent)}
+.shop-refunds ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:6px}
+.shop-refunds li{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px}
+.shop-refunds em{font-style:normal;font-size:12px;opacity:.75}

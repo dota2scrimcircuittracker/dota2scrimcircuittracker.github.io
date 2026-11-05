@@ -7,12 +7,28 @@ import { openCollection } from "../parts/collection.js";
 import {localCosmeticsReview} from '../lib/local-cosmetics-review.js';
 import {localShopTest} from '../lib/local-shop-test.js';
 import {localClaudeCards} from '../lib/claude-cards.js';
+import {localArcanaIdeas} from '../lib/arcana-ideas.js';
+import {localWave3Review} from '../lib/wave3-review.js';
 import {applyEquipment} from '../lib/cosmetics.js';
 import { GALLERY_TABS as TABS } from "../lib/pagetabs.js";
 
 // bare: opened at #/gallery, so the address keeps no league in it.
 export function renderGallery(src, segment, bare = false) {
   if (segment === "log") segment = ""; // the Feed replaced the Log
+  // ?arcanaIdeas=1 on loopback: prototypes of arcana ideas (lib/arcana-ideas.js), in place of the Gallery.
+  const ideas=localArcanaIdeas();
+  if(ideas){
+    app.innerHTML=`${pageHead(src.kicker,ideas.round==="2"?"Arcana ideas, round 2":"Arcana ideas",ideas.round==="2"?"Five takes each on Split Frame, Twin Card and Living Border. Local preview only: nothing here is live or saved.":"Nine prototypes on real cards. Local preview only: nothing here is live or saved.")}${ideas.html}`;
+    ideas.wire(app);
+    return;
+  }
+  // ?wave3=1 on loopback: the November 3 wave on real cards (lib/wave3-review.js), in place of the Gallery.
+  const wave3=localWave3Review();
+  if(wave3){
+    app.innerHTML=`${pageHead(src.kicker,"Wave 3 cosmetics",`${wave3.count} new items on real cards. Approve, ask for changes or cut each one, with a note if you like. Local only: nothing here is live.`)}${wave3.html}`;
+    wave3.wire(app);
+    return;
+  }
   // ?claudeCards=1 on loopback: the ten cards Claude designed (lib/claude-cards.js), in place of the Gallery.
   const claude=localClaudeCards();
   if(claude){

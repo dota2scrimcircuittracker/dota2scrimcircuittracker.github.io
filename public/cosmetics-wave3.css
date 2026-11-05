@@ -1,0 +1,49 @@
+/* November 3 wave (lib/cosmetics-wave3-*.js). These elements carry .w2 (timing, pace and the shared pausing rules
+   in cosmetics-wave2.css) plus .w3 and one of the motion classes below. */
+/* Ravage: tentacles rise in a wave, hold, and sink; spray and foam burst as they hit; the art shakes. */
+.w3.erupt{animation-name:w3-erupt;animation-timing-function:cubic-bezier(.3,1.3,.5,1)}
+@keyframes w3-erupt{0%,8%{transform:translateY(var(--dy,240px))}24%,58%{transform:translateY(0)}78%,100%{transform:translateY(var(--dy,240px))}}
+.w3.splash{animation-name:w3-splash;animation-timing-function:ease-out}
+@keyframes w3-splash{0%,12%{transform:translate(0,0);opacity:0}14%{opacity:1}34%,100%{transform:translate(var(--dx,0px),var(--dy,-60px));opacity:0}}
+.w3.foam{animation-name:w3-foam;animation-timing-function:ease-in-out}
+@keyframes w3-foam{0%,10%{opacity:0}20%,60%{opacity:1}80%,100%{opacity:0}}
+.w3.quake{animation-name:w3-quake}
+@keyframes w3-quake{0%,15%,32%,100%{transform:translate(0,0)}17%{transform:translate(3px,-2px)}19%{transform:translate(-3px,2px)}21%{transform:translate(2px,2px)}23%{transform:translate(-2px,-1px)}25%{transform:translate(1px,1px)}28%{transform:translate(-1px,0)}}
+/* Midas Touch: the gold spreads from the corner, holds, and recedes. */
+.w3.gild{animation-name:w3-gild;animation-timing-function:ease-in-out}
+@keyframes w3-gild{0%,4%{transform:scale(0)}45%,78%{transform:scale(1)}100%{transform:scale(0)}}
+/* Modifiers in scripts the signature fonts don't carry. */
+[data-writing=arabic]{--signature-font:'Segoe UI','Tahoma','Noto Naskh Arabic',sans-serif;}
+[data-writing=deva]{--signature-font:'Nirmala UI','Mangal','Noto Sans Devanagari',sans-serif;}
+[data-writing=geor]{--signature-font:'Sylfaen','Segoe UI','Noto Sans Georgian',serif;}
+.translation-swatch.arabic,.name-rendering-preview.arabic{font-family:'Segoe UI','Tahoma','Noto Naskh Arabic',sans-serif;color:#ffe2a8}
+.translation-swatch.devanagari,.name-rendering-preview.devanagari{font-family:'Nirmala UI','Mangal','Noto Sans Devanagari',sans-serif;color:#ffc9a8}
+.translation-swatch.georgian,.name-rendering-preview.georgian{font-family:'Sylfaen','Segoe UI','Noto Sans Georgian',serif;color:#d8f0ff}
+/* Wave 3 review page (lib/wave3-review.js, ?wave3=1 on the Gallery, loopback only). */
+.w3r-slot{margin:8px 0 44px}
+.w3r-slot h2{display:flex;align-items:baseline;gap:10px}.w3r-slot h2 span{font-size:.8rem;color:var(--muted,#9aa3b2)}
+.w3r-note{margin:-4px 0 14px;color:var(--muted,#9aa3b2);font-size:.85rem}
+.w3r-slot h3{margin:22px 0 12px;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--rarity)}
+.w3r-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:30px 22px}
+.w3r-item{margin:0;display:grid;gap:10px;justify-items:center;align-content:start}
+.w3r-card .ft-card{width:240px}
+.w3r-item figcaption{display:grid;gap:3px;text-align:center;max-width:260px}
+.w3r-item small{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--rarity)}
+.w3r-item code{font-size:.7rem;color:var(--muted,#9aa3b2)}
+.w3r-item p{margin:2px 0 0;font-size:.8rem;line-height:1.45;color:var(--muted,#9aa3b2)}
+.w3r-preview{font-size:1rem}
+/* Voting on the review page. */
+.w3r-tally{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:0 0 24px;padding:10px 14px;border:1px solid #3a3346;border-radius:10px;background:#17141d;font-size:.85rem}
+.w3r-tally b{font-variant-numeric:tabular-nums}
+.w3r-tally [data-tally=approve] b{color:#5fd38a}.w3r-tally [data-tally=tweak] b{color:#ffcf4a}.w3r-tally [data-tally=cut] b{color:#ff6a5a}
+.w3r-tally output{margin-left:auto;color:var(--muted,#9aa3b2)}
+.w3r-vote{display:grid;gap:6px;width:240px}
+.w3r-vote-buttons{display:flex;gap:4px}
+.w3r-vote-buttons button{flex:1;padding:6px 4px;border-radius:6px;font-size:.75rem}
+.w3r-vote-buttons [data-vote-pick=approve][aria-pressed=true]{background:#5fd38a;border-color:#5fd38a;color:#06140c}
+.w3r-vote-buttons [data-vote-pick=tweak][aria-pressed=true]{background:#ffcf4a;border-color:#ffcf4a;color:#1a1300}
+.w3r-vote-buttons [data-vote-pick=cut][aria-pressed=true]{background:#ff6a5a;border-color:#ff6a5a;color:#1d0504}
+.w3r-vote textarea{width:100%;box-sizing:border-box;resize:vertical;font:inherit;font-size:.8rem;padding:6px 8px;border-radius:6px;border:1px solid #3a3346;background:#0f0d13;color:inherit}
+.w3r-item:has([data-vote=approve]) .w3r-card{outline:2px solid #5fd38a;outline-offset:4px;border-radius:12px}
+.w3r-item:has([data-vote=tweak]) .w3r-card{outline:2px solid #ffcf4a;outline-offset:4px;border-radius:12px}
+.w3r-item:has([data-vote=cut]) .w3r-card{opacity:.45}

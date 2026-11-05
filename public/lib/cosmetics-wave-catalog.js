@@ -145,6 +145,40 @@ export const WAVE2_CATALOG=[
 // Static October 30 finishes; every other one animates and takes the speed control.
 const WAVE2_STATIC_FINISHES=['duotone','watercolour','petrified'];
 export const WAVE2_ANIMATED_FINISHES=WAVE2_CATALOG.filter(i=>i.type==='finish'&&!WAVE2_STATIC_FINISHES.includes(i.id)).map(i=>i.id);
+// The November 3 wave (drawn by lib/cosmetics-wave3-*.js): three of each rarity per slot, plus three modifiers.
+// Live: released with the token shop. With WAVE3_LIVE false, cosmetics-catalog.js would add them only on loopback.
+export const WAVE3_LIVE=true;
+const item3=(...args)=>({...item(...args),expansion:{wave:3}});
+const modifier=(id,name,description,preview)=>({id,key:`translation:${id}`,name,type:'translation',rarity:'legendary',description,preview});
+export const WAVE3_CATALOG=[
+ item3('border','cedar','Cedar','common','#b8724a','#5a2f17','Warm cedar mitred at the corners, its grain running round the card.'),
+ item3('border','cork','Cork','common','#d6ae7c','#7a5230','Pressed cork board, flecked light and dark, with a red pin in the corner.'),
+ item3('border','damascus','Damascus','rare','#e2e6ea','#4d545c','Folded steel: rippling light and dark bands, with a slow glint passing along the blade.'),
+ item3('border','lapis','Lapis','rare','#2c4fb3','#e9c25a','Deep blue lapis flecked with gold. The flecks catch the light as it moves.'),
+ item3('border','stitched-leather','Stitched Leather','rare','#7d4627','#e3c08a','Tooled brown leather with a cream saddle stitch and brass rivets in the corners.'),
+ item3('border','lantern-festival','Lantern Festival','epic','#c4302b','#f0c060','Red lacquer and gold. Paper lanterns hang off the top edge, swaying and glowing.'),
+ item3('border','radiant-dire','Radiant & Dire','legendary','#9fd66a','#b0260f','Radiant light on the left, Dire fire on the right. Motes and embers rise up each side and clash at the seams.'),
+ item3('finish','linen','Linen','common','#efe6d2','#8a7d66','A fine woven linen texture pressed into the art.'),
+ item3('finish','mosaic','Mosaic','rare','#e0a93a','#2a1e12','The art set in small square tiles with dark grout. Now and then a tile catches the light.'),
+ item3('finish','polaroid','Polaroid','rare','#f3e2c0','#ff8a3d','Faded instant-film colour with a warm vignette and a light leak breathing in the corner.'),
+ item3('finish','gold-emboss','Gold Emboss','rare','#f7d774','#6a4210','The art pressed into gold relief, with a slow shine passing over it.'),
+ item3('finish','fireflies','Fireflies','epic','#e8ff7a','#1a2a10','Dusk falls over the art and fireflies drift through it, blinking at their own pace.'),
+ item3('finish','sakura-fall','Sakura Fall','epic','#ffb3cf','#7a3a4a','A blossoming branch reaches in from the corner and petals tumble down across the art.'),
+ item3('finish','ravage','Ravage','legendary','#2fa694','#0c3a33','Tentacles curl up through a churning sea in a wave, the card shakes, and they sink back into the spray.'),
+ item3('finish','midas-touch','Midas Touch','legendary','#ffd34a','#6a4210','Gold spreads across the art from the corner until the whole card is gilded, then fades back.'),
+ item3('autograph','fountain-pen','Fountain Pen','rare','#5b86ff','#1b2a6b','Royal blue ink in a fine copperplate hand, pooling at the turns, with an ink drop at the end.'),
+ item3('autograph','blackletter','Blackletter','rare','#d0142f','#f3d27a','Crimson blackletter edged in gold.'),
+ item3('autograph','circuit-trace','Circuit Trace','epic','#39ff9a','#0d2a1c','Your name as green circuit traces. Pulses of current run through the letters out to the pads.'),
+ item3('autograph','smoke-script','Smoke Script','epic','#f2f2f2','#8a8f99','Soft white letters over a dark haze, shedding curls of smoke that drift up and away.'),
+ item3('autograph','holo-sticker','Holo Sticker','epic','#ff7ad9','#7af7ff','A die-cut sticker with a white edge and a holographic face that shifts colour.'),
+ item3('autograph','lightning-script','Lightning Script','legendary','#e6f6ff','#3a9bff','Electric blue letters crackling with small arcs. Every few seconds a forked bolt strikes the name.'),
+ item3('autograph','soulfire','Soulfire','legendary','#bff6ff','#1aa89a','Cold blue-green flames lick up off every letter.'),
+ modifier('arabic','Arabic Script','A legendary modifier that sounds your name out in Arabic script, right to left.','Fav → فاف'),
+ modifier('devanagari','Devanagari','A legendary modifier that sounds your name out in Devanagari, the script used for Hindi.','Fav → फ़ाव'),
+ modifier('georgian','Mkhedruli','A legendary modifier that sounds your name out in Georgian Mkhedruli script.','Fav → ფავ'),
+];
+const WAVE3_STATIC_FINISHES=['linen'];
+export const WAVE3_ANIMATED_FINISHES=WAVE3_CATALOG.filter(i=>i.type==='finish'&&!WAVE3_STATIC_FINISHES.includes(i.id)).map(i=>i.id);
 // Finishes that animate take the speed control; the particle ones also take the amount control.
-export const WAVE_ANIMATED_FINISHES=['risograph','confetti-pop','sketchbook','thermal-cam','vhs-tracking','rain-glass','aurora-veil','disco-ball','enso-ink-finish',...WAVE2_ANIMATED_FINISHES];
+export const WAVE_ANIMATED_FINISHES=['risograph','confetti-pop','sketchbook','thermal-cam','vhs-tracking','rain-glass','aurora-veil','disco-ball','enso-ink-finish',...WAVE2_ANIMATED_FINISHES,...WAVE3_ANIMATED_FINISHES];
 export const WAVE_PARTICLE_FINISHES=['confetti-pop','rain-glass','disco-ball'];

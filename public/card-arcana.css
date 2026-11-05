@@ -1,0 +1,166 @@
+/* Living borders and Twin Cards (lib/card-arcana.js). */
+
+/* Living borders: one layer over the frame, in the border's own colours (--a, --b on the card). */
+.living-fx { position: absolute; inset: 0; z-index: 6; pointer-events: none; border-radius: var(--r, 14px); --band: calc(var(--frame, 6px) + 3px); }
+.living-pulse, .living-orbit, .living-shimmer {
+  padding: var(--band);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.living-pulse { background: linear-gradient(135deg, var(--a), var(--b)); mix-blend-mode: screen; animation: living-pulse 2.2s ease-in-out infinite; }
+.ft-card[data-living="pulse"] { border-radius: var(--r, 14px); animation: living-pulse-glow 2.2s ease-in-out infinite; }
+@keyframes living-pulse { 0%, 100% { opacity: .05; } 50% { opacity: .75; } }
+@keyframes living-pulse-glow { 0%, 100% { box-shadow: 0 0 0 transparent; } 50% { box-shadow: 0 0 26px 4px var(--a); } }
+@property --living-ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.living-orbit { background: conic-gradient(from var(--living-ang), transparent 0 78%, var(--b) 88%, #fff 93%, var(--a) 96%, transparent 100%); mix-blend-mode: screen; animation: living-orbit 3s linear infinite; }
+@keyframes living-orbit { to { --living-ang: 360deg; } }
+.living-shimmer { background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .95) 48%, var(--a) 52%, transparent 65%) 0 0 / 300% 100% no-repeat; mix-blend-mode: screen; animation: living-shimmer 3.2s ease-in-out infinite; }
+@keyframes living-shimmer { 0% { background-position: 120% 0; } 55%, 100% { background-position: -20% 0; } }
+.living-embers { overflow: visible; }
+.living-embers i { position: absolute; left: var(--x); top: var(--y); width: calc(4px * var(--s)); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff6c8, var(--a) 45%, transparent 70%); opacity: 0; animation: living-ember 3s ease-out var(--d) infinite; }
+@keyframes living-ember { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc((var(--s) - 1) * 40px), -90px); } }
+.living-trace svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.living-trace rect { fill: none; stroke: #fff; stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-dasharray: 18 82; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--a)) drop-shadow(0 0 8px var(--b)); animation: living-trace 4s linear infinite; }
+@keyframes living-trace { to { stroke-dashoffset: -100; } }
+
+/* Twin Card: two full cards in one cell, turning on a 10 second loop (5 s each). Flip, Shuffle, Scan
+   and Glitch run by themselves; Corner Peel waits for a hover (and runs by itself on touch screens). */
+.ft-twin { display: grid; position: relative; }
+.ft-twin > .ft-card { grid-area: 1 / 1; animation-duration: 10s; animation-iteration-count: infinite; }
+
+.ft-twin[data-twin="flip"] { perspective: 1200px; }
+/* Two halves: the showing card turns to edge-on, and at that same moment the other turns in from edge-on. */
+.ft-twin[data-twin="flip"] > .ft-card { animation-name: twin-flip-a; animation-timing-function: linear; }
+.ft-twin[data-twin="flip"] > .ft-twin-b { animation-name: twin-flip-b; }
+@keyframes twin-flip-a {
+  0%, 42% { transform: rotateY(0); visibility: visible; animation-timing-function: ease-in; }
+  46% { transform: rotateY(-90deg); visibility: visible; }
+  46.01% { transform: rotateY(-90deg); visibility: hidden; }
+  95.99% { transform: rotateY(90deg); visibility: hidden; }
+  96% { transform: rotateY(90deg); visibility: visible; animation-timing-function: ease-out; }
+  100% { transform: rotateY(0); visibility: visible; }
+}
+@keyframes twin-flip-b {
+  0%, 45.99% { transform: rotateY(90deg); visibility: hidden; }
+  46% { transform: rotateY(90deg); visibility: visible; animation-timing-function: ease-out; }
+  50%, 92% { transform: rotateY(0); visibility: visible; animation-timing-function: ease-in; }
+  96% { transform: rotateY(-90deg); visibility: visible; }
+  96.01%, 100% { transform: rotateY(-90deg); visibility: hidden; }
+}
+
+.ft-twin[data-twin="peel"] > .ft-card:first-child { z-index: 1; clip-path: polygon(0 0, 82% 0, 100% 13%, 100% 100%, 0 100%); transition: clip-path .7s cubic-bezier(.3, .1, .2, 1); }
+.ft-twin[data-twin="peel"]:hover > .ft-card:first-child { clip-path: polygon(0 0, 0 0, 100% 140%, 100% 100%, 0 100%); }
+.ft-twin[data-twin="peel"]::after { content: ""; position: absolute; right: 0; top: 0; width: 18%; height: 13%; z-index: 2; pointer-events: none; background: linear-gradient(225deg, transparent 50%, rgba(255, 255, 255, .55) 50%, rgba(0, 0, 0, .35) 100%); transition: opacity .3s; }
+.ft-twin[data-twin="peel"]:hover::after { opacity: 0; }
+@media (hover: none) { .ft-twin[data-twin="peel"] > .ft-card:first-child { animation-name: twin-peel; } }
+@keyframes twin-peel { 0%, 42%, 98%, 100% { clip-path: polygon(0 0, 82% 0, 100% 13%, 100% 100%, 0 100%); } 50%, 90% { clip-path: polygon(0 0, 0 0, 100% 140%, 100% 100%, 0 100%); } }
+
+.ft-twin[data-twin="shuffle"] > .ft-card { animation-name: twin-shuffle-a; animation-timing-function: ease-in-out; }
+.ft-twin[data-twin="shuffle"] > .ft-twin-b { animation-name: twin-shuffle-b; }
+@keyframes twin-shuffle-a {
+  0%, 40% { transform: none; filter: none; z-index: 2; }
+  46% { transform: translateX(-112%) rotate(-10deg); filter: none; z-index: 2; }
+  47%, 90% { transform: translate(14px, 8px) rotate(5deg) scale(.95); filter: brightness(.6); z-index: 0; }
+  96% { transform: translate(14px, 8px) rotate(5deg) scale(.95); filter: brightness(.6); z-index: 0; }
+  97%, 100% { transform: none; filter: none; z-index: 2; }
+}
+@keyframes twin-shuffle-b {
+  0%, 46% { transform: translate(14px, 8px) rotate(5deg) scale(.95); filter: brightness(.6); z-index: 0; }
+  47%, 90% { transform: none; filter: none; z-index: 2; }
+  96% { transform: translateX(-112%) rotate(-10deg); filter: none; z-index: 2; }
+  97%, 100% { transform: translate(14px, 8px) rotate(5deg) scale(.95); filter: brightness(.6); z-index: 0; }
+}
+
+.ft-twin[data-twin="scan"] > .ft-twin-b { z-index: 1; animation-name: twin-scan; animation-timing-function: linear; }
+.ft-twin[data-twin="scan"]::after { content: ""; position: absolute; left: -4px; right: -4px; top: 0; height: 3px; z-index: 3; pointer-events: none; background: #bff8ff; box-shadow: 0 0 12px 3px #6be4ff; opacity: 0; animation: twin-scanbar 10s linear infinite; }
+@keyframes twin-scan { 0%, 45% { clip-path: inset(0 0 100% 0); } 55%, 90% { clip-path: inset(0); } 100% { clip-path: inset(0 0 100% 0); } }
+@keyframes twin-scanbar { 0%, 44.9% { opacity: 0; top: 0; } 45% { opacity: 1; top: 0; } 55% { opacity: 1; top: 100%; } 55.1%, 89.9% { opacity: 0; top: 100%; } 90% { opacity: 1; top: 100%; } 100% { opacity: 1; top: 0; } }
+
+.ft-twin[data-twin="glitch"] > .ft-card { animation-name: twin-glitch-a; animation-timing-function: steps(1); }
+.ft-twin[data-twin="glitch"] > .ft-twin-b { animation-name: twin-glitch-b; }
+@keyframes twin-glitch-a {
+  0%, 46% { opacity: 1; transform: none; filter: none; visibility: visible; }
+  47% { transform: translate(-6px, 2px); filter: hue-rotate(90deg) saturate(2); clip-path: inset(10% 0 55% 0); }
+  48% { transform: translate(5px, -3px); filter: hue-rotate(-60deg); clip-path: inset(60% 0 8% 0); }
+  49% { transform: translate(-3px, 0); filter: invert(.2); clip-path: inset(30% 0 30% 0); }
+  50%, 96% { opacity: 0; visibility: hidden; transform: none; filter: none; clip-path: none; }
+  97% { opacity: 1; visibility: visible; transform: translate(4px, 1px); clip-path: inset(0 0 70% 0); }
+  98% { transform: translate(-5px, 2px); filter: hue-rotate(90deg); clip-path: inset(40% 0 20% 0); }
+  99%, 100% { opacity: 1; transform: none; filter: none; clip-path: none; }
+}
+@keyframes twin-glitch-b {
+  0%, 46% { opacity: 0; visibility: hidden; }
+  47% { opacity: 1; visibility: visible; transform: translate(5px, -2px); filter: hue-rotate(-90deg); clip-path: inset(0 0 60% 0); }
+  48% { transform: translate(-4px, 3px); clip-path: inset(50% 0 10% 0); }
+  49% { transform: translate(2px, 0); filter: invert(.2); clip-path: inset(20% 0 40% 0); }
+  50%, 96% { opacity: 1; visibility: visible; transform: none; filter: none; clip-path: none; }
+  97%, 100% { opacity: 0; visibility: hidden; }
+}
+
+/* A card turned over for its stats stops the twin, with that card on top. */
+.ft-twin:has(> .ft-card.flipped) > .ft-card { animation: none; transition: none; }
+.ft-twin:has(> .ft-card.flipped) > .ft-card:not(.flipped) { visibility: hidden; }
+.ft-twin:has(> .ft-card.flipped) > .ft-card.flipped { visibility: visible; opacity: 1; transform: none; filter: none; clip-path: none; z-index: 3; }
+.ft-twin:has(> .ft-card.flipped)::after { display: none; }
+/* Editing: only the card being edited. */
+[data-dex-card] .ft-twin > .ft-twin-b { display: none; }
+[data-dex-card] .ft-twin > .ft-card { animation: none; clip-path: none; transform: none; filter: none; visibility: visible; opacity: 1; }
+[data-dex-card] .ft-twin::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ft-twin > .ft-card, .living-fx, .living-fx i, .living-fx rect, .ft-card[data-living] { animation: none !important; }
+  .ft-twin:not([data-twin="peel"]) > .ft-twin-b { visibility: hidden; }
+  .ft-twin::after { display: none; }
+}
+
+/* Tool pictures (lib/card-arcana.js toolArtHtml): Double finish's two sheets, a Twin Card's two cards. */
+.tool-art { position: relative; display: block; width: 64px; aspect-ratio: 5 / 7; margin: 6px auto; }
+.tool-art i { position: absolute; inset: 0; border-radius: 6px; border: 2px solid #ff9bd5; }
+.tool-double i:first-child { background: linear-gradient(135deg, #ff5ab4, #7a3cff); transform: translate(-6px, 4px) rotate(-6deg); opacity: .8; }
+.tool-double i:last-child { background: linear-gradient(135deg, rgba(111, 240, 240, .85), rgba(242, 239, 143, .85)); transform: translate(6px, -4px) rotate(6deg); mix-blend-mode: screen; }
+.tool-double b { position: absolute; right: -8px; bottom: -6px; font: 800 12px/1 var(--mono, monospace); color: #fff; background: #ff5ab4; border-radius: 9px; padding: 3px 5px; }
+.tool-double b::after { content: "×2"; }
+.tool-twin i:first-child { background: linear-gradient(160deg, #3a2a6b, #ff5ab4); }
+.tool-twin i:last-child { background: linear-gradient(160deg, #0f4b5c, #6ff0f0); animation: tool-twin-turn 4s ease-in-out infinite; }
+@keyframes tool-twin-turn { 0%, 40% { opacity: 0; transform: none; } 50%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.tool-twin-flip i:last-child { animation-name: tool-twin-flip; }
+@keyframes tool-twin-flip { 0%, 40% { transform: rotateY(90deg); opacity: 1; } 50%, 90% { transform: rotateY(0); opacity: 1; } 100% { transform: rotateY(90deg); opacity: 1; } }
+.tool-twin-peel i:last-child { animation: none; opacity: 1; z-index: -1; }
+.tool-twin-peel i:first-child { z-index: 1; clip-path: polygon(0 0, 70% 0, 100% 25%, 100% 100%, 0 100%); }
+.tool-twin-shuffle i:last-child { animation-name: tool-twin-shuffle; opacity: 1; }
+@keyframes tool-twin-shuffle { 0%, 40% { transform: translate(8px, 5px) rotate(6deg); z-index: -1; } 50%, 90% { transform: none; z-index: 1; } 100% { transform: translate(8px, 5px) rotate(6deg); z-index: -1; } }
+.tool-twin-scan i:last-child { animation-name: tool-twin-scan; opacity: 1; }
+@keyframes tool-twin-scan { 0%, 40% { clip-path: inset(0 0 100% 0); } 55%, 90% { clip-path: inset(0); } 100% { clip-path: inset(0 0 100% 0); } }
+.tool-twin-glitch i:last-child { animation-timing-function: steps(2); }
+@media (prefers-reduced-motion: reduce) { .tool-art i { animation: none !important; } }
+
+/* Collection swatches: a living border on a small gold frame, a tool's picture. */
+.collection-swatch.living-swatch { position: relative; --a: #ffd36b; --b: #ff5ab4; --r: 6px; --frame: 3px; border: 3px solid #c9a24a; border-radius: 6px; background: #1b1712; }
+.collection-swatch.tool-swatch { display: grid; place-items: center; }
+.twin-options { margin-top: 12px; }
+.twin-fields { display: flex; flex-wrap: wrap; gap: 10px; }
+.twin-fields label { display: grid; gap: 4px; }
+/* Clicked: the twin stops turning and holds one design (parts/player-card.js); each click turns it over. */
+.ft-twin[data-held] { cursor: pointer; }
+.ft-twin[data-held] > .ft-card { animation: twin-held .35s ease-out !important; clip-path: none !important; transform: none; filter: none; opacity: 1; visibility: visible; }
+.ft-twin[data-held="a"] > .ft-twin-b, .ft-twin[data-held="b"] > .ft-card:first-child { visibility: hidden; animation: none !important; }
+.ft-twin[data-held]::after { display: none; }
+@keyframes twin-held { from { transform: perspective(1200px) rotateY(90deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ft-twin[data-held] > .ft-card { animation: none !important; } }
+
+/* The editor preview turns a Twin Card too, unless paused; the copy never takes clicks or drags. */
+[data-card-editor] .ft-twin > .ft-twin-b { pointer-events: none; }
+[data-card-editor] .ft-twin:has(> .ft-card[data-preview-paused]) > .ft-card, [data-card-editor] .ft-twin:has(> .ft-card.flipped) > .ft-card { animation: none !important; clip-path: none !important; transform: none; filter: none; visibility: visible; opacity: 1; }
+[data-card-editor] .ft-twin:has(> .ft-card[data-preview-paused]) > .ft-twin-b, [data-card-editor] .ft-twin:has(> .ft-card.flipped) > .ft-twin-b { display: none; }
+[data-card-editor] .ft-twin:has(> .ft-card[data-preview-paused])::after { display: none; }
+/* Style pickers in pages of rows: borders two, finishes three (parts/card-editor-ui.js pages them). */
+.visual-style-strip.style-rows-2, .visual-style-strip.style-rows-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); grid-auto-flow: row; overflow: visible; }
+.visual-style-strip.style-rows-2 > button, .visual-style-strip.style-rows-3 > button { width: 100%; }
+.visual-style-strip > button[hidden] { display: none !important; }
+.editor-picker-tools { flex-wrap: wrap; }
+.editor-picker-page { font: 700 10px/1 var(--mono, monospace); opacity: .8; min-width: 34px; text-align: center; }
+.twin-turn-strip .tool-swatch { display: grid; place-items: center; }
+.border-choice-column { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.editor-picker-tools > button:nth-child(3) { font-size: 17px !important; line-height: 14px; }
+.visual-style-strip.twin-turn-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); overflow: visible; }
+.visual-style-strip.twin-turn-strip > button { width: 100%; }
+.editor-rarity-pills { margin: 0 0 8px; }

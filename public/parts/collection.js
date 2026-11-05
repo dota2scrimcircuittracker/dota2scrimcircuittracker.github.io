@@ -9,7 +9,9 @@ import { createPlayerCards, PAINT_FILTER, wirePlayerCards, fitDesignCards } from
 import { startSteamSignIn, steamName, myName } from './me.js';
 import { HERO_META } from '../lib/hero-meta.js';
 import { cardArtOptions, CARD_STYLES, defaultCardCrop, cardArtwork, screenArt, SCREEN_COUNT } from '../lib/card-art.js';
-import { cardDesignState, cardSlotName, shownNickname, RECYCLE_COST, MAX_EMBLEMS, CARD_SLOTS, MAX_FINISH_LAYERS, finishStackLimit, hasArcanaUpgrade } from '../lib/cosmetics-engine.js';
+import { cardDesignState, cardSlotName, shownNickname, RECYCLE_COST, MAX_EMBLEMS, CARD_SLOTS, MAX_FINISH_LAYERS, finishStackLimit, hasArcanaUpgrade, doubleFinishCopies } from '../lib/cosmetics-engine.js';
+import { toolArtHtml, livingBorderHtml } from '../lib/card-arcana.js';
+import { TWIN_TURNS } from '../lib/cosmetics-arcana-catalog.js';
 import { availablePackOffers, completedPackOffers, markPackOfferClaimed } from '../lib/bonus-offers.js';
 import { startFeedback } from '../lib/feedback.js';
 import { showProfileBackground, mountBackgroundButton, letterCaseHtml, drawLetterCase } from './profile-background.js';
@@ -42,11 +44,14 @@ const dragFrame=face=>{
 };
 
 const gift=`<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 13h24v6H4zm2 6h20v11H6zm10-6v17M16 13C4 13 5 2 11 4c4 1 5 9 5 9zm0 0c12 0 11-11 5-9-4 1-5 9-5 9z"/></svg>`;
-const colors={common:'#abb3be',rare:'#80c4ff',epic:'#d7a3ff',legendary:'#ffd879'};
+const colors={common:'#abb3be',rare:'#80c4ff',epic:'#d7a3ff',legendary:'#ffd879',arcana:'#ff5ab4'};
 const COLLECTION_TOTAL=CATALOG.length+SCREEN_COUNT;
 // `translation` is the legacy save/inventory key; players know these as modifiers.
-const typeLabel=type=>type==='translation'?'modifier':type;
+const typeLabel=type=>type==='translation'?'modifier':type==='living'?'living border':type==='tool'?'arcana':type;
 export function swatch(item,name='Scionara') {
+  // Arcana tools show what they do; a living border runs on a small gold frame.
+  if(item.type==='tool')return `<span class="collection-swatch tool-swatch">${toolArtHtml(item)}</span>`;
+  if(item.type==='living')return `<span class="collection-swatch living-swatch">${livingBorderHtml({living:item.id})}</span>`;
   if(item.type==='autograph') return `<span class="collection-swatch signature-sample">${signatureHtml({...DEFAULT_EQUIPMENT,autograph:item.id},myName()??name).replace('card-autograph','collection-signature')}</span>`;
   if(item.type==='translation')return `<span class="collection-swatch translation-swatch ${item.id}">${esc(item.preview)}</span>`;
   if(item.expansion){
@@ -63,7 +68,7 @@ const DEX_ORDER=[...CATALOG].sort((a,b)=>TYPE_ORDER.indexOf(a.type)-TYPE_ORDER.i
 const dexHtml=(inventory,filter='all',status='all',name,equipment=DEFAULT_EQUIPMENT,editable=false,rarity='all',newOnly=false)=>DEX_ORDER.filter(i=>(!newOnly||i.expansion)&&(filter==='all'||i.type===filter)&&(rarity==='all'||i.rarity===rarity)&&(status==='all'||(status==='owned'?(inventory[i.key]??0)>0:!inventory[i.key]))).map((i)=>{
   const n=inventory[i.key]??0;
   const equipped=equipment[i.type]===i.id;
-  return `<article class="dex-item ${n?'collected':'uncollected'}${equipped?' equipped':''}" style="--rarity:${colors[i.rarity]}"><button type="button" class="dex-preview-choice" data-preview="${i.key}" aria-label="Preview ${esc(i.name)}">${swatch(i,name)}<span>Preview</span></button><small>${esc(typeLabel(i.type))} · ${i.rarity}</small><strong>${esc(i.name)}</strong><span>${n?`Owned ×${n}`:'Not collected'}</span>${equipped?'<span class="equipped-label">Equipped</span>':''}${n&&editable?`<button type="button" data-equip="${i.key}" ${equipped?'disabled aria-pressed="true"':'aria-pressed="false"'}>${equipped?'Equipped':'Equip'}</button>`:''}</article>`;
+  return `<article class="dex-item ${n?'collected':'uncollected'}${equipped?' equipped':''}" style="--rarity:${colors[i.rarity]}"><button type="button" class="dex-preview-choice" data-preview="${i.key}" aria-label="Preview ${esc(i.name)}">${swatch(i,name)}<span>Preview</span></button><small>${esc(typeLabel(i.type))} · ${i.rarity}</small><strong>${esc(i.name)}</strong><span>${n?`Owned ×${n}`:'Not collected'}</span>${equipped?'<span class="equipped-label">Equipped</span>':''}${n&&editable&&i.type!=='tool'?`<button type="button" data-equip="${i.key}" ${equipped?'disabled aria-pressed="true"':'aria-pressed="false"'}>${equipped?'Equipped':'Equip'}</button>`:''}</article>`;
 }).join('');
 // Pack loading screens in the Collection tab ("loading screens" type): every one, collected or not,
 // each previewable on the card. Steam rarities, so the hero filter stands in for the rarity one.
@@ -106,7 +111,13 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   // Customize undo history (Ctrl+Z / Ctrl+Y) for the card being edited. Changes in quick succession, like one slider drag, are one step.
   let editHistory={slot:null,undo:[],redo:[],last:null,at:0},editorKeys=null,miscSlot=null;
   const editorDrafts=createEditorDrafts();let editorUI=null;
-  const rememberEditor=()=>{if(editorUI&&body.querySelector('.card-editor'))editorDrafts.set(selectedSlot,{equipment,baseline:initialEquipment,history:editHistory,view:editorUI.capture()});};
+  // Twin Card: the editor works on the card's front or its back (equipment.twin.design). While on the back,
+  // `equipment` is the back and the front waits in frontStash; whole() is the card as it saves.
+  let side='front',frontStash=null;
+  const whole=()=>side==='back'?{...frontStash,twin:{...frontStash.twin,design:equipment}}:equipment;
+  const leaveBack=()=>{if(side==='back')equipment=whole();side='front';frontStash=null;};
+  const freshHistory=()=>{editHistory={slot:selectedSlot,undo:[],redo:[],last:null,at:0};};
+  const rememberEditor=()=>{if(editorUI&&body.querySelector('.card-editor'))editorDrafts.set(selectedSlot,{equipment:whole(),baseline:initialEquipment,history:editHistory,view:editorUI.capture()});};
   const say=text=>{
     message.textContent=body.classList.contains('editor-workspace')&&text==='Unsaved card changes'?'':text;
     editorUI?.refresh();
@@ -155,7 +166,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   }
   function wireCardSlots() {
     body.querySelectorAll('[data-card-slot]').forEach(b=>{b.disabled=busy||(!editable&&!designs().cardDesigns[Number(b.dataset.cardSlot)]);b.onclick=()=>{
-      if(tab==='customize')rememberEditor();editorUI?.destroy();editorUI=null;
+      if(tab==='customize')rememberEditor();leaveBack();editorUI?.destroy();editorUI=null;
       previewItem=null;selectedSlot=Number(b.dataset.cardSlot);
       const draft=editorDrafts.get(selectedSlot);equipment=draft?.equipment??structuredClone(selectedEquipment());initialEquipment=draft?.baseline??JSON.stringify(equipment);editHistory=draft?.history??{slot:selectedSlot,undo:[],redo:[],last:null,at:0};
       if(editable&&!designs().cardDesigns[selectedSlot])tab='customize';draw();
@@ -165,7 +176,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     body.querySelector('[data-shuffle]')?.addEventListener('change',async e=>{const enabled=e.target.checked;const data=await run('card-settings',{shuffleCards:enabled});draw();if(data)say(enabled?'Other viewers will see a shuffled saved design.':'Other viewers will see your primary card.');});
   }
   function draw() {
-    if(tab!=='customize'){rememberEditor();editorUI?.destroy();editorUI=null;body.classList.remove('editor-workspace');}
+    if(tab!=='customize'){rememberEditor();leaveBack();editorUI?.destroy();editorUI=null;body.classList.remove('editor-workspace');}
     else if(!editorUI){const draft=editorDrafts.get(selectedSlot);if(draft){equipment=draft.equipment;initialEquipment=draft.baseline;editHistory=draft.history;}}
     body._feedToken=null; // cancel a Feed request that finishes after another tab was chosen
     body.dataset.collectionView=tab;body.classList.remove('feed-body'); // the Feed's two-column layout (parts/feed.js) is the Feed's alone
@@ -179,7 +190,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const done=completedPackOffers(state),steps=[['feedback','Send Feedback','Use the Feedback button in the top bar.'],['tour','Take the New here? tour','Finish the basic site tour.'],['discord','Join the Discord','Use the Discord link in the footer.']].filter(([s])=>!done.has(s));
     const offerGuide=steps.length?`<aside class="pack-offer-guide"><strong>Earn ${steps.length===1?'1 more bonus pack':`up to ${steps.length} bonus packs`}</strong><span>Complete each action once. Every one gives you an extra pack.</span><div class="pack-offer-steps" style="--steps:${steps.length}">${steps.map(([,t,d],i)=>`<div><b>${i+1}</b><strong>${t}</strong><small>${d}</small></div>`).join('')}</div></aside>`:'';
     const offerLabel=offers.map(s=>s==='feedback'?'feedback':s==='tour'?'the basic site tour':'joining Discord').join(' · ');
-    body.innerHTML=`<div class="pack-intro"><div class="gift-hero">${gift}</div><h3>${editable?`${packs.length} packs ready`:'Collect your first cards'}</h3><p>Three cards in every pack. Any mix of borders, finishes, signature styles and legendary name rendering. Plus two loading screens you don't have yet, to use as card art.</p><p class="pack-odds">69% Common · 17% Rare · 10% Epic · 4% Legendary · <b style="color:${ARCANA_COLOR}">0.5% Arcana</b> <small>Odds per card in a normal pack. Any card in any pack can be arcana.</small></p><details class="pack-odds-all"><summary>Odds for every pack</summary><table><thead><tr><th>Pack</th><th>Each item is</th></tr></thead><tbody>${ODDS_ROWS.map(([p,n,what])=>`<tr><td>${n}<small>${what}</small></td><td>${oddsText(p)}</td></tr>`).join('')}</tbody></table><small>A pack's rarity is its minimum. Where a kind has no items at a rarity, those rolls move up to the next one it has.</small></details><p>Three welcome packs when you first connect Steam. Earn one normal pack every eight hours, stored up to three. Upgrade packs are stored separately.</p>${offerLabel?`<aside class="pack-offer" role="status"><strong>Bonus pack unlocked</strong><span>You completed ${offerLabel}. Claim your one-time extra pack.</span><button type="button" data-claim-bonus>Claim bonus pack</button></aside>`:''}</div>${editable?`<div class="pack-list">${state?.arcanaSealed?`<button type="button" data-open-arcana class="pack-box available arcana-sealed" style="--rarity:${ARCANA_COLOR}"><span class="arcana-seal" aria-hidden="true"><i></i></span><strong>Arcana upgrade</strong><small>Sealed · open to unlock double finishes</small></button>`:''}${packs.map((min,i)=>`<button type="button" data-open="${i}" class="pack-box available" style="--rarity:${min==='screens'?SCREEN_PACK_COLOR:colors[parsePack(min).tier??min]}">${gift}<strong>${min==='screens'?'Loading screen pack':isThemedPack(min)?themedLabel(min):min==='common'?'Normal / welcome pack':`${min} upgrade pack`}</strong><small>${min==='screens'?'5 new loading screens':isThemedPack(min)?'3 '+parsePack(min).kind+' items':'3 cards + 2 screens'}</small>${min==='screens'?'':`<small class="pack-box-odds">${oddsText(min)}</small>`}</button>`).join('')}${normal<3?`<div class="pack-box charging" style="--rarity:${colors.common}">${gift}<strong>Next pack</strong><b data-pack-timer>--:--:--</b><small>${normal} / 3 normal packs stored</small></div>`:''}</div>`:'<button type="button" data-signin>Connect Steam</button>'}${editable?'<p class="pack-countdown" data-pack-countdown></p>':''}<div class="pack-results" aria-live="polite"></div>`;
+    body.innerHTML=`<div class="pack-intro"><div class="gift-hero">${gift}</div><h3>${editable?`${packs.length} packs ready`:'Collect your first cards'}</h3><p>Three cards in every pack. Any mix of borders, finishes, signature styles and legendary name rendering. Plus two loading screens you don't have yet, to use as card art.</p><p class="pack-odds">69% Common · 17% Rare · 10% Epic · 4% Legendary · <b style="color:${ARCANA_COLOR}">0.5% Arcana</b> <small>Odds per card in a normal pack. Any card in any pack can be arcana, up to 15% in a legendary pack.</small></p><details class="pack-odds-all"><summary>Odds for every pack</summary><table><thead><tr><th>Pack</th><th>Each item is</th></tr></thead><tbody>${ODDS_ROWS.map(([p,n,what])=>`<tr><td>${n}<small>${what}</small></td><td>${oddsText(p)}</td></tr>`).join('')}</tbody></table><small>A pack's rarity is its minimum. Where a kind has no items at a rarity, those rolls move up to the next one it has.</small></details><p>Three welcome packs when you first connect Steam. Earn one normal pack every eight hours, stored up to three. Upgrade packs are stored separately.</p>${offerLabel?`<aside class="pack-offer" role="status"><strong>Bonus pack unlocked</strong><span>You completed ${offerLabel}. Claim your one-time extra pack.</span><button type="button" data-claim-bonus>Claim bonus pack</button></aside>`:''}</div>${editable?`<div class="pack-list">${state?.arcanaSealed?`<button type="button" data-open-arcana class="pack-box available arcana-sealed" style="--rarity:${ARCANA_COLOR}"><span class="arcana-seal" aria-hidden="true"><i></i></span><strong>Arcana upgrade</strong><small>Sealed · open to unlock double finishes</small></button>`:''}${packs.map((min,i)=>`<button type="button" data-open="${i}" class="pack-box available" style="--rarity:${min==='screens'?SCREEN_PACK_COLOR:colors[parsePack(min).tier??min]}">${gift}<strong>${min==='screens'?'Loading screen pack':isThemedPack(min)?themedLabel(min):min==='common'?'Normal / welcome pack':`${min} upgrade pack`}</strong><small>${min==='screens'?'5 new loading screens':isThemedPack(min)?'3 '+parsePack(min).kind+' items':'3 cards + 2 screens'}</small>${min==='screens'?'':`<small class="pack-box-odds">${oddsText(min)}</small>`}</button>`).join('')}${normal<3?`<div class="pack-box charging" style="--rarity:${colors.common}">${gift}<strong>Next pack</strong><b data-pack-timer>--:--:--</b><small>${normal} / 3 normal packs stored</small></div>`:''}</div>`:'<button type="button" data-signin>Connect Steam</button>'}${editable?'<p class="pack-countdown" data-pack-countdown></p>':''}<div class="pack-results" aria-live="polite"></div>`;
     body.querySelector('.pack-intro')?.insertAdjacentHTML('beforeend',offerGuide);
     body.querySelector('[data-signin]')?.addEventListener('click',signIn);
     body.querySelector('[data-claim-bonus]')?.addEventListener('click',async()=>{const source=offers[0],data=await run('claim-bonus',{source});if(data){try{localStorage.removeItem(`ad2l-pack-offer:${source}`);}catch{}markPackOfferClaimed(source);drawPacks();say(data.alreadyClaimed?'This bonus was already claimed. Your collection is up to date.':'Bonus pack added to your collection.');}});
@@ -240,7 +251,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const done=()=>Array.from({length:total}).every((_,i)=>rewardRevealed[i]);
     const faceDown=(i,rarity,label,front,flavour='')=>{const open=!!rewardRevealed[i];return `<button type="button" class="reward-card opening-prismatic ${flavour} ${open?'revealed':''}" style="--rarity:${rarity};--delay:${i*90}ms" aria-label="${open?esc(label):`Reveal card ${i+1} of ${total}`}" data-reveal="${i}"><span class="reward-back">${gift}<b>AD2L</b></span><span class="reward-front">${front}</span></button>`;};
     // An item this page doesn't know yet (the server's catalog is newer): still show the slot instead of failing the whole reveal.
-    const cardHtml=(r,i)=>{if(r.upgrade)return faceDown(i,ARCANA_COLOR,'Arcana upgrade: double finish',`${doubleArt('reward')}<small>arcana upgrade</small><strong>Double finish</strong><span>Stack a second finish on your card. Each arcana card adds a layer, up to ${MAX_FINISH_LAYERS}. Set it in Customize.</span>`,'reward-legendary reward-arcana');if(r.arcana)return faceDown(i,ARCANA_COLOR,'Arcana card','<span class="reward-arcana-gem" aria-hidden="true"></span><small>arcana</small><strong>Arcana card</strong><span>'+(r.key==='arcana:owed'?'Arrives when arcana cards are released':'Added to your collection')+(state?.arcanaSealed?'. Open your Arcana upgrade in Packs.':'')+'</span>','reward-legendary reward-arcana');const item=itemByKey(r.key);if(!item)return faceDown(i,colors.common,'New item','<small>New item</small><strong>Refresh the page to see it</strong><span>Added to your collection</span>');return faceDown(i,colors[item.rarity],`${item.name}, ${item.rarity}, ${r.duplicate?'duplicate':'new discovery'}`,`${swatch(item,name)}<small>${item.rarity} · ${typeLabel(item.type)}</small><strong>${esc(item.name)}</strong><span>${r.duplicate?'Duplicate':'New discovery'}</span>`,item.rarity==='legendary'?'reward-legendary':'');};
+    const cardHtml=(r,i)=>{if(r.upgrade)return faceDown(i,ARCANA_COLOR,'Arcana upgrade: double finish',`${doubleArt('reward')}<small>arcana upgrade</small><strong>Double finish</strong><span>Stack a second finish on your card. Each arcana card adds a layer, up to ${MAX_FINISH_LAYERS}. Set it in Customize.</span>`,'reward-legendary reward-arcana');const tool=r.arcana&&itemByKey(r.key);if(tool)return faceDown(i,ARCANA_COLOR,tool.name,`${toolArtHtml(tool)}<small>arcana</small><strong>${esc(tool.name)}</strong><span>${r.duplicate?'Another copy':'New'}. ${tool.key==='tool:double-finish'?'Stack finishes in Customize.':'Give your card a back in Customize.'}</span>`,'reward-legendary reward-arcana');if(r.arcana)return faceDown(i,ARCANA_COLOR,'Arcana card','<span class="reward-arcana-gem" aria-hidden="true"></span><small>arcana</small><strong>Arcana card</strong><span>'+(r.key==='arcana:owed'?'Arrives when arcana cards are released':'Added to your collection')+(state?.arcanaSealed?'. Open your Arcana upgrade in Packs.':'')+'</span>','reward-legendary reward-arcana');const item=itemByKey(r.key);if(!item)return faceDown(i,colors.common,'New item','<small>New item</small><strong>Refresh the page to see it</strong><span>Added to your collection</span>');return faceDown(i,colors[item.rarity],`${item.name}, ${item.rarity}, ${r.duplicate?'duplicate':'new discovery'}`,`${swatch(item,name)}<small>${item.rarity} · ${typeLabel(item.type)}</small><strong>${esc(item.name)}</strong><span>${r.duplicate?'Duplicate':'New discovery'}</span>`,item.rarity==='legendary'?'reward-legendary':'');};
     const screenHtml=(sc,j)=>faceDown(rewards.length+j,sc.legendary?colors.legendary:colors[sc.rarity]??'#eac47e',`${sc.label}, loading screen for ${sc.hero??'any hero'}`,`<img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><small>${sc.legendary?'Legendary background':`Loading screen · ${esc(sc.hero??'Any hero')}`}</small><strong>${esc(sc.label)}</strong><span>New</span>`,`reward-screen-card${sc.legendary?' reward-legendary':''}`);
     const heading=()=>done()?'Pack opened':`Revealed ${rewardRevealed.filter(Boolean).length} of ${total}`;
     const extras=()=>rewards[0]?.upgrade?'<button type="button" data-view-customize>Try it in Customize</button>':`${shown.length?'<p class="muted">Use loading screens as your card background in Customize, on the hero shown.</p>':''}<button type="button" data-view-dex>View collection</button>`;
@@ -267,6 +278,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     dexThumbs=new IntersectionObserver(entries=>entries.forEach(({isIntersecting,target})=>{
       if(!isIntersecting)return;dexThumbs.unobserve(target);
       const item=itemByKey(target.dataset.preview),eq={...savedEquipment,[item.type]:item.id};
+      if(item.type==='tool')return;
       if(item.type==='translation'&&eq.autograph==='none')eq.autograph='brush-ink';
       const card=face.cloneNode(true),box=document.createElement('span');box.className='dex-thumb';box.append(card);
       card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');card.querySelectorAll('button').forEach(b=>b.remove());
@@ -287,8 +299,8 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     // A name-rendering preview needs a signature to make the script visible.
     if(previewItem?.type==='translation'&&previewEquipment.autograph==='none')previewEquipment.autograph='brush-ink';
     // The Double finish item sits with the finishes and in the Arcana filter, collected or not.
-    const upgrade=upgradeStatus(state),showUpgrade=!adapter?.expansionReview&&['all','finish'].includes(filter)&&['all','arcana'].includes(rarity)&&(status==='all'||(status==='owned')===(upgrade!=='missing'));
-    body.innerHTML=`${cardSlotsHtml()}<div class="dex-progress"><strong>${count+owned.size} / ${total} collected</strong><progress max="${total}" value="${count+owned.size}" aria-label="Collection completion"></progress></div><div class="dex-layout"><div><div class="dex-filters">${dexPills('type','Type',[['all','All'],...(adapter?.expansionReview?['border','finish','autograph']:['border','finish','autograph','translation','screen']).map(t=>[t,t==='screen'?'Loading screens':typeLabel(t)])],filter)}${filter==='screen'?`<label>Hero <select data-screen-hero><option value="all">all</option><option value="any">any hero (events, teams)</option>${SCREEN_HEROES.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('')}</select></label>`:dexPills('rarity','Rarity',[['all','All'],...TIERS.map(t=>[t,t,colors[t]]),['arcana','arcana',ARCANA_COLOR]],rarity)}${dexPills('status','Show',[['all','All'],['owned','Collected'],['missing','Not collected']],status)}</div><div class="dex-grid">${showUpgrade?upgradeTileHtml(state):''}${filter==='screen'?screenDexHtml(owned,status,screenHero,previewScreen):dexHtml(inventory,filter,status,name,savedEquipment,editable,rarity,!!adapter?.expansionReview)+(!adapter?.expansionReview&&filter==='all'&&rarity==='all'?screenDexHtml(owned,status,'all',previewScreen,''):'')}</div></div><aside class="dex-card-preview"><h3>${previewItem||screen?'Card preview':editable?'Your equipped card':'Equipped card'}</h3>${previewItem||screen?`<p class="dex-preview-note">Previewing ${esc(previewItem?.name??screen.label)}${(previewItem?inventory[previewItem.key]>0:owned.has(screen.id))?'':' - Not collected'}. Your saved card is unchanged.</p><button type="button" data-clear-preview>Show equipped card</button>`:''}<div data-dex-card>${cardHtml}</div><dl>${['border','finish','autograph','translation'].map(type=>`<dt>${type==='autograph'?'Signature':type==='translation'?'Name rendering':type}</dt><dd>${esc(itemByKey(`${type}:${previewEquipment[type]}`)?.name??({border:'Default grey',finish:'No finish',autograph:'No signature',translation:'Original name'}[type]))}</dd>`).join('')}</dl>${editable?'<button type="button" data-customize-card>Edit card design</button><p>Equip an item to save and update your card immediately.</p>':''}</aside></div>`;
+    const upgrade=upgradeStatus(state),showUpgrade=upgrade!=='missing'&&!doubleFinishCopies(state)&&!adapter?.expansionReview&&['all','finish'].includes(filter)&&['all','arcana'].includes(rarity)&&(status==='all'||(status==='owned')===(upgrade!=='missing'));
+    body.innerHTML=`${cardSlotsHtml()}<div class="dex-progress"><strong>${count+owned.size} / ${total} collected</strong><progress max="${total}" value="${count+owned.size}" aria-label="Collection completion"></progress></div><div class="dex-layout"><div><div class="dex-filters">${dexPills('type','Type',[['all','All'],...(adapter?.expansionReview?['border','finish','autograph']:['border','living','finish','autograph','translation','tool','screen']).map(t=>[t,t==='screen'?'Loading screens':typeLabel(t)])],filter)}${filter==='screen'?`<label>Hero <select data-screen-hero><option value="all">all</option><option value="any">any hero (events, teams)</option>${SCREEN_HEROES.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('')}</select></label>`:dexPills('rarity','Rarity',[['all','All'],...TIERS.map(t=>[t,t,colors[t]]),['arcana','arcana',ARCANA_COLOR]],rarity)}${dexPills('status','Show',[['all','All'],['owned','Collected'],['missing','Not collected']],status)}</div><div class="dex-grid">${showUpgrade?upgradeTileHtml(state):''}${filter==='screen'?screenDexHtml(owned,status,screenHero,previewScreen):dexHtml(inventory,filter,status,name,savedEquipment,editable,rarity,!!adapter?.expansionReview)+(!adapter?.expansionReview&&filter==='all'&&rarity==='all'?screenDexHtml(owned,status,'all',previewScreen,''):'')}</div></div><aside class="dex-card-preview"><h3>${previewItem||screen?'Card preview':editable?'Your equipped card':'Equipped card'}</h3>${previewItem||screen?`<p class="dex-preview-note">Previewing ${esc(previewItem?.name??screen.label)}${(previewItem?inventory[previewItem.key]>0:owned.has(screen.id))?'':' - Not collected'}. Your saved card is unchanged.</p><button type="button" data-clear-preview>Show equipped card</button>`:''}<div data-dex-card>${cardHtml}</div><dl>${['border','finish','autograph','translation'].map(type=>`<dt>${type==='autograph'?'Signature':type==='translation'?'Name rendering':type}</dt><dd>${esc(itemByKey(`${type}:${previewEquipment[type]}`)?.name??({border:'Default grey',finish:'No finish',autograph:'No signature',translation:'Original name'}[type]))}</dd>`).join('')}</dl>${editable?'<button type="button" data-customize-card>Edit card design</button><p>Equip an item to save and update your card immediately.</p>':''}</aside></div>`;
     wireCardSlots();
     const preview=body.querySelector('[data-dex-card] .ft-card');preview.dataset.designSlot=selectedSlot;preview.classList.remove('flipped');preview.querySelectorAll('button').forEach(b=>b.remove());applyEquipment(preview,previewEquipment,shownName());
     body.querySelectorAll('[data-preview]').forEach(b=>{b.setAttribute('aria-pressed',String(previewItem?.key===b.dataset.preview));b.onclick=()=>{previewItem=itemByKey(b.dataset.preview);previewScreen=null;drawDex();};});
@@ -314,13 +326,26 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   function visualStyleChoices(type) {
     const fallback=type==='border'?{id:DEFAULT_EQUIPMENT.border,name:'Default grey',type,rarity:'standard',texture:'metal',a:'#92969c',b:'#41454c'}:{id:DEFAULT_EQUIPMENT.finish,name:'No finish',type,rarity:'standard',texture:'metal',a:'#536282',b:'#151a29'};
     const items=[...(adapter?.expansionReview&&type==='border'?[]:[fallback]),...ownedStyles(type)];
-    return `<fieldset class="visual-style-options"><legend>${type==='border'?'Border':'Finish'}</legend><p>${type==='border'?'Choose the frame around your card.':'Choose the animated surface treatment.'}</p><div class="visual-style-strip">${items.map(item=>`<button type="button" data-style-choice="${type}" data-choice="${item.id}" aria-pressed="${equipment[type]===item.id}" ${editable?'':'disabled'}>${swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status>${equipment[type]===item.id?'Selected':esc(item.rarity)}</small></button>`).join('')}</div>${type==='finish'?finishStackChoices():''}</fieldset>`;
+    return `<fieldset class="visual-style-options"><legend>${type==='border'?'Border':'Finish'}</legend><p>${type==='border'?'Choose the frame around your card.':'Choose the animated surface treatment.'}</p><div class="visual-style-strip style-rows-${type==='border'?2:3}">${items.map(item=>`<button type="button" data-style-choice="${type}" data-choice="${item.id}" aria-pressed="${equipment[type]===item.id}" ${editable?'':'disabled'}>${swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status>${equipment[type]===item.id?'Selected':esc(item.rarity)}</small></button>`).join('')}</div>${type==='finish'?finishStackChoices():''}</fieldset>`;
   }
   // The Arcana upgrade (lib/cosmetics-engine.js): finishes drawn over the main one, one per arcana card owned.
   function finishStackChoices() {
-    if(!hasArcanaUpgrade(state))return `<p class="finish-stack-locked">Arcana upgrade: stack finishes on one card, one layer per arcana card, up to ${MAX_FINISH_LAYERS}. It comes with your first arcana card${state?.arcanaSealed?'. Yours is sealed in Packs: open it there':''}.</p>`;
-    const items=ownedStyles('finish');
-    return `<div class="finish-stack-options"><strong>Arcana stack</strong><p>${(n=>`Layer ${n} more finish${n===1?'':'es'} over your main one`)(finishStackLimit(state))} (${finishStackLimit(state)+1} of ${MAX_FINISH_LAYERS} layers). Each arcana card you own adds one.</p><div class="visual-style-strip finish-stack-strip">${items.map(item=>`<button type="button" data-stack-choice="${item.id}" aria-pressed="false" ${editable?'':'disabled'}>${swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status></small></button>`).join('')||'<p>Collect finishes to stack them.</p>'}</div><ol class="finish-stack-order" data-stack-order aria-label="Finish layers, top first"></ol></div>`;
+    if(!hasArcanaUpgrade(state))return `<p class="finish-stack-locked">Double finish: stack finishes on one card, one layer per copy you own, up to ${MAX_FINISH_LAYERS}. Get it in the Shop${state?.arcanaSealed?'. You also have one sealed in Packs: open it there':''}.</p>`;
+    return `<div class="finish-stack-options"><strong>Double finish</strong><p>Pick up to ${finishStackLimit(state)+1} finishes above (${finishStackLimit(state)+1} of ${MAX_FINISH_LAYERS} layers); the first you pick is the bottom layer. Each Double finish you own adds one.</p><ol class="finish-stack-order" data-stack-order aria-label="Finish layers, top first"></ol></div>`;
+  }
+  // Living borders (legendary): a moving effect over the equipped border. Shown once you own one.
+  function livingChoices() {
+    const items=ownedStyles('living');
+    if(!items.length)return '';
+    const cur=equipment.living??'none';
+    return `<fieldset class="visual-style-options living-options"><legend>Living border</legend><p>A moving effect over your border, in its colours.</p><div class="visual-style-strip">${[{id:'none',name:'None'},...items].map(item=>`<button type="button" data-style-choice="living" data-choice="${item.id}" aria-pressed="${cur===item.id}" ${editable?'':'disabled'}>${item.id==='none'?'<span class="collection-swatch living-swatch"></span>':swatch(item,name)}<strong>${esc(item.name)}</strong><small data-choice-status>${cur===item.id?'Selected':item.id==='none'?'standard':esc(item.rarity)}</small></button>`).join('')}</div></fieldset>`;
+  }
+  // Twin Card (arcana tools): the card's back is a second design instead of stats, built with the preview's Back button.
+  function twinChoices() {
+    const turns=TWIN_TURNS.filter(t=>inventory[`tool:twin-${t}`]>0);
+    if(!turns.length)return '';
+    const tw=whole().twin;
+    return `<fieldset class="twin-options"><legend>Twin Card</legend><p>${tw?'The back of your card is a second design instead of stats. Pick Back over the preview to change its artwork, border or anything else.':'Pick a turn to give your card a designed back instead of stats, then Back over the preview to build it.'}</p><div class="visual-style-strip twin-turn-strip" role="group" aria-label="How your card turns">${[['','No back'],...turns.map(t=>[t,itemByKey('tool:twin-'+t).name.replace('Twin Card: ','')])].map(([t,label])=>`<button type="button" data-twin-turn="${t}" aria-pressed="${(tw?.turn??'')===t}" ${editable?'':'disabled'}><span class="collection-swatch tool-swatch">${t?toolArtHtml(itemByKey('tool:twin-'+t)):''}</span><strong>${esc(label)}</strong><small>${(tw?.turn??'')===t?'Selected':t?'Twin Card':'Stats on the back'}</small></button>`).join('')}</div></fieldset>`;
   }
   function visualTextChoices(type) {
     if(adapter?.expansionReview&&type==='translation')return '';
@@ -347,13 +372,26 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     // Any-hero screens (events, teams, couriers) sit under their own Miscellaneous entry, not every hero's list.
     const misc=miscSlot===selectedSlot||(()=>{const s=String(base.art??'').startsWith('scr:')&&screenArt(base.art);return !!s&&s.hero==null;})();
     const artOptions=cardArtOptions(effectiveHero,state?.screens??(String(base.art??'').startsWith('scr:')?[base.art]:[]));
-    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>Live preview</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option><option value="misc">Miscellaneous</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns">${visualStyleChoices('border')}${visualStyleChoices('finish')}</div><label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<label class="plate-text" data-plate-text-wrap ${equipment.autograph==='license-plate'?'':'hidden'}>Plate top text <input type="text" data-plate-text maxlength="20" placeholder="AD2L · SCRIM LEAGUE" value="${esc(equipment.plateText??'')}" ${editable?'':'disabled'}></label><p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,maxSignatureSize(equipment,shownName())],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar">${[['particleSpeed','Finish speed'],['particleAmount','Particle amount'],['borderSpeed','Border speed']].map(([k,label])=>`<label class="particle-speed-control" data-tune-control="${k}">${label} <output data-tune-value="${k}">${equipment[k]}%</output><input type="range" data-tune="${k}" min="50" max="200" step="10" value="${equipment[k]}" ${editable?'':'disabled'}></label>`).join('')}<div class="particle-group-host" data-particle-controls="border" hidden></div><div class="particle-group-host" data-particle-controls="finish" hidden></div><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
+    body.innerHTML=`${editable?'<div data-name-editor></div>':''}${cardSlotsHtml()}<div class="card-editor"><div data-card-editor><div class="editor-preview-heading"><strong>${side==='back'?'Back of card':'Live preview'}</strong><span>Changes stay local until you save.</span></div>${cardHtml}<p>Drag the artwork to adjust its framing. Drag the signature separately; arrow keys move the focused signature one step.</p></div><div class="card-editor-controls"><div class="part-panel" data-part-panel hidden></div><details class="card-settings" data-image-settings ${imageOpen?'open':''}><summary><strong>Artwork</strong><span>Hero, background, crop, and color</span></summary><div><label>Hero<select data-base="hero"><option value="">Most played hero</option><option value="misc">Miscellaneous</option>${[...HERO_META].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')}</select></label><div data-image-gallery></div><details class="image-adjustments"><summary>Hue &amp; positioning</summary><div><label>Hue <output data-hue-value>${equipment.hue??0}</output><input type="range" data-hue min="0" max="360" value="${equipment.hue??0}"></label>${[['x','Image horizontal',0,100,1],['y','Image vertical',0,100,1],['zoom','Image zoom',1,3,.01],['rot','Image rotation',-180,180,1]].map(([key,label,min,max,step])=>`<label>${label}<input type="range" data-crop="${key}" min="${min}" max="${max}" step="${step}" value="${(base.crop??defaultCardCrop(cardArtwork(effectiveHero,base)))[key]??0}"></label>`).join('')}<div class="crop-turn"><button type="button" data-crop-flip>Mirror left/right</button> <button type="button" data-crop-turn>Mirror top/bottom</button></div></div></details></div></details><section class="appearance-settings"><header><div><small>Card treatment</small><h3>Appearance</h3></div><span>Only your collected styles appear here.</span></header><div class="appearance-choice-columns"><div class="border-choice-column">${visualStyleChoices('border')}${livingChoices()}</div>${visualStyleChoices('finish')}</div>${twinChoices()}<label class="emblem-toggle"><input type="checkbox" data-emblem ${equipment.emblem===false?'':'checked'} ${editable?'':'disabled'}> Show border symbol</label>${editable?'<button type="button" class="emblem-add" data-emblem-add>Add a symbol</button>':''}</section><details class="card-settings" open><summary><strong>Text &amp; signature</strong><span>Name style, modifier, and placement</span></summary><div>${visualTextChoices('autograph')}${visualTextChoices('translation')}${letterCaseHtml(editable)}<label class="plate-text" data-plate-text-wrap ${equipment.autograph==='license-plate'?'':'hidden'}>Plate top text <input type="text" data-plate-text maxlength="20" placeholder="AD2L · SCRIM LEAGUE" value="${esc(equipment.plateText??'')}" ${editable?'':'disabled'}></label><p>Signatures use your player name.</p><details class="image-adjustments"><summary>Signature positioning</summary><div>${[['x','Horizontal',0,100],['y','Vertical',0,100],['size','Size',5,maxSignatureSize(equipment,shownName())],['rotation','Rotation',-180,180]].map(([k,label,min,max])=>`<label>${label} <output data-value="${k}">${Math.round(equipment[k])}</output><input type="range" data-position="${k}" min="${min}" max="${max}" value="${equipment[k]}"></label>`).join('')}<button type="button" data-reset>Reset signature placement</button></div></details></div></details>${layoutControlsHtml()}<div class="editor-savebar">${[['particleSpeed','Finish speed'],['particleAmount','Particle amount'],['borderSpeed','Border speed']].map(([k,label])=>`<label class="particle-speed-control" data-tune-control="${k}">${label} <output data-tune-value="${k}">${equipment[k]}%</output><input type="range" data-tune="${k}" min="50" max="200" step="10" value="${equipment[k]}" ${editable?'':'disabled'}></label>`).join('')}<div class="particle-group-host" data-particle-controls="border" hidden></div><div class="particle-group-host" data-particle-controls="finish" hidden></div><button type="button" data-save>Save card ${selectedSlot+1}</button></div></div></div>`;
     wireCardSlots();
     if(editable)mountNameEditor(body.querySelector('[data-name-editor]'),{state,inGame:name,action,onSaved:next=>{state=next;draw();say(shownNickname(next)?`Showing ${shownNickname(next)} on your cards and profile.`:'Showing your in-game name.');}});
     const card=body.querySelector('.ft-card');card.dataset.designSlot=selectedSlot;card.classList.remove('flipped');fitDesignCards(card);
     card.querySelectorAll('button').forEach(b=>b.remove());
+    // Twin Card: the preview turns between the side being edited and the other one, unless paused
+    // (card-arcana.css). The other side is a copy of this card with that side's design.
+    {
+      const tw=whole().twin;let wrap=card.parentElement.classList.contains('ft-twin')?card.parentElement:null;
+      wrap?.querySelectorAll(':scope > .ft-twin-b').forEach(b=>b.remove());
+      if(tw){
+        if(!wrap){wrap=document.createElement('div');card.before(wrap);wrap.append(card);}
+        wrap.className='ft-twin';wrap.dataset.twin=tw.turn;
+        const other=card.cloneNode(true);other.classList.add('ft-twin-b');other.setAttribute('aria-hidden','true');other.removeAttribute('data-preview-paused');
+        const {twin,...front}=side==='back'?frontStash:equipment;
+        wrap.append(other);applyEquipment(other,side==='back'?front:tw.design,shownName());
+      } else if(wrap){wrap.classList.remove('ft-twin');delete wrap.dataset.twin;}
+    }
     let movingFinish=false;
-    const update=()=>{track();applyEquipment(card,equipment,shownName());wireSignature();wireFinishPlacement();body.querySelectorAll('[data-back-section]').forEach(input=>input.checked=backPartShown(equipment.layout,input.dataset.backSection));say(JSON.stringify(equipment)===initialEquipment?'':'Unsaved card changes');};
+    const update=()=>{track();applyEquipment(card,equipment,shownName());wireSignature();wireFinishPlacement();body.querySelectorAll('[data-back-section]').forEach(input=>input.checked=backPartShown(equipment.layout,input.dataset.backSection));say(JSON.stringify(whole())===initialEquipment?'':'Unsaved card changes');};
     body.querySelector('.appearance-settings').insertAdjacentHTML('afterend','<div data-effect-controls></div>');
     const effectHost=body.querySelector('[data-effect-controls]');
     const drawEffects=()=>{effectHost.innerHTML=effectControlsHtml(equipment);effectHost.hidden=!effectHost.innerHTML;effectHost.querySelectorAll('input,button').forEach(input=>input.disabled=!editable);const move=effectHost.querySelector('[data-finish-move]');if(move){move.setAttribute('aria-pressed',String(movingFinish));move.textContent=movingFinish?'Done positioning finish':'Move finish on card';}};
@@ -451,8 +489,20 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
     const plateInput=body.querySelector('[data-plate-text]');
     if(plateInput)plateInput.oninput=()=>{const v=plateInput.value.toUpperCase().replace(/[^A-Z0-9 .·'&!-]/g,'');if(plateInput.value!==v)plateInput.value=v;if(v.trim())equipment.plateText=v.trim();else delete equipment.plateText;update();};
     refreshTextChoices();
-    const refreshStyleChoices=()=>body.querySelectorAll('[data-style-choice]').forEach(button=>{const type=button.dataset.styleChoice,selected=equipment[type]===button.dataset.choice;button.setAttribute('aria-pressed',String(selected));button.querySelector('[data-choice-status]').textContent=selected?'Selected':itemByKey(`${type}:${button.dataset.choice}`)?.rarity??'standard';});
-    body.querySelectorAll('[data-style-choice]').forEach(button=>button.onclick=()=>{if(button.dataset.styleChoice==='border')body.querySelector('[data-em-close]')?.click();if(button.dataset.styleChoice==='finish')movingFinish=false;equipment[button.dataset.styleChoice]=button.dataset.choice;refreshStyleChoices();syncTuneControls();drawEffects();update();});
+    // With Double finish the finish list picks several: the main finish, then each stacked layer.
+    const stacking=()=>hasArcanaUpgrade(state)&&finishStackLimit(state)>0;
+    const finishLayers=()=>{const stack=(equipment.finishStack??[]).filter(id=>id!==equipment.finish);return equipment.finish===DEFAULT_EQUIPMENT.finish?stack:[equipment.finish,...stack];};
+    const refreshStyleChoices=()=>body.querySelectorAll('[data-style-choice]').forEach(button=>{const type=button.dataset.styleChoice;
+      if(type==='finish'&&stacking()&&button.dataset.choice!==DEFAULT_EQUIPMENT.finish){const layers=finishLayers(),at=layers.indexOf(button.dataset.choice);button.setAttribute('aria-pressed',String(at>=0));button.querySelector('[data-choice-status]').textContent=at<0?itemByKey(`finish:${button.dataset.choice}`)?.rarity??'':layers.length>1?`Layer ${at+1}`:'Selected';return;}
+      const selected=(equipment[type]??'none')===button.dataset.choice;button.setAttribute('aria-pressed',String(selected));button.querySelector('[data-choice-status]').textContent=selected?'Selected':itemByKey(`${type}:${button.dataset.choice}`)?.rarity??'standard';});
+    body.querySelectorAll('[data-style-choice]').forEach(button=>button.onclick=()=>{if(button.dataset.styleChoice==='border')body.querySelector('[data-em-close]')?.click();if(button.dataset.styleChoice==='finish')movingFinish=false;
+      if(button.dataset.styleChoice==='finish'&&stacking()){
+        const id=button.dataset.choice,layers=finishLayers(),max=finishStackLimit(state)+1;
+        let next=id===DEFAULT_EQUIPMENT.finish?[]:layers.includes(id)?layers.filter(f=>f!==id):layers.length<max?[...layers,id]:null;
+        if(!next){say(`All ${max} layers are in use. Unselect one first.`);return;}
+        equipment.finish=next[0]??DEFAULT_EQUIPMENT.finish;if(next.length>1)equipment.finishStack=next.slice(1);else delete equipment.finishStack;
+      }
+      else equipment[button.dataset.styleChoice]=button.dataset.choice;refreshStyleChoices();syncTuneControls();drawEffects();update();});
     refreshStyleChoices();
     const refreshStackChoices=()=>{
       const stack=(equipment.finishStack??[]).filter(id=>id!==equipment.finish);
@@ -569,20 +619,37 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       sig.onkeydown=e=>{const d={ArrowLeft:['x',-1],ArrowRight:['x',1],ArrowUp:['y',-1],ArrowDown:['y',1]}[e.key];if(!editable||!d)return;e.preventDefault();equipment[d[0]]=Math.max(0,Math.min(100,equipment[d[0]]+d[1]));syncControls();update();card.querySelector('.card-autograph').focus();};
     }
     body.querySelector('[data-save]').disabled=!editable;
-    body.querySelector('[data-save]').onclick=async()=>{const data=await run('equip',{equipment},()=>{initialEquipment=JSON.stringify(equipment);document.querySelectorAll(`.ft-card[data-pick="${own}"]`).forEach(c=>applyEquipment(c,c.dataset.designSlot!=null?(state.cardDesigns?.[Number(c.dataset.designSlot)]??state.equipment):state.equipment,c.dataset.playerName??name));});if(data){editorDrafts.delete(selectedSlot);equipment=structuredClone(selectedEquipment());initialEquipment=JSON.stringify(equipment);drawEditor();say(`Card ${selectedSlot+1} saved.`);}};
+    const twinTurns=body.querySelectorAll('[data-twin-turn]');
+    // A new back starts as a copy of the front, so changing its artwork is one step.
+    const newBack=()=>{const {twin,...front}=structuredClone(equipment);return front;};
+    twinTurns.forEach(b=>b.onclick=()=>{
+      const turn=b.dataset.twinTurn;if(turn===(whole().twin?.turn??''))return;
+      if(!turn){leaveBack();equipment.twin=null;freshHistory();}
+      else {const f=side==='back'?frontStash:equipment;f.twin=f.twin?{...f.twin,turn}:{turn,design:newBack()};}
+      drawEditor();say(JSON.stringify(whole())===initialEquipment?'':'Unsaved card changes');
+    });
+    // The preview's Front / Back (parts/card-editor-ui.js): with a twin on, Back is the twin's design, not stats.
+    const setSide=toBack=>{
+      if(!whole().twin)return false;if(toBack===(side==='back'))return toBack;
+      if(!toBack)leaveBack();
+      else {frontStash=equipment;equipment=structuredClone(equipment.twin.design);side='back';}
+      freshHistory();drawEditor();say(JSON.stringify(whole())===initialEquipment?'':'Unsaved card changes');return true;
+    };
+    body.querySelector('[data-save]').onclick=async()=>{const data=await run('equip',{equipment:whole()},()=>{initialEquipment=JSON.stringify(whole());document.querySelectorAll(`.ft-card[data-pick="${own}"]:not(.ft-twin-b)`).forEach(c=>applyEquipment(c,c.dataset.designSlot!=null?(state.cardDesigns?.[Number(c.dataset.designSlot)]??state.equipment):state.equipment,c.dataset.playerName??name));});if(data){editorDrafts.delete(selectedSlot);const back=side==='back';side='front';frontStash=null;equipment=structuredClone(selectedEquipment());initialEquipment=JSON.stringify(equipment);if(back&&equipment.twin){frontStash=equipment;equipment=structuredClone(equipment.twin.design);side='back';freshHistory();}drawEditor();say(`Card ${selectedSlot+1} saved.`);}};
     body.querySelector('[data-reset]').onclick=()=>{Object.assign(equipment,{x:50,y:60,size:15,rotation:-7});syncControls();update();};
     // Read-only: every control off but Show the back, which only looks.
     if(!editable)body.querySelectorAll('input,select,button:not([data-layout-flip])').forEach(n=>n.disabled=true);
     update();
     const emptySlot=()=>designs().cardDesigns.findIndex((d,i)=>!d&&!editorDrafts.has(i)&&i!==selectedSlot);
-    editorUI=mountCardEditorUI({body,card,view:editorView,
-      getState:()=>({equipment,baseline:initialEquipment,history:editHistory,editable,busy,hasSaved:!!designs().cardDesigns[selectedSlot],canDuplicate:emptySlot()>=0,dirtySlots:Array.from({length:CARD_SLOTS},(_,i)=>i).filter(i=>{if(i===selectedSlot)return false;const d=editorDrafts.get(i);return d&&(JSON.stringify(d.equipment)!==d.baseline||!designs().cardDesigns[i]);})}),
+    editorUI=mountCardEditorUI({body,card,view:editorView,onFace:setSide,twinBack:()=>side==='back',
+      getState:()=>({equipment:whole(),baseline:initialEquipment,history:editHistory,editable,busy,hasSaved:!!designs().cardDesigns[selectedSlot],canDuplicate:emptySlot()>=0,dirtySlots:Array.from({length:CARD_SLOTS},(_,i)=>i).filter(i=>{if(i===selectedSlot)return false;const d=editorDrafts.get(i);return d&&(JSON.stringify(d.equipment)!==d.baseline||!designs().cardDesigns[i]);})}),
       onUndo:()=>restore('undo','redo'),onRedo:()=>restore('redo','undo'),
       onRevert:()=>{
+        if(side==='back'){leaveBack();freshHistory();}
         if(!designs().cardDesigns[selectedSlot]){editorDrafts.delete(selectedSlot);editorUI?.destroy();editorUI=null;selectedSlot=designs().primaryCard;const draft=editorDrafts.get(selectedSlot);equipment=draft?.equipment??structuredClone(selectedEquipment());initialEquipment=draft?.baseline??JSON.stringify(equipment);editHistory=draft?.history??{slot:selectedSlot,undo:[],redo:[],last:null,at:0};drawEditor();return;}
         editHistory.undo.push(JSON.stringify(equipment));editHistory.redo=[];equipment=JSON.parse(initialEquipment);editHistory.last=JSON.stringify(equipment);editHistory.at=0;drawEditor();
       },
-      onDuplicate:()=>{const slot=emptySlot();if(slot<0)return;rememberEditor();const copy=structuredClone(equipment);editorUI?.destroy();editorUI=null;selectedSlot=slot;equipment=copy;initialEquipment=JSON.stringify(selectedEquipment());editHistory={slot,undo:[],redo:[],last:null,at:0};drawEditor();say(`Draft copied to Card ${slot+1}. Save when ready.`);},
+      onDuplicate:()=>{const slot=emptySlot();if(slot<0)return;rememberEditor();leaveBack();const copy=structuredClone(equipment);editorUI?.destroy();editorUI=null;selectedSlot=slot;equipment=copy;initialEquipment=JSON.stringify(selectedEquipment());editHistory={slot,undo:[],redo:[],last:null,at:0};drawEditor();say(`Draft copied to Card ${slot+1}. Save when ready.`);},
       onTarget:(target,selection)=>{movingFinish=target==='finish';drawEffects();wireFinishPlacement();layoutTools.selectTarget(target,selection);},
       onCompare:saved=>{if(saved)applyEquipment(card,JSON.parse(initialEquipment),shownName());else update();},
       onSettled:()=>{track();rememberEditor();},
@@ -905,7 +972,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
       binEl.classList.add('crushing');
       const done=()=>{
         if(!dialog.isConnected||tab!=='recycle')return;
-        if(!data.minimum){draw();say(data.arcana?'Arcana card added to your collection.':'Arcana card earned. It arrives when arcana cards are released.');return;}
+        if(!data.minimum){draw();say(itemByKey(data.arcana)?`Arcana added: ${itemByKey(data.arcana).name}.`:data.arcana?'Arcana card added to your collection.':'Arcana card earned. It arrives when arcana cards are released.');return;}
         tab='packs';onTab?.(tab);draw();say(`Upgrade pack ready: ${data.minimum} or better on all three cards.`);
       };
       setTimeout(done,matchMedia('(prefers-reduced-motion: reduce)').matches?0:900);
@@ -1067,7 +1134,8 @@ async function mountRatings(section,account) {
 // The Gallery: every saved card anyone in the league has changed, with its rating. Sorted by the
 // community's rating (legendary first; among equals, the clearer verdict, then more votes), by
 // votes, by newest change (the default), or by name; the sort is remembered in this browser. "Not rated
-// by me" leaves the cards a signed-in player can still rate. Two rows a page.
+// by me" leaves the cards a signed-in player can still rate. Two rows a page, and only the open
+// page's cards are built.
 const PICK_RANK={legendary:4,epic:3,rare:2,common:1};
 async function drawGallery(body,{viewer,signIn}) {
   body.innerHTML='<p>Loading gallery…</p>';
@@ -1095,11 +1163,28 @@ async function drawGallery(body,{viewer,signIn}) {
     const grid=body.querySelector('.gallery-grid');if(!grid)return;
     const cols=Math.max(1,getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length),size=cols*2;
     if(grid._size&&grid._size!==size&&page>=0)page=Math.floor(page*grid._size/size);
-    grid._size=size;pageList(grid,{size,page,slack:1,onChange:p=>{page=p;}});
+    grid._size=size;pageList(grid,{size,page,slack:1,onChange:p=>{page=p;fill();}});fill();
   };
   let resizeTimer,width=body.clientWidth;const run=body._galleryRun={};
   const watch=new ResizeObserver(()=>{if(!body.isConnected||body._galleryRun!==run||body.dataset.collectionView!=='gallery'){watch.disconnect();return;}if(body.clientWidth===width)return;width=body.clientWidth;clearTimeout(resizeTimer);resizeTimer=setTimeout(paginate,150);});
   watch.observe(body);
+  // Each card is built only when its page is shown: the grid holds an empty figure per card so
+  // the pager can count them, and fill() draws the ones on the open page (or all, after Show all).
+  let drawn=[];
+  const fill=()=>{
+    const grid=body.querySelector('.gallery-grid');if(!grid)return;
+    for(const fig of grid.querySelectorAll('figure[data-gallery-i]:not(.pg-off):not([data-filled])')){
+      const c=drawn[Number(fig.dataset.galleryI)];if(!c)continue;
+      fig.dataset.filled='';
+      const r=roster.get(c.account),player={account:Number(c.account),name:nameOf(c),team:r?.team??'AD2L'};
+      const link=`${SOURCES[r?.league]?.root??'#/all'}/player/${c.account}`; // every Steam player has a profile (parts/scouted.js)
+      fig.innerHTML=`${renderer.card(player,null,{own:true,equipmentOverride:c.design}).replace('data-pick=',`data-design-slot="${c.slot}" data-pick=`)}<figcaption>${isNew(c)?'<span class="gallery-new-tag">New</span> ':''}${link?`<a href="${link}">${esc(player.name)}</a>`:esc(player.name)} · ${esc(c.name??`Card ${c.slot+1}`)}${c.primary?' · Primary':''}</figcaption>`;
+      fig.querySelector('figcaption a')?.addEventListener('click',()=>body.closest('dialog.collection-dialog')?.close());
+      fitDesignCards(fig);
+      // A vote updates that card's numbers in place; the order holds until the sort or filter changes.
+      mountRating(fig,c.account,c,{viewer,votes,onVote:next=>Object.assign(c,next)});
+    }
+  };
   const draw=()=>{
     const shown=cards.filter(c=>!unrated||(String(c.account)!==String(viewer)&&votes[`${c.account}:${c.key}`]==null)).sort((a,b)=>
       (sort==='rarity'?(PICK_RANK[b.pick]??0)-(PICK_RANK[a.pick]??0)||share(b)-share(a)||b.total-a.total
@@ -1110,19 +1195,13 @@ async function drawGallery(body,{viewer,signIn}) {
     body.innerHTML=`<div class="gallery-bar"><label>Sort <select data-gallery-sort><option value="newest">Newest</option><option value="rarity">Rarity (voted)</option><option value="votes">Most votes</option><option value="name">Player name</option></select></label>
       ${viewer!=null?`<label class="gallery-unrated"><input type="checkbox" data-gallery-unrated${unrated?' checked':''}> Not rated by me</label>`:'<button type="button" class="linkish" data-signin>Sign in with Steam to rate cards</button>'}
       <span class="gallery-count">${fresh?`<b class="gallery-fresh">${fresh} new</b> · `:''}${shown.length} card${shown.length===1?'':'s'}</span></div>
-      ${PAINT_FILTER}<div class="gallery-grid">${shown.map(c=>{
-        const r=roster.get(c.account),player={account:Number(c.account),name:nameOf(c),team:r?.team??'AD2L'};
-        const link=`${SOURCES[r?.league]?.root??'#/all'}/player/${c.account}`; // every Steam player has a profile (parts/scouted.js)
-        return `<figure data-gallery="${c.account}:${c.slot}"${isNew(c)?' class="gallery-new"':''}>${renderer.card(player,null,{own:true,equipmentOverride:c.design}).replace('data-pick=',`data-design-slot="${c.slot}" data-pick=`)}<figcaption>${isNew(c)?'<span class="gallery-new-tag">New</span> ':''}${link?`<a href="${link}">${esc(player.name)}</a>`:esc(player.name)} · ${esc(c.name??`Card ${c.slot+1}`)}${c.primary?' · Primary':''}</figcaption></figure>`;
-      }).join('')||`<p>${unrated?"You've rated every card here.":'No custom cards yet.'}</p>`}</div>`;
+      ${PAINT_FILTER}<div class="gallery-grid">${shown.map((c,i)=>`<figure data-gallery="${c.account}:${c.slot}" data-gallery-i="${i}"${isNew(c)?' class="gallery-new"':''}></figure>`).join('')||`<p>${unrated?"You've rated every card here.":'No custom cards yet.'}</p>`}</div>`;
+    drawn=shown;
     body.querySelector('[data-gallery-sort]').value=sort;
     body.querySelector('[data-gallery-sort]').onchange=e=>{sort=e.target.value;page=0;try {localStorage.setItem('gallery-sort',sort);} catch {}draw();};
     body.querySelector('[data-gallery-unrated]')?.addEventListener('change',e=>{unrated=e.target.checked;page=0;draw();});
     body.querySelector('[data-signin]')?.addEventListener('click',signIn);
-    body.querySelectorAll('.gallery-grid figcaption a').forEach(a=>a.addEventListener('click',()=>body.closest('dialog.collection-dialog')?.close()));
-    const grid=body.querySelector('.gallery-grid');wirePlayerCards(grid);fitDesignCards(grid);paginate();
-    // A vote updates that card's numbers in place; the order holds until the sort or filter changes.
-    for(const c of shown)mountRating(grid.querySelector(`[data-gallery="${c.account}:${c.slot}"]`),c.account,c,{viewer,votes,onVote:next=>Object.assign(c,next)});
+    const grid=body.querySelector('.gallery-grid');wirePlayerCards(grid);paginate();
   };
   draw();
 }

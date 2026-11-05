@@ -239,8 +239,10 @@ test('packOdds and oddsText give the odds shown on the site', () => {
   near(packOdds('epic').epic, 10 / 14);
   near(packOdds('common:signature').rare, 0.86); near(packOdds('common:signature').common, 0);
   assert.equal(oddsText('common'), 'Common 69% · Rare 17% · Epic 10% · Legendary 4% · Arcana 0.5%');
-  assert.equal(oddsText('legendary:signature'), 'Legendary 100% · Arcana 0.5%');
+  assert.equal(oddsText('legendary:signature'), 'Legendary 100% · Arcana 15%');
   assert.equal(oddsText('common:signature'), 'Rare 86% · Epic 10% · Legendary 4% · Arcana 0.5%');
+  assert.equal(oddsText('rare:border').endsWith('Arcana 1.5%'), true);
+  assert.equal(oddsText('epic').endsWith('Arcana 5%'), true);
   assert.equal(ODDS_ROWS.length, 16);
   for (const [pack] of ODDS_ROWS) near(Object.values(packOdds(pack)).reduce((a, b) => a + b, 0), 1);
 });

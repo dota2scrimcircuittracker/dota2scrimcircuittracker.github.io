@@ -6,7 +6,7 @@ export function renderPrivacy() {
   setTitle("Privacy");
   app.innerHTML = `${pageHead("AD2L Stat Tracker", "Privacy")}
   <div class="privacy">
-    <p>A free fan site run by Fav. No accounts, no ads, nothing sold. This page lists what the site keeps and where.</p>
+    <p>A free fan site run by Fav. No ads; the only thing sold is tokens in the Gallery shop. This page lists what the site keeps and where.</p>
 
     <h2>League stats</h2>
     <p>Standings, games, player names, Steam account IDs and recent public matches come from
@@ -25,6 +25,9 @@ export function renderPrivacy() {
 
     <h2>Your browser</h2>
     <p>Firebase gives each browser a random ID, with no name or email, so you can edit or delete what you added. Settings (theme, colour-blind mode, my team, hero grids, the name you last typed) are kept in your browser's own storage. There are no advertising or tracking cookies.</p>
+
+    <h2>Shop payments</h2>
+    <p>Tokens are paid for through <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe</a>. Your card details go to Stripe and never reach this site. The site keeps your Steam account ID, your token balance, the Stripe payment ID and what you spent tokens on, so it can credit you and handle a refund. Stripe keeps its own payment records as the law requires.</p>
 
     <h2>Visit counts</h2>
     <p>Page views are counted with <a href="https://www.goatcounter.com/" target="_blank" rel="noopener">GoatCounter</a>: which page was opened, with no cookies and nothing that identifies you.</p>

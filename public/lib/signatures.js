@@ -76,7 +76,22 @@ export const thaiName=text=>soundOut(text,c=>c!=='r',({c,v,coda})=>{
   const open={a:C+'า',e:'เ'+C,i:C+'ี',o:'โ'+C,u:C+'ู'},closed={a:C+'ั',e:'เ'+C,i:C+'ิ',o:C+'อ',u:C+'ุ'};
   return (coda?closed:open)[v]+end;
 },' ');
-const renderers={japanese:japaneseName,hiragana:hiraganaName,kanji:kanjiName,cyrillic:cyrillicName,greek:greekName,runic:runicName,korean:koreanName,chinese:chineseName,thai:thaiName};
+// Arabic and Georgian spell the name letter by letter, digraphs first; Arabic writes long vowels and drops a final e.
+const spell=(text,map)=>text.normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/(sh|ch|th|ph|kh|gh|zh|ts|dz|[a-z])/g,c=>map[c]??c);
+const ARABIC={a:'ا',b:'ب',c:'ك',d:'د',e:'ي',f:'ف',g:'غ',h:'ه',i:'ي',j:'ج',k:'ك',l:'ل',m:'م',n:'ن',o:'و',p:'ب',q:'ق',r:'ر',s:'س',t:'ت',u:'و',v:'ف',w:'و',x:'كس',y:'ي',z:'ز',sh:'ش',ch:'تش',th:'ث',ph:'ف',kh:'خ',gh:'غ',zh:'ج',ts:'تس',dz:'دز'};
+export const arabicName=text=>spell(text.replace(/([^aeiou\s])e\b/gi,'$1').replace(/ee|ie|ea/gi,'i').replace(/ow\b/gi,'o').replace(/([aeiou])\1+/gi,'$1'),ARABIC);
+const GEORGIAN={a:'ა',b:'ბ',c:'კ',d:'დ',e:'ე',f:'ფ',g:'გ',h:'ჰ',i:'ი',j:'ჯ',k:'კ',l:'ლ',m:'მ',n:'ნ',o:'ო',p:'პ',q:'ქ',r:'რ',s:'ს',t:'ტ',u:'უ',v:'ვ',w:'ვ',x:'ქს',y:'ი',z:'ზ',sh:'შ',ch:'ჩ',th:'თ',ph:'ფ',kh:'ხ',gh:'ღ',zh:'ჟ',ts:'ც',dz:'ძ'};
+export const georgianName=text=>spell(text,GEORGIAN);
+// Devanagari sounds the name out by syllable: a consonant carries its vowel sign; a bare consonant takes a virama,
+// except at the end of a word, where Hindi drops it.
+const DEVA={b:'ब',d:'ड',f:'फ़',g:'ग',h:'ह',j:'ज',k:'क',l:'ल',m:'म',n:'न',p:'प',r:'र',s:'स',t:'ट',v:'व',w:'व',y:'य',z:'ज़',sh:'श',ch:'च',th:'थ',ph:'फ',ng:'ङ'};
+const DEVA_VOWEL={a:'अ',e:'ए',i:'इ',o:'ओ',u:'उ'},DEVA_SIGN={a:'ा',e:'े',i:'ि',o:'ो',u:'ु'};
+export const devanagariName=text=>text.normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().split(/([a-z]+)/).map((part,i)=>{
+  if(!(i%2))return part;
+  const units=syllables(part,()=>false);
+  return units.map(({c,v},k)=>{const C=DEVA[c]??'';if(!c)return DEVA_VOWEL[v]??'';if(!v)return k===units.length-1?C:C+'्';return C+(DEVA_SIGN[v]??'');}).join('');
+}).join('');
+const renderers={japanese:japaneseName,hiragana:hiraganaName,kanji:kanjiName,cyrillic:cyrillicName,greek:greekName,runic:runicName,korean:koreanName,chinese:chineseName,thai:thaiName,arabic:arabicName,devanagari:devanagariName,georgian:georgianName};
 // Modifiers whose alphabet has capitals; the player picks lower (the default) or upper case.
 export const CASED_MODIFIERS=['greek','cyrillic'];
 export const LETTER_CASES=['lower','upper'];
@@ -86,7 +101,7 @@ export function renderedName(text,translation='none',letterCase='lower') {
   if(!CASED_MODIFIERS.includes(translation))return out;
   return letterCase==='upper'?out.toUpperCase():translation==='greek'?finalSigma(out):out;
 }
-export const writingOf=text=>/[\u3040-\u30ff]/u.test(text)?'ja':/[\uac00-\ud7af]/u.test(text)?'ko':/[\u3400-\u9fff]/u.test(text)?'zh':/[\u0400-\u04ff]/u.test(text)?'cyrl':/[\u0370-\u03ff]/u.test(text)?'greek':/[\u16a0-\u16ff]/u.test(text)?'runic':/[฀-๿]/u.test(text)?'thai':'latin';
+export const writingOf=text=>/[\u3040-\u30ff]/u.test(text)?'ja':/[\uac00-\ud7af]/u.test(text)?'ko':/[\u3400-\u9fff]/u.test(text)?'zh':/[\u0400-\u04ff]/u.test(text)?'cyrl':/[\u0370-\u03ff]/u.test(text)?'greek':/[\u16a0-\u16ff]/u.test(text)?'runic':/[฀-๿]/u.test(text)?'thai':/[؀-ۿ]/u.test(text)?'arabic':/[ऀ-ॿ]/u.test(text)?'deva':/[Ⴀ-ჿ]/u.test(text)?'geor':'latin';
 // The most a name's signature may grow before it runs off the card: long names stop sooner.
 export const signatureSize=(size,text)=>Math.min(size,200/Math.max(8,[...text].length));
 // The largest size setting (5 to 30) that still makes this signature bigger, so the size slider ends

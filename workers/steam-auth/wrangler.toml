@@ -5,6 +5,10 @@ main = "src/index.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
 
+# The token shop (lib/shop.js). Remove this line, or set it to "off", and deploy to close the shop.
+[vars]
+SHOP_ENABLED = "on"
+
 # Workers AI: the Feed's image filter (src/image-check.js).
 [ai]
 binding = "AI"

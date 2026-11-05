@@ -8,7 +8,7 @@ import { CLAUDE_ACCOUNT, CLAUDE_ACTIONS } from '../../../public/lib/claude-accou
 import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, packHistory, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
 import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess, lateSeats, lateOpen, roundLength } from '../../../public/lib/arcana-cup.js';
-import { buyItem, buyArcana, creditTokens, tokensForPayment, bundleFor, giftItem, buySlot, setSupporterBadge, orderCommission, refundCommission } from '../../../public/lib/shop.js';
+import { buyItem, creditTokens, tokensForPayment, bundleFor, reverseTokens, giftItem, buySlot, orderCommission, refundCommission, refundable, REFUND_WINDOW_MS } from '../../../public/lib/shop.js';
 
 // A player's Fantasy entries from Firestore. The collection is public to read (firebase/scrimleague.rules),
 // so no credentials: this asks for just their documents. Throws if Firestore can't be reached.
@@ -75,6 +75,24 @@ export class CosmeticsVault {
       if(row.status==='credited')await txn.put(`user:${p.account}`,creditTokens(user,tokens,key));
       await txn.put(key,row);
       return row;
+    });
+  }
+  // A refund or chargeback on a paid checkout: the tokens it bought come back out, in proportion to the
+  // money returned (rounded up). Stripe sends the running refunded total, so a repeat takes nothing
+  // more. Tokens already spent can't come back; they're kept on the row as `owed`. A payment never
+  // credited is only marked, so Fav can no longer assign it.
+  async stripeReversal(r) {
+    return this.ctx.storage.transaction(async txn=>{
+      const key=`stripe:${r.id}`,row=await txn.get(key);
+      if(!row)return {unknown:true};
+      const due=Math.min(row.tokens,Math.ceil(row.tokens*r.cents/Math.max(1,r.total)))-(row.reversed??0);
+      if(due<=0)return row;
+      const credited=row.status!=='unmatched'&&row.status!=='ignored'&&row.account,user=credited&&await txn.get(`user:${row.account}`);
+      let owed=row.owed??0;
+      if(user){const out=reverseTokens(user,due);await txn.put(`user:${row.account}`,out.state);owed+=out.owed;}
+      const next={...row,reversed:(row.reversed??0)+due,owed,status:r.kind,reversedAt:this.now()};
+      await txn.put(key,next);
+      return next;
     });
   }
   // The Arcana Cup (lib/arcana-cup.js). Tests swap the cup's times and the clock.
@@ -185,6 +203,7 @@ export class CosmeticsVault {
   async fetch(req) {
     const url=new URL(req.url);
     if(req.method==='POST' && url.pathname==='/stripe') return json(await this.stripePayment(await req.json()));
+    if(req.method==='POST' && url.pathname==='/stripe-reverse') return json(await this.stripeReversal(await req.json()));
     if(url.pathname==='/appearances') {
       const rows=await this.ctx.storage.list({prefix:'appearance:',limit:5000});
       return json(Object.fromEntries([...rows].map(([k,v])=>[k.slice(11),v])));
@@ -414,11 +433,27 @@ export class CosmeticsVault {
         else if(body.action==='claim-achievement')result={state:claimAchievement(saved,String(body.id??''),await this.achievementFacts(txn,account,saved)),id:String(body.id)};
         else if(body.action==='recycle') result=recycleCards(saved,body.selections);
         else if(body.action==='open-arcana') result=openArcanaUpgrade(saved);
-        else if(['buy','buy-arcana','shop-payments','shop-assign','buy-slot','gift-item','supporter-badge','commission','shop-orders','shop-order-close'].includes(body.action)&&!this.shopOn) throw new Error('The shop is not open yet.');
+        else if(['buy','shop-purchases','refund-request','shop-payments','shop-assign','buy-slot','gift-item','commission','shop-orders','shop-order-close'].includes(body.action)&&!this.shopOn) throw new Error('The shop is not open yet.');
         else if(body.action==='buy') result=buyItem(saved,String(body.item??''));
-        else if(body.action==='buy-arcana') result=buyArcana(saved);
+        // Your bundles from the last REFUND_WINDOW_MS, for the shop's refund button.
+        else if(body.action==='shop-purchases') {
+          const purchases=[];
+          for(const key of (saved.tokenPayments??[]).slice(-20).filter(k=>k.startsWith('stripe:'))) {
+            const row=await txn.get(key);
+            if(row?.account===String(account)&&this.now()-row.at<REFUND_WINDOW_MS)purchases.push({id:key.slice(7),amount:row.amount,tokens:row.tokens,at:row.at,status:row.status,refundRequested:row.refundRequested??null});
+          }
+          result={state:saved,purchases};
+        }
+        // A refund request (lib/shop.js refundable): marked here once, then the browser files the ticket.
+        else if(body.action==='refund-request') {
+          const id=String(body.payment??''),key=`stripe:${id}`,row=/^cs_\w{6,200}$/.test(id)&&await txn.get(key);
+          if(!row||row.account!==String(account))throw new Error('That purchase is not yours.');
+          if(row.refundRequested)throw new Error('You already asked for a refund on that one.');
+          if(!refundable(row,account,this.now()))throw new Error('Refunds are only for the first 24 hours after buying.');
+          await txn.put(key,{...row,refundRequested:this.now()});
+          result={state:saved,refund:{id,amount:row.amount,tokens:row.tokens,at:row.at,unspent:Math.min(row.tokens,saved.tokens??0)}};
+        }
         else if(body.action==='buy-slot') result=buySlot(saved);
-        else if(body.action==='supporter-badge') result={state:setSupporterBadge(saved,body)};
         // A card bought for another player (lib/shop.js giftItem); they get the gift notice.
         else if(body.action==='gift-item') {
           const target=String(body.target??'');
@@ -461,7 +496,8 @@ export class CosmeticsVault {
         // Fav: paid checkouts whose account has no collection, and giving one to a player.
         else if(body.action==='shop-payments') {
           if(!isAdmin(account))throw new Error('Only Fav can see payments.');
-          result={state:saved,payments:Object.fromEntries([...await txn.list({prefix:'stripe:'})].filter(([,r])=>r.status==='unmatched').map(([k,r])=>[k.slice(7),r]))};
+          // Unmatched payments, and refund requests Fav hasn't refunded in Stripe yet.
+          result={state:saved,payments:Object.fromEntries([...await txn.list({prefix:'stripe:'})].filter(([,r])=>r.status==='unmatched'||(r.refundRequested&&r.status==='credited')).map(([k,r])=>[k.slice(7),r]))};
         }
         else if(body.action==='shop-assign') {
           if(!isAdmin(account))throw new Error('Only Fav can assign payments.');
@@ -774,7 +810,7 @@ export class CosmeticsVault {
         }
         else throw new Error('Unknown collection action.');
         await txn.put(key,result.state);
-        if(['equip','card-settings','nickname','supporter-badge','buy-slot'].includes(body.action)) await txn.put(`appearance:${account}`,cardAppearance(result.state));
+        if(['equip','card-settings','nickname','buy-slot'].includes(body.action)) await txn.put(`appearance:${account}`,cardAppearance(result.state));
         const openedAt=Date.now();
         // Feed receipts keep only the post: its comments can be long and are read fresh anyway.
         await txn.put(receipt,{action:body.action,result:['react','comment','comment-delete','comment-react','poll-vote'].includes(body.action)?{post:result.post}:body.action==='post'?{post:result.post.id}:body.action==='post-delete'?{post:result.removed}:result,...(body.action==='open'?{openedAt,packType:saved.packs[body.packIndex]}:{})});
@@ -797,12 +833,22 @@ async function sameSecret(a,b) {
 export async function cosmeticsRequest(req,env,allowedOrigins) {
   const origin=req.headers.get('origin'), url=new URL(req.url);
   // Stripe's webhook (server to server, signed with STRIPE_WEBHOOK_SECRET). Off until that secret is
-  // set. Only a paid checkout counts; every other event is acknowledged and dropped.
+  // set. A paid checkout credits; a refund or a new dispute takes the tokens back; every other event
+  // is acknowledged and dropped.
   if(url.pathname==='/cosmetics/stripe') {
     if(req.method!=='POST'||!env.STRIPE_WEBHOOK_SECRET||!env.COSMETICS) return json({error:'Not found.'},404);
     const event=await stripeEvent(req,String(env.STRIPE_WEBHOOK_SECRET).trim());
     if(!event) return json({error:'Unknown sender.'},403);
     const s=event.data?.object;
+    if(['charge.refunded','charge.dispute.created'].includes(event.type)) {
+      const refund=event.type==='charge.refunded',cents=refund?s?.amount_refunded:s?.amount,total=refund?s?.amount:s?.amount;
+      if(!/^pi_\w{6,200}$/.test(String(s?.payment_intent??''))||!Number.isSafeInteger(cents)||!Number.isSafeInteger(total)) return json({ignored:true});
+      // The charge doesn't name its checkout, so ask Stripe which one made this payment.
+      const id=await checkoutFor(s.payment_intent,env);
+      if(!id) return json({ignored:true});
+      const vault=env.COSMETICS.get(env.COSMETICS.idFromName('league-v1'));
+      return vault.fetch(new Request('https://vault/stripe-reverse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,cents,total,kind:refund?'refunded':'disputed'})}));
+    }
     if(!['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)||s?.payment_status!=='paid') return json({ignored:true});
     if(!/^cs_\w{6,200}$/.test(String(s.id??''))||!Number.isSafeInteger(s.amount_total)) return json({error:'Invalid request.'},400);
     const vault=env.COSMETICS.get(env.COSMETICS.idFromName('league-v1'));
@@ -902,6 +948,15 @@ export async function stripeCheckout(body,account,env,site) {
   const s=await r.json().catch(()=>({}));
   if(!r.ok||!s.url) {console.log('stripe checkout failed',r.status,s.error?.code??'');return json({error:'Checkout could not start. Try again.'},502);}
   return json({url:s.url});
+}
+
+// The checkout session that made a payment, from Stripe; null if there's none or Stripe can't say.
+async function checkoutFor(paymentIntent,env) {
+  if(!env.STRIPE_SECRET_KEY) return null;
+  const r=await fetch(`https://api.stripe.com/v1/checkout/sessions?payment_intent=${encodeURIComponent(paymentIntent)}&limit=1`,{headers:{'Authorization':`Bearer ${env.STRIPE_SECRET_KEY}`}});
+  const id=r.ok?(await r.json().catch(()=>({}))).data?.[0]?.id:null;
+  if(!r.ok)console.log('stripe session lookup failed',r.status);
+  return /^cs_\w{6,200}$/.test(String(id??''))?id:null;
 }
 
 // A Stripe webhook's body, if its Stripe-Signature is ours and under five minutes old; otherwise null.

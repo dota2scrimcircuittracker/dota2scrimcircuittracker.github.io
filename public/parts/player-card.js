@@ -4,7 +4,8 @@ import { playerKey, mainAccount } from "../lib/stats.js";
 import { heroById, heroImg, heroVert, HERO_META } from "../lib/hero-meta.js";
 import { cardArtwork } from "../lib/card-art.js";
 import { teamLogoHtml } from "../lib/team-logos.js";
-import { cosmeticAttributes, cosmeticLayers, cosmeticBorder, cosmeticEmblems, playerEquipment, playerNickname, playerSupporter, supporterBadgeHtml, setArtAspect } from '../lib/cosmetics.js';
+import { cosmeticAttributes, cosmeticLayers, cosmeticBorder, cosmeticEmblems, playerEquipment, playerNickname, setArtAspect } from '../lib/cosmetics.js';
+import { livingBorderHtml, twinOf, twinHtml } from "../lib/card-arcana.js";
 import { BACK_STATS, backStats, backPartShown, partState } from '../lib/card-layout.js';
 import { plusSlot } from "../lib/hero-levels.js";
 
@@ -103,7 +104,13 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
   const mainPos = mainPositions(matches), stats = cardStats(matches);
   const teamIdOf = new Map(teams.flatMap((t) => t.players.map((p) => [p.account_id, t.id])));
   const roleOf = (a, ov = cards.get(a)) => ov?.pos ?? mainPos.get(a);
-  const card = (p, slot, { own = false, pickButtons = !own, ov = cards.get(p.account), tier = null, nameHtml = null, equipmentOverride = null } = {}) => {
+  // A design with a Twin Card (lib/card-arcana.js) is drawn twice, its twin as a second full card.
+  const card = (p, slot, opts = {}) => {
+    const ov = opts.ov ?? cards.get(p.account), twin = twinOf(opts.equipmentOverride ?? playerEquipment(p.account, ov?.cosmetics));
+    const front = face(p, slot, opts);
+    return twin ? twinHtml(front, face(p, slot, { ...opts, equipmentOverride: twin.design }), twin.turn) : front;
+  };
+  const face = (p, slot, { own = false, pickButtons = !own, ov = cards.get(p.account), tier = null, nameHtml = null, equipmentOverride = null } = {}) => {
     const equipment=equipmentOverride??playerEquipment(p.account,ov?.cosmetics);
     if(equipment?.baseCard)ov={...ov,...equipment.baseCard};
     const st = stats.get(p.account), t = tier ?? tierOf(p.account), top = st?.top ?? [], g = st?.games ?? 0;
@@ -148,7 +155,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
     const pickBtn = (cls, hidden) => `<button type="button" class="ft-pickbtn ${cls}"${hidden ? ' tabindex="-1"' : ""} ${locked ? 'data-act="signin">Sign in to pick' : `data-act="pick" aria-pressed="false">Pick for pos ${slot}`}</button>`;
     // The plate's parts; placed ones sit on the face itself, after the plate.
     const plateParts = [
-      ["name", part("name", "ft-name", nameShown + (playerSupporter(p.account)?.card ? supporterBadgeHtml() : ""), "span", ` title="${esc(cardName)}"`)],
+      ["name", part("name", "ft-name", nameShown, "span", ` title="${esc(cardName)}"`)],
       ["record", part("record", "ft-record", recordHtml, "span", ' aria-label="Win-loss record"')],
       ["team", part("team", "ft-tm", `${teamMark}<span class="ft-team-name">${esc(p.team)}</span>`)],
       ["hero", face ? part("hero", "ft-sig", `${esc(face)}${faceRec ? ` · ${faceRec.games} game${faceRec.games === 1 ? "" : "s"}` : ""}`) : ""],
@@ -171,6 +178,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
           ${cosmeticLayers(equipment,cardName)}
         </div>
         ${cosmeticBorder(equipment)}
+        ${livingBorderHtml(equipment)}
         ${cosmeticEmblems(equipment)}
         <div class="ft-face ft-back" aria-hidden="true">
           <span class="ft-bhead">${tierChip}<span class="ft-bname"><span class="ft-name" title="${esc(cardName)}">${nameShown}</span><span class="ft-tm">${teamMark}<span class="ft-team-name">${esc(p.team)}</span></span>${st?.rank ? `<span class="ft-medal">${esc(medal(st.rank))}${role ? ` · ${role >= 4 ? "Support" : "Core"}` : ""}</span>` : ""}</span></span>
@@ -264,6 +272,9 @@ export function wirePlayerCards(host, { openOnCard = false } = {}) {
     if (c && ev.target.closest(".ft-expand")) { showBigCard(c); return; }
     if (!c || ev.target.closest("a, .ft-pickbtn, .card-autograph") || c.closest('[data-card-editor]')) return;
     if (openOnCard && !ev.target.closest(".ft-turn")) { showBigCard(c); return; }
+    // A Twin Card (lib/card-arcana.js) turns to its other design instead of its stats, and holds there.
+    const twin = c.parentElement?.classList.contains("ft-twin") ? c.parentElement : null;
+    if (twin) { twin.dataset.held = twin.dataset.held === "b" ? "a" : "b"; return; }
     flipPlayerCard(c, !c.classList.contains("flipped"));
   });
   host.addEventListener("error", (ev) => {

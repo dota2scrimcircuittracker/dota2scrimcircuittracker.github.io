@@ -8,11 +8,11 @@ import { TIERS, CATALOG } from '../lib/cosmetics-catalog.js';
 import { ALL_SCREENS } from '../lib/legendary-screens.js';
 import { THEMED_PACKS, themedLabel, parsePack, packName } from '../lib/pack-types.js';
 import { isAdmin, giftLabel, MAX_GIFT_PACKS, MAX_SENT_PER_DAY } from '../lib/pack-gifts.js';
-import { shopVisible } from '../lib/shop-flag.js';
+import { shopVisible, localDevHost } from '../lib/shop-flag.js';
 
 export async function mountGiftPanel(host, account, name, adapter = null) {
   // ?testShop on a local dev host: the panels act as the local shop test account (lib/local-shop-test.js).
-  if (!adapter && shopVisible() && new URLSearchParams(location.search).has('testShop')) adapter = (await import('../lib/local-shop-test.js')).localShopAdapter();
+  if (!adapter && localDevHost() && new URLSearchParams(location.search).has('testShop')) adapter = (await import('../lib/local-shop-test.js')).localShopAdapter();
   const me = adapter?.account ?? await steamAccount().catch(() => null);
   await mountSendPanel(host, account, name, me, adapter);
   if (shopVisible()) await import('./shop.js').then((m) => m.mountShopGift(host, account, name, me, adapter)).catch(() => {});

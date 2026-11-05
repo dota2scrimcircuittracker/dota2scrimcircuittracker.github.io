@@ -250,7 +250,7 @@ export const INFO = {
   fb_death_rate: "Share of games where they were first blood's victim.",
   radiant_rate: "How often Radiant (bottom left) won, over every game with a draft.",
   pauses: "The game with the most paused time this week.",
-  donate: "Donations go towards improving the site. Payments are handled by Ko-fi; nothing is stored here.",
+  donate: "Donations go towards improving the site. Ko-fi handles donations and Stripe handles shop payments; no card details are stored here.",
 };
 
 export function info(id) {

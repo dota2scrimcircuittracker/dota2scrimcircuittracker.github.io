@@ -128,7 +128,9 @@ const summary = (t) => ({
 // ---------- ticket status on profiles ----------
 const STATUS = `${BASE}/feedback_status`;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const steamOf = (t) => /^steam:(\d{1,10})$/.exec(t.uid ?? "")?.[1] ?? null;
+// A refund request (parts/shop.js refundTicket) is private: it never links to the sender's profile.
+const isRefund = (t) => /^Refund request:/.test(t.items[0]?.note ?? "");
+const steamOf = (t) => (isRefund(t) ? null : /^steam:(\d{1,10})$/.exec(t.uid ?? "")?.[1] ?? null);
 async function getStatus(docId) {
   try { return plain((await (await api()).get(`${STATUS}/${docId}`)).body); }
   catch (e) { if (e.status === 404 || /404|not found/i.test(e.message)) return null; throw e; }

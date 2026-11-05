@@ -1,0 +1,171 @@
+/* Arcana idea prototypes (lib/arcana-ideas.js, ?arcanaIdeas=1 on loopback). Not used anywhere else. */
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:34px 26px;margin:18px 0 48px}
+.ai-idea{margin:0;display:grid;gap:10px;justify-items:center;align-content:start}
+.ai-idea figcaption{display:grid;gap:2px;text-align:center}
+.ai-idea figcaption small{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:#ff5ab4}
+.ai-idea figcaption strong{font-size:1.05rem}
+.ai-idea>p{max-width:290px;margin:0;font-size:.8rem;line-height:1.45;color:var(--muted,#9aa3b2);text-align:center}
+.ai-stage{position:relative;width:240px;--r:12px}
+.ai-card .ft-card{width:240px}
+.ai-buttons{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.ai-buttons button{padding:5px 10px;border-radius:999px;font-size:.75rem}
+.ai-buttons button[aria-pressed=true]{background:#ff5ab4;color:#1a0b14;border-color:#ff5ab4}
+.ai-hint{font-size:.72rem!important;color:#ffd36b!important;margin:-4px 0 0!important}
+
+/* 1. Living Border */
+.ai-living-fx{position:absolute;inset:0;border-radius:var(--r);pointer-events:none;z-index:5}
+.ai-living-fx i{position:absolute;opacity:0;transition:opacity .4s}
+.ai-living[data-state=win] .ai-living-fx{box-shadow:0 0 0 2px #ffd36b,0 0 26px 4px #ffb43c;animation:ai-win 1.6s ease-in-out infinite}
+@keyframes ai-win{50%{box-shadow:0 0 0 3px #fff3b0,0 0 46px 10px #ffb43c}}
+.ai-living[data-state=loss] .ft-card{filter:saturate(.45) brightness(.82)}
+.ai-living[data-state=loss] .ai-living-fx{box-shadow:inset 0 -40px 50px -20px #2a0d06,0 0 18px 2px #5a1a0a;animation:ai-smoulder 2.4s ease-in-out infinite}
+@keyframes ai-smoulder{50%{box-shadow:inset 0 -60px 60px -20px #4a1a08,0 0 26px 4px #8a2a0c}}
+.ai-living[data-state=loss] .ai-crack{opacity:1;inset:0;background:
+ linear-gradient(118deg,transparent 47%,#ff6a2a 48%,#2a0d06 49%,transparent 50%) 0 0/60px 90px no-repeat,
+ linear-gradient(62deg,transparent 47%,#ff6a2a 48%,#2a0d06 49%,transparent 50%) 100% 30%/70px 80px no-repeat,
+ linear-gradient(150deg,transparent 47%,#ff6a2a 48%,#2a0d06 49%,transparent 50%) 10% 100%/80px 70px no-repeat,
+ linear-gradient(30deg,transparent 47%,#ff6a2a 48%,#2a0d06 49%,transparent 50%) 95% 95%/60px 60px no-repeat;
+ animation:ai-ember 1.8s ease-in-out infinite}
+@keyframes ai-ember{50%{filter:brightness(1.6)}}
+.ai-living[data-state=mvp] .ai-living-fx{box-shadow:0 0 0 2px #fff,0 0 30px 6px #ffe48a;overflow:hidden}
+.ai-living[data-state=mvp] .ai-living-fx::before{content:"";position:absolute;inset:-20%;background:linear-gradient(115deg,transparent 40%,rgba(255,240,180,.75) 50%,transparent 60%);animation:ai-flare 2.2s ease-in-out infinite}
+@keyframes ai-flare{from{transform:translateX(-80%)}to{transform:translateX(80%)}}
+.ai-living[data-state=mvp] .ai-crown{opacity:1;left:50%;top:-22px;transform:translateX(-50%);font-size:30px;color:#ffd36b;text-shadow:0 0 14px #ffb43c;animation:ai-bob 1.6s ease-in-out infinite}
+@keyframes ai-bob{50%{transform:translateX(-50%) translateY(-4px)}}
+
+/* 2. Split Frame: the same card in each border, cut into pieces. */
+.ai-split{display:grid}
+.ai-split-part{grid-area:1/1}
+.ai-split-part[data-part="2"],.ai-split-part[data-part="3"]{display:none}
+.ai-split[data-split=diag] .ai-split-part[data-part="1"]{clip-path:polygon(100% 0,100% 100%,0 100%)}
+.ai-split[data-split=half] .ai-split-part[data-part="1"]{clip-path:inset(50% 0 0 0)}
+.ai-split[data-split=quarters] .ai-split-part[data-part="2"],.ai-split[data-split=quarters] .ai-split-part[data-part="3"]{display:block}
+.ai-split[data-split=quarters] .ai-split-part[data-part="1"]{clip-path:inset(0 0 50% 50%)}
+.ai-split[data-split=quarters] .ai-split-part[data-part="2"]{clip-path:inset(50% 50% 0 0)}
+.ai-split[data-split=quarters] .ai-split-part[data-part="3"]{clip-path:inset(50% 0 0 50%)}
+
+/* 3. Self-Writing Signature: a soft-edged mask sweeps across, with a glowing pen tip. */
+.ai-write-on .card-autograph{-webkit-mask-image:linear-gradient(90deg,#000 46%,transparent 54%);mask-image:linear-gradient(90deg,#000 46%,transparent 54%);-webkit-mask-size:240% 100%;mask-size:240% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;animation:ai-write 2.6s cubic-bezier(.45,.05,.4,1) forwards}
+@keyframes ai-write{from{-webkit-mask-position:100% 0;mask-position:100% 0}to{-webkit-mask-position:0 0;mask-position:0 0}}
+
+/* 4. Parallax Art */
+.ai-parallax{--mx:0;--my:0;perspective:900px}
+.ai-parallax .ft-card{transform:rotateY(calc(var(--mx) * 10deg)) rotateX(calc(var(--my) * -10deg));transition:transform .15s ease-out}
+.ai-parallax .ft-art{overflow:hidden}
+.ai-parallax .ft-art>img:not(.ai-fg){transform:translate(calc(var(--mx) * -14px),calc(var(--my) * -10px)) scale(1.12);transition:transform .15s ease-out}
+.ai-parallax .ai-fg{position:absolute;left:-12%;bottom:-6%;width:124%;height:auto;max-width:none;z-index:1;filter:drop-shadow(0 12px 18px rgba(0,0,0,.65));transform:translate(calc(var(--mx) * 22px),calc(var(--my) * 14px));transition:transform .15s ease-out;pointer-events:none}
+
+/* 5. Momentum */
+.ai-momentum{--glow:1}
+.ai-momentum .particles,.ai-momentum .cosmetic-overlay{filter:brightness(var(--glow)) saturate(var(--glow))}
+.ai-momentum[data-heat="0"] .ft-card{filter:saturate(.6) brightness(.85)}
+.ai-momentum[data-heat="4"] .ft-card{box-shadow:0 0 34px 6px #ff7a2a;border-radius:var(--r)}
+.ai-momentum-tag{position:absolute;right:-8px;top:-10px;z-index:6;padding:3px 9px;border-radius:999px;font:700 .68rem/1.2 system-ui;letter-spacing:.08em;text-transform:uppercase;background:#ff7a2a;color:#200a02}
+.ai-momentum[data-heat="0"] .ai-momentum-tag,.ai-momentum[data-heat="1"] .ai-momentum-tag{background:#7fb2ff;color:#081428}
+.ai-slider{display:flex;gap:8px;align-items:center;font-size:.8rem}
+.ai-slider output{min-width:56px;font-family:var(--mono,monospace)}
+
+/* 6. Twin Card */
+.ai-twin{perspective:1200px;cursor:pointer}
+.ai-twin-inner{display:grid;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.3,.1,.2,1)}
+.ai-twin.ai-turned .ai-twin-inner{transform:rotateY(180deg)}
+.ai-twin-face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.ai-twin-back{transform:rotateY(180deg)}
+
+/* 7. Title Plate */
+.ai-title{position:absolute;left:16px;top:66%;z-index:6;padding:2px 10px 2px 8px;font:800 .66rem/1.5 system-ui;letter-spacing:.16em;text-transform:uppercase;color:#1a0f02;background:linear-gradient(90deg,#ffd36b,#fff1c2 50%,#ffd36b);clip-path:polygon(0 0,100% 0,92% 100%,0 100%);overflow:hidden}
+.ai-title::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.85) 50%,transparent 70%);transform:translateX(-120%);animation:ai-sheen 2.6s ease-in-out infinite}
+@keyframes ai-sheen{60%,100%{transform:translateX(120%)}}
+.ai-title-in b{display:inline-block;animation:ai-title-in .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes ai-title-in{from{transform:translateY(100%);opacity:0}}
+
+/* 8. Highlight Ticker */
+.ai-ticker-strip{position:absolute;left:8px;right:8px;top:40%;z-index:6;overflow:hidden;padding:4px 0;background:rgba(10,8,6,.78);border-block:1px solid rgba(255,211,107,.5);-webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.ai-ticker-run{display:flex;gap:26px;width:max-content;animation:ai-tick 22s linear infinite}
+.ai-ticker-run span{font:600 .68rem/1.3 var(--mono,monospace);color:#ffe7a8;white-space:nowrap}
+.ai-ticker-run span::before{content:"▸ ";color:#ff5ab4}
+@keyframes ai-tick{to{transform:translateX(-50%)}}
+
+/* 9. Cup Champion */
+.ai-seal{position:absolute;right:-14px;top:-14px;z-index:7;display:grid;place-items:center;align-content:center;width:84px;aspect-ratio:1;border-radius:50%;text-align:center;color:#2a0f3a;background:conic-gradient(from var(--arcana-spin,0deg),#ffd36b,#ff5ab4,#6be4ff,#b78bff,#ffd36b);box-shadow:0 0 0 3px #1a0f22,0 0 24px #ff5ab4;animation:arcana-spin 8s linear infinite}
+.ai-seal b{font:800 .5rem/1 system-ui;letter-spacing:.1em;text-transform:uppercase}
+.ai-seal i{font-style:normal;font-size:22px;line-height:1}
+.ai-seal small{font:700 .46rem/1 system-ui;letter-spacing:.06em;text-transform:uppercase}
+.ai-champion-foil{position:absolute;inset:0;z-index:5;border-radius:var(--r);pointer-events:none;box-shadow:0 0 0 2px #ffd36b,0 0 30px -4px #ff5ab4;overflow:hidden}
+.ai-champion-foil::before{content:"";position:absolute;inset:-30%;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.28) 48%,rgba(255,90,180,.22) 52%,transparent 58%);animation:ai-flare 3.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.ai-grid *{animation:none!important;transition:none!important}}
+
+/* Round 2 (?arcanaIdeas=2) */
+.ai-group{margin:30px 0 4px;font-size:1.25rem;letter-spacing:.04em}
+.ai-group+.ai-grid{margin-top:10px}
+
+/* Split Frame takes: the same card in each border, cut along a seam. */
+.ai-sp{display:grid}
+.ai-sp-part{grid-area:1/1}
+.ai-sp svg{position:absolute;inset:0;width:100%;height:100%;z-index:6;pointer-events:none;overflow:visible}
+.ai-sp-diag .ai-sp-part[data-part="1"]{clip-path:polygon(100% 0,100% 100%,0 100%)}
+.ai-seam line{stroke:#fff;stroke-width:3.5;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-dasharray:46 122;filter:drop-shadow(0 0 4px #ff5ab4) drop-shadow(0 0 8px #ffd36b);animation:ai-seam 2.4s linear infinite}
+.ai-seam{mix-blend-mode:screen}
+@keyframes ai-seam{to{stroke-dashoffset:-168}}
+.ai-sp-sweep .ai-sp-part[data-part="1"]{animation:ai-sweep 7s ease-in-out infinite alternate}
+@keyframes ai-sweep{from{clip-path:polygon(118% 0,140% 0,140% 100%,96% 100%)}to{clip-path:polygon(4% 0,140% 0,140% 100%,-18% 100%)}}
+.ai-sp-bolt .ai-sp-part[data-part="1"]{clip-path:polygon(55% 0,100% 0,100% 100%,45% 100%,58% 80%,42% 62%,57% 45%,41% 28%)}
+.ai-bolt polyline{fill:none;stroke:#eaf6ff;stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:bevel;filter:drop-shadow(0 0 3px #6be4ff) drop-shadow(0 0 7px #ffb43c);animation:ai-crackle 1.3s steps(2) infinite}
+@keyframes ai-crackle{0%,60%{opacity:.35}65%{opacity:1}75%{opacity:.5}85%{opacity:1}}
+.ai-sp-corners .ai-sp-part[data-part="1"]{-webkit-mask:linear-gradient(#000 0 0) 0 0/30% 22% no-repeat,linear-gradient(#000 0 0) 100% 0/30% 22% no-repeat,linear-gradient(#000 0 0) 0 100%/30% 22% no-repeat,linear-gradient(#000 0 0) 100% 100%/30% 22% no-repeat;mask:linear-gradient(#000 0 0) 0 0/30% 22% no-repeat,linear-gradient(#000 0 0) 100% 0/30% 22% no-repeat,linear-gradient(#000 0 0) 0 100%/30% 22% no-repeat,linear-gradient(#000 0 0) 100% 100%/30% 22% no-repeat}
+.ai-sp-spot{--sx:50%;--sy:40%}
+.ai-sp-spot .ai-sp-part[data-part="1"]{-webkit-mask:radial-gradient(circle 0 at var(--sx) var(--sy),#000 0,transparent 0);mask:radial-gradient(circle 0 at var(--sx) var(--sy),#000 0,transparent 0)}
+.ai-sp-spot.ai-spot-on .ai-sp-part[data-part="1"]{-webkit-mask:radial-gradient(circle 70px at var(--sx) var(--sy),#000 70%,transparent 100%);mask:radial-gradient(circle 70px at var(--sx) var(--sy),#000 70%,transparent 100%)}
+
+/* Twin Card takes: two designs stacked, face B shows when the stage has .ai-b. */
+.ai-tw{display:grid;cursor:pointer}
+.ai-tw-face{grid-area:1/1}
+.ai-tw-flip{perspective:1200px}
+.ai-tw-flip .ai-tw-face{transition:transform .9s cubic-bezier(.3,.1,.2,1);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.ai-tw-flip [data-face=b]{transform:rotateY(180deg)}
+.ai-tw-flip.ai-b [data-face=a]{transform:rotateY(-180deg)}
+.ai-tw-flip.ai-b [data-face=b]{transform:rotateY(0)}
+.ai-tw-peel [data-face=a]{z-index:1;clip-path:polygon(0 0,82% 0,100% 13%,100% 100%,0 100%);transition:clip-path .7s cubic-bezier(.3,.1,.2,1)}
+.ai-tw-peel:hover [data-face=a]{clip-path:polygon(0 0,0 0,100% 140%,100% 100%,0 100%)}
+.ai-tw-peel::after{content:"";position:absolute;right:0;top:0;width:18%;height:13%;z-index:2;background:linear-gradient(225deg,transparent 50%,rgba(255,255,255,.55) 50%,rgba(0,0,0,.35) 100%);pointer-events:none;transition:opacity .3s}
+.ai-tw-peel:hover::after{opacity:0}
+.ai-tw-shuffle [data-face=a],.ai-tw-shuffle [data-face=b]{transition:transform .45s ease,filter .45s}
+.ai-tw-shuffle [data-face=b],.ai-tw-shuffle.ai-b [data-face=a]{z-index:0;transform:translate(14px,8px) rotate(5deg) scale(.95);filter:brightness(.6)}
+.ai-tw-shuffle [data-face=a],.ai-tw-shuffle.ai-b [data-face=b]{z-index:1}
+.ai-tw-shuffle.ai-shuffling:not(.ai-b) [data-face=a],.ai-tw-shuffle.ai-shuffling.ai-b [data-face=b]{animation:ai-shuffle-out .9s ease-in-out}
+@keyframes ai-shuffle-out{0%{transform:none}45%{transform:translateX(-112%) rotate(-10deg)}100%{transform:translate(14px,8px) rotate(5deg) scale(.95)}}
+.ai-tw-scan{position:relative}
+.ai-tw-scan [data-face=b]{z-index:1;clip-path:inset(0 0 100% 0);transition:clip-path 1s linear}
+.ai-tw-scan.ai-b [data-face=b]{clip-path:inset(0 0 0 0)}
+.ai-scanbar{position:absolute;left:-4px;right:-4px;top:0;height:3px;z-index:3;background:#bff8ff;box-shadow:0 0 12px 3px #6be4ff;opacity:0;pointer-events:none}
+.ai-tw-scan.ai-b .ai-scanbar{animation:ai-scan-down 1s linear}
+.ai-tw-scan:not(.ai-b) .ai-scanbar{animation:ai-scan-up 1s linear}
+@keyframes ai-scan-down{0%{top:0;opacity:1}100%{top:100%;opacity:1}}
+@keyframes ai-scan-up{0%{top:100%;opacity:1}100%{top:0;opacity:1}}
+.ai-tw-glitch [data-face=b]{opacity:0}
+.ai-tw-glitch.ai-b [data-face=a]{opacity:0}
+.ai-tw-glitch.ai-b [data-face=b]{opacity:1}
+.ai-tw-glitch.ai-glitching .ai-tw-face{animation:ai-glitch .36s steps(6)}
+@keyframes ai-glitch{0%{transform:translate(0);filter:none;clip-path:inset(0)}20%{transform:translate(-6px,2px);filter:hue-rotate(90deg) saturate(2);clip-path:inset(10% 0 55% 0)}40%{transform:translate(5px,-3px);filter:hue-rotate(-60deg);clip-path:inset(60% 0 8% 0)}60%{transform:translate(-3px,0);filter:invert(.2);clip-path:inset(30% 0 30% 0)}80%{transform:translate(4px,1px);clip-path:inset(0 0 70% 0)}100%{transform:none;filter:none;clip-path:inset(0)}}
+
+/* Living Border effects: drawn over the frame in the border's own colours (--ba, --bb). */
+.ai-lb{--ba:#ffd36b;--bb:#ff5ab4;--band:9px}
+.ai-ring,.ai-embers,.ai-trace{position:absolute;inset:0;z-index:6;pointer-events:none;border-radius:var(--r);transition:opacity .4s}
+.ai-fx-off .ai-ring,.ai-fx-off .ai-embers,.ai-fx-off .ai-trace{opacity:0}
+.ai-fx-off.ai-lb-pulse .ft-card{animation:none}
+.ai-ring{padding:var(--band);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.ai-lb-pulse .ai-ring{background:linear-gradient(135deg,var(--ba),var(--bb));mix-blend-mode:screen;animation:ai-pulse 2.2s ease-in-out infinite}
+.ai-lb-pulse .ft-card{border-radius:var(--r);animation:ai-pulse-glow 2.2s ease-in-out infinite}
+@keyframes ai-pulse{0%,100%{opacity:.05}50%{opacity:.75}}
+@keyframes ai-pulse-glow{0%,100%{box-shadow:0 0 0 transparent}50%{box-shadow:0 0 26px 4px var(--ba)}}
+@property --ai-ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+.ai-lb-orbit .ai-ring{background:conic-gradient(from var(--ai-ang),transparent 0 78%,var(--bb) 88%,#fff 93%,var(--ba) 96%,transparent 100%);mix-blend-mode:screen;animation:ai-orbit 3s linear infinite}
+@keyframes ai-orbit{to{--ai-ang:360deg}}
+.ai-lb-shimmer .ai-ring{background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.95) 48%,var(--ba) 52%,transparent 65%) 0 0/300% 100% no-repeat;mix-blend-mode:screen;animation:ai-shimmer 3.2s ease-in-out infinite}
+@keyframes ai-shimmer{0%{background-position:120% 0}55%,100%{background-position:-20% 0}}
+.ai-embers{overflow:visible}
+.ai-embers i{position:absolute;left:var(--x);top:var(--y);width:calc(4px * var(--s));aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff6c8,var(--ba) 45%,transparent 70%);opacity:0;animation:ai-ember-rise 3s ease-out var(--d) infinite}
+@keyframes ai-ember-rise{0%{opacity:0;transform:translate(0,0)}15%{opacity:1}100%{opacity:0;transform:translate(calc((var(--s) - 1) * 40px),-90px)}}
+.ai-trace{width:100%;height:100%;overflow:visible}
+.ai-trace rect{fill:none;stroke:#fff;stroke-width:2.5;vector-effect:non-scaling-stroke;stroke-dasharray:18 82;stroke-linecap:round;filter:drop-shadow(0 0 3px var(--ba)) drop-shadow(0 0 8px var(--bb));animation:ai-trace 4s linear infinite}
+@keyframes ai-trace{to{stroke-dashoffset:-100}}

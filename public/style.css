@@ -3498,7 +3498,7 @@ button.fb-open[aria-pressed="true"] { color: var(--on-accent); background: var(-
 .fb-badge[hidden] { display: none; }
 @media (max-width: 760px) { .fb-open-label { display: none; } }
 /* Discord invite (footer): same frame as the Feedback button, blurple on hover. */
-a.discord-join, a.kofi-join {
+a.discord-join, a.kofi-join, a.shop-join {
   display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
   font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
   color: var(--dust); border: 1px solid var(--seam); padding: 8px 11px; border-radius: 2px;
@@ -3521,6 +3521,10 @@ a.discord-join:hover { color: #fff; background: #5865f2; border-color: #5865f2; 
 .foot a.discord-join:hover { color: #fff; } /* over .foot a:hover */
 /* Ko-fi donate (footer): Discord's frame, Ko-fi red on hover. */
 a.kofi-join:hover, .foot a.kofi-join:hover { color: #e5e283; background: #1d6b49; border-color: #3fb57e; text-decoration: none; }
+/* Shop (footer): the token gold from shop.css, filled on hover. */
+.foot a.shop-join { color: #ffd879; border-color: color-mix(in srgb, #ffd879 50%, transparent); }
+html.light .foot a.shop-join { color: #8a6400; border-color: color-mix(in srgb, #b58500 55%, transparent); }
+a.shop-join:hover, .foot a.shop-join:hover { color: #1a1406; background: #ffd879; border-color: #ffd879; text-decoration: none; }
 /* Footer: the tour ("New here?" / Resume) and the Discord invite, right of the disclaimer. */
 .foot { align-items: center; }
 .foot-links { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -5413,9 +5417,6 @@ dialog.pb-modal { width: min(1320px, 96vw); }
 .pp-head.pbg-text .pp-follows .pp-follow, .pp-head.pbg-text .pp-follows .pp-follow * { color: var(--on-accent); text-shadow: none; }
 .pp-head.pbg-text .pp-follows .pp-follow.is-following, .pp-head.pbg-text .pp-follows .pp-follow.is-following * { color: var(--pbg-text); }
 
-/* Shop supporter badge (lib/shop.js), beside the name on a profile or a card, where the player chose. */
-.supporter-badge { display: inline-block; margin-left: .4em; padding: .1em .45em; border: 1px solid #ffd879; border-radius: 999px; color: #ffd879; font-size: .45em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; line-height: 1.4; }
-.ft-name .supporter-badge { font-size: .5em; }
 
 /* The Claude account's tag in the Feed (parts/feed.js who). */
 .ai-tag{display:inline-block;padding:0 5px;border-radius:4px;font-size:.68em;font-weight:700;letter-spacing:.04em;vertical-align:.12em;color:#1b1206;background:#d9a066}

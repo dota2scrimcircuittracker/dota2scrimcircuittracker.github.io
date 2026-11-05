@@ -1,5 +1,65 @@
 # Card collection
 
+## Token shop
+
+The Gallery's Shop tab (`parts/shop.js`, rules in `lib/shop.js`). Tokens come in four bundles: $5 → 10,
+$10 → 25, $20 → 55, $30 → 85. They buy card items at a fixed price by rarity (1/3/5/10), extra card
+slots, commissions, and cards for other players.
+Copies bought with tokens can't be recycled. Loading screens are never sold.
+
+Payment is Stripe Checkout. A bundle button sends `stripe-checkout` to the Worker, which makes the
+checkout with the price and the player's account on it (`stripeCheckout` in
+`workers/steam-auth/src/cosmetics.js`) and returns Stripe's page. Stripe's signed webhook
+(`/cosmetics/stripe`) credits the tokens once per checkout session. `charge.refunded` and
+`charge.dispute.created` take them back in proportion, never below zero; spent tokens stay on the
+payment as `owed`. A paid checkout whose account has no collection waits in Fav's panel to be assigned.
+
+Arcana in the shop means card editing tools, never player cards (`lib/cosmetics-arcana-catalog.js`, type
+`tool`, rarity `arcana`, 30 tokens each; they are also the arcana packs and recycling give, see below):
+- **Double finish** (`tool:double-finish`): owning one unlocks finish stacking; each copy adds a layer,
+  up to five in all (`finishArcanas` in `lib/cosmetics-engine.js`; arcana earned before it was sold still counts).
+- **Twin Card** (`tool:twin-flip`, `-peel`, `-shuffle`, `-scan`, `-glitch`): the card gets a back and turns
+  between the two. With a twin on, the editor's Back button (in place of the stats back)
+  builds it with the usual controls (artwork, border,
+  finish...), starting from a copy of the front; the Twin Card panel picks the turn or "No back".
+  `saveCardDesign` stores `twin: {turn, design}`, checks the back like a front (anything it leaves out is the
+  front's) and drops any twin inside it. `parts/player-card.js` draws both cards in a `.ft-twin` cell, and `card-arcana.css` turns them on
+  a 10 second CSS loop (Corner Peel on hover). Clicking a twin card turns it to its other design instead of its stats and holds it there (each click turns it over).
+
+Living borders (`living:pulse`, `orbit`, `shimmer`, `embers`, `trace`) are legendary modifiers: equipment
+`living`, drawn by `livingBorderHtml` (`lib/card-arcana.js`) over the equipped border in its colours. They drop
+in packs (border packs too) and sell at the legendary price.
+
+Arcana player cards (`ARCANA_CARDS`, the Arcana Cup designs) only come from packs and are never sold.
+
+Refunds are on request, within 24 hours of paying (`REFUND_WINDOW_MS`, `refundable` in `lib/shop.js`).
+The shop lists the player's bundles from the last day (`shop-purchases`) with a Request a refund
+button. `refund-request` marks the payment once (`refundRequested`), then the browser files a feedback
+ticket whose note starts "Refund request:" (`refundNote`), so it reaches Fav like any ticket but never
+links to the sender's public profile (`scripts/feedback.cjs` `isRefund`). Fav's panel lists open
+requests too. Fav refunds the payment in the Stripe dashboard, and the webhook takes the tokens back.
+
+Worker settings: secrets `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`; the variable `SHOP_ENABLED`
+set to `on` opens it (`[vars]` in `workers/steam-auth/wrangler.toml`, so every deploy keeps it). Without it every shop action
+returns "The shop is not open yet." Paid checkouts still credit. The Stripe webhook listens for
+`checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded` and
+`charge.dispute.created`. Test and live mode each have their own key, webhook and signing secret.
+
+Local testing: `?testShop=1` (fake wallet, 30 tokens), `?testShop=reset`, `?testShop=fav` (Fav's
+orders panel) on a local dev host only (`lib/local-shop-test.js`).
+## November 3 wave (local only)
+
+25 items left after Fav's Nov 4 vote: 7 borders (Cedar, Cork, Damascus, Lapis, Stitched Leather, Lantern Festival,
+Radiant & Dire), 8 finishes (Linen, Mosaic, Polaroid, Gold Emboss, Fireflies, Sakura Fall, Ravage, Midas Touch),
+7 signatures (Fountain Pen, Blackletter, Circuit Trace, Smoke Script, Holo Sticker, Lightning Script, Soulfire) and three
+legendary modifiers (Arabic Script, Devanagari, Mkhedruli). Ravage, Smoke Script and Lightning Script were redrawn after being voted
+"needs work". Votes: `scripts/debug/wave3-votes.json` (gitignored), written by the review page. Drawn by `lib/cosmetics-wave3-{borders,finishes,signatures}.js`,
+motion in `cosmetics-wave3.css`, modifiers in `lib/signatures.js`. `WAVE3_CATALOG` in `lib/cosmetics-wave-catalog.js`
+joins the catalog only on loopback while `WAVE3_LIVE` is false, so on localhost they drop, equip and render like any
+item, and the live site doesn't see them. Review page: `?wave3=1` on the Gallery (loopback only). Flip `WAVE3_LIVE` to
+release. Blackletter uses the system's Old English Text MT where installed and falls back to Georgia elsewhere; the
+modifier transliterations are rough and need a native reader before release. Tests: `test/wave3.test.js`.
+
 ## Arcana upgrade: stacked finishes
 
 A card can stack one finish over its main one per arcana card the player owns (`arcanaCount`:
@@ -12,12 +72,13 @@ gets brings it sealed (`state.arcanaSealed`); it shows as a box in Packs, and op
 arcana before the sealed box existed (arcana or `arcanaOwed`, nothing sealed) count as upgraded already
 (`hasArcanaUpgrade`), and a later arcana doesn't seal a box for them. Every stacked finish must be owned.
 
-Arcana cards come from recycling ten spare legendaries, from packs, or from the shop for
-`ARCANA_PRICE` tokens (30, draft; `buy-arcana`, `buyArcana` in `lib/shop.js`). Every card in every
-pack has `ARCANA_ODDS` (0.5%, `lib/cosmetics-catalog.js`) to be an arcana instead, the top of its
-roll, and arcana cards are always dealt last. While `ARCANA_CARDS` is empty they're owed
-(`arcanaOwed`, reward key `arcana:owed`). The Arcana chip in the Collection rarity filter shows the
-Double finish tile, and in the Shop the arcana card for sale (`parts/arcana.js`). A stacked copy of
+The arcana from packs and recycling is an arcana tool (`giveArcana`: Double finish or one of the five
+Twin Cards, equally likely; reward `{key: "tool:...", arcana: true}`); arcana player cards (`ARCANA_CARDS`)
+will come from player packs and are never sold. Recycling ten spare legendaries gives one. Every card in every
+pack has `arcanaOdds(pack)` (by pack rarity: common 0.5%, rare 1.5%, epic 5%, legendary 15%;
+`ARCANA_ODDS_BY_TIER` in `lib/cosmetics-catalog.js`) to be an arcana instead, the top of its
+roll, and arcana are always dealt last. New arcana no longer seal a box; `arcanaOwed`, `arcana:owed`
+rewards and sealed boxes from before still work and still add layers. A stacked copy of
 the main finish is dropped, so changing the main finish never breaks a saved stack.
 
 Layers draw bottom to top: the main finish, then `finishStack` in order. Under the picker, a layer

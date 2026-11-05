@@ -1,9 +1,9 @@
 // The Gallery's Shop tab (lib/shop.js): a top bar with your token balance and the bundles (each opens a
-// Stripe Checkout made by the Worker), a row of extras (card slots, supporter badge) and commissions, why tokens (folded),
-// every card item at its fixed price beside a demo card to try them on, and for Fav the orders and unmatched payments. Local dev hosts only until it opens.
+// Stripe Checkout made by the Worker), a row of extras (card slots) and commissions, why tokens (folded),
+// every card item at its fixed price beside a demo card to try them on, and for Fav the orders and unmatched payments.
 import { esc } from '../core.js';
 import { collectionAction, collectionState, applyEquipment, PARTICLE_FINISHES, hasParticleAmount, isFxBorder } from '../lib/cosmetics.js';
-import { BUNDLES, bundleBonus, PRICES, ARCANA_PRICE, SHOP_ORDER, SLOT_PRICE, MAX_EXTRA_SLOTS, COMMISSIONS, extraSlots, supporterShown } from '../lib/shop.js';
+import { BUNDLES, bundleBonus, PRICES, ARCANA_PRICE, SHOP_ORDER, SLOT_PRICE, MAX_EXTRA_SLOTS, COMMISSIONS, extraSlots, refundNote } from '../lib/shop.js';
 import { CARD_SLOTS } from '../lib/cosmetics-engine.js';
 import { isAdmin } from '../lib/pack-gifts.js';
 import { fileTicket } from '../lib/feedback.js';
@@ -12,7 +12,8 @@ import { effectControlsHtml, normalizeSettings, EDITABLE_FINISHES } from '../lib
 import { particleControlsHtml, normalizeParticles } from '../lib/cosmetics-particle-groups.js';
 import { maxSignatureSize } from '../lib/signatures.js';
 import { createPlayerCards, PAINT_FILTER } from './player-card.js';
-import { ARCANA_COLOR, arcanaShopTileHtml } from './arcana.js';
+import { ARCANA_COLOR } from './arcana.js';
+import { toolArtHtml } from '../lib/card-arcana.js';
 
 // Back from Stripe with ?paid=1: say so, and fetch the balance again while the webhook lands.
 let paidNote = new URLSearchParams(location.search).has('paid');
@@ -22,6 +23,8 @@ if (paidNote) {
   history.replaceState(history.state, '', u);
 }
 let paidPolling = false;
+// Your bundles from the last 24 hours (the Worker's shop-purchases), for the refund buttons. null until loaded.
+let purchases = null, purchasesLoading = false;
 let filter = 'all', rarity = 'all', page = 0, confirming = null, adminView = null, whyOpen = false, ordering = null;
 // The demo card beside the items: a few base cards in different colours (picked at random once per
 // visit) that any shop item can be tried on. Nothing is saved.
@@ -35,7 +38,20 @@ let demoTune = {};
 const demoRenderer = () => demoCards ??= createPlayerCards([{ start_time: 1, winner: 'Radiant', players: [{ account_id: DEMO_ACCOUNT, team: 'Radiant', hero: 'Invoker', position: 2, kills: 12, deaths: 3, assists: 18, gpm: 620, xpm: 740, hero_damage: 32000, last_hits: 265 }] }], { tiers: new Map([[String(DEMO_ACCOUNT), { tier: 'A', rating: 86 }]]) });
 const demoEquipment = (key = demoItem) => {
   const item = key && itemByKey(key), b = DEMO_BASES[demoBase];
-  return { ...DEFAULT_EQUIPMENT, rotation: 0, baseCard: { hero: b.hero, art: null, style: b.style }, ...(item ? { [item.type]: item.key.slice(item.type.length + 1) } : {}), ...(key === demoItem ? demoTune : {}) };
+  const base = { ...DEFAULT_EQUIPMENT, rotation: 0, baseCard: { hero: b.hero, art: null, style: b.style } };
+  return { ...base, ...(item ? demoItemEquipment(item, base) : {}), ...(key === demoItem ? demoTune : {}) };
+};
+// What an item puts on the demo card. Tools show what they do: two finishes stacked, or the card
+// turning to a second design on the next demo base. A living border shows on a gold frame.
+const demoItemEquipment = (item, base) => {
+  const id = item.key.slice(item.type.length + 1);
+  if (item.type === 'living') return { border: 'gold', living: id };
+  if (item.key === 'tool:double-finish') return { finish: 'starlight', finishStack: ['fx-sheen'] };
+  if (item.turn) {
+    const other = DEMO_BASES[(demoBase + 1) % DEMO_BASES.length];
+    return { border: 'gold', twin: { turn: item.turn, design: { ...base, border: 'neon-sign', finish: 'starlight', baseCard: { hero: other.hero, art: null, style: other.style } } } };
+  }
+  return { [item.type]: id };
 };
 // What's typed in a commission form, kept across redraws (the confirm click redraws).
 const drafts = { single: { pick: 'autograph', note: '' }, team: { team: '', note: '' } };
@@ -57,27 +73,27 @@ export function drawShop(body, { state, editable, viewer, signIn, run, colors, t
   const types = [...new Set(SHOP_ORDER.map((i) => i.type))];
   const items = SHOP_ORDER.filter((i) => (filter === 'all' || i.type === filter) && (rarity === 'all' || i.rarity === rarity));
   const pages = Math.max(1, Math.ceil(items.length / PER_PAGE));
-  const arcanaTile = arcanaShopTileHtml(editable ? state : null, { editable, price: ARCANA_PRICE, sure: confirming === 'arcana' });
   page = Math.min(page, pages - 1);
   const pager = pages > 1 ? `<nav class="shop-pager" aria-label="Shop pages"><button type="button" data-shop-page="${page - 1}" ${page === 0 ? 'disabled' : ''}>‹ Prev</button>${Array.from({ length: pages }, (_, n) => `<button type="button" data-shop-page="${n}" ${n === page ? 'aria-current="page"' : ''}>${n + 1}</button>`).join('')}<button type="button" data-shop-page="${page + 1}" ${page === pages - 1 ? 'disabled' : ''}>Next ›</button></nav>` : '';
   body.innerHTML = `<div class="shop-bar">
     <div class="shop-balance"><small>Your tokens</small>${editable ? `<strong>${tokens}</strong>` : '<button type="button" data-signin>Connect Steam</button>'}</div>
     <div class="shop-bundles"><small>Get tokens</small><div class="shop-bundle-list">${BUNDLES.map((b) => `<button type="button" class="shop-bundle" data-bundle="${b.dollars}" ${editable ? '' : 'disabled'}><strong>${b.tokens}</strong><span>$${b.dollars}</span>${bundleBonus(b) > 0 ? `<em>+${bundleBonus(b)}%</em>` : ''}</button>`).join('')}</div>
-      <p class="shop-code">${paidNote ? 'Payment received. Your tokens show here as soon as Stripe confirms it, usually within seconds.' : editable ? 'Pay by card through Stripe. Your tokens arrive on this account as soon as the payment goes through.' : 'Connect Steam to buy tokens.'}</p></div>
+      <p class="shop-code">${paidNote ? 'Payment received. Your tokens show here as soon as Stripe confirms it, usually within seconds.' : editable ? 'Pay by card through Stripe. Your tokens arrive on this account as soon as the payment goes through.' : 'Connect Steam to buy tokens.'}</p>${editable ? refundsHtml() : ''}</div>
   </div>
   ${editable ? featuresHtml(state) : ''}
   <details class="shop-why" ${whyOpen ? 'open' : ''}><summary>Why tokens?</summary>
     <p>Every payment carries a processing fee, and part of it is fixed. On a 50-cent card that fee would eat most of the price. You buy tokens in one go, pay that fee once, and spend them on the cards you want.</p>
     <p>The bigger bundles give more tokens per dollar. You pick the card, so there's no chance involved. Tokens only spend in this shop; they can't be cashed out.</p>
+    <p>Bought a bundle by mistake? You can ask for a refund within 24 hours of buying it, from the list under the bundles. Fav refunds the payment through Stripe and that bundle's tokens come back out.</p>
     <p>Loading screens aren't for sale. They're Valve's art, so they only come from free packs.</p>
   </details>
   <div class="dex-layout shop-layout"><section class="shop-items"><div class="shop-items-head"><h3>Card items <span>${items.length}</span></h3><div class="shop-filters">
     <div class="shop-chips" role="group" aria-label="Rarity">${['all', ...TIERS].map((t) => `<button type="button" data-shop-rarity="${t}" aria-pressed="${t === rarity}" ${t === 'all' ? '' : `style="--rarity:${colors[t]}"`}>${t === 'all' ? 'All' : `${t} · ${PRICES[t]}`}</button>`).join('')}<button type="button" data-shop-rarity="arcana" aria-pressed="${rarity === 'arcana'}" style="--rarity:${ARCANA_COLOR}">arcana · ${ARCANA_PRICE}</button></div>
     <div class="shop-chips" role="group" aria-label="Type">${['all', ...types].map((t) => `<button type="button" data-shop-type="${t}" aria-pressed="${t === filter}">${t === 'all' ? 'All' : esc(typeLabel(t))}</button>`).join('')}</div>
     </div></div>
-    ${rarity === 'arcana' ? `<div class="dex-grid shop-grid">${arcanaTile}</div>` : `<div class="dex-grid shop-grid">${page === 0 && rarity === 'all' && filter === 'all' ? arcanaTile : ''}${items.slice(page * PER_PAGE, (page + 1) * PER_PAGE).map((i) => {
+    ${`<div class="dex-grid shop-grid">${items.slice(page * PER_PAGE, (page + 1) * PER_PAGE).map((i) => {
       const n = inventory[i.key] ?? 0, price = PRICES[i.rarity], sure = confirming === i.key;
-      return `<article class="dex-item shop-item ${n ? 'collected' : ''} ${demoItem === i.key ? 'previewing' : ''}" data-shop-preview="${i.key}" title="Try it on the demo card" style="--rarity:${colors[i.rarity]}">${thumbHtml(i.key)}<small>${esc(typeLabel(i.type))} · ${i.rarity}</small><strong>${esc(i.name)}</strong><span>${n ? `Owned ×${n}` : 'Not owned'}</span>${editable ? `<button type="button" data-buy="${i.key}" class="${sure ? 'confirm' : ''}" ${tokens < price ? 'disabled' : ''}>${sure ? `Spend ${price}?` : `${price} token${price === 1 ? '' : 's'}`}</button>` : `<b class="shop-price">${price} token${price === 1 ? '' : 's'}</b>`}</article>`;
+      return `<article class="dex-item shop-item ${n ? 'collected' : ''} ${demoItem === i.key ? 'previewing' : ''}" data-shop-preview="${i.key}" title="Try it on the demo card" style="--rarity:${i.rarity === 'arcana' ? ARCANA_COLOR : colors[i.rarity]}">${i.type === 'tool' ? toolArtHtml(i) : thumbHtml(i.key)}<small>${esc(typeLabel(i.type))} · ${i.rarity}</small><strong>${esc(i.name)}</strong><span>${n ? `Owned ×${n}` : 'Not owned'}</span>${editable ? `<button type="button" data-buy="${i.key}" class="${sure ? 'confirm' : ''}" ${tokens < price ? 'disabled' : ''}>${sure ? `Spend ${price}?` : `${price} token${price === 1 ? '' : 's'}`}</button>` : `<b class="shop-price">${price} token${price === 1 ? '' : 's'}</b>`}</article>`;
     }).join('') || '<p>Nothing matches.</p>'}</div>
     ${pager}`}
     <p class="muted shop-note">Bought copies can't be recycled.</p>
@@ -93,14 +109,14 @@ export function drawShop(body, { state, editable, viewer, signIn, run, colors, t
   if (demo && top && getComputedStyle(top).position === 'sticky') demo.style.top = `${top.offsetHeight + 12}px`;
   const card = body.querySelector('[data-demo-card] .ft-card');
   if (card) { card.classList.remove('flipped'); card.querySelectorAll('button').forEach((b) => b.remove()); applyEquipment(card, demoEquipment(), name); }
-  body.querySelectorAll('[data-shop-thumb] .ft-card').forEach((c) => { c.classList.remove('flipped'); c.querySelectorAll('button').forEach((b) => b.remove()); applyEquipment(c, demoEquipment(c.closest('[data-shop-thumb]').dataset.shopThumb), name); });
+  body.querySelectorAll('[data-shop-thumb] .ft-card:not(.ft-twin-b)').forEach((c) => { c.classList.remove('flipped'); c.querySelectorAll('button').forEach((b) => b.remove()); applyEquipment(c, demoEquipment(c.closest('[data-shop-thumb]').dataset.shopThumb), name); });
   body.querySelectorAll('[data-shop-preview]').forEach((a) => a.onclick = (e) => { if (e.target.closest('button')) return; demoItem = demoItem === a.dataset.shopPreview ? null : a.dataset.shopPreview; demoTune = {}; redraw(); });
   wireTune(body.querySelector('[data-demo-tune]'), card, name, redraw);
   body.querySelectorAll('[data-demo-base]').forEach((b) => b.onclick = () => { demoBase = Number(b.dataset.demoBase); redraw(); });
   body.querySelector('[data-demo-clear]')?.addEventListener('click', () => { demoItem = null; demoTune = {}; redraw(); });
   if (paidNote && editable && !paidPolling) {
     paidPolling = true;
-    for (const wait of [1500, 5000, 12000]) setTimeout(async () => { if (body.isConnected && await run('session', {})) redraw(); }, wait);
+    for (const wait of [1500, 5000, 12000]) setTimeout(async () => { if (body.isConnected && await run('session', {})) { purchases = null; redraw(); } }, wait);
     setTimeout(() => { paidNote = false; if (body.isConnected) redraw(); }, 15000);
   }
   // The Worker makes the checkout and returns Stripe's page; the local shop test credits straight away.
@@ -108,7 +124,7 @@ export function drawShop(body, { state, editable, viewer, signIn, run, colors, t
     b.disabled = true;
     const data = await run('stripe-checkout', { dollars: Number(b.dataset.bundle), path: location.pathname, hash: location.hash });
     if (data?.url) location.assign(data.url);
-    else redraw();
+    else { purchases = null; redraw(); }
   });
   // Two clicks: the first asks, the second spends.
   const twice = (id, spend) => async () => {
@@ -119,12 +135,18 @@ export function drawShop(body, { state, editable, viewer, signIn, run, colors, t
   };
   body.querySelectorAll('[data-buy]').forEach((b) => b.onclick = twice(b.dataset.buy, () => run('buy', { item: b.dataset.buy })));
   body.querySelector('[data-buy-slot]')?.addEventListener('click', twice('slot', () => run('buy-slot', {})));
-  body.querySelector('[data-buy-arcana]')?.addEventListener('click', twice('arcana', () => run('buy-arcana', {})));
-  body.querySelectorAll('[data-badge]').forEach((c) => c.onchange = async () => {
-    const shown = { profile: body.querySelector('[data-badge="profile"]').checked, card: body.querySelector('[data-badge="card"]').checked };
-    await run('supporter-badge', shown);
-    redraw();
-  });
+  // A refund request: the Worker marks the purchase, then it goes to Fav as a ticket.
+  if (editable && purchases == null && !purchasesLoading) {
+    purchasesLoading = true;
+    run('shop-purchases', {}).then((data) => { purchases = data?.purchases ?? []; purchasesLoading = false; if (body.isConnected) redraw(); });
+  }
+  body.querySelectorAll('[data-refund]').forEach((b) => b.onclick = twice(`refund:${b.dataset.refund}`, async () => {
+    const data = await run('refund-request', { payment: b.dataset.refund });
+    if (!data?.refund) return;
+    const p = purchases?.find((x) => x.id === data.refund.id);
+    if (p) p.refundRequested = Date.now();
+    await refundTicket(data.refund, name, viewer, b, body.parentElement?.querySelector('.collection-message'));
+  }));
   body.querySelectorAll('[data-order-open]').forEach((b) => b.onclick = () => { ordering = ordering === b.dataset.orderOpen ? null : b.dataset.orderOpen; confirming = null; redraw(); });
   body.querySelectorAll('[data-commission]').forEach((form) => {
     const kind = form.dataset.commission;
@@ -169,6 +191,31 @@ async function ticketFor(order, name, el, message) {
     text = res.id ? `Ordered. Your ticket is ${res.id}; Fav will be in touch.` : 'Ordered. Fav sees it in the orders list.';
   } catch { text = 'Ordered. Fav sees it in the orders list.'; }
   if (message) message.textContent = text;
+}
+
+// A refund request goes in as a ticket the same way. The purchase is already marked, so a ticket that
+// fails would leave Fav unaware: the message says to send it on Discord instead, and Fav's panel lists it.
+async function refundTicket(refund, name, account, el, message) {
+  if (refund.local) { if (message) message.textContent = 'Test refund request. No ticket filed.'; return; }
+  let text;
+  try {
+    const res = await fileTicket(name, refundNote(refund, `${name} (Steam account ${account})`), el);
+    text = res.id ? `Refund requested. Your ticket is ${res.id}; Fav refunds it through Stripe.` : 'Refund requested. Fav refunds it through Stripe.';
+  } catch { text = "Refund requested, but the ticket didn't send. Message Fav on Discord so it isn't missed."; }
+  if (message) message.textContent = text;
+}
+
+// Bundles bought in the last 24 hours, each with its refund button or where its refund stands.
+const ago = (at) => { const h = Math.floor((Date.now() - at) / 3600000); return h < 1 ? 'under an hour ago' : `${h} hour${h === 1 ? '' : 's'} ago`; };
+function refundsHtml() {
+  if (!purchases?.length) return '';
+  const rows = purchases.map((p) => {
+    const id = `refund:${p.id}`, sure = confirming === id;
+    const end = p.status === 'refunded' ? '<em>Refunded</em>' : p.refundRequested ? '<em>Refund requested</em>'
+      : p.status === 'credited' ? `<button type="button" data-refund="${esc(p.id)}" class="${sure ? 'confirm' : ''}">${sure ? 'Ask Fav for a refund?' : 'Request a refund'}</button>` : '';
+    return `<li><span>$${esc(p.amount)} · ${plural(p.tokens)} · ${ago(p.at)}</span>${end}</li>`;
+  }).join('');
+  return `<div class="shop-refunds"><small>Bought in the last 24 hours</small><ul>${rows}</ul></div>`;
 }
 
 function demoHtml(colors, typeLabel, name) {
@@ -233,7 +280,6 @@ const confirmText = (id, idle, price) => (confirming === id ? `Spend ${price}?` 
 
 const ICONS = {
   slot: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="14" y="5" width="7" height="14" rx="1.5" stroke-dasharray="2.5 2"/><path d="M17.5 10v4M15.5 12h4"/></svg>',
-  badge: '<svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8-4.2-4.1 5.8-.8z"/></svg>',
   single: '<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 7l3 3"/></svg>',
   team: '<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5M10.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5"/></svg>',
 };
@@ -244,17 +290,13 @@ const tile = (id, accent, title, price, blurb, body) => `<article class="shop-fe
 const pricePill = (n) => `<span class="shop-feature-price">${plural(n)}</span>`;
 
 function featuresHtml(state) {
-  const tokens = state.tokens ?? 0, extra = extraSlots(state), badge = supporterShown(state);
+  const tokens = state.tokens ?? 0, extra = extraSlots(state);
   const single = COMMISSIONS.single.price, team = COMMISSIONS.team.price;
   const pips = Array.from({ length: CARD_SLOTS + MAX_EXTRA_SLOTS }, (_, n) => `<i class="${n < CARD_SLOTS ? 'base' : n < CARD_SLOTS + extra ? 'bought' : ''}"></i>`).join('');
   const slot = tile('slot', '#ffd879', 'Extra card slot', pricePill(SLOT_PRICE), `One more card design to switch between. You have ${CARD_SLOTS + extra} of ${CARD_SLOTS + MAX_EXTRA_SLOTS}.`,
     `<div class="shop-pips" aria-hidden="true">${pips}</div>${extra < MAX_EXTRA_SLOTS
       ? `<button type="button" class="shop-feature-cta ${confirming === 'slot' ? 'confirm' : ''}" data-buy-slot ${tokens < SLOT_PRICE ? 'disabled' : ''}>${confirmText('slot', `Buy a slot · ${plural(SLOT_PRICE)}`, SLOT_PRICE)}</button>`
       : '<span class="shop-feature-done">All slots bought</span>'}`);
-  const badgeTile = tile('badge', '#7be0a0', 'Supporter badge', '<span class="shop-feature-price free">Free</span>', badge ? 'Yours for buying tokens. Pick where it shows.' : 'Comes with your first token purchase.',
-    `<div class="shop-badge-preview"><span>${esc('Your name')}</span><span class="supporter-badge">Supporter</span></div>${badge
-      ? `<div class="shop-toggles"><label><input type="checkbox" data-badge="profile" ${badge.profile ? 'checked' : ''}> Profile</label><label><input type="checkbox" data-badge="card" ${badge.card ? 'checked' : ''}> Cards</label></div>`
-      : '<span class="shop-feature-done">Locked until your first bundle</span>'}`);
   const form = (kind, cost, fields) => ordering === kind
     ? `<form class="shop-order-form" data-commission="${kind}">${fields}
       <div class="shop-order-actions"><button type="button" data-order-open="${kind}">Cancel</button><button type="submit" class="shop-feature-cta ${confirming === `commission-${kind}` ? 'confirm' : ''}" ${tokens < cost ? 'disabled' : ''}>${confirmText(`commission-${kind}`, `Order · ${plural(cost)}`, cost)}</button></div></form>`
@@ -266,7 +308,7 @@ function featuresHtml(state) {
   const set = tile('team', '#6fd3ff', 'Team set', pricePill(team), 'Border, finish and signature for your team. Everyone on it gets a copy, and it joins the packs.',
     form('team', team, `<label>Team <input name="team" maxlength="60" required placeholder="Your team’s name" value="${esc(d2.team)}"></label>
       <label>Idea <input name="note" maxlength="300" placeholder="Colours, logo, theme" value="${esc(d2.note)}"></label>`));
-  return `<section class="shop-features" aria-label="Extras and commissions">${slot}${badgeTile}${own}${set}
+  return `<section class="shop-features" aria-label="Extras and commissions">${slot}${own}${set}
     <p class="shop-features-note">Made with Fav: tokens are taken when you order, and come back if Fav can’t make it.</p></section>`;
 }
 
@@ -274,7 +316,7 @@ function featuresHtml(state) {
 function adminHtml() {
   if (!adminView) return '<section class="shop-admin"><h3>Fav: orders and payments</h3><button type="button" data-admin-load>Load orders and payments</button></section>';
   const open = adminView.orders.filter((o) => o.status === 'open'), who = (a) => esc(adminView.nicknames[a] ?? `Player ${a}`);
-  const payments = Object.entries(adminView.payments);
+  const payments = Object.entries(adminView.payments).filter(([, p]) => p.status === 'unmatched'), refunds = Object.entries(adminView.payments).filter(([, p]) => p.refundRequested && p.status === 'credited');
   return `<section class="shop-admin"><h3>Fav: orders and payments</h3>
     <h4>Open orders (${open.length})</h4>${open.map((o) => `<div class="shop-order"><strong>${who(o.account)} · ${o.kind === 'team' ? `Team set for ${esc(o.team)}` : PICKS[o.pick]} · ${plural(o.price)}</strong><span>${new Date(o.at).toLocaleString()}${o.note ? ` · “${esc(o.note)}”` : ''}</span>
       <a href="#/all/player/${esc(o.account)}">Profile</a>
@@ -282,6 +324,7 @@ function adminHtml() {
       <button type="button" data-close-order="${esc(o.id)}" data-status="refunded">${confirming === `order-${o.id}-refunded` ? 'Sure?' : 'Refund'}</button></div>`).join('') || '<p class="muted">None.</p>'}
     <h4>Payments with no account (${payments.length})</h4>${payments.map(([id, p]) => `<form class="shop-order" data-assign="${esc(id)}"><strong>$${esc(p.amount)} ${esc(p.currency)} · ${plural(p.tokens)}</strong><span>${new Date(p.at).toLocaleString()}${p.account ? ` · account ${esc(p.account)}` : ''}</span>
       <label>Steam account ID <input name="target" inputmode="numeric" pattern="\\d{1,10}" required></label><button type="submit">Give tokens</button></form>`).join('') || '<p class="muted">None.</p>'}
+    <h4>Refund requests (${refunds.length})</h4>${refunds.map(([id, p]) => `<div class="shop-order"><strong>${who(p.account)} · $${esc(p.amount)} · ${plural(p.tokens)}</strong><span>Paid ${new Date(p.at).toLocaleString()} · asked ${new Date(p.refundRequested).toLocaleString()} · ${esc(id)}</span><a href="#/all/player/${esc(p.account)}">Profile</a></div>`).join('') || '<p class="muted">None. Refund them in Stripe; the tokens come back out on their own.</p>'}
   </section>`;
 }
 

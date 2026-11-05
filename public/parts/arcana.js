@@ -1,13 +1,12 @@
-// Arcana in the Collection and Shop: the Double finish item (the Arcana upgrade) as a tile in the
-// Collection, the arcana card for sale in the Shop, and the full-screen reveal when the sealed
-// Double finish box is opened in Packs.
+// Arcana in the Collection: the Double finish tile for players who earned it before it was sold
+// (tool:double-finish), and the full-screen reveal when the sealed Double finish box is opened in Packs.
 import { esc } from '../core.js';
-import { MAX_FINISH_LAYERS, finishStackLimit, arcanaCount, hasArcanaUpgrade } from '../lib/cosmetics-engine.js';
+import { MAX_FINISH_LAYERS, finishStackLimit, hasArcanaUpgrade } from '../lib/cosmetics-engine.js';
 
 export const ARCANA_COLOR = '#ff5ab4';
 // How many finish layers a card can wear, main finish included, e.g. "3 of 5 layers".
 export const layersText = (state) => `${finishStackLimit(state) + 1} of ${MAX_FINISH_LAYERS} layers`;
-export const LAYERS_RULE = `Each arcana card you own adds one finish layer, up to ${MAX_FINISH_LAYERS}.`;
+export const LAYERS_RULE = `Each Double finish you own adds one finish layer, up to ${MAX_FINISH_LAYERS}.`;
 // Two card faces sliding over each other, each wearing its own moving finish: the item's picture.
 export const doubleArt = (cls = '') => `<span class="arcana-double ${cls}" aria-hidden="true"><i class="arcana-double-back"></i><i class="arcana-double-front"></i><b></b></span>`;
 
@@ -20,18 +19,6 @@ export function upgradeTileHtml(state) {
     <button type="button" class="arcana-upgrade-pic" data-arcana-upgrade="${status}" aria-label="Double finish, ${line}">${doubleArt()}<span class="arcana-upgrade-tag">ARCANA</span></button>
     <small>Arcana upgrade</small><strong>Double finish</strong><span>${line}</span>
     <p class="arcana-upgrade-note">Stack finishes on one card. ${LAYERS_RULE} Comes with your first arcana card.</p>
-  </article>`;
-}
-
-// The arcana card in the Shop (lib/shop.js buyArcana): a buy button, asked twice like the items.
-export function arcanaShopTileHtml(state, { editable, price, sure }) {
-  const owned = arcanaCount(state), tokens = state?.tokens ?? 0;
-  const line = owned ? `Owned ×${owned}${state?.arcanaSealed ? ' · Double finish sealed in Packs' : hasArcanaUpgrade(state) ? ` · ${layersText(state)}` : ''}` : 'Not owned';
-  return `<article class="dex-item arcana-upgrade-item arcana-shop-item ${owned ? 'collected' : ''}" style="--rarity:${ARCANA_COLOR}">
-    <div class="arcana-card-pic" aria-hidden="true"><span class="arcana-seal"><i></i></span><span class="arcana-upgrade-tag">ARCANA</span></div>
-    <small>Arcana card</small><strong>Arcana card</strong><span>${line}</span>
-    <p class="arcana-upgrade-note">One of the Arcana Cup's top designs, owed until they're released. Your first one unlocks Double finish. ${LAYERS_RULE}</p>
-    ${editable ? `<button type="button" data-buy-arcana class="${sure ? 'confirm' : ''}" ${tokens < price ? 'disabled' : ''}>${sure ? `Spend ${price}?` : `${price} tokens`}</button>` : `<b class="shop-price">${price} tokens</b>`}
   </article>`;
 }
 

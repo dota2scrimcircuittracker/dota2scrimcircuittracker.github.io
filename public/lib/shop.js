@@ -1,23 +1,24 @@
-// The token shop (Gallery's Shop tab, parts/shop.js). NOT RELEASED: the tab shows only on a local
-// dev host, and the Worker refuses every shop action unless its SHOP_ENABLED variable is "on".
+// The token shop (Gallery's Shop tab, parts/shop.js). The Worker refuses every shop action unless its
+// SHOP_ENABLED variable is "on", so the shop can be closed without a site update.
 // Tokens are bought through Stripe Checkout in fixed bundles, more per dollar in the bigger ones; the
 // Worker makes the checkout with the player's account on it, so payments credit themselves. Card items are sold
 // directly at a fixed price by rarity, never in random packs. Loading screens (Valve's art) are
 // never sold. Copies bought with tokens can't be recycled, since recycling rolls a random pack.
 import { CATALOG, itemByKey, TIERS } from './cosmetics-catalog.js';
-import { slotCount, cardDesignState, grantArcana } from './cosmetics-engine.js';
+import { slotCount, cardDesignState } from './cosmetics-engine.js';
 
 export const BUNDLES = [{ dollars: 5, tokens: 10 }, { dollars: 10, tokens: 25 }, { dollars: 20, tokens: 55 }, { dollars: 30, tokens: 85 }];
 export const bundleFor = (dollars) => BUNDLES.find((b) => b.dollars === Number(dollars)) ?? null;
 // How many more tokens a bundle gives than the same money in the smallest one, in percent.
 export const bundleBonus = (b) => Math.round((b.tokens / b.dollars / (BUNDLES[0].tokens / BUNDLES[0].dollars) - 1) * 100);
-export const PRICES = { common: 1, rare: 3, epic: 5, legendary: 10 };
+// Arcana here means the card editing tools (Double finish, Twin Cards: lib/cosmetics-arcana-catalog.js).
+// Arcana player cards (ARCANA_CARDS) come only from packs and are never sold.
+export const ARCANA_PRICE = 30;
+export const PRICES = { common: 1, rare: 3, epic: 5, legendary: 10, arcana: ARCANA_PRICE };
 // Commissioned items (catalog `commission: true`) go in packs, never on sale here.
 export const SHOP_ITEMS = CATALOG.filter((i) => PRICES[i.rarity] != null && !i.commission);
-// DRAFT prices Fav hasn't settled: an extra card design slot, up to MAX_EXTRA_SLOTS of them.
+// An extra card design slot, up to MAX_EXTRA_SLOTS of them.
 export const SLOT_PRICE = 10, MAX_EXTRA_SLOTS = 3;
-// DRAFT: an arcana card (lib/cosmetics-engine.js grantArcana), with the sealed Double finish if it's the first.
-export const ARCANA_PRICE = 30;
 // Commissions: Fav designs it with you. single = one signature style, border or finish;
 // team = a border, finish and team signature, a copy to each player on the team, then into packs.
 export const COMMISSIONS = { single: { price: 15, picks: ['autograph', 'border', 'finish'] }, team: { price: 30 } };
@@ -37,8 +38,26 @@ export function creditTokens(state, tokens, txId) {
   if (!Number.isSafeInteger(tokens) || tokens < 1) throw new Error('Nothing to credit.');
   if (!txId) throw new Error('Missing payment ID.');
   if (state.tokenPayments?.includes(txId)) return state;
-  // Anyone who has bought tokens is a supporter; whether the badge shows is theirs to choose.
-  return { ...state, tokens: (state.tokens ?? 0) + tokens, tokenPayments: [...(state.tokenPayments ?? []), txId], supporter: true };
+  return { ...state, tokens: (state.tokens ?? 0) + tokens, tokenPayments: [...(state.tokenPayments ?? []), txId] };
+}
+
+// A bundle can be refunded on request within REFUND_WINDOW_MS of paying. The player asks from the shop,
+// which files a ticket for Fav; Fav refunds it in Stripe and the webhook takes the tokens back.
+export const REFUND_WINDOW_MS = 24 * 60 * 60 * 1000;
+// A payment row (the Worker's stripe: rows) the player can still ask to refund.
+export const refundable = (row, account, now = Date.now()) => row?.status === 'credited' && row.account === String(account) && now - row.at < REFUND_WINDOW_MS && !row.refundRequested;
+// The ticket's text: everything Fav needs to find the payment in Stripe.
+export function refundNote({ id, amount, tokens, at, unspent }, who) {
+  return `Refund request: $${amount} for ${tokens} tokens, paid ${new Date(at).toISOString().slice(0, 16).replace('T', ' ')} UTC by ${who}. `
+    + `${unspent} of those ${tokens} tokens are still unspent. Stripe checkout ${id}. `
+    + 'Refund it in Stripe and the tokens come back out on their own.';
+}
+
+// Tokens taken back for a refund or chargeback: as many as are left, never below zero. `owed` is the
+// part the player had already spent.
+export function reverseTokens(state, tokens) {
+  const due = Math.max(0, tokens), taken = Math.min(due, state.tokens ?? 0);
+  return { state: { ...state, tokens: (state.tokens ?? 0) - taken }, taken, owed: due - taken };
 }
 
 const spend = (state, price) => {
@@ -59,11 +78,6 @@ const forSale = (key) => {
   if (price == null || !SHOP_ITEMS.some((i) => i.key === key)) throw new Error('That item is not for sale.');
   return price;
 };
-
-export function buyArcana(state, random = Math.random) {
-  const got = grantArcana(spend(state, ARCANA_PRICE), random);
-  return { ...got, price: ARCANA_PRICE };
-}
 
 export function buyItem(state, key) {
   const price = forSale(key);
@@ -87,13 +101,6 @@ export function buySlot(state) {
   return { state: { ...spend(state, SLOT_PRICE), extraSlots: extraSlots(state) + 1, cardOrder: [...order, n] }, price: SLOT_PRICE };
 }
 
-// Where a supporter shows their badge: on their profile, on their cards, both or neither.
-export { supporterShown } from './cosmetics-engine.js';
-export function setSupporterBadge(state, { profile, card }) {
-  if (!state.supporter) throw new Error('The badge comes with your first token purchase.');
-  if (typeof profile !== 'boolean' || typeof card !== 'boolean') throw new Error('Choose where the badge shows.');
-  return { ...state, supporterBadge: { profile, card } };
-}
 
 // A commission order. Tokens are taken now; Fav makes it with the player, then marks it done or
 // refunds it. Returns the order to store beside the new state.

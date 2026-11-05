@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
-import {BUNDLES,bundleBonus,bundleFor,tokensForPayment,creditTokens,buyItem,recyclable,priceOf,shopVisible,SHOP_ITEMS,PRICES,giftItem,buySlot,SLOT_PRICE,MAX_EXTRA_SLOTS,setSupporterBadge,supporterShown,orderCommission} from '../public/lib/shop.js';
+import {BUNDLES,bundleBonus,bundleFor,tokensForPayment,creditTokens,reverseTokens,buyItem,recyclable,priceOf,shopVisible,SHOP_ITEMS,PRICES,giftItem,buySlot,SLOT_PRICE,MAX_EXTRA_SLOTS,orderCommission} from '../public/lib/shop.js';
+import {localDevHost} from '../public/lib/shop-flag.js';
 import {cardDesignState,saveCardDesign,setCardOrder,cardAppearance,CARD_SLOTS} from '../public/lib/cosmetics-engine.js';
 import {DEFAULT_EQUIPMENT} from '../public/lib/cosmetics-catalog.js';
 import {recycleCards,RECYCLE_COST} from '../public/lib/cosmetics-engine.js';
@@ -21,7 +22,7 @@ test('bundles: $5, $10, $20 and $30 in US cents buy 10, 25, 55 and 85 tokens; an
   assert.deepEqual(BUNDLES.map(bundleBonus),[0,25,38,42]);
 });
 test('prices by rarity, every card item for sale, loading screens never',()=>{
-  assert.deepEqual(PRICES,{common:1,rare:3,epic:5,legendary:10});
+  assert.deepEqual(PRICES,{common:1,rare:3,epic:5,legendary:10,arcana:30});
   assert.equal(priceOf(common.key),1);
   assert.equal(priceOf(legendary.key),10);
   assert.equal(SHOP_ITEMS.length,CATALOG.filter(i=>!i.commission).length);
@@ -29,9 +30,10 @@ test('prices by rarity, every card item for sale, loading screens never',()=>{
   assert.equal(priceOf('screen:1'),null);
   assert.throws(()=>buyItem({tokens:99,inventory:{}},'screen:1'),/not for sale/);
 });
-test('the shop shows only on local dev hosts',()=>{
-  for(const h of ['localhost','127.0.0.1','[::1]','site.test','a.localhost'])assert.ok(shopVisible(h),h);
-  for(const h of ['jonahmatthews.github.io','ad2lstats.com','localhost.evil.com',''])assert.ok(!shopVisible(h),h);
+test('the shop shows everywhere; the ?testShop account only on local dev hosts',()=>{
+  for(const h of ['localhost','dota2scrimcircuittracker.github.io',''])assert.ok(shopVisible(h),h);
+  for(const h of ['localhost','127.0.0.1','[::1]','site.test','a.localhost'])assert.ok(localDevHost(h),h);
+  for(const h of ['dota2scrimcircuittracker.github.io','ad2lstats.com','localhost.evil.com',''])assert.ok(!localDevHost(h),h);
 });
 test('credit once per payment; buy takes tokens and the copy cannot be recycled',()=>{
   let s={tokens:0,inventory:{}};
@@ -56,12 +58,13 @@ const vaultWith=env=>{
   const as=async(account,body)=>{const r=await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`shop-request-${String(++n).padStart(6,'0')}`,...body})}));return {status:r.status,...await r.json()};};
   // A paid checkout as the Stripe webhook hands it to the vault.
   const pay=async({id,account,dollars,cents=dollars*100,currency='usd'})=>{const r=await vault.fetch(new Request('https://vault/stripe',{method:'POST',body:JSON.stringify({id,account,cents,currency})}));return {status:r.status,...await r.json()};};
-  return {as,pay,rows};
+  const reverse=async(body)=>(await vault.fetch(new Request('https://vault/stripe-reverse',{method:'POST',body:JSON.stringify(body)}))).json();
+  return {as,pay,reverse,rows,vault};
 };
 test('vault: every shop action is refused while SHOP_ENABLED is off; a paid checkout still credits',async()=>{
   const {as,pay}=vaultWith({});
   await as(301,{action:'session'});
-  for(const action of ['buy','shop-payments','shop-assign'])assert.match((await as(301,{action,item:common.key})).error,/not open yet/);
+  for(const action of ['buy','shop-payments','shop-assign','shop-purchases','refund-request'])assert.match((await as(301,{action,item:common.key})).error,/not open yet/);
   // Money already taken is never lost to the switch.
   assert.equal((await pay({id:'cs_test_000001',account:'301',dollars:5})).status,'credited');
 });
@@ -154,14 +157,6 @@ test('extra card slots: up to the cap, the new slot is usable and a custom order
   assert.throws(()=>buySlot(s),/all 3 extra/);
   assert.throws(()=>saveCardDesign({inventory:{},equipment:{...DEFAULT_EQUIPMENT}},DEFAULT_EQUIPMENT,CARD_SLOTS),/Choose one of your cards/);
 });
-test('supporter badge: earned by buying tokens, hidden until the player turns it on, public in their appearance',()=>{
-  assert.throws(()=>setSupporterBadge({},{profile:true,card:true}),/first token purchase/);
-  let s=creditTokens({inventory:{},equipment:{...DEFAULT_EQUIPMENT}},10,'tx');
-  assert.deepEqual(supporterShown(s),{profile:false,card:false});
-  s=setSupporterBadge(s,{profile:true,card:false});
-  assert.deepEqual(cardAppearance(s).supporter,{profile:true,card:false});
-  assert.equal(cardAppearance({equipment:{}}).supporter,null);
-});
 test('commissions: 15 for one item you pick, 30 for a team set; tokens taken up front',()=>{
   const one=orderCommission({tokens:20},{kind:'single',pick:'border',note:'fire'},5);
   assert.equal(one.state.tokens,5);assert.deepEqual(one.order,{kind:'single',pick:'border',team:null,note:'fire',price:15,at:5,status:'open'});
@@ -206,13 +201,102 @@ test('vault: a refund to a player whose collection is gone is refused and the or
   assert.ok(!(await as(ADMIN_ACCOUNT,{action:'shop-order-close',order:o.order.id,status:'done'})).error);
 });
 
-test('an arcana card costs ARCANA_PRICE tokens; the first one seals the Double finish',async()=>{
-  const {buyArcana,ARCANA_PRICE}=await import('../public/lib/shop.js');
+test('arcana tools sell for ARCANA_PRICE like any item; arcana player cards are never for sale',async()=>{
+  const {ARCANA_PRICE}=await import('../public/lib/shop.js');
   assert.equal(ARCANA_PRICE,30);
-  assert.throws(()=>buyArcana({tokens:29,inventory:{}}),/30 tokens/);
-  const first=buyArcana({tokens:45,inventory:{}});
-  assert.equal(first.state.tokens,15);assert.equal(first.state.arcanaOwed,1);assert.equal(first.state.arcanaSealed,1);assert.equal(first.price,30);
-  const unlocked={...first.state,tokens:30,arcanaUpgrade:true};delete unlocked.arcanaSealed;
-  const second=buyArcana(unlocked).state;
-  assert.equal(second.tokens,0);assert.equal(second.arcanaOwed,2);assert.equal(second.arcanaSealed,undefined);
+  const tools=SHOP_ITEMS.filter(i=>i.rarity==='arcana').map(i=>i.key);
+  assert.deepEqual(tools,['tool:double-finish','tool:twin-flip','tool:twin-peel','tool:twin-shuffle','tool:twin-scan','tool:twin-glitch']);
+  for(const key of tools)assert.equal(priceOf(key),30);
+  assert.deepEqual(SHOP_ITEMS.filter(i=>i.type==='living').map(i=>priceOf(i.key)),[10,10,10,10,10]);
+  const {state,price}=buyItem({tokens:30,inventory:{}},'tool:twin-scan');
+  assert.deepEqual([state.tokens,state.inventory['tool:twin-scan'],price],[0,1,30]);
+  assert.throws(()=>buyItem({tokens:29,inventory:{}},'tool:double-finish'),/30 tokens/);
+  assert.equal(recyclable(state,'tool:twin-scan'),0);
+  // Nothing in the shop hands out arcana player cards.
+  assert.equal(buyItem({tokens:30,inventory:{}},'tool:double-finish').state.arcana,undefined);
+});
+test('vault: the old buy-arcana action is gone; a tool buys through buy',async()=>{
+  const {as,pay}=vaultWith({SHOP_ENABLED:'on'});
+  await as(301,{action:'session'});
+  await pay({id:'cs_test_000040',account:'301',dollars:20});
+  assert.ok((await as(301,{action:'buy-arcana',card:'anything'})).error);
+  assert.equal((await as(301,{action:'buy',item:'tool:double-finish'})).state.tokens,25);
+});
+test('refund requests: your own bundle, within 24 hours, once; Fav sees it until it is refunded',async()=>{
+  const {refundable,refundNote,REFUND_WINDOW_MS}=await import('../public/lib/shop.js');
+  const {as,pay,reverse,rows,vault}=vaultWith({SHOP_ENABLED:'on'});
+  let now=Date.now();vault.clock=()=>now;
+  for(const a of [301,302,ADMIN_ACCOUNT])await as(a,{action:'session'});
+  await pay({id:'cs_test_000050',account:'301',dollars:10});
+  await pay({id:'cs_test_000051',account:'301',dollars:5});
+  await as(301,{action:'buy',item:legendary.key}); // 35 less 10
+  assert.deepEqual((await as(301,{action:'shop-purchases'})).purchases.map(p=>[p.id,p.tokens,p.refundRequested]),[['cs_test_000050',25,null],['cs_test_000051',10,null]]);
+  assert.deepEqual((await as(302,{action:'shop-purchases'})).purchases,[]);
+  assert.match((await as(302,{action:'refund-request',payment:'cs_test_000050'})).error,/not yours/);
+  const asked=await as(301,{action:'refund-request',payment:'cs_test_000050'});
+  assert.deepEqual(asked.refund,{id:'cs_test_000050',amount:'10.00',tokens:25,at:rows.get('stripe:cs_test_000050').at,unspent:25});
+  assert.match((await as(301,{action:'refund-request',payment:'cs_test_000050'})).error,/already asked/);
+  assert.match(refundNote(asked.refund,'Tester (Steam account 301)'),/^Refund request: \$10\.00 for 25 tokens, paid .* UTC by Tester \(Steam account 301\)\. 25 of those 25 tokens are still unspent\. Stripe checkout cs_test_000050\./);
+  // Fav's panel lists it until the Stripe refund lands.
+  assert.deepEqual(Object.keys((await as(ADMIN_ACCOUNT,{action:'shop-payments'})).payments),['cs_test_000050']);
+  await reverse({id:'cs_test_000050',cents:1000,total:1000,kind:'refunded'});
+  assert.deepEqual((await as(ADMIN_ACCOUNT,{action:'shop-payments'})).payments,{});
+  // A day later the other bundle can't be asked about, and drops off the list.
+  now+=REFUND_WINDOW_MS;
+  assert.match((await as(301,{action:'refund-request',payment:'cs_test_000051'})).error,/first 24 hours/);
+  assert.deepEqual((await as(301,{action:'shop-purchases'})).purchases,[]);
+  assert.equal(refundable({status:'credited',account:'301',at:0},301,REFUND_WINDOW_MS-1),true);
+  assert.equal(refundable({status:'unmatched',account:'301',at:0},301,1),false);
+});
+test('refunds and disputes take the tokens back, never below zero',()=>{
+  assert.deepEqual(reverseTokens({tokens:25},10),{state:{tokens:15},taken:10,owed:0});
+  assert.deepEqual(reverseTokens({tokens:4},10),{state:{tokens:0},taken:4,owed:6});
+  assert.deepEqual(reverseTokens({},10),{state:{tokens:0},taken:0,owed:10});
+});
+test('vault: a refund takes back what the checkout bought, once; spent tokens are kept as owed',async()=>{
+  const {as,pay,reverse,rows}=vaultWith({SHOP_ENABLED:'on'});
+  await as(301,{action:'session'});
+  await pay({id:'cs_test_000030',account:'301',dollars:10});
+  await as(301,{action:'buy',item:legendary.key}); // 25 less 10
+  // Half refunded first, then the rest: Stripe sends the running total each time.
+  assert.equal((await reverse({id:'cs_test_000030',cents:500,total:1000,kind:'refunded'})).reversed,13);
+  assert.equal(rows.get('user:301').tokens,2);
+  const all=await reverse({id:'cs_test_000030',cents:1000,total:1000,kind:'refunded'});
+  assert.deepEqual([all.reversed,all.owed,all.status],[25,10,'refunded']);
+  assert.equal(rows.get('user:301').tokens,0);
+  // The same refund again, or a dispute after it, takes nothing more.
+  await reverse({id:'cs_test_000030',cents:1000,total:1000,kind:'refunded'});
+  await reverse({id:'cs_test_000030',cents:1000,total:1000,kind:'disputed'});
+  assert.equal(rows.get('stripe:cs_test_000030').reversed,25);
+  assert.equal((await reverse({id:'cs_test_nothing',cents:1000,total:1000,kind:'refunded'})).unknown,true);
+});
+test('vault: a refunded payment that never found its player can no longer be assigned',async()=>{
+  const {as,pay,reverse,rows}=vaultWith({SHOP_ENABLED:'on'});
+  for(const a of [301,ADMIN_ACCOUNT])await as(a,{action:'session'});
+  await pay({id:'cs_test_000031',account:'424242',dollars:5});
+  assert.equal((await reverse({id:'cs_test_000031',cents:500,total:500,kind:'disputed'})).status,'disputed');
+  assert.deepEqual((await as(ADMIN_ACCOUNT,{action:'shop-payments'})).payments,{});
+  assert.match((await as(ADMIN_ACCOUNT,{action:'shop-assign',payment:'cs_test_000031',target:'301'})).error,/not waiting/);
+  assert.equal(rows.get('user:301').tokens??0,0);
+});
+test('Stripe webhook: charge.refunded finds its checkout through Stripe and takes the tokens back',async()=>{
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage},{}),COSMETICS={idFromName:()=>'id',get:()=>vault};
+  await vault.fetch(new Request('https://vault/action?account=301',{method:'POST',body:JSON.stringify({action:'session',requestId:'stripe-test-000002'})}));
+  await vault.fetch(new Request('https://vault/stripe',{method:'POST',body:JSON.stringify({id:'cs_test_r1r2r3r4',account:'301',cents:2000,currency:'usd'})}));
+  const sign=(body,t=Math.floor(Date.now()/1000))=>`t=${t},v1=${createHmac('sha256','whsec_right').update(`${t}.${body}`).digest('hex')}`;
+  const env={COSMETICS,STRIPE_WEBHOOK_SECRET:'whsec_right',STRIPE_SECRET_KEY:'sk_test_x'};
+  const send=body=>cosmeticsRequest(new Request('https://w/cosmetics/stripe',{method:'POST',headers:{'stripe-signature':sign(body)},body}),env,['https://site']);
+  const real=globalThis.fetch;let asked;
+  globalThis.fetch=async url=>{asked=String(url);return new Response(JSON.stringify({data:url.includes('pi_test_known')?[{id:'cs_test_r1r2r3r4'}]:[]}),{status:200});};
+  try {
+    const refunded=JSON.stringify({type:'charge.refunded',data:{object:{object:'charge',payment_intent:'pi_test_known1',amount:2000,amount_refunded:2000}}});
+    const r=await (await send(refunded)).json();
+    assert.match(asked,/checkout\/sessions\?payment_intent=pi_test_known1/);
+    assert.deepEqual([r.status,r.reversed],['refunded',55]);
+    assert.equal(rows.get('user:301').tokens,0);
+    // A payment that wasn't a shop checkout is dropped.
+    const other=JSON.stringify({type:'charge.dispute.created',data:{object:{object:'dispute',payment_intent:'pi_test_other1',amount:900}}});
+    assert.equal((await (await send(other)).json()).ignored,true);
+  } finally {globalThis.fetch=real;}
 });

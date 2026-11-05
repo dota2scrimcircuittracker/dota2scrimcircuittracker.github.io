@@ -1,5 +1,6 @@
 import {EXPANSION_CATALOG} from './cosmetics-expansion-catalog.js';
-import {WAVE_CATALOG,DOTA_CATALOG,ENSO_CATALOG,WAVE2_CATALOG} from './cosmetics-wave-catalog.js';
+import {WAVE_CATALOG,DOTA_CATALOG,ENSO_CATALOG,WAVE2_CATALOG,WAVE3_CATALOG,WAVE3_LIVE} from './cosmetics-wave-catalog.js';
+import {ARCANA_TOOLS,LIVING_BORDERS} from './cosmetics-arcana-catalog.js';
 // Approved collection. Edit rarity here to change future drops.
 export const CATALOG = [
   {
@@ -1095,6 +1096,10 @@ export const CATALOG = [
   }
 ];
 CATALOG.push(...EXPANSION_CATALOG,...WAVE_CATALOG,...DOTA_CATALOG,...ENSO_CATALOG,...WAVE2_CATALOG);
+// The November 3 wave is local-only until WAVE3_LIVE: on 127.0.0.1/localhost it drops, equips and renders like any item.
+const loopback=['127.0.0.1','localhost','[::1]'].includes(globalThis.location?.hostname);
+if(WAVE3_LIVE||loopback)CATALOG.push(...WAVE3_CATALOG);
+CATALOG.push(...LIVING_BORDERS,...ARCANA_TOOLS);
 export const PEN_MARKS = {
   "simple": [
     "M55 65 Q145 85 260 53"
@@ -1144,7 +1149,11 @@ export const PEN_MARKS = {
 export const TIERS = ['common','rare','epic','legendary'];
 export const PACK_ODDS = {common:69,rare:17,epic:10,legendary:4};
 // Any card in any pack can instead be an arcana card (lib/cosmetics-engine.js): this fraction, above legendary.
-export const ARCANA_ODDS = 0.005;
+// It climbs about 3x per pack rarity, normal and themed packs alike, up to 15% a card in a legendary pack.
+export const ARCANA_ODDS_BY_TIER = {common:0.005,rare:0.015,epic:0.05,legendary:0.15};
+export const ARCANA_ODDS = ARCANA_ODDS_BY_TIER.common;
+// A pack's arcana chance per card, by its rarity ("epic", "epic:border").
+export const arcanaOdds = pack => ARCANA_ODDS_BY_TIER[String(pack).split(':')[0]] ?? ARCANA_ODDS;
 export const DEFAULT_EQUIPMENT = {border:'grey',finish:'none',autograph:'none',translation:'none',text:'',x:50,y:60,size:15,rotation:-7,particleSpeed:100,particleAmount:100,borderSpeed:100};
 export const itemByKey = key => CATALOG.find(item=>item.key===key);
 

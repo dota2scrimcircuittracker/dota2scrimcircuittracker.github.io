@@ -47,3 +47,6 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-16WJIG · 2026-11-02 · Fixed the tour getting stuck on step 1 when picking a division from the league menu (7be3a5f).
 - FB-6T98QQ · 2026-11-02 · Working as intended: two entries per category. The Enter button now says why it's disabled.
 - FB-P4WZA7 · 2026-11-02 · Praise, no change needed.
+- FB-HDIS38 · 2026-11-03 · PlayOn posted Rats and Bunnies v Rubick's Cube for this week; today's sync added it, so Warrior's pick pool is 4 teams again
+- FB-PJU7K9 · 2026-11-03 · Customize moved from the popup to the Gallery page (more room), and on wide screens the adjustments box now has its own right-hand column so the controls no longer jump sideways
+- FB-BILATY · 2026-11-03 · RnB v 9 to 5 Guys was played Mon Nov 2, 4 days after its date, so its games never linked to the series. The sync now links playoff games up to 6 days late, and they count for the scheduled week: RnB and 9 to 5 have their Oct 26 points (Heroic's late series too)

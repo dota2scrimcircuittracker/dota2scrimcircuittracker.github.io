@@ -6,6 +6,7 @@ import { cardArtwork } from './card-art.js';
 import { heroById, heroImg } from './hero-meta.js';
 import { plusSlot } from './hero-levels.js';
 import { cardAppearance, selectedCardDesign, shownNickname } from './cosmetics-engine.js';
+import { livingBorderHtml } from './card-arcana.js';
 import { CANVAS_FINISHES } from './card-fx.js';
 import {expansionBorderHtml,expansionFinishHtml,expansionSymbolHtml,borderEmblemList,hasExpansionEmblems,expansionSymbolStyle} from './cosmetics-expansion.js';
 import {WAVE_ANIMATED_FINISHES} from './cosmetics-wave-catalog.js';
@@ -50,9 +51,6 @@ export function playerEquipment(id,fallback) {
 export const collectionState=()=>state;
 // The nickname a player shows in place of their in-game name, or null (cosmetics-engine.js).
 export const playerNickname=id=>appearances.get(String(id))?.nickname??null;
-// Where a player shows their shop supporter badge ({profile, card}), or null (lib/shop.js).
-export const playerSupporter=id=>appearances.get(String(id))?.supporter??null;
-export const supporterBadgeHtml=()=>'<span class="supporter-badge" title="Supports the site">Supporter</span>';
 export async function collectionAction(action,details={}) {
   const token=await steamIdToken();if(!token)throw new Error('Sign in with Steam to collect cards.');
   account=await steamAccount();
@@ -148,7 +146,7 @@ export async function cosmeticAppearances() {
 }
 export function cosmeticAttributes(raw) {
   const e={...DEFAULT_EQUIPMENT,...raw}, border=itemByKey(`border:${e.border}`);
-  return ` data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${finishStackOf(e).length?'stack':itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${tuning(e).speed};--border-speed:${tuning(e).border};--particle-speed-base:${tuning(e).speed};--border-speed-base:${tuning(e).border}"`;
+  return `${e.living?` data-living="${e.living}"`:''} data-cosmetic="true" data-texture="${border?.texture??'metal'}" data-finish="${finishStackOf(e).length?'stack':itemByKey(`finish:${e.finish}`)?.id??'none'}" data-rarity="${border?.rarity??'free'}" style="--a:${border?.a??'#92969c'};--b:${border?.b??'#41454c'};--art-hue:${Number(e.hue)||0}deg;--particle-speed:${tuning(e).speed};--border-speed:${tuning(e).border};--particle-speed-base:${tuning(e).speed};--border-speed-base:${tuning(e).border}"`;
 }
 export function cosmeticLayers(e,name) {
   const equipment={...DEFAULT_EQUIPMENT,...e};
@@ -222,6 +220,10 @@ export function applyEquipment(card,e,name) {
     face.insertAdjacentHTML('beforeend',symbolLayers(e,false));
     card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',cosmeticEmblems(e));
   }
+  // A living border (lib/card-arcana.js): data-living drives Pulse Glow's card glow, the layer the rest.
+  if(e.living)card.dataset.living=e.living;else delete card.dataset.living;
+  const living=card.querySelector('.ft-flip>.living-fx');
+  if((living?.dataset.livingId??'')!==(e.living&&livingBorderHtml(e)?e.living:'')){living?.remove();card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',livingBorderHtml(e));}
   const frame=card.querySelector('.ft-flip>.exp-border');
   if(frame?.dataset.borderId!==border?.id||!border?.expansion||keys.border!==previous.border){card.querySelectorAll('.exp-border').forEach(n=>n.remove());card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',cosmeticBorder(e));}
   renderedEquipment.set(card,keys);

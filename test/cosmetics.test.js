@@ -7,7 +7,8 @@ import {CosmeticsVault,cosmeticsRequest} from '../workers/steam-auth/src/cosmeti
 
 test('approved collection has all tiers, no language samples in signature drops',()=>{
   assert.equal(new Set(CATALOG.map(i=>i.key)).size,CATALOG.length);
-  assert.equal(CATALOG.length,283);
+  // 283 card items, 5 living borders and 6 arcana tools (lib/cosmetics-arcana-catalog.js).
+  assert.equal(CATALOG.length,319);
   assert.deepEqual(PACK_ODDS,{common:69,rare:17,epic:10,legendary:4});
   for(const tier of TIERS)assert.ok(CATALOG.some(i=>i.rarity===tier));
   for(const item of CATALOG.filter(i=>i.type==='autograph')) {assert.equal(item.sample,undefined);assert.equal(item.script,undefined);}
@@ -47,11 +48,11 @@ test('recycling protects last copies and only accepts ten extras of one tier',()
   assert.throws(()=>recycleCards(state,{[common.key]:9,[rare.key]:1}),/same rarity/);
   assert.throws(()=>recycleCards(state,{[common.key]:5}),/exactly 10/);
   const arcana=recycleCards(state,{[legend.key]:10});
-  assert.equal(arcana.state.inventory[legend.key],1);assert.equal(arcana.state.arcanaOwed,1);assert.equal(arcana.arcana,null);assert.equal(arcana.minimum,undefined);
+  // Ten legendaries make an arcana tool (lib/cosmetics-arcana-catalog.js), never an arcana card.
+  assert.equal(arcana.state.inventory[legend.key],1);assert.match(arcana.arcana,/^tool:/);assert.equal(arcana.state.inventory[arcana.arcana],1);assert.equal(arcana.minimum,undefined);
+  assert.equal(arcana.state.arcanaOwed,undefined);assert.equal(arcana.state.arcanaSealed,undefined);
   assert.deepEqual(arcana.state.packs,state.packs);
-  ARCANA_CARDS.push('a1','a2');
-  try{const drawn=recycleCards(state,{[legend.key]:10},()=>0.9);assert.equal(drawn.arcana,'a2');assert.deepEqual(drawn.state.arcana,['a2']);assert.equal(drawn.state.arcanaOwed,undefined);}
-  finally{ARCANA_CARDS.length=0;}
+  assert.equal(recycleCards(state,{[legend.key]:10},()=>0).arcana,'tool:double-finish');
   for(const minimum of TIERS.slice(1)) {
     const upgraded={...state,packs:[minimum]};
     for(let n=0;n<50;n++)assert.ok(rollPack(upgraded,0).rewards.every(r=>r.arcana||TIERS.indexOf(CATALOG.find(i=>i.key===r.key).rarity)>=TIERS.indexOf(minimum)));
@@ -286,24 +287,30 @@ test('the signature size slider ends where the signature stops growing',()=>{
   assert.equal(maxSignatureSize({...e,autograph:exp.id},'Your Name'),16.5);
 });
 
-test('any pack card can be an arcana: the top 0.5% of its roll, owed while there are no arcana designs',()=>{
-  for(const pack of ['common','legendary','common:border','epic:signature']){
-    const hit=rollPack({packs:[pack],inventory:{},screens:[]},0,()=>.996);
+test('any pack card can be an arcana tool: the top of its roll, likelier in rarer packs',()=>{
+  const edge={common:.995,rare:.985,epic:.95,legendary:.85};
+  for(const pack of ['common','legendary','common:border','epic:signature','rare','legendary:finish']){
+    const e=edge[pack.split(':')[0]];
+    const hit=rollPack({packs:[pack],inventory:{},screens:[]},0,()=>e+.001);
     assert.equal(hit.rewards.length,3);
-    assert.ok(hit.rewards.every(r=>r.arcana&&r.key==='arcana:owed'));
-    assert.equal(hit.state.arcanaOwed,3);
-    assert.equal(Object.keys(hit.state.inventory).length,0);
-    const miss=rollPack({packs:[pack],inventory:{},screens:[]},0,()=>.994);
+    assert.ok(hit.rewards.every(r=>r.arcana&&CATALOG.find(i=>i.key===r.key)?.type==='tool'));
+    assert.equal(Object.keys(hit.state.inventory).filter(k=>k.startsWith('tool:')).reduce((n,k)=>n+hit.state.inventory[k],0),3);
+    assert.equal(hit.state.arcanaOwed,undefined);
+    assert.deepEqual(hit.rewards.map(r=>r.duplicate),[false,true,true]);
+    const miss=rollPack({packs:[pack],inventory:{},screens:[]},0,()=>e-.001);
     assert.ok(miss.rewards.every(r=>!r.arcana&&CATALOG.find(i=>i.key===r.key)));
     assert.equal(miss.state.arcanaOwed,undefined);
   }
   // An arcana is always dealt last: a hit on the first card moves behind the other two.
   let at=0;const firstHit=rollPack({packs:['common'],inventory:{},screens:[]},0,()=>[.996,0,0,0,0,0,0,0,0,0][at++]??0);
   assert.deepEqual(firstHit.rewards.map(r=>!!r.arcana),[false,false,true]);
-  assert.equal(firstHit.state.arcanaSealed,1);
+  assert.equal(firstHit.state.arcanaSealed,undefined);
   let cards=0,arcana=0;
   for(let n=0;n<40000;n++)for(const r of rollPack({packs:['common'],inventory:{},screens:[]},0).rewards){cards++;if(r.arcana)arcana++;}
   assert.ok(Math.abs(arcana/cards-.005)<.0015,`arcana rate ${arcana/cards}`);
+  cards=0;arcana=0;
+  for(let n=0;n<4000;n++)for(const r of rollPack({packs:['legendary'],inventory:{},screens:[]},0).rewards){cards++;if(r.arcana)arcana++;}
+  assert.ok(Math.abs(arcana/cards-.15)<.02,`legendary arcana rate ${arcana/cards}`);
 });
 
 test('the Claude account signs in with its bot key, only for the actions it is allowed',async()=>{
