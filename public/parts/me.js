@@ -6,6 +6,7 @@
 import { esc, DIVISIONS, SOURCES, divLite, playerHref, navigate, here, bySlug, myTeam, setMyTeam, myTeamAutoOk } from "../core.js";
 import { steamAccount, steamLoginUrl } from "../lib/store.js";
 import { saveMyScout } from "../lib/scout.js";
+import { setPackOfferSignedIn } from "../lib/bonus-offers.js";
 
 const PROFILE_KEY = "steam-profile";
 const DAY = 864e5;
@@ -86,6 +87,7 @@ export async function mountMe() {
   const el = document.getElementById("me");
   if (!el) return;
   const account = await steamAccount().catch(() => null);
+  setPackOfferSignedIn(account != null);
   if (account == null) {
     el.innerHTML = `<button type="button" class="me-in" title="Sign in with Steam (for Fantasy)">Sign in</button>`;
     el.querySelector("button").onclick = startSteamSignIn;

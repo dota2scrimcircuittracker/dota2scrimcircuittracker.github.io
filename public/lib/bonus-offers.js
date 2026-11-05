@@ -15,11 +15,18 @@ export function markPackOfferClaimed(source) {
 export function syncPackOfferClaims(state) {
   for(const source of ['feedback','tour','discord'])if(state?.bonusPackClaims?.[source]||state?.bonusPackClaimed===source||state?.bonusPackClaimed===true)markPackOfferClaimed(source);
 }
+// The Feedback badge shows only when signed in (parts/me.js sets this on load, sign-in, sign-out).
+let signedIn = false;
+export function setPackOfferSignedIn(on) {
+  signedIn = !!on;
+  syncPackOfferBadges();
+}
 export function syncPackOfferBadges() {
   for (const source of ['feedback', 'tour', 'discord']) {
     let claimed = false;
     try { claimed = localStorage.getItem(`${CLAIMED_PREFIX}${source}`) === '1'; } catch { /* storage blocked */ }
-    document.querySelectorAll(`[data-offer-badge="${source}"]`).forEach(el => { el.hidden = claimed; });
+    const hide = claimed || (source === 'feedback' && !signedIn);
+    document.querySelectorAll(`[data-offer-badge="${source}"]`).forEach(el => { el.hidden = hide; });
   }
 }
 export function packOfferSources() {
