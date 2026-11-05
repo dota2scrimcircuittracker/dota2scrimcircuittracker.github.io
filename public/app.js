@@ -553,6 +553,7 @@ export function route() {
       };
     }
     else if (p.startsWith("/predict")) { section = "predict"; page = async () => (await predictPage()).renderScrimPredict(); }
+    else if (p.startsWith("/schedule")) { section = "schedule"; page = async () => (await import("./pages/schedule.js")).renderSchedule(); }
     else if (/^\/teams\/[^/?]/.test(p)) { section = "standings"; tm = true; page = () => renderTeams(t, safeDecode(p.split("/")[2])); }
     else if (p.startsWith("/content") || p.startsWith("/week")) { section = "week"; page = () => renderWeek(src, Number(p.split("/")[2] ?? 0) || 0); }
     else if (p.startsWith("/tiers")) { section = "players"; tm = true; page = () => renderPlayers(t); }
@@ -583,11 +584,12 @@ export function route() {
   tableBtn.href = `${src.root}/search?table=team`;
   // League menu: each league opens on the tab you're on (Players stays Players). A team,
   // game or player page opens that tab's list, since it needn't exist in the other league.
-  // Teams lands on the other league's Teams. The scrims have no Drafter: their Teams instead.
+  // Teams lands on the other league's Teams. The scrims have no Drafter (and divisions no
+  // Schedule): their Teams instead.
   const tab = section === "standings" ? "" : section;
   leagueMenu.querySelectorAll("a").forEach((a) => {
     const l = a.dataset.league;
-    a.href = `${SOURCES[l].root}/${l === "scrim" && tab === "drafter" ? "" : tab}`;
+    a.href = `${SOURCES[l].root}/${(l === "scrim" && tab === "drafter") || (l !== "scrim" && tab === "schedule") ? "" : tab}`;
   });
   divisionBar(src, h);
   timeBar(src, tm);

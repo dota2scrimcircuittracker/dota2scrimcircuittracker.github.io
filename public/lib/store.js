@@ -324,6 +324,109 @@ export async function deleteFixture(id) {
   await deleteDoc(doc(fixtures, id));
 }
 
+// ---------- scrim scheduler ----------
+// Scrim requests and the answers to them (lib/scheduler.js), written through the Steam session
+// so each one carries the account that wrote it. Confirming one writes its fixture in the same
+// batch, so it shows on Predict and the upcoming list like any other.
+const requests = collection(fantasyDb, "scrimLeague", "data", "scrim_requests");
+const offers = collection(fantasyDb, "scrimLeague", "data", "scrim_offers");
+const steamFixtures = collection(fantasyDb, "scrimLeague", "data", "scrim_fixtures");
+const dated = (d) => ({ id: d.id, ...d.data(), start: d.data().start?.toDate?.() ?? null, createdAt: d.data().createdAt?.toDate?.() ?? null });
+// Only requests and offers whose time is within the last day (older ones are history).
+const recent = () => Timestamp.fromMillis(Date.now() - 864e5);
+async function steamSigned() {
+  const account = await steamAccount();
+  if (account == null) throw new Error("Sign in with Steam first.");
+  return account;
+}
+
+export async function listScrimRequests() {
+  const snap = await getDocs(query(requests, where("start", ">", recent()), orderBy("start"), limit(MAX_MATCHES)));
+  return snap.docs.map(dated);
+}
+export async function listScrimOffers() {
+  const snap = await getDocs(query(offers, where("start", ">", recent()), orderBy("start"), limit(MAX_MATCHES)));
+  return snap.docs.map(dated);
+}
+
+// team: { div, id, name } from the poster's roster.
+export async function postScrimRequest(team, { start, open_to, best_of, note }) {
+  const account = await steamSigned();
+  const ref = doc(requests);
+  await setDoc(ref, {
+    v: 1, team: team.id, team_name: team.name, div: team.div, open_to, start: Timestamp.fromDate(start), best_of,
+    note: note.trim(), account, status: "open", createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+export async function cancelScrimRequest(id) {
+  const account = await steamSigned();
+  await updateDoc(doc(requests, id), { status: "cancelled", by: account });
+}
+
+// Answer a request as `team`, at the request's time or another. Answering again changes the time.
+export async function offerScrim(requestId, team, start) {
+  const account = await steamSigned();
+  await setDoc(doc(offers, `${requestId}_${team.div}_${team.id}`), {
+    v: 1, request: requestId, team: team.id, team_name: team.name, div: team.div,
+    start: Timestamp.fromDate(start), account, createdAt: serverTimestamp(),
+  });
+}
+export async function withdrawScrimOffer(id) {
+  await steamSigned();
+  await deleteDoc(doc(offers, id));
+}
+
+// The poster picks an offer: the request closes on that team and time, and the fixture is made.
+// names: { team_a, team_b } as the fixture should show them (the poster first).
+export async function confirmScrim(req, offer, names) {
+  const account = await steamSigned();
+  const fx = doc(steamFixtures);
+  const b = writeBatch(fantasyDb);
+  b.set(fx, {
+    v: 1, team_a: names.team_a, team_b: names.team_b, start: Timestamp.fromDate(offer.start), best_of: req.best_of,
+    uid: `steam:${account}`, createdAt: serverTimestamp(),
+  });
+  b.update(doc(requests, req.id), {
+    status: "confirmed", start: Timestamp.fromDate(offer.start), opp_team: offer.team, opp_name: offer.team_name,
+    opp_div: offer.div, fixture: fx.id, by: account,
+  });
+  await b.commit();
+  return fx.id;
+}
+
+// ---------- player schedule ----------
+// Each player's weekly availability for a team (lib/availability.js), id "<div>_<team>_<account>",
+// and the team's events. Steam session only; the site shows them to the team's roster.
+const availability = collection(fantasyDb, "scrimLeague", "data", "player_availability");
+const teamEvents = collection(fantasyDb, "scrimLeague", "data", "team_events");
+const ofTeam = (c, team) => query(c, where("div", "==", team.div), where("team", "==", team.id), limit(MAX_MATCHES));
+
+export async function listAvailability(team) {
+  await steamSigned();
+  return (await getDocs(ofTeam(availability, team))).docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+export async function saveAvailability(team, slots) {
+  const account = await steamSigned();
+  await setDoc(doc(availability, `${team.div}_${team.id}_${account}`), {
+    v: 1, div: team.div, team: team.id, account, slots, updatedAt: serverTimestamp(),
+  });
+}
+export async function listTeamEvents(team) {
+  await steamSigned();
+  return (await getDocs(ofTeam(teamEvents, team))).docs.map(dated);
+}
+export async function addTeamEvent(team, { title, start, minutes }) {
+  const account = await steamSigned();
+  await setDoc(doc(teamEvents), {
+    v: 1, div: team.div, team: team.id, title: title.trim(), start: Timestamp.fromDate(start), minutes, account, createdAt: serverTimestamp(),
+  });
+}
+export async function deleteTeamEvent(id) {
+  await steamSigned();
+  await deleteDoc(doc(teamEvents, id));
+}
+
 // ---------- casts ----------
 // Links to a cast of a game (YouTube, Twitch, …) with the caster's name, shown on the game
 // page for anyone to click. `game` is the page's game ID (an OpenDota match ID or a 32-hex

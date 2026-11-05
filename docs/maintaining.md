@@ -273,7 +273,10 @@ protects the project is the key's website restriction (only our GitHub Pages sit
 
 Scrim data lives in Firestore (the shared `pistachio-kitchen` Firebase project, under
 `scrimLeague/`): scrims in `matches`, unticketed AD2L games in `<division>_unticketed`, AD2L and
-scrim picks in `predictions` (`league` says which), the scrim schedule in `scrim_fixtures`, casts
+scrim picks in `predictions` (`league` says which), the scrim schedule in `scrim_fixtures`, scrim
+scheduler requests and answers in `scrim_requests` and `scrim_offers` (Steam session; confirming one
+writes its `scrim_fixtures` entry in the same batch), the player schedule in `player_availability`
+(`<div>_<team>_<account>`) and `team_events`, casts
 in `casts` (`league`, `game` = the page's game ID, `url`, `caster`; up to 20 per game), feedback
 in `feedback/{id}` (items in `…/items/{n}`, limits in `feedback_limits/{uid}`).
 

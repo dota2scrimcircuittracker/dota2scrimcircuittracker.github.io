@@ -303,7 +303,7 @@ export const SOURCES = {
     key: "scrim", kicker: "The ledger", load: allMatches, root: "#/scrims",
     link: (m) => `#/scrims/match/${m.id}`, base: "#/scrims/content",
     empty: `The ledger is empty. <a href="#/scrims/upload">Upload the first scrim</a>.`,
-    nav: [["#/scrims/", "standings", "Teams"], ["#/scrims/content", "week", "Content"], ["#/scrims/players", "players", "Players"], ["#/scrims/heroes", "heroes", "Heroes"], ["#/scrims/predict", "predict", "Predict"], ["#/gallery", "gallery", "Gallery"], ["#/scrims/upload", "upload", "Upload", "nav-cta"]],
+    nav: [["#/scrims/", "standings", "Teams"], ["#/scrims/content", "week", "Content"], ["#/scrims/players", "players", "Players"], ["#/scrims/heroes", "heroes", "Heroes"], ["#/scrims/predict", "predict", "Predict"], ["#/scrims/schedule", "schedule", "Schedule"], ["#/gallery", "gallery", "Gallery"], ["#/scrims/upload", "upload", "Upload", "nav-cta"]],
   },
 };
 // AD2L divisions: `ad2l` marks the PlayOn/OpenDota pages, `root` prefixes their routes

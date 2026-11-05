@@ -139,6 +139,87 @@ const feedbackCases = [
   ["feedback: limiter, delete denied", { request: { auth: { uid: "u1" }, method: "delete", path: LIMIT_PATH, time: NOW }, resource: { data: limits() } }, "DENY"],
 ];
 const withPlayer = (i, change) => ({ ...match(), players: match().players.map((p, j) => (j === i ? change({ ...p }) : p)) });
+// Scrim scheduler: requests and answers, written through the Steam session (STEAM).
+const SREQ_ID = "Sch3du1eReq000000001";
+const SREQ_PATH = `/databases/(default)/documents/scrimLeague/data/scrim_requests/${SREQ_ID}`;
+const SOFF_PATH = `/databases/(default)/documents/scrimLeague/data/scrim_offers/${SREQ_ID}_heroic_15047`;
+const sreq = (extra = {}) => ({ v: 1, team: 13679, team_name: "Rules Test A", div: "ad2l", open_to: ["ad2l", "heroic"], start: "2026-09-26T02:00:00Z", best_of: 2, note: "", account: 173365627, status: "open", createdAt: NOW, ...extra });
+const soff = (extra = {}) => ({ v: 1, request: SREQ_ID, team: 15047, team_name: "Rules Test B", div: "heroic", start: "2026-09-26T03:00:00Z", account: 173365627, createdAt: NOW, ...extra });
+const sreqReq = (data, auth = STEAM, path = SREQ_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
+// The stored request each answer is checked against (get).
+const soffReq = (data, { auth = STEAM, path = SOFF_PATH, parent = sreq() } = {}) => ({
+  request: { auth, method: "create", path, time: NOW, resource: { data } },
+  functionMocks: [mock("get", { data: parent })],
+});
+// Confirm: get is the answer, getAfter the fixture written in the same batch.
+const SFIX_ID = "Sch3du1eFix000000001";
+const sconfirm = (extra = {}) => ({ ...sreq(), status: "confirmed", by: 173365627, start: "2026-09-26T03:00:00Z", opp_team: 15047, opp_name: "Rules Test B", opp_div: "heroic", fixture: SFIX_ID, ...extra });
+const supd = (data, { auth = STEAM, existing = sreq(), offer = soff(), fixStart = "2026-09-26T03:00:00Z" } = {}) => ({
+  request: { auth, method: "update", path: SREQ_PATH, time: NOW, resource: { data } },
+  resource: { data: existing },
+  functionMocks: [mock("get", { data: offer }), mock("getAfter", { data: { start: fixStart } })],
+});
+// Player schedule: availability per player per team, and team events.
+const AV_PATH = "/databases/(default)/documents/scrimLeague/data/player_availability/heroic_15047_173365627";
+const avail = (extra = {}) => ({ v: 1, div: "heroic", team: 15047, account: 173365627, slots: "01".repeat(84), updatedAt: NOW, ...extra });
+const avReq = (data, auth = STEAM, path = AV_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
+const EV_PATH = "/databases/(default)/documents/scrimLeague/data/team_events/Sch3du1eEvt000000001";
+const tevent = (extra = {}) => ({ v: 1, div: "heroic", team: 15047, title: "Practice", start: "2026-09-26T02:00:00Z", minutes: 90, account: 173365627, createdAt: NOW, ...extra });
+const evReq = (data, auth = STEAM, path = EV_PATH) => ({ auth, method: "create", path, time: NOW, resource: { data } });
+const playerSchedCases = [
+  ["availability: valid", avReq(avail()), "ALLOW"],
+  ["availability: signed out", avReq(avail(), null), "DENY"],
+  ["availability: anonymous", avReq(avail(), { uid: "u1" }), "DENY"],
+  ["availability: someone else's id", avReq(avail(), STEAM, AV_PATH.replace("173365627", "1")), "DENY"],
+  ["availability: someone else's account", avReq(avail({ account: 1 })), "DENY"],
+  ["availability: short slots", avReq(avail({ slots: "01".repeat(83) })), "DENY"],
+  ["availability: bad slot chars", avReq(avail({ slots: "2".repeat(168) })), "DENY"],
+  ["availability: unknown division", avReq(avail({ div: "nope" }), STEAM, AV_PATH.replace("heroic", "nope")), "DENY"],
+  ["availability: steam read", { auth: STEAM, method: "get", path: AV_PATH, time: NOW }, "ALLOW"],
+  ["availability: signed-out read", { auth: null, method: "get", path: AV_PATH, time: NOW }, "DENY"],
+  ["availability: delete own", { request: { auth: STEAM, method: "delete", path: AV_PATH, time: NOW }, resource: { data: avail() } }, "ALLOW"],
+  ["availability: delete another's", { request: { auth: STEAM, method: "delete", path: AV_PATH, time: NOW }, resource: { data: avail({ account: 1 }) } }, "DENY"],
+  ["team event: valid", evReq(tevent()), "ALLOW"],
+  ["team event: signed out", evReq(tevent(), null), "DENY"],
+  ["team event: someone else's account", evReq(tevent({ account: 1 })), "DENY"],
+  ["team event: empty title", evReq(tevent({ title: "" })), "DENY"],
+  ["team event: odd length", evReq(tevent({ minutes: 45 })), "DENY"],
+  ["team event: in the past", evReq(tevent({ start: "2026-09-23T02:00:00Z" })), "DENY"],
+  ["team event: extra field", evReq(tevent({ note: "x" })), "DENY"],
+  ["team event: signed-out read", { auth: null, method: "get", path: EV_PATH, time: NOW }, "DENY"],
+  ["team event: delete", { request: { auth: STEAM, method: "delete", path: EV_PATH, time: NOW }, resource: { data: tevent() } }, "ALLOW"],
+];
+const schedCases = [
+  ["sched request: valid", sreqReq(sreq()), "ALLOW"],
+  ["sched request: signed out", sreqReq(sreq(), null), "DENY"],
+  ["sched request: anonymous (no steam)", sreqReq(sreq(), { uid: "u1" }), "DENY"],
+  ["sched request: someone else's account", sreqReq(sreq({ account: 1 })), "DENY"],
+  ["sched request: unknown division", sreqReq(sreq({ open_to: ["ad2l", "nope"] })), "DENY"],
+  ["sched request: open to nobody", sreqReq(sreq({ open_to: [] })), "DENY"],
+  ["sched request: in the past", sreqReq(sreq({ start: "2026-09-23T02:00:00Z" })), "DENY"],
+  ["sched request: starts confirmed", sreqReq(sreq({ status: "confirmed" })), "DENY"],
+  ["sched request: long note", sreqReq(sreq({ note: "x".repeat(141) })), "DENY"],
+  ["sched request: extra field", sreqReq(sreq({ opp_team: 1 })), "DENY"],
+  ["sched cancel", supd({ ...sreq(), status: "cancelled", by: 173365627 }), "ALLOW"],
+  ["sched cancel: not open", supd({ ...sreq({ status: "confirmed" }), status: "cancelled", by: 173365627 }, { existing: sreq({ status: "confirmed" }) }), "DENY"],
+  ["sched cancel: change time too", supd({ ...sreq(), status: "cancelled", by: 173365627, start: "2026-09-27T02:00:00Z" }), "DENY"],
+  ["sched confirm", supd(sconfirm()), "ALLOW"],
+  ["sched confirm: time not the answer's", supd(sconfirm({ start: "2026-09-26T05:00:00Z" }), { fixStart: "2026-09-26T05:00:00Z" }), "DENY"],
+  ["sched confirm: no fixture written", supd(sconfirm(), { fixStart: "2026-09-27T09:00:00Z" }), "DENY"],
+  ["sched confirm: other team name", supd(sconfirm({ opp_name: "Someone" })), "DENY"],
+  ["sched confirm: by someone else", supd(sconfirm({ by: 1 })), "DENY"],
+  ["sched confirm: signed out", supd(sconfirm(), { auth: null }), "DENY"],
+  ["sched answer: valid", soffReq(soff()), "ALLOW"],
+  ["sched answer: signed out", soffReq(soff(), { auth: null }), "DENY"],
+  ["sched answer: wrong id", soffReq(soff(), { path: SOFF_PATH.replace("15047", "1") }), "DENY"],
+  ["sched answer: request closed", soffReq(soff(), { parent: sreq({ status: "confirmed" }) }), "DENY"],
+  ["sched answer: division not invited", soffReq(soff(), { parent: sreq({ open_to: ["ad2l"] }) }), "DENY"],
+  ["sched answer: own request", soffReq(soff(), { parent: sreq({ div: "heroic", team: 15047 }) }), "DENY"],
+  ["sched answer: someone else's account", soffReq(soff({ account: 1 })), "DENY"],
+  ["sched answer: in the past", soffReq(soff({ start: "2026-09-23T02:00:00Z" })), "DENY"],
+  ["sched answer: withdraw", { request: { auth: STEAM, method: "delete", path: SOFF_PATH, time: NOW }, resource: { data: soff() } }, "ALLOW"],
+  ["sched answer: anonymous withdraw", { request: { auth: { uid: "u1" }, method: "delete", path: SOFF_PATH, time: NOW }, resource: { data: soff() } }, "DENY"],
+];
 const cases = [
   ["valid match", req(match()), "ALLOW"],
   ["valid, long names + max level + big numbers", req(withPlayer(9, (p) => ({ ...p, name: "N".repeat(32), hero: "Vengeful Spirit", level: 30, hero_damage: 150000, tag: "TAG" }))), "ALLOW"],
@@ -346,6 +427,8 @@ const cases = [
   ["cast: signed-out delete", { request: { auth: null, method: "delete", path: CAST_PATH, time: NOW }, resource: { data: cast() } }, "DENY"],
   ["prediction: heroic with a fixture id", { ...predReq(pred({ league: "heroic", series_id: FIX_ID })), path: SCRIM_PRED_PATH }, "DENY"],
   ...feedbackCases,
+  ...schedCases,
+  ...playerSchedCases,
 ];
 
 (async () => {

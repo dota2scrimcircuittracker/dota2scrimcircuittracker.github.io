@@ -5420,3 +5420,36 @@ dialog.pb-modal { width: min(1320px, 96vw); }
 
 /* The Claude account's tag in the Feed (parts/feed.js who). */
 .ai-tag{display:inline-block;padding:0 5px;border-radius:4px;font-size:.68em;font-weight:700;letter-spacing:.04em;vertical-align:.12em;color:#1b1206;background:#d9a066}
+/* Scrim scheduler (#/scrims/schedule, pages/schedule.js) */
+.sch-section { margin-top: 28px; }
+.sch-section > h2 { font: 600 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dust); margin: 0 0 12px; }
+.sch-section > .sch-card + .sch-card { margin-top: 10px; }
+.sch-acting { margin: 0 0 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sch-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.sch-div { font: 11px/1 var(--mono); padding: 3px 6px; border: 1px solid var(--seam); color: var(--dust); text-transform: uppercase; letter-spacing: .05em; }
+.sch-note { margin: 0; color: var(--bone); }
+.sch-offers { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sch-offers li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sch-offers li button { margin-left: auto; }
+.sch-counter { color: var(--gold); }
+.sch-won { border-color: var(--jade); }
+.sch-lost { opacity: .65; }
+.sch-open { border: 0; padding: 0; margin: 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.sch-open legend { float: left; margin-right: 6px; }
+.sch-open label { display: inline-flex; gap: 4px; align-items: center; }
+.sch-note-in { grid-column: 1 / -1; }
+.sch-upcoming td { padding: 8px 10px; }
+/* Player schedule (pages/schedule.js ?tab=players) */
+.av-wrap { max-width: 100%; }
+.av-grid { border-collapse: separate; border-spacing: 2px; width: 100%; table-layout: fixed; touch-action: none; user-select: none; }
+.av-grid th { font: 10px/1 var(--mono); color: var(--dim); font-weight: 400; text-align: left; padding: 0 0 4px; white-space: nowrap; overflow: visible; }
+.av-grid th[scope=row] { width: 34px; padding: 0 4px 0 0; }
+.av-grid td { padding: 0; }
+.av-cell, .av-heat { display: block; width: 100%; height: 22px; border: 0; padding: 0; margin: 0; background: var(--stone); }
+.av-cell { cursor: pointer; border: 1px solid var(--seam); clip-path: none; box-shadow: none; transform: none; }
+.av-cell.on { background: var(--jade); border-color: var(--jade); }
+.av-heat { font: 10px/22px var(--mono); text-align: center; color: var(--bone); background: color-mix(in srgb, var(--jade) calc(var(--a) * 100%), var(--stone)); }
+.av-best { margin: 10px 0 4px; }
+.av-cal { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.av-cal li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 600px) { .av-grid th[scope=row] { width: 28px; } .av-cell, .av-heat { height: 18px; } .av-heat { font-size: 0; } }

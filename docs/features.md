@@ -645,6 +645,27 @@ shrunk-resolution problem above, not a finding problem.
   days after. Odds come from a rating per team fitted to every scrim result, pulled toward even. A Bo3
   card also shows the model's score and each score's chance (picks are still just the winner).
 
+## Scrim scheduler (`#/scrims/schedule`)
+
+Teams find scrims here (`pages/schedule.js`, logic in `lib/scheduler.js`). Anyone signed in with
+Steam acts for the AD2L team whose roster has them (a pick list when they're on more than one;
+bye-week placeholders don't count). A team asks for a scrim: a start time (entered and shown in
+each viewer's own time zone), Bo1/2/3, the divisions whose teams may answer (its own by default;
+a Champion request can be opened to Heroic) and a short note. Other teams answer at that time or
+suggest another; any number can answer, and each can change its time or withdraw until the
+asking team confirms one. Confirming closes the request and puts the scrim on the schedule as a
+fixture, so it shows under Upcoming scrims here and on Predict. The asking team can cancel an
+open request. Requests and answers drop off a day after their time. Roster membership is checked
+on the site, not in the rules: every write records the Steam account that made it.
+
+Player schedule (the page's second tab, `?tab=players`, `lib/availability.js`): for the team you're
+acting for. You paint the hours you can usually play on a week grid (tap or drag, in your own time
+zone; saved as UTC hours, so after a clock change the grid shifts by an hour until re-saved). The
+team grid shows how many of the roster are free each hour, the best times, and who has filled
+theirs in. The team calendar lists the team's events (anyone on the roster adds or deletes them:
+a title, a start and a length) and its confirmed scrims. Only the roster sees the tab; that's the
+site's check, not the rules' (any Steam sign-in can read the data from Firestore directly).
+
 ## Fantasy (AD2L divisions)
 
 The tier list and Fantasy share player cards (`parts/player-card.js`), including saved hero

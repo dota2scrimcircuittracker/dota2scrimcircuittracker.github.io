@@ -297,6 +297,123 @@
       allow delete: if request.auth != null;
     }
 
+    // Scrim scheduler (lib/scheduler.js): a team asks for a scrim, others answer, the asking team
+    // confirms one. Writes take a Steam sign-in and record its account; whether that account is
+    // on the team's roster is checked on the site (the rosters aren't in the database).
+    function steamUser() {
+      return request.auth != null
+        && request.auth.token.steam is int
+        && request.auth.uid == 'steam:' + string(request.auth.token.steam);
+    }
+    function schedDivs() {
+      return ['ad2l', 'heroic', 'conqueror', 'warrior', 'challenger', 'voyager', 'explorer'];
+    }
+    match /scrimLeague/data/scrim_requests/{reqId} {
+      allow get: if true;
+      allow list: if request.query.limit <= 500;
+      allow create: if steamUser()
+        && reqId.matches('[A-Za-z0-9]{20}')
+        && request.resource.data.keys().hasOnly(['v', 'team', 'team_name', 'div', 'open_to', 'start', 'best_of', 'note', 'account', 'status', 'createdAt'])
+        && request.resource.data.keys().size() == 11
+        && request.resource.data.v == 1
+        && request.resource.data.team is int
+        && request.resource.data.team_name is string
+        && request.resource.data.team_name.size() >= 1 && request.resource.data.team_name.size() <= 60
+        && request.resource.data.div in schedDivs()
+        && request.resource.data.open_to is list
+        && request.resource.data.open_to.size() >= 1 && request.resource.data.open_to.size() <= 7
+        && request.resource.data.open_to.toSet().hasOnly(schedDivs())
+        && request.resource.data.start is timestamp
+        && request.resource.data.start > request.time
+        && request.resource.data.start < request.time + duration.value(60, 'd')
+        && request.resource.data.best_of in [1, 2, 3]
+        && request.resource.data.note is string && request.resource.data.note.size() <= 140
+        && request.resource.data.account == request.auth.token.steam
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt == request.time;
+      // Only an open request changes: cancelled, or confirmed on one of its answers (team and
+      // time as that answer has them) together with the fixture it becomes (same batch).
+      allow update: if steamUser()
+        && resource.data.status == 'open'
+        && request.resource.data.by == request.auth.token.steam
+        && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'by'])
+            && request.resource.data.status == 'cancelled')
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'by', 'start', 'opp_team', 'opp_name', 'opp_div', 'fixture'])
+            && request.resource.data.status == 'confirmed'
+            && request.resource.data.opp_team is int
+            && request.resource.data.opp_div in schedDivs()
+            && request.resource.data.fixture is string && request.resource.data.fixture.matches('[A-Za-z0-9]{20}')
+            && get(/databases/$(database)/documents/scrimLeague/data/scrim_offers/$(reqId + '_' + request.resource.data.opp_div + '_' + string(request.resource.data.opp_team))).data.start == request.resource.data.start
+            && get(/databases/$(database)/documents/scrimLeague/data/scrim_offers/$(reqId + '_' + request.resource.data.opp_div + '_' + string(request.resource.data.opp_team))).data.team_name == request.resource.data.opp_name
+            && getAfter(/databases/$(database)/documents/scrimLeague/data/scrim_fixtures/$(request.resource.data.fixture)).data.start == request.resource.data.start));
+      allow delete: if request.auth != null && request.auth.token.email == "jonahbyu@gmail.com";
+    }
+    // Answers: one per team per request, id "<request>_<div>_<team>", to an open request that's
+    // open to the team's division and isn't the team's own. Sending again changes the time.
+    match /scrimLeague/data/scrim_offers/{offerId} {
+      allow get: if true;
+      allow list: if request.query.limit <= 500;
+      allow create, update: if steamUser()
+        && request.resource.data.keys().hasOnly(['v', 'request', 'team', 'team_name', 'div', 'start', 'account', 'createdAt'])
+        && request.resource.data.keys().size() == 8
+        && request.resource.data.v == 1
+        && request.resource.data.request is string && request.resource.data.request.matches('[A-Za-z0-9]{20}')
+        && request.resource.data.team is int
+        && request.resource.data.team_name is string
+        && request.resource.data.team_name.size() >= 1 && request.resource.data.team_name.size() <= 60
+        && request.resource.data.div in schedDivs()
+        && offerId == request.resource.data.request + '_' + request.resource.data.div + '_' + string(request.resource.data.team)
+        && request.resource.data.start is timestamp
+        && request.resource.data.start > request.time
+        && request.resource.data.start < request.time + duration.value(60, 'd')
+        && request.resource.data.account == request.auth.token.steam
+        && request.resource.data.createdAt == request.time
+        && get(/databases/$(database)/documents/scrimLeague/data/scrim_requests/$(request.resource.data.request)).data.status == 'open'
+        && request.resource.data.div in get(/databases/$(database)/documents/scrimLeague/data/scrim_requests/$(request.resource.data.request)).data.open_to
+        && !(get(/databases/$(database)/documents/scrimLeague/data/scrim_requests/$(request.resource.data.request)).data.div == request.resource.data.div
+          && get(/databases/$(database)/documents/scrimLeague/data/scrim_requests/$(request.resource.data.request)).data.team == request.resource.data.team);
+      allow delete: if steamUser() || (request.auth != null && request.auth.token.email == "jonahbyu@gmail.com");
+    }
+    // Player schedule (lib/availability.js): each player's weekly availability for a team, id
+    // "<div>_<team>_<account>", and the team's events. Steam sign-in to read or write; the site
+    // shows a team's schedule only to its roster (not enforced here: the rosters aren't in the
+    // database).
+    match /scrimLeague/data/player_availability/{availId} {
+      allow get: if steamUser();
+      allow list: if steamUser() && request.query.limit <= 500;
+      allow create, update: if steamUser()
+        && request.resource.data.keys().hasOnly(['v', 'div', 'team', 'account', 'slots', 'updatedAt'])
+        && request.resource.data.keys().size() == 6
+        && request.resource.data.v == 1
+        && request.resource.data.div in schedDivs()
+        && request.resource.data.team is int
+        && request.resource.data.account == request.auth.token.steam
+        && availId == request.resource.data.div + '_' + string(request.resource.data.team) + '_' + string(request.auth.token.steam)
+        && request.resource.data.slots is string && request.resource.data.slots.matches('[01]{168}')
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if steamUser() && resource.data.account == request.auth.token.steam;
+    }
+    match /scrimLeague/data/team_events/{eventId} {
+      allow get: if steamUser();
+      allow list: if steamUser() && request.query.limit <= 500;
+      allow create: if steamUser()
+        && eventId.matches('[A-Za-z0-9]{20}')
+        && request.resource.data.keys().hasOnly(['v', 'div', 'team', 'title', 'start', 'minutes', 'account', 'createdAt'])
+        && request.resource.data.keys().size() == 8
+        && request.resource.data.v == 1
+        && request.resource.data.div in schedDivs()
+        && request.resource.data.team is int
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 60
+        && request.resource.data.start is timestamp
+        && request.resource.data.start > request.time
+        && request.resource.data.start < request.time + duration.value(60, 'd')
+        && request.resource.data.minutes in [30, 60, 90, 120, 180, 240]
+        && request.resource.data.account == request.auth.token.steam
+        && request.resource.data.createdAt == request.time;
+      allow delete: if steamUser() || (request.auth != null && request.auth.token.email == "jonahbyu@gmail.com");
+    }
+
     // Casts: links to a cast of a game with the caster's name, shown on the game page.
     // `game` is the page's ID (OpenDota match ID or 32-hex upload ID), `league` the division
     // key. No updates (delete and add again). Delete is open to anyone signed in; the site
