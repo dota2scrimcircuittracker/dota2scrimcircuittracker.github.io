@@ -760,7 +760,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   buttons as the profile. The other sub-tabs (Packs, Collection, Customize, Recycle;
   `#/<league>/gallery/<tab>`) are your own collection on a full page, the same as the collection
   dialog; the top bar's gift button opens Gallery › Packs. The dialog still opens from Fantasy and
-  profiles, with the same tab order. Three rows of cards a page, with page buttons under
+  profiles, with the same tab order. Two rows of cards a page, with page buttons under
   them (columns follow the screen width). Sort by newest (the default), voted rarity
   (legendary first; among equals, the clearer verdict, then more votes), most votes, or player
   name; the sort you pick is remembered in that browser. Signed in, "Not rated by me" leaves the cards you can still rate. Names link to profiles.

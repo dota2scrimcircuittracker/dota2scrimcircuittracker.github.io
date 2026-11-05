@@ -1067,7 +1067,7 @@ async function mountRatings(section,account) {
 // The Gallery: every saved card anyone in the league has changed, with its rating. Sorted by the
 // community's rating (legendary first; among equals, the clearer verdict, then more votes), by
 // votes, by newest change (the default), or by name; the sort is remembered in this browser. "Not rated
-// by me" leaves the cards a signed-in player can still rate. Three rows a page.
+// by me" leaves the cards a signed-in player can still rate. Two rows a page.
 const PICK_RANK={legendary:4,epic:3,rare:2,common:1};
 async function drawGallery(body,{viewer,signIn}) {
   body.innerHTML='<p>Loading gallery…</p>';
@@ -1090,10 +1090,10 @@ async function drawGallery(body,{viewer,signIn}) {
   const SORTS=['newest','rarity','votes','name'];
   let sort='newest',unrated=false,page=0;
   try {const saved=localStorage.getItem('gallery-sort');if(SORTS.includes(saved))sort=saved;} catch {}
-  // Pages hold three rows of however many columns fit; a resize re-pages from the same first card.
+  // Pages hold two rows of however many columns fit; a resize re-pages from the same first card.
   const paginate=()=>{
     const grid=body.querySelector('.gallery-grid');if(!grid)return;
-    const cols=Math.max(1,getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length),size=cols*3;
+    const cols=Math.max(1,getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length),size=cols*2;
     if(grid._size&&grid._size!==size&&page>=0)page=Math.floor(page*grid._size/size);
     grid._size=size;pageList(grid,{size,page,slack:1,onChange:p=>{page=p;}});
   };
