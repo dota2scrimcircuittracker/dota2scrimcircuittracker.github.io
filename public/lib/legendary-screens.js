@@ -6,6 +6,7 @@ import { SCREEN_ART } from './screen-art-data.js';
 
 export const LEGENDARY_SCREENS = [
   { id: 'scr:saint-gaben', label: 'Saint Gaben', rarity: 'Legendary', legendary: true },
+  { id: 'scr:el-sombrero', label: 'El Sombrero', rarity: 'Legendary', legendary: true },
 ];
 // Every screen a player can own: pack screens first, then the legendary ones.
 export const ALL_SCREENS = [...SCREEN_ART, ...LEGENDARY_SCREENS];
