@@ -42,14 +42,19 @@ function grid(b, box, champ) {
   const rowsOf = (m) => (m.side === "final" ? [2, top.lower + size.lower] : span.get(m.id).map((r) => r + top[m.side]));
   const feeds = new Set(b.matches.flatMap((m) => m.from));
   const byId = new Map(b.matches.map((m) => [m.id, m]));
+  const startOf = (m) => (m.from.length ? Math.max(...m.from.map((id) => col(byId.get(id)))) + 1 : col(m));
   const cell = (m) => {
     const [r0, r1] = rowsOf(m), fs = m.from.map((id) => byId.get(id));
-    const start = fs.length ? Math.max(...fs.map(col)) + 1 : col(m);
+    const start = startOf(m);
+    // Columns between this match and the one its winner plays in (the upper final waits for the
+    // lower final before the grand final): its out line runs across them.
+    const next = b.matches.find((x) => x.from.includes(m.id));
+    const skip = next ? Math.max(0, startOf(next) - col(m) - 1) : 0;
     // The rail joining the feeders' lines, as % of this cell's height from the top and bottom.
     const ys = [50, ...fs.map((f) => { const [a, z] = rowsOf(f); return ((a + z) / 2 - r0) / (r1 - r0) * 100; })];
     const rail = fs.length ? ` style="--t:${Math.min(...ys).toFixed(2)}%;--b:${(100 - Math.max(...ys)).toFixed(2)}%"` : "";
     const inner = m.side === "final" ? `<div class="po-gfw">${box(m)}${champ}</div>` : box(m);
-    return `<div class="po-cell${fs.length ? " has-in" : ""}${feeds.has(m.id) ? " has-out" : ""}" style="grid-column:${start}/${col(m) + 1};grid-row:${r0}/${r1}"><span class="po-in"${rail}></span>${inner}</div>`;
+    return `<div class="po-cell${fs.length ? " has-in" : ""}${feeds.has(m.id) ? " has-out" : ""}" style="grid-column:${start}/${col(m) + 1};grid-row:${r0}/${r1}${skip ? `;--skip:${skip}` : ""}"><span class="po-in"${rail}></span>${inner}</div>`;
   };
   return `<div class="po-br-wrap"><div class="po-br" style="--cols:${weeks.length};--rows:${size.upper + 1 + size.lower};--up:${size.upper};--low:${size.lower}">
     ${weeks.map((w, i) => `<div class="po-wk" style="grid-column:${i + 2}">Playoff week ${w}${NIGHT(w) ? ` <span>${NIGHT(w)}</span>` : ""}</div>`).join("")}

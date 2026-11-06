@@ -3859,7 +3859,7 @@ figure.chart .sk-multi.big circle { stroke: var(--gold); stroke-width: 2; }
 .po-cell.has-in > .po-in::before { content: ""; position: absolute; left: calc(var(--g) / -2); top: var(--t); bottom: var(--b); border-left: 2px solid var(--line); }
 .po-cell.has-in > .po-in::after { content: ""; position: absolute; left: calc(var(--g) / -2); right: 0; top: 50%; border-top: 2px solid var(--line); }
 .po-cell.has-out > .po-m { position: relative; }
-.po-cell.has-out > .po-m::after { content: ""; position: absolute; left: 100%; top: 50%; width: calc(var(--g) / 2 + 1px); border-top: 2px solid var(--line); }
+.po-cell.has-out > .po-m::after { content: ""; position: absolute; left: 100%; top: 50%; width: calc(var(--g) / 2 + 1px + var(--skip, 0) * (var(--cw) + var(--g))); border-top: 2px solid var(--line); }
 .po-gfw { position: relative; }
 .po-gfw > .po-champ { position: absolute; top: 100%; left: 0; right: 0; margin-top: 10px; }
 .po-brs { margin: 4px 0 10px; }
