@@ -2,7 +2,7 @@
  "season": "S48 Explorer League - Amateur Dota 2 League",
  "playon_season_id": 670,
  "league_id": 20077,
- "updated": "2026-11-06T00:02:20.548Z",
+ "updated": "2026-11-06T06:26:01.531Z",
  "teams": [
   {
    "id": 13288,
@@ -311,11 +311,2030 @@
    "time": 1793926800,
    "home": 13288,
    "away": 14516,
-   "home_score": 0,
+   "home_score": 2,
    "away_score": 0
   }
  ],
  "games": [
+  {
+   "series_id": 20851,
+   "draft": [
+    {
+     "order": 0,
+     "pick": false,
+     "side": "b",
+     "hero": "Necrophos"
+    },
+    {
+     "order": 1,
+     "pick": false,
+     "side": "b",
+     "hero": "Slardar"
+    },
+    {
+     "order": 2,
+     "pick": false,
+     "side": "a",
+     "hero": "Undying"
+    },
+    {
+     "order": 3,
+     "pick": false,
+     "side": "a",
+     "hero": "Warlock"
+    },
+    {
+     "order": 4,
+     "pick": false,
+     "side": "b",
+     "hero": "Axe"
+    },
+    {
+     "order": 5,
+     "pick": false,
+     "side": "a",
+     "hero": "Sven"
+    },
+    {
+     "order": 6,
+     "pick": false,
+     "side": "a",
+     "hero": "Witch Doctor"
+    },
+    {
+     "order": 7,
+     "pick": true,
+     "side": "b",
+     "hero": "Shadow Shaman"
+    },
+    {
+     "order": 8,
+     "pick": true,
+     "side": "a",
+     "hero": "Hoodwink"
+    },
+    {
+     "order": 9,
+     "pick": false,
+     "side": "b",
+     "hero": "Bloodseeker"
+    },
+    {
+     "order": 10,
+     "pick": false,
+     "side": "b",
+     "hero": "Troll Warlord"
+    },
+    {
+     "order": 11,
+     "pick": false,
+     "side": "a",
+     "hero": "Phantom Lancer"
+    },
+    {
+     "order": 12,
+     "pick": true,
+     "side": "a",
+     "hero": "Mirana"
+    },
+    {
+     "order": 13,
+     "pick": true,
+     "side": "b",
+     "hero": "Spectre"
+    },
+    {
+     "order": 14,
+     "pick": true,
+     "side": "b",
+     "hero": "Phoenix"
+    },
+    {
+     "order": 15,
+     "pick": true,
+     "side": "a",
+     "hero": "Legion Commander"
+    },
+    {
+     "order": 16,
+     "pick": true,
+     "side": "a",
+     "hero": "Juggernaut"
+    },
+    {
+     "order": 17,
+     "pick": true,
+     "side": "b",
+     "hero": "Razor"
+    },
+    {
+     "order": 18,
+     "pick": false,
+     "side": "b",
+     "hero": "Windranger"
+    },
+    {
+     "order": 19,
+     "pick": false,
+     "side": "a",
+     "hero": "Doom"
+    },
+    {
+     "order": 20,
+     "pick": false,
+     "side": "b",
+     "hero": "Death Prophet"
+    },
+    {
+     "order": 21,
+     "pick": false,
+     "side": "a",
+     "hero": "Tidehunter"
+    },
+    {
+     "order": 22,
+     "pick": true,
+     "side": "b",
+     "hero": "Centaur Warrunner"
+    },
+    {
+     "order": 23,
+     "pick": true,
+     "side": "a",
+     "hero": "Snapfire"
+    }
+   ],
+   "id": "9078033564",
+   "match_id": 9078033564,
+   "start_time": 1793935221,
+   "team_a": "The Petting Zoo Rejects",
+   "team_b": "Stanley's Soldiers",
+   "team_a_id": 13288,
+   "team_b_id": 14516,
+   "score_a": 31,
+   "score_b": 2,
+   "winner": "a",
+   "duration_sec": 1869,
+   "game_mode": "Captains Mode",
+   "gold_adv": [0,149,261,1010,1035,286,329,929,1854,3007,2956,3909,4271,4873,5732,6202,7804,9308,10338,11294,12130,13061,15257,15757,17389,17925,19200,19377,21711,23730,23998,26143],
+   "xp_adv": [0,-45,-174,318,506,-90,-71,873,1652,2387,2544,4185,4547,6151,5699,6476,8374,9466,10902,12432,13853,13988,16087,15178,16875,16170,17056,17216,22208,20066,20524,28215],
+   "objectives": [
+    {
+     "type": "roshan",
+     "minute": 23,
+     "time": 1404,
+     "side": "a"
+    },
+    {
+     "type": "aegis",
+     "minute": 23,
+     "time": 1404,
+     "side": "a"
+    },
+    {
+     "type": "tormentor",
+     "minute": 24,
+     "time": 1494,
+     "side": "a"
+    }
+   ],
+   "buildings": [
+    {
+     "side": "b",
+     "b": "t1_top",
+     "time": 698,
+     "by": "a",
+     "hero": null
+    },
+    {
+     "side": "b",
+     "b": "t1_mid",
+     "time": 839,
+     "by": "a",
+     "hero": null
+    },
+    {
+     "side": "b",
+     "b": "t1_bot",
+     "time": 922,
+     "by": "a",
+     "hero": "Juggernaut"
+    },
+    {
+     "side": "b",
+     "b": "t2_mid",
+     "time": 1291,
+     "by": "a",
+     "hero": "Juggernaut"
+    },
+    {
+     "side": "b",
+     "b": "t2_top",
+     "time": 1352,
+     "by": "a",
+     "hero": null
+    },
+    {
+     "side": "b",
+     "b": "t2_bot",
+     "time": 1532,
+     "by": "a",
+     "hero": "Juggernaut"
+    },
+    {
+     "side": "b",
+     "b": "t3_top",
+     "time": 1684,
+     "by": "a",
+     "hero": "Legion Commander"
+    },
+    {
+     "side": "b",
+     "b": "range_top",
+     "time": 1698,
+     "by": "a",
+     "hero": "Legion Commander"
+    },
+    {
+     "side": "b",
+     "b": "melee_top",
+     "time": 1704,
+     "by": "a",
+     "hero": "Legion Commander"
+    },
+    {
+     "side": "b",
+     "b": "t3_bot",
+     "time": 1868,
+     "by": "a",
+     "hero": "Juggernaut"
+    },
+    {
+     "side": "b",
+     "b": "fort",
+     "time": 1869,
+     "by": null,
+     "hero": null
+    }
+   ],
+   "fights": [1105,1139,3,1633,1680,4],
+   "vision": {
+    "a": [0,0,0,0,0,1.7,3.1,3.1,3.1,4.1,4.6,2.9,2.7,4.9,5.7,4.8,5.4,5.4,6,5.7,4.4,5.5,5.1,5,3,1.8,1.8,1.8,2,2.5,3.7,3.7],
+    "b": [1.8,1.8,1.8,1.8,1.8,0.4,2.7,3.1,3.1,3.1,3.1,3.5,5,6.5,5.6,1.5,3.1,3.8,3.6,0,2.6,2.4,0.9,3.2,0,1.1,1.8,0.7,0,0,0,0]
+   },
+   "first_blood_at": [143,1,8],
+   "pauses": [],
+   "fight_smokes": [0,0,0,0],
+   "players": [
+    {
+     "team": "a",
+     "name": "rZ | mercy",
+     "account_id": 23321118,
+     "player_key": "23321118",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 24,
+     "tag": null,
+     "hero": "Mirana",
+     "level": 14,
+     "kills": 1,
+     "deaths": 0,
+     "assists": 17,
+     "net_worth": 9811,
+     "last_hits": 58,
+     "denies": 7,
+     "gpm": 274,
+     "xpm": 373,
+     "hero_damage": 5608,
+     "hero_healing": 4088,
+     "gold_t": [1,214,322,412,627,799,968,1141,1566,1895,2131,2320,2587,2730,3071,3325,3990,4322,4417,4617,4711,5119,5324,5715,6044,6183,6567,6770,7223,7689,7950,8283],
+     "networth_t": [601,814,892,872,1037,1209,1378,1501,1926,2205,2441,2630,2897,2940,3281,3485,4150,4482,4527,4677,4771,5179,5284,5675,6004,7543,7927,8130,8483,8949,9210,9543],
+     "lane_kills": 31,
+     "neutral_kills": 25,
+     "ancient_kills": 1,
+     "camps_stacked": 1,
+     "obs_placed": 5,
+     "sen_placed": 10,
+     "obs_killed": 3,
+     "sen_killed": 2,
+     "position": 4,
+     "stuns": 14.199873,
+     "tower_damage": 715,
+     "lane_eff": 43,
+     "time_dead": 0,
+     "xp10": 2663,
+     "xp_t": [0,0,301,515,767,981,1133,1473,2022,2310,2663,2873,3176,3437,3616,3812,4655,5022,5280,5754,5787,6034,6181,7168,7877,7970,8371,8590,9754,10012,10353,11542],
+     "tf_dmg": [1105,1139,583,1633,1680,68],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 13,
+     "dn10": 5,
+     "dmg_taken": 4635,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [113,129,335,360,0,98,173,559,360,0,133,114,750,360,0,112,129,828,360,0,164,134,1105,239,1],
+     "sen_pos": [90,163,122,7,1,91,165,387,122,1,91,165,516,420,0,123,127,741,420,0,137,118,758,420,0,120,151,889,420,0,138,133,1071,420,0,164,134,1103,239,1,136,156,1636,420,0,152,165,1643,97,1],
+     "new_vision": 1.6,
+     "ward_vision": 1.52,
+     "death_log": [],
+     "items": ["guardian_greaves","essence_distiller","magic_wand","staff_of_wizardry",null,null,"duelist_gloves"],
+     "item_times": ["essence_distiller",710,"guardian_greaves",1822],
+     "apm": 131,
+     "tf_part": 0.58,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [466],
+     "runes": [0,0,0,0,0,1,0,0,2,0],
+     "courier_kills": 1,
+     "max_hit": [353,"mirana_arrow","phoenix"],
+     "pings": 5,
+     "bench": [12,14,6,71,20,3,47],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "a",
+     "name": "rZ | sidez",
+     "account_id": 91757165,
+     "player_key": "91757165",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 45,
+     "tag": null,
+     "hero": "Juggernaut",
+     "level": 19,
+     "kills": 11,
+     "deaths": 0,
+     "assists": 9,
+     "net_worth": 19930,
+     "last_hits": 260,
+     "denies": 14,
+     "gpm": 630,
+     "xpm": 665,
+     "hero_damage": 18485,
+     "hero_healing": 4577,
+     "gold_t": [1,281,615,1500,1821,2125,2425,2760,3211,3876,4396,5107,5589,6341,7041,7493,8691,9293,9697,10284,10837,11403,12140,12881,13858,14128,15303,15676,16532,17261,17799,19158],
+     "networth_t": [601,851,1155,2010,2331,2535,2835,3170,3621,4286,4806,5517,5999,6691,7391,7783,8981,9583,9987,10574,11127,11693,12430,13171,14148,14418,15593,15966,16822,17551,18089,19448],
+     "lane_kills": 186,
+     "neutral_kills": 68,
+     "ancient_kills": 3,
+     "camps_stacked": 0,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 0,
+     "sen_killed": 1,
+     "position": 1,
+     "stuns": 0,
+     "tower_damage": 8179,
+     "lane_eff": 88,
+     "time_dead": 5,
+     "xp10": 3283,
+     "xp_t": [0,84,306,826,1086,1324,1592,1989,2314,2845,3283,4316,4872,6123,6554,7206,8428,9073,9735,10678,11461,12118,13164,13619,14094,14094,15016,15384,16504,16797,17307,20623],
+     "tf_dmg": [1105,1139,1175,1633,1680,2917],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 52,
+     "dn10": 12,
+     "dmg_taken": 9215,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 1,
+     "tormentor_kills": 1,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [],
+     "items": ["mjollnir","circlet","magic_wand","manta","ultimate_scepter","phase_boots","defiant_shell"],
+     "item_times": ["phase_boots",236,"manta",1196,"ultimate_scepter",1440,"mjollnir",1725],
+     "apm": 381,
+     "tf_part": 0.65,
+     "first_blood": 1,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [1,1,1,1,1,1,1,2],
+     "kill_t": [143,176,501,562,614,763,917,1121,1660,1837,1856],
+     "runes": [0,0,0,0,0,2,0,0,0,0],
+     "courier_kills": 0,
+     "max_hit": [270,"juggernaut_omni_slash","phoenix"],
+     "pings": 9,
+     "bench": [46,23,81,71,38,43,53],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "a",
+     "name": "PzR | agpat07",
+     "account_id": 61789935,
+     "player_key": "61789935",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 45,
+     "tag": null,
+     "hero": "Legion Commander",
+     "level": 16,
+     "kills": 6,
+     "deaths": 0,
+     "assists": 15,
+     "net_worth": 14092,
+     "last_hits": 161,
+     "denies": 9,
+     "gpm": 447,
+     "xpm": 486,
+     "hero_damage": 12314,
+     "hero_healing": 1128,
+     "gold_t": [1,205,526,846,1176,1532,1917,2260,2699,3208,3545,3754,4369,4818,5234,5495,5836,6627,7389,7628,8027,8272,8968,9482,10026,10548,10934,11291,12026,12968,13111,13717],
+     "networth_t": [601,805,1126,1446,1776,2102,2487,2770,3179,3628,3965,4174,4789,5238,5654,5915,6256,7047,7759,7998,8397,8642,9338,9852,10396,10918,11304,11661,12396,13338,13251,13857],
+     "lane_kills": 107,
+     "neutral_kills": 45,
+     "ancient_kills": 1,
+     "camps_stacked": 1,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 0,
+     "sen_killed": 1,
+     "position": 3,
+     "stuns": 30.033447,
+     "tower_damage": 1804,
+     "lane_eff": 71,
+     "time_dead": 0,
+     "xp10": 3275,
+     "xp_t": [0,57,259,473,725,939,1271,1645,2582,2927,3275,3694,4268,4681,4799,5616,5894,6605,7744,8260,8800,8991,9853,10261,10967,11150,11496,11869,13087,13415,13796,15060],
+     "tf_dmg": [1105,1139,830,1633,1680,2439],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 55,
+     "dn10": 9,
+     "dmg_taken": 11643,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [],
+     "items": ["blink","blade_mail","phase_boots","bracer","black_king_bar","platemail","possessed_mask"],
+     "item_times": ["phase_boots",442,"blink",704,"blade_mail",1077,"black_king_bar",1567],
+     "apm": 244,
+     "tf_part": 0.68,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [1,1,1,1,0,0,0,0],
+     "kill_t": [966,1037,1268,1420,1665,1844],
+     "runes": [1,0,0,0,0,1,0,0,1,0],
+     "courier_kills": 0,
+     "max_hit": [994,null,"phoenix"],
+     "pings": 5,
+     "bench": [36,17,45,83,63,13,48],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "a",
+     "name": "Backyardsluts9",
+     "account_id": 83839131,
+     "player_key": "83839131",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 24,
+     "tag": null,
+     "hero": "Hoodwink",
+     "level": 14,
+     "kills": 5,
+     "deaths": 1,
+     "assists": 14,
+     "net_worth": 8659,
+     "last_hits": 20,
+     "denies": 1,
+     "gpm": 310,
+     "xpm": 397,
+     "hero_damage": 9877,
+     "hero_healing": 0,
+     "gold_t": [1,171,261,398,534,624,714,1008,1144,1473,1616,1789,1969,2354,2695,2948,3177,3687,4077,4682,4929,5252,5867,6212,6749,7128,7447,7607,8155,8686,8847,9491],
+     "networth_t": [551,691,636,683,644,734,744,1038,1109,1358,1451,1624,1754,2089,2326,2479,2608,3118,3398,3953,4150,4473,4988,5283,5770,6149,6468,6628,7176,7707,7818,8462],
+     "lane_kills": 7,
+     "neutral_kills": 2,
+     "ancient_kills": 0,
+     "camps_stacked": 0,
+     "obs_placed": 9,
+     "sen_placed": 16,
+     "obs_killed": 4,
+     "sen_killed": 6,
+     "position": 5,
+     "stuns": 49.066082,
+     "tower_damage": 575,
+     "lane_eff": 32,
+     "time_dead": 29,
+     "xp10": 2565,
+     "xp_t": [0,84,306,524,906,1144,1352,1749,1903,2321,2565,2813,2813,3226,3254,4021,4146,4882,5226,5921,6461,6708,7164,8049,8546,8639,8888,9119,10148,10343,10595,12286],
+     "tf_dmg": [1105,1139,339,1633,1680,775],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 5,
+     "dn10": 1,
+     "dmg_taken": 6500,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 4,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [174,96,238,3,1,108,165,754,360,0,120,150,800,14,1,90,162,957,361,0,136,156,1300,162,1,118,150,1364,360,0,165,176,1690,16,1,164,134,1757,-1,0,190,140,1774,-1,0],
+     "sen_pos": [164,95,71,120,1,166,95,233,17,1,165,94,518,246,1,107,163,749,420,0,119,154,801,12,1,136,156,878,110,1,129,187,934,420,0,88,164,956,420,0,136,156,1058,24,1,136,156,1137,79,1,152,123,1175,181,1,139,155,1296,115,1,139,172,1309,83,1,119,152,1363,420,0,164,134,1436,420,0,177,141,1766,420,0],
+     "new_vision": 1.36,
+     "ward_vision": 1.35,
+     "death_log": [811,7,54,29,-1,-1],
+     "items": ["boots","null_talisman","ward_sentry","rod_of_atos","cyclone","magic_wand","kobold_cup"],
+     "item_times": ["rod_of_atos",1210,"cyclone",1590],
+     "apm": 295,
+     "tf_part": 0.61,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [1,0,0,0,0,0,0,0],
+     "kill_t": [405,732,1120,1648,1828],
+     "runes": [0,0,0,0,0,0,0,0,0,0],
+     "courier_kills": 0,
+     "max_hit": [503,"hoodwink_sharpshooter","centaur"],
+     "pings": 19,
+     "bench": [28,18,63,55,3,19,55],
+     "smoke_kill_t": [732]
+    },
+    {
+     "team": "a",
+     "name": "Dr. Donkey Dick, DMD",
+     "account_id": 145773657,
+     "player_key": "145773657",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 44,
+     "tag": null,
+     "hero": "Snapfire",
+     "level": 17,
+     "kills": 8,
+     "deaths": 1,
+     "assists": 10,
+     "net_worth": 14616,
+     "last_hits": 153,
+     "denies": 9,
+     "gpm": 455,
+     "xpm": 507,
+     "hero_damage": 13770,
+     "hero_healing": 1926,
+     "gold_t": [1,278,474,762,1006,1168,1492,1770,2149,2516,2758,3251,3500,3900,4390,4799,5113,5599,6111,6506,7130,7684,8577,9215,9544,9994,10475,10789,11563,12403,12963,13938],
+     "networth_t": [601,878,1074,1332,1576,1738,2062,2310,2659,3026,3268,3661,3910,4310,4800,5209,5523,6009,6521,6916,7540,8094,8987,9625,9954,10404,10885,11199,11973,12813,13373,14348],
+     "lane_kills": 115,
+     "neutral_kills": 37,
+     "ancient_kills": 8,
+     "camps_stacked": 0,
+     "obs_placed": 1,
+     "sen_placed": 0,
+     "obs_killed": 1,
+     "sen_killed": 1,
+     "position": 2,
+     "stuns": 16.800634,
+     "tower_damage": 2546,
+     "lane_eff": 55,
+     "time_dead": 21,
+     "xp10": 3677,
+     "xp_t": [0,268,592,1103,1459,1758,2194,2680,3043,3294,3677,4250,4759,5385,5816,6273,6863,7542,7975,8449,8989,9236,9929,10517,11042,11222,11563,11982,13307,13574,13966,15706],
+     "tf_dmg": [1105,1139,896,1633,1680,3457],
+     "lane_role": 2,
+     "roaming": false,
+     "lh10": 33,
+     "dn10": 6,
+     "dmg_taken": 16765,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [137,124,318,360,0],
+     "sen_pos": [],
+     "new_vision": 0.27,
+     "ward_vision": 0.27,
+     "death_log": [240,5,39,21,-1,-1],
+     "items": ["soul_ring","travel_boots","octarine_core","bottle","kaya",null,"cloak_of_flames"],
+     "item_times": ["travel_boots",773,"aghanims_shard",924,"octarine_core",1526,"kaya",1714],
+     "apm": 325,
+     "tf_part": 0.58,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [1,0,0,0],
+     "streaks": [1,1,1,1,1,1,0,0],
+     "kill_t": [455,645,1124,1199,1268,1652,1831,1837],
+     "runes": [0,0,1,2,1,6,1,1,0,1],
+     "courier_kills": 0,
+     "max_hit": [726,null,"phoenix"],
+     "pings": 17,
+     "bench": [57,28,71,38,66,26,78],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "b",
+     "name": "Voidhunter",
+     "account_id": 80382621,
+     "player_key": "80382621",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 51,
+     "tag": null,
+     "hero": "Razor",
+     "level": 14,
+     "kills": 1,
+     "deaths": 6,
+     "assists": 1,
+     "net_worth": 8490,
+     "last_hits": 164,
+     "denies": 21,
+     "gpm": 344,
+     "xpm": 367,
+     "hero_damage": 13375,
+     "hero_healing": 0,
+     "gold_t": [1,245,588,825,1214,1881,2314,2663,2864,3045,3483,3797,4273,4638,4883,5136,5642,6069,6406,6541,6799,7066,7249,7795,8059,8433,8751,8951,9316,9889,10243,10711],
+     "networth_t": [601,845,1188,1340,1669,2336,2769,3118,3237,3380,3781,3842,4318,4534,4779,4666,5172,5599,5936,6034,6292,6559,6742,7188,7452,7826,8144,8344,8493,9066,9420,8475],
+     "lane_kills": 152,
+     "neutral_kills": 24,
+     "ancient_kills": 6,
+     "camps_stacked": 2,
+     "obs_placed": 1,
+     "sen_placed": 0,
+     "obs_killed": 2,
+     "sen_killed": 0,
+     "position": 2,
+     "stuns": 7.5,
+     "tower_damage": 139,
+     "lane_eff": 70,
+     "time_dead": 153,
+     "xp10": 4330,
+     "xp_t": [0,274,742,1095,1615,2318,2914,3302,3620,3811,4330,4583,5113,5369,5576,5824,6228,6784,7152,7377,7491,7755,8067,8762,8985,9839,10209,10423,10755,10945,11169,11448],
+     "tf_dmg": [1633,1680,1500],
+     "lane_role": 2,
+     "roaming": false,
+     "lh10": 49,
+     "dn10": 19,
+     "dmg_taken": 12601,
+     "buybacks": [1831],
+     "dust_used": 2,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [134,125,351,360,0],
+     "sen_pos": [],
+     "new_vision": 0.32,
+     "ward_vision": 0.17,
+     "death_log": [466,0,82,28,-1,-1,645,4,98,31,-1,-1,732,3,111,32,-1,-1,1660,1,216,46,156,177,1828,3,241,3,-1,-1,1856,1,215,-1,-1,-1],
+     "items": ["phase_boots","consecrated_wraps","cyclone",null,"wraith_band","magic_stick","defiant_shell"],
+     "item_times": ["phase_boots",414,"cyclone",962,"consecrated_wraps",1532],
+     "apm": 314,
+     "tf_part": 1,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [240],
+     "runes": [0,1,0,0,0,0,0,2,0,0],
+     "courier_kills": 0,
+     "max_hit": [133,"razor_plasma_field","mirana"],
+     "pings": 6,
+     "bench": [7,4,2,1,44,10,14],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "b",
+     "name": "Rene al'Thor",
+     "account_id": 154390881,
+     "player_key": "154390881",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 52,
+     "tag": null,
+     "hero": "Spectre",
+     "level": 15,
+     "kills": 0,
+     "deaths": 3,
+     "assists": 0,
+     "net_worth": 8630,
+     "last_hits": 184,
+     "denies": 3,
+     "gpm": 304,
+     "xpm": 413,
+     "hero_damage": 9446,
+     "hero_healing": 0,
+     "gold_t": [1,208,454,698,922,1257,1530,1699,1840,2210,2583,2746,3023,3286,3564,3890,4060,4329,4639,5116,5458,5810,6119,6588,6873,7176,7750,8176,8310,8572,8961,9477],
+     "networth_t": [601,808,994,1208,1332,1667,1875,1984,2074,2384,2757,2920,3037,3300,3578,3904,4014,4283,4480,4957,5299,5591,5900,6369,6398,6591,7165,7591,7545,7807,8196,8615],
+     "lane_kills": 67,
+     "neutral_kills": 120,
+     "ancient_kills": 2,
+     "camps_stacked": 2,
+     "obs_placed": 1,
+     "sen_placed": 1,
+     "obs_killed": 0,
+     "sen_killed": 0,
+     "position": 1,
+     "stuns": 0,
+     "tower_damage": 0,
+     "lane_eff": 52,
+     "time_dead": 85,
+     "xp10": 2260,
+     "xp_t": [0,45,295,548,769,1117,1339,1584,1746,2014,2260,2489,2767,3050,3667,4073,4239,4599,4912,5691,6146,6901,7382,8029,8357,8719,9449,10142,10176,11622,12172,12876],
+     "tf_dmg": [1633,1680,2826],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 37,
+     "dn10": 3,
+     "dmg_taken": 7223,
+     "buybacks": [],
+     "dust_used": 1,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [146,163,1523,122,1],
+     "sen_pos": [131,185,1481,420,0],
+     "new_vision": 0.12,
+     "ward_vision": 0.1,
+     "death_log": [455,4,52,21,-1,-1,1037,2,113,32,-1,-1,1837,1,215,-1,-1,-1],
+     "items": ["power_treads","smoke_of_deceit","clarity","radiance","quelling_blade","yasha","serrated_shiv"],
+     "item_times": ["power_treads",403,"radiance",1467,"yasha",1837],
+     "apm": 335,
+     "tf_part": 0,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [],
+     "runes": [0,0,0,0,1,2,0,0,1,0],
+     "courier_kills": 0,
+     "max_hit": [160,"centaur_stampede","legion_commander"],
+     "pings": 11,
+     "bench": [4,7,2,1,30,4,18],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "b",
+     "name": "Lebron James 76ers Small Forward",
+     "account_id": 111720159,
+     "player_key": "111720159",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 31,
+     "tag": null,
+     "hero": "Centaur Warrunner",
+     "level": 13,
+     "kills": 1,
+     "deaths": 10,
+     "assists": 0,
+     "net_worth": 6918,
+     "last_hits": 110,
+     "denies": 3,
+     "gpm": 277,
+     "xpm": 313,
+     "hero_damage": 5044,
+     "hero_healing": 0,
+     "gold_t": [1,205,373,636,896,1315,1574,1699,1995,2169,2647,2777,3228,3784,4127,4517,4717,5004,5280,5473,5668,5763,5993,6682,7029,7189,7425,7675,7870,8031,8357,8609],
+     "networth_t": [601,775,883,1118,1378,1797,1966,1991,2287,2404,2882,2859,3310,3770,4033,4423,4510,4797,5073,5136,5198,5293,5389,6078,6425,6585,6821,7071,6409,6570,6896,6893],
+     "lane_kills": 74,
+     "neutral_kills": 32,
+     "ancient_kills": 2,
+     "camps_stacked": 0,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 0,
+     "sen_killed": 0,
+     "position": 3,
+     "stuns": 22.234083,
+     "tower_damage": 0,
+     "lane_eff": 53,
+     "time_dead": 255,
+     "xp10": 2611,
+     "xp_t": [0,87,359,660,836,1160,1420,1593,2080,2200,2611,2725,3278,3860,4067,4403,4526,5409,5748,5928,6202,6318,6431,7978,8333,8352,8470,8719,8810,9041,9539,9780],
+     "tf_dmg": [1105,1139,911,1633,1680,592],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 37,
+     "dn10": 3,
+     "dmg_taken": 29399,
+     "buybacks": [1650],
+     "dust_used": 3,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [176,1,28,18,-1,-1,501,1,57,24,-1,-1,614,1,73,26,-1,-1,763,1,96,28,-1,-1,917,1,113,30,-1,-1,1120,3,130,34,153,139,1199,4,133,34,-1,-1,1268,4,134,34,-1,-1,1648,3,178,2,151,176,1844,2,175,-1,-1,-1],
+     "items": ["bracer","magic_wand","blink","blade_mail","bracer","dust","poor_mans_shield"],
+     "item_times": ["blade_mail",843,"blink",1395],
+     "apm": 240,
+     "tf_part": 0.5,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [811],
+     "runes": [0,0,0,0,0,1,0,0,2,0],
+     "courier_kills": 1,
+     "max_hit": [304,"centaur_double_edge","legion_commander"],
+     "pings": 8,
+     "bench": [5,9,10,1,19,6,9],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "b",
+     "name": "oogie_boogie",
+     "account_id": 242021648,
+     "player_key": "242021648",
+     "team_name": "Stanley's Soldiers",
+     "standin": true,
+     "rank_tier": 32,
+     "tag": null,
+     "hero": "Phoenix",
+     "level": 10,
+     "kills": 0,
+     "deaths": 9,
+     "assists": 1,
+     "net_worth": 4108,
+     "last_hits": 26,
+     "denies": 2,
+     "gpm": 157,
+     "xpm": 216,
+     "hero_damage": 8657,
+     "hero_healing": 982,
+     "gold_t": [1,171,261,351,523,778,908,998,1139,1324,1453,1578,1715,1906,2307,2402,2533,2628,2743,2913,3056,3199,3294,3435,3529,3821,3992,4202,4335,4475,4658,4882],
+     "networth_t": [601,721,751,841,963,1188,1288,1268,1409,1564,1653,1778,1915,2106,2457,2552,2583,2641,2706,2805,2948,3091,3109,3250,3248,3540,3711,3921,3700,3840,3973,4093],
+     "lane_kills": 12,
+     "neutral_kills": 10,
+     "ancient_kills": 1,
+     "camps_stacked": 1,
+     "obs_placed": 3,
+     "sen_placed": 6,
+     "obs_killed": 2,
+     "sen_killed": 4,
+     "position": 4,
+     "stuns": 0,
+     "tower_damage": 0,
+     "lane_eff": 29,
+     "time_dead": 240,
+     "xp10": 1842,
+     "xp_t": [0,87,233,383,559,814,948,1004,1403,1682,1842,1976,2144,2383,2784,3349,3591,3600,3759,4020,4092,4204,4289,4552,4690,4690,4727,4881,5124,6451,6530,6734],
+     "tf_dmg": [1105,1139,684,1633,1680,2056],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 7,
+     "dn10": 2,
+     "dmg_taken": 19740,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [115,149,786,105,1,94,162,961,18,1,136,156,1080,59,1],
+     "sen_pos": [169,97,58,16,1,169,97,186,336,1,123,154,785,218,1,142,155,1077,222,1,142,151,1408,308,1,158,177,1764,421,0],
+     "new_vision": 0.22,
+     "ward_vision": 0.22,
+     "death_log": [143,1,19,15,-1,-1,405,3,31,19,-1,-1,562,1,40,24,-1,-1,966,2,64,28,-1,-1,1124,4,71,30,150,143,1268,2,77,30,-1,-1,1420,2,81,30,-1,-1,1665,2,94,32,156,170,1837,4,104,-1,-1,-1],
+     "items": ["spirit_vessel","tranquil_boots",null,null,null,"dust","searing_signet"],
+     "item_times": ["spirit_vessel",1773],
+     "apm": 187,
+     "tf_part": 0.5,
+     "first_blood": 0,
+     "first_death": 1,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [],
+     "runes": [0,0,0,0,0,1,0,0,1,0],
+     "courier_kills": 0,
+     "max_hit": [159,"centaur_stampede","mirana"],
+     "pings": null,
+     "bench": [0,4,2,2,2,9,14],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "b",
+     "name": "toastie",
+     "account_id": 158408530,
+     "player_key": "158408530",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 25,
+     "tag": null,
+     "hero": "Shadow Shaman",
+     "level": 10,
+     "kills": 0,
+     "deaths": 3,
+     "assists": 1,
+     "net_worth": 3770,
+     "last_hits": 23,
+     "denies": 2,
+     "gpm": 153,
+     "xpm": 197,
+     "hero_damage": 6646,
+     "hero_healing": 0,
+     "gold_t": [1,171,261,398,574,731,861,951,1077,1213,1324,1414,1504,1656,1818,1913,2051,2190,2285,2380,2523,2831,2964,3248,3342,3437,3608,3752,3957,4310,4453,4765],
+     "networth_t": [601,671,761,838,884,981,951,1041,1067,1153,1204,1294,1334,1386,1498,1593,1731,1820,1865,1960,2103,2411,2444,2628,2622,2667,2838,2982,3187,3440,3533,3755],
+     "lane_kills": 12,
+     "neutral_kills": 2,
+     "ancient_kills": 0,
+     "camps_stacked": 1,
+     "obs_placed": 7,
+     "sen_placed": 19,
+     "obs_killed": 1,
+     "sen_killed": 9,
+     "position": 5,
+     "stuns": 47.89945,
+     "tower_damage": 0,
+     "lane_eff": 26,
+     "time_dead": 94,
+     "xp10": 1876,
+     "xp_t": [0,45,309,437,658,827,992,1180,1363,1603,1876,1988,2039,2039,2246,2803,3028,3266,3487,3614,3714,3921,4035,5115,5286,5305,5423,5563,5727,6016,6083,6164],
+     "tf_dmg": [1105,1139,177,1633,1680,1585],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 6,
+     "dn10": 2,
+     "dmg_taken": 8222,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 1,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [115,150,-54,360,0,78,184,376,360,0,136,156,709,175,1,151,123,729,360,0,136,156,997,64,1,136,156,1213,89,1,164,134,1363,76,1],
+     "sen_pos": [102,165,15,420,0,92,156,35,420,0,89,164,212,209,1,89,166,505,13,1,136,156,707,178,1,150,121,727,420,0,170,98,758,420,0,136,156,985,75,1,153,150,1054,421,0,169,151,1304,420,0,156,163,1311,420,0,164,134,1339,101,1,151,124,1353,420,0,146,173,1389,420,0,177,142,1405,364,1,155,151,1483,420,0,170,174,1696,420,0,156,164,1736,420,0,168,151,1749,420,0],
+     "new_vision": 1.59,
+     "ward_vision": 1.48,
+     "death_log": [1121,1,48,28,151,143,1652,4,75,32,155,171,1831,4,90,34,-1,-1],
+     "items": [null,"magic_wand","arcane_boots","ward_dispenser","dust",null,"mana_draught"],
+     "item_times": ["arcane_boots",1269],
+     "apm": 408,
+     "tf_part": 0.5,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [],
+     "runes": [0,0,0,0,0,0,0,0,0,0],
+     "courier_kills": 0,
+     "max_hit": [90,"shadow_shaman_ether_shock","snapfire"],
+     "pings": null,
+     "bench": [0,1,4,0,3,9,11],
+     "smoke_kill_t": []
+    }
+   ]
+  },
+  {
+   "series_id": 20851,
+   "draft": [
+    {
+     "order": 0,
+     "pick": false,
+     "side": "b",
+     "hero": "Necrophos"
+    },
+    {
+     "order": 1,
+     "pick": false,
+     "side": "b",
+     "hero": "Slardar"
+    },
+    {
+     "order": 2,
+     "pick": false,
+     "side": "a",
+     "hero": "Undying"
+    },
+    {
+     "order": 3,
+     "pick": false,
+     "side": "a",
+     "hero": "Warlock"
+    },
+    {
+     "order": 4,
+     "pick": false,
+     "side": "b",
+     "hero": "Axe"
+    },
+    {
+     "order": 5,
+     "pick": false,
+     "side": "a",
+     "hero": "Witch Doctor"
+    },
+    {
+     "order": 6,
+     "pick": false,
+     "side": "a",
+     "hero": "Sven"
+    },
+    {
+     "order": 7,
+     "pick": true,
+     "side": "b",
+     "hero": "Shadow Shaman"
+    },
+    {
+     "order": 8,
+     "pick": true,
+     "side": "a",
+     "hero": "Hoodwink"
+    },
+    {
+     "order": 9,
+     "pick": false,
+     "side": "b",
+     "hero": "Outworld Destroyer"
+    },
+    {
+     "order": 10,
+     "pick": false,
+     "side": "b",
+     "hero": "Bloodseeker"
+    },
+    {
+     "order": 11,
+     "pick": false,
+     "side": "a",
+     "hero": "Phantom Lancer"
+    },
+    {
+     "order": 12,
+     "pick": true,
+     "side": "a",
+     "hero": "Mirana"
+    },
+    {
+     "order": 13,
+     "pick": true,
+     "side": "b",
+     "hero": "Spirit Breaker"
+    },
+    {
+     "order": 14,
+     "pick": true,
+     "side": "b",
+     "hero": "Spectre"
+    },
+    {
+     "order": 15,
+     "pick": true,
+     "side": "a",
+     "hero": "Legion Commander"
+    },
+    {
+     "order": 16,
+     "pick": true,
+     "side": "a",
+     "hero": "Death Prophet"
+    },
+    {
+     "order": 17,
+     "pick": true,
+     "side": "b",
+     "hero": "Pangolier"
+    },
+    {
+     "order": 18,
+     "pick": false,
+     "side": "b",
+     "hero": "Medusa"
+    },
+    {
+     "order": 19,
+     "pick": false,
+     "side": "a",
+     "hero": "Doom"
+    },
+    {
+     "order": 20,
+     "pick": false,
+     "side": "b",
+     "hero": "Juggernaut"
+    },
+    {
+     "order": 21,
+     "pick": false,
+     "side": "a",
+     "hero": "Tidehunter"
+    },
+    {
+     "order": 22,
+     "pick": true,
+     "side": "b",
+     "hero": "Dawnbreaker"
+    },
+    {
+     "order": 23,
+     "pick": true,
+     "side": "a",
+     "hero": "Troll Warlord"
+    }
+   ],
+   "id": "9077996257",
+   "match_id": 9077996257,
+   "start_time": 1793930970,
+   "team_a": "The Petting Zoo Rejects",
+   "team_b": "Stanley's Soldiers",
+   "team_a_id": 13288,
+   "team_b_id": 14516,
+   "score_a": 45,
+   "score_b": 18,
+   "winner": "a",
+   "duration_sec": 2753,
+   "game_mode": "Captains Mode",
+   "gold_adv": [398,652,897,1426,1812,1939,2114,3001,3191,3240,4829,5833,7291,8466,7880,7316,8085,7996,7648,9374,9724,9361,7133,7818,9735,10493,9767,10113,10602,12457,15330,15368,16205,16590,18082,17796,14786,14063,14944,16972,19203,15074,16548,16506,18118,22004],
+   "xp_adv": [100,337,508,424,989,1054,825,1803,1590,2068,2893,4507,4784,5506,4824,2967,4510,5080,4438,7080,7559,7632,5469,4276,8250,9650,8299,6935,7953,14764,18539,17749,17224,18414,21432,20673,12784,13077,14744,16202,20834,13003,16790,14145,15592,26653],
+   "objectives": [
+    {
+     "type": "tormentor",
+     "minute": 26,
+     "time": 1572,
+     "side": "a"
+    },
+    {
+     "type": "roshan",
+     "minute": 30,
+     "time": 1856,
+     "side": "a"
+    },
+    {
+     "type": "aegis",
+     "minute": 30,
+     "time": 1856,
+     "side": "a"
+    },
+    {
+     "type": "roshan",
+     "minute": 43,
+     "time": 2591,
+     "side": "a"
+    },
+    {
+     "type": "aegis",
+     "minute": 43,
+     "time": 2592,
+     "side": "a"
+    }
+   ],
+   "buildings": [
+    {
+     "side": "b",
+     "b": "t1_top",
+     "time": 565,
+     "by": "a",
+     "hero": "Death Prophet"
+    },
+    {
+     "side": "b",
+     "b": "t1_mid",
+     "time": 719,
+     "by": "a",
+     "hero": "Death Prophet"
+    },
+    {
+     "side": "b",
+     "b": "t1_bot",
+     "time": 858,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "t2_bot",
+     "time": 1118,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "a",
+     "b": "t1_bot",
+     "time": 1226,
+     "by": "b",
+     "hero": null
+    },
+    {
+     "side": "b",
+     "b": "t2_top",
+     "time": 1779,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "t2_mid",
+     "time": 1901,
+     "by": "a",
+     "hero": "Death Prophet"
+    },
+    {
+     "side": "a",
+     "b": "t1_mid",
+     "time": 2175,
+     "by": "b",
+     "hero": "Pangolier"
+    },
+    {
+     "side": "b",
+     "b": "t3_top",
+     "time": 2295,
+     "by": "a",
+     "hero": "Death Prophet"
+    },
+    {
+     "side": "b",
+     "b": "range_top",
+     "time": 2308,
+     "by": "a",
+     "hero": "Death Prophet"
+    },
+    {
+     "side": "b",
+     "b": "melee_top",
+     "time": 2365,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "t3_mid",
+     "time": 2640,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "range_mid",
+     "time": 2649,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "melee_mid",
+     "time": 2683,
+     "by": "a",
+     "hero": "Legion Commander"
+    },
+    {
+     "side": "b",
+     "b": "t3_bot",
+     "time": 2720,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "range_bot",
+     "time": 2723,
+     "by": "a",
+     "hero": "Legion Commander"
+    },
+    {
+     "side": "b",
+     "b": "melee_bot",
+     "time": 2726,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "t4",
+     "time": 2743,
+     "by": "a",
+     "hero": "Troll Warlord"
+    },
+    {
+     "side": "b",
+     "b": "t4",
+     "time": 2745,
+     "by": "a",
+     "hero": null
+    },
+    {
+     "side": "b",
+     "b": "fort",
+     "time": 2753,
+     "by": "a",
+     "hero": "Legion Commander"
+    }
+   ],
+   "fights": [618,659,3,922,974,5,1078,1130,3,1233,1285,6,1712,1758,5,2104,2150,3,2379,2432,6,2636,2720,9],
+   "vision": {
+    "a": [0,0.3,1.9,1.9,1.9,2.5,4.6,4.3,4.9,4.9,5.2,4.9,4.2,4.9,2.2,3,4.6,6.4,5.9,7.7,6.1,3.4,1.2,0.6,1.7,0.8,1.9,1.9,1.9,5.1,6.8,2.8,0,0,0,0,0.7,3.2,5.1,5.1,5.1,5.1,4.6,3.3,2,4.4],
+    "b": [0,0.3,0.1,0,0,0.9,0.4,0,0,1.7,2.4,3.2,7,7.3,7.9,7.4,6.7,5.8,2.2,0.6,0,0,3.6,4.9,7.7,9.5,8.9,8.5,7.9,4.8,0.8,0,0,0,0,0.5,4.3,3.4,3,1.5,1.5,2.8,4.6,4.6,4.6,4.6]
+   },
+   "first_blood_at": [-7,0,7],
+   "pauses": [],
+   "fight_smokes": [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+   "players": [
+    {
+     "team": "a",
+     "name": "Backyardsluts9",
+     "account_id": 83839131,
+     "player_key": "83839131",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 24,
+     "tag": null,
+     "hero": "Hoodwink",
+     "level": 21,
+     "kills": 9,
+     "deaths": 2,
+     "assists": 24,
+     "net_worth": 13682,
+     "last_hits": 29,
+     "denies": 2,
+     "gpm": 369,
+     "xpm": 549,
+     "hero_damage": 20798,
+     "hero_healing": 194,
+     "gold_t": [295,465,596,770,926,1063,1248,1547,1732,1858,2138,2677,2955,3107,3325,3568,3832,4012,4192,4568,4839,5379,5510,5987,6285,6545,6705,7246,7509,8013,8919,9244,9586,9825,10537,10727,11005,11195,11568,12360,12923,13196,13797,13902,14237,16151],
+     "networth_t": [795,935,921,940,1066,1203,1203,1312,1497,1573,1753,2227,2405,2367,2585,2828,2942,2997,2947,3213,3269,3749,3780,4107,4405,4665,4725,5216,5479,5883,6689,6864,7206,7395,8107,8297,8367,8557,8830,9522,10035,10308,10909,10949,11284,12869],
+     "lane_kills": 16,
+     "neutral_kills": 7,
+     "ancient_kills": 0,
+     "camps_stacked": 2,
+     "obs_placed": 11,
+     "sen_placed": 22,
+     "obs_killed": 2,
+     "sen_killed": 6,
+     "position": 5,
+     "stuns": 84.8652,
+     "tower_damage": 221,
+     "lane_eff": 43,
+     "time_dead": 112,
+     "xp10": 2695,
+     "xp_t": [20,138,433,620,885,1107,1460,1840,2308,2637,2695,3241,3335,3524,3605,4110,4878,5315,5563,6482,6660,7260,8340,8670,9321,9540,9746,9816,9977,12563,13274,13591,13832,14082,15039,15429,16967,17263,17806,18106,19525,20242,20978,21002,21477,25219],
+     "tf_dmg": [618,659,742,922,974,874,1078,1130,117,1233,1285,467,1712,1758,1450,2379,2432,604,2636,2720,2706],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 4,
+     "dn10": 2,
+     "dmg_taken": 12868,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 7,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [176,101,109,351,1,169,89,356,273,1,121,187,760,361,0,164,134,993,349,1,136,156,1150,72,1,153,153,1189,4,1,112,160,1551,361,0,136,156,1756,121,1,140,172,1770,97,1,136,156,2254,360,0,118,152,2571,-1,0],
+     "sen_pos": [165,93,62,420,0,164,92,525,67,1,106,165,719,154,1,115,127,905,420,0,131,107,923,420,0,159,134,1133,212,1,136,153,1147,74,1,119,153,1155,324,1,115,129,1336,420,0,131,107,1354,420,0,94,157,1541,420,0,108,163,1548,420,0,118,154,1595,420,0,98,131,1700,420,0,134,155,1754,420,0,141,172,1770,97,1,164,134,1813,420,0,141,173,1979,98,1,153,149,2269,188,1,134,154,2324,420,0,119,152,2328,420,0,156,152,2386,67,1],
+     "new_vision": 2.03,
+     "ward_vision": 2.02,
+     "death_log": [2119,9,208,52,184,137,2693,-1,329,-1,180,172],
+     "items": ["boots","smoke_of_deceit","ward_dispenser","gungir","cyclone","magic_wand","medallion_of_courage"],
+     "item_times": ["cyclone",1861,"gungir",2514,"aghanims_shard",2526],
+     "apm": 288,
+     "tf_part": 0.73,
+     "first_blood": 1,
+     "first_death": 0,
+     "multi": [2,0,0,0],
+     "streaks": [1,1,1,1,1,0,0,0],
+     "kill_t": [-7,402,633,644,1248,1372,1991,2661,2664],
+     "runes": [0,0,0,0,0,2,0,0,2,0],
+     "courier_kills": 0,
+     "max_hit": [955,"hoodwink_sharpshooter","spirit_breaker"],
+     "pings": 53,
+     "bench": [54,46,76,68,3,56,41],
+     "smoke_kill_t": [-7,1372]
+    },
+    {
+     "team": "a",
+     "name": "PzR | agpat07",
+     "account_id": 61789935,
+     "player_key": "61789935",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 45,
+     "tag": null,
+     "hero": "Legion Commander",
+     "level": 25,
+     "kills": 10,
+     "deaths": 4,
+     "assists": 22,
+     "net_worth": 22891,
+     "last_hits": 244,
+     "denies": 13,
+     "gpm": 517,
+     "xpm": 763,
+     "hero_damage": 25850,
+     "hero_healing": 360,
+     "gold_t": [27,273,635,885,1243,1708,2047,2387,2706,3001,3634,4067,4586,5156,5328,5742,6728,7084,7293,7826,8014,8422,8812,9186,9528,10306,10446,10799,11337,12337,12932,13167,13874,14336,14841,15087,15457,15742,16025,16855,17416,18056,19615,19715,20480,21950],
+     "networth_t": [627,843,1175,1395,1723,2158,2467,2807,3126,3391,3994,4397,4916,5486,5518,5932,6918,7274,7483,8016,8204,8612,8787,9111,9453,10231,10371,10724,11262,12262,12857,13092,13569,14031,14536,14782,14864,15149,15432,16262,16823,17463,19022,18869,19634,21104],
+     "lane_kills": 167,
+     "neutral_kills": 69,
+     "ancient_kills": 6,
+     "camps_stacked": 0,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 1,
+     "sen_killed": 0,
+     "position": 3,
+     "stuns": 37.999733,
+     "tower_damage": 6479,
+     "lane_eff": 73,
+     "time_dead": 165,
+     "xp10": 2909,
+     "xp_t": [20,104,374,582,841,1235,1660,2006,2256,2530,2909,3521,3980,4237,4316,4623,5711,6030,6134,6738,6882,7679,8233,8653,9379,10461,10569,10791,11650,14980,15845,16086,16849,17518,18451,18565,18711,19462,20040,20929,22043,23802,28226,28226,29096,32802],
+     "tf_dmg": [922,974,1159,1078,1130,1388,1233,1285,1839,1712,1758,1615,2104,2150,67,2379,2432,2323,2636,2720,4380],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 54,
+     "dn10": 7,
+     "dmg_taken": 28922,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 1,
+     "tormentor_kills": 1,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [814,8,140,30,-1,-1,1026,6,182,34,-1,-1,1261,6,215,36,129,153,2124,9,375,65,179,130],
+     "items": ["blink","blade_mail","phase_boots","black_king_bar","greater_crit","assault","rattlecage"],
+     "item_times": ["phase_boots",421,"blink",707,"blade_mail",1026,"black_king_bar",1690,"assault",2450,"greater_crit",2689],
+     "apm": 258,
+     "tf_part": 0.71,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [1,1,0,0],
+     "streaks": [2,1,1,0,0,0,0,0],
+     "kill_t": [552,951,957,959,1736,2338,2402,2461,2651,2705],
+     "runes": [0,0,1,1,0,2,0,0,1,0],
+     "courier_kills": 0,
+     "max_hit": [587,"legion_commander_moment_of_courage","spirit_breaker"],
+     "pings": 8,
+     "bench": [62,63,52,82,68,35,78],
+     "smoke_kill_t": [951,957,959,1736]
+    },
+    {
+     "team": "a",
+     "name": "rZ | sidez",
+     "account_id": 91757165,
+     "player_key": "91757165",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 45,
+     "tag": null,
+     "hero": "Troll Warlord",
+     "level": 26,
+     "kills": 9,
+     "deaths": 3,
+     "assists": 22,
+     "net_worth": 31591,
+     "last_hits": 445,
+     "denies": 12,
+     "gpm": 713,
+     "xpm": 855,
+     "hero_damage": 35453,
+     "hero_healing": 0,
+     "gold_t": [27,358,857,1226,1666,2033,2558,2935,3395,3973,4417,4946,5551,6303,6867,7714,8453,8934,9237,9958,10698,11113,11497,12434,13006,13924,14849,15177,16016,17218,18042,18510,19425,20062,20663,21428,22345,23750,24967,25346,26781,27113,27508,28113,29026,30772],
+     "networth_t": [627,958,1397,1766,2176,2543,3068,3345,3805,4383,4827,5356,5961,6713,7277,8124,8863,9111,9414,10135,10875,11009,11393,12330,12742,13660,14585,14913,15752,16954,17678,18146,19061,19698,20299,21064,21881,23253,24470,24849,26284,25953,26348,26953,27866,29612],
+     "lane_kills": 309,
+     "neutral_kills": 118,
+     "ancient_kills": 29,
+     "camps_stacked": 0,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 1,
+     "sen_killed": 0,
+     "position": 1,
+     "stuns": 44.43361,
+     "tower_damage": 17390,
+     "lane_eff": 89,
+     "time_dead": 177,
+     "xp10": 2975,
+     "xp_t": [20,138,433,689,1013,1205,1558,1938,2206,2669,2975,3598,4156,5074,5730,6407,7694,8016,8207,9146,10324,10500,10742,12046,13286,14899,15918,16109,17696,19901,20731,20931,21792,22255,23118,23612,24859,26941,28337,29022,30441,30960,31154,32277,33063,36934],
+     "tf_dmg": [618,659,581,922,974,421,1078,1130,627,1233,1285,538,1712,1758,4171,2379,2432,6012,2636,2720,9999],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 59,
+     "dn10": 7,
+     "dmg_taken": 24927,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 1,
+     "tormentor_kills": 0,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [1013,6,233,36,-1,-1,1252,9,281,46,120,152,2414,7,663,90,167,161],
+     "items": ["bfury","black_king_bar","aegis","satanic","sange_and_yasha","power_treads","enchanters_bauble"],
+     "item_times": ["power_treads",408,"bfury",715,"black_king_bar",1403,"sange_and_yasha",1685,"satanic",2063,"basher",2235],
+     "apm": 348,
+     "tf_part": 0.69,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [1,0,0,0],
+     "streaks": [2,2,0,0,0,0,0,0],
+     "kill_t": [85,311,511,644,1732,1738,2260,2394,2670],
+     "runes": [0,0,1,0,0,6,0,0,0,0],
+     "courier_kills": 0,
+     "max_hit": [259,"troll_warlord_whirling_axes_melee","spirit_breaker"],
+     "pings": 8,
+     "bench": [81,60,45,97,86,68,84],
+     "smoke_kill_t": [1732,1738,2260]
+    },
+    {
+     "team": "a",
+     "name": "rZ | mercy",
+     "account_id": 23321118,
+     "player_key": "23321118",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 24,
+     "tag": null,
+     "hero": "Mirana",
+     "level": 22,
+     "kills": 5,
+     "deaths": 4,
+     "assists": 27,
+     "net_worth": 17284,
+     "last_hits": 133,
+     "denies": 4,
+     "gpm": 369,
+     "xpm": 570,
+     "hero_damage": 12162,
+     "hero_healing": 9158,
+     "gold_t": [27,231,321,612,702,841,931,1214,1348,1498,1996,2322,2600,2837,3132,3375,3719,4275,4934,5471,5771,6027,6373,6698,7186,7439,7607,7848,8455,8912,9596,9831,10227,10327,10773,10873,11245,11729,12130,12882,13394,13634,13935,14170,14505,15679],
+     "networth_t": [627,771,831,982,1072,1211,1301,1534,1668,1768,2266,2542,2820,3057,3352,3511,3712,4268,4827,5364,5614,5870,6062,6387,6825,7078,7246,8887,9494,9951,10635,10770,11116,11216,11662,11762,12034,12518,12919,13671,14133,14016,14317,14552,14887,16011],
+     "lane_kills": 76,
+     "neutral_kills": 45,
+     "ancient_kills": 0,
+     "camps_stacked": 1,
+     "obs_placed": 8,
+     "sen_placed": 12,
+     "obs_killed": 3,
+     "sen_killed": 7,
+     "position": 4,
+     "stuns": 13.767061,
+     "tower_damage": 1079,
+     "lane_eff": 40,
+     "time_dead": 164,
+     "xp10": 2525,
+     "xp_t": [20,104,374,582,818,969,969,1287,1646,1863,2525,2995,3145,3358,3647,4152,4362,5176,5993,6645,7219,7418,8498,8726,9458,9640,9894,10321,11140,12616,13782,14004,14363,14562,15653,15880,17651,17897,18508,19504,20702,21267,21454,21826,22367,25468],
+     "tf_dmg": [922,974,729,1078,1130,575,1233,1285,548,1712,1758,424,2379,2432,1928,2636,2720,2554],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 12,
+     "dn10": 3,
+     "dmg_taken": 15627,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [113,129,342,360,0,83,154,471,360,0,121,150,626,237,1,113,129,908,361,0,122,137,1418,102,1,113,130,2195,360,0,179,168,2687,-1,0,162,155,2739,-1,0],
+     "sen_pos": [91,165,125,156,1,92,165,381,75,1,89,164,515,420,0,121,150,623,239,1,138,118,928,420,0,151,124,1145,207,1,133,131,1413,96,1,134,131,1803,420,0,150,122,1824,322,1,136,156,1887,420,0,154,171,2368,5,1,163,154,2654,420,0],
+     "new_vision": 1.2,
+     "ward_vision": 1.04,
+     "death_log": [853,6,84,28,-1,-1,947,6,93,30,151,126,1294,9,154,36,-1,-1,2417,9,357,70,169,160],
+     "items": ["force_staff","essence_distiller","guardian_greaves","ward_sentry","point_booster","magic_wand","giant_maul"],
+     "item_times": ["essence_distiller",772,"guardian_greaves",1459,"force_staff",1853],
+     "apm": 134,
+     "tf_part": 0.71,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [937,1093,1269,1400,2681],
+     "runes": [0,0,0,0,0,2,0,0,2,0],
+     "courier_kills": 0,
+     "max_hit": [403,"mirana_starfall","spirit_breaker"],
+     "pings": 7,
+     "bench": [38,45,35,77,52,10,57],
+     "smoke_kill_t": [937]
+    },
+    {
+     "team": "a",
+     "name": "Dr. Donkey Dick, DMD",
+     "account_id": 145773657,
+     "player_key": "145773657",
+     "team_name": "The Petting Zoo Rejects",
+     "standin": false,
+     "rank_tier": 44,
+     "tag": null,
+     "hero": "Death Prophet",
+     "level": 25,
+     "kills": 12,
+     "deaths": 5,
+     "assists": 26,
+     "net_worth": 23757,
+     "last_hits": 276,
+     "denies": 14,
+     "gpm": 565,
+     "xpm": 755,
+     "hero_damage": 41872,
+     "hero_healing": 489,
+     "gold_t": [27,357,587,957,1415,1751,1987,2443,2813,3028,3952,4285,5007,5521,5661,5994,6310,6669,6856,7773,8077,8726,8910,9441,10762,11144,11533,11974,12386,13461,14201,14683,15571,16244,17258,17510,18268,18368,19027,20216,21226,21821,22021,22612,23522,25119],
+     "networth_t": [627,957,1187,1527,1955,2291,2497,2953,3323,3538,4462,4795,5517,6031,6171,6349,6665,7024,7211,8128,8432,9081,9036,9567,10888,11270,11659,12100,12512,13587,14327,14809,15697,16370,17384,17636,17938,17297,17956,19145,20155,20233,20433,21024,21934,22944],
+     "lane_kills": 198,
+     "neutral_kills": 69,
+     "ancient_kills": 8,
+     "camps_stacked": 2,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 1,
+     "sen_killed": 0,
+     "position": 2,
+     "stuns": 0,
+     "tower_damage": 6411,
+     "lane_eff": 79,
+     "time_dead": 298,
+     "xp10": 4611,
+     "xp_t": [20,317,797,1194,1803,2343,2635,3332,3689,4039,4611,5198,5514,6116,6325,6386,7139,7697,8013,8912,9174,10400,10671,11119,13006,13353,13741,14033,14753,16571,17152,17640,18238,18969,19980,20157,21070,21070,22419,23406,24922,26422,26422,27540,28779,34674],
+     "tf_dmg": [618,659,2738,922,974,2021,1078,1130,2255,1233,1285,5060,1712,1758,2249,2104,2150,2404,2379,2432,4402,2636,2720,6527],
+     "lane_role": 2,
+     "roaming": false,
+     "lh10": 55,
+     "dn10": 8,
+     "dmg_taken": 33340,
+     "buybacks": [],
+     "dust_used": 0,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [855,8,155,35,-1,-1,1270,9,229,46,135,143,2135,5,456,70,162,124,2433,-1,517,85,-1,-1,2691,9,587,-1,178,172],
+     "items": ["shivas_guard","phase_boots","blink","black_king_bar","kaya_and_sange","consecrated_wraps","rattlecage"],
+     "item_times": ["phase_boots",456,"consecrated_wraps",756,"blink",1120,"kaya_and_sange",1657,"shivas_guard",2074,"black_king_bar",2374],
+     "apm": 333,
+     "tf_part": 0.84,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [4,0,0,0],
+     "streaks": [2,1,1,0,0,0,0,0],
+     "kill_t": [550,1101,1115,1252,1383,1398,1727,1743,2025,2398,2408,2675],
+     "runes": [1,2,0,1,2,5,1,2,0,2],
+     "courier_kills": 0,
+     "max_hit": [282,"death_prophet_carrion_swarm","spirit_breaker"],
+     "pings": 24,
+     "bench": [67,58,64,93,65,77,66],
+     "smoke_kill_t": [1383,1727,1743]
+    },
+    {
+     "team": "b",
+     "name": "Lebron James 76ers Small Forward",
+     "account_id": 111720159,
+     "player_key": "111720159",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 31,
+     "tag": null,
+     "hero": "Dawnbreaker",
+     "level": 19,
+     "kills": 1,
+     "deaths": 13,
+     "assists": 8,
+     "net_worth": 12954,
+     "last_hits": 201,
+     "denies": 2,
+     "gpm": 367,
+     "xpm": 425,
+     "hero_damage": 17863,
+     "hero_healing": 4386,
+     "gold_t": [1,280,548,726,978,1243,1597,1734,1956,2137,2567,2785,3013,3366,3838,4319,4956,5285,5621,5716,6248,6794,6989,7572,7666,7981,8876,9058,9725,10271,10457,10860,11271,11510,11828,12018,13353,14090,14520,14620,14850,15255,15570,16075,16175,16779],
+     "networth_t": [601,850,1033,1211,1433,1553,1868,1829,2051,2132,2562,2712,2940,3293,3765,4146,4664,4993,5249,5213,5745,6057,6202,6592,6521,6836,7731,7913,8580,8821,9007,9410,9821,10060,10120,10310,11645,12382,12493,12593,12823,12949,13264,13769,13869,12861],
+     "lane_kills": 119,
+     "neutral_kills": 74,
+     "ancient_kills": 19,
+     "camps_stacked": 1,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 1,
+     "sen_killed": 0,
+     "position": 3,
+     "stuns": 25.70023,
+     "tower_damage": 131,
+     "lane_eff": 51,
+     "time_dead": 517,
+     "xp10": 2409,
+     "xp_t": [0,84,391,481,684,972,1262,1366,1838,1930,2409,2580,2985,3488,4041,5105,6084,6541,6929,6957,7838,8419,8611,10083,10083,10261,11343,11570,12234,12680,12680,13064,13651,13842,14061,14141,16228,16833,17338,17368,17638,17638,18087,18982,19424,19538],
+     "tf_dmg": [618,659,101,922,974,1072,1078,1130,1552,1233,1285,1134,1712,1758,1175,2104,2150,633,2379,2432,1290,2636,2720,1763],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 32,
+     "dn10": 1,
+     "dmg_taken": 44708,
+     "buybacks": [2662],
+     "dust_used": 4,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [311,2,39,18,-1,-1,402,0,46,21,-1,-1,644,0,68,26,176,114,959,1,119,34,160,135,1093,3,131,34,177,110,1248,0,154,44,115,173,1400,3,165,46,-1,-1,1736,1,225,50,113,162,2025,4,258,52,-1,-1,2260,2,319,54,-1,-1,2402,1,320,65,168,163,2661,0,347,1,172,154,2681,3,309,-1,176,161],
+     "items": ["phase_boots","magic_wand","harpoon","soul_ring","ogre_axe","dust","conjurers_catalyst"],
+     "item_times": ["phase_boots",791,"aghanims_shard",1538,"harpoon",1882],
+     "apm": 237,
+     "tf_part": 0.5,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [2135],
+     "runes": [0,0,0,0,0,1,0,0,2,0],
+     "courier_kills": 0,
+     "max_hit": [237,"dawnbreaker_fire_wreath","legion_commander"],
+     "pings": 6,
+     "bench": [9,8,2,8,16,13,21],
+     "smoke_kill_t": [2135]
+    },
+    {
+     "team": "b",
+     "name": "Voidhunter",
+     "account_id": 80382621,
+     "player_key": "80382621",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 51,
+     "tag": null,
+     "hero": "Pangolier",
+     "level": 23,
+     "kills": 5,
+     "deaths": 7,
+     "assists": 9,
+     "net_worth": 17680,
+     "last_hits": 292,
+     "denies": 7,
+     "gpm": 484,
+     "xpm": 662,
+     "hero_damage": 18206,
+     "hero_healing": 0,
+     "gold_t": [1,239,473,692,999,1245,1545,1852,2190,2680,2947,3292,3578,3848,4265,5079,5681,6415,7057,7152,7499,7866,8887,9333,9427,9891,10417,11104,11514,12184,12542,13184,13671,14128,14367,14723,16151,16871,17878,18545,19172,21015,21115,21215,22026,22126],
+     "networth_t": [601,779,898,1087,1364,1610,1772,2079,2417,2907,3174,3382,3668,3938,4167,4931,5322,5981,6623,6602,6949,7236,8257,8703,8579,9043,9203,9890,10200,10599,10957,11599,12086,12543,12782,13138,14566,15186,16193,16780,15468,17311,16979,17079,17890,17587],
+     "lane_kills": 216,
+     "neutral_kills": 76,
+     "ancient_kills": 11,
+     "camps_stacked": 2,
+     "obs_placed": 1,
+     "sen_placed": 1,
+     "obs_killed": 1,
+     "sen_killed": 1,
+     "position": 2,
+     "stuns": 48.219837,
+     "tower_damage": 673,
+     "lane_eff": 59,
+     "time_dead": 377,
+     "xp10": 3989,
+     "xp_t": [0,211,691,1113,1510,1904,2415,2825,3251,3700,3989,4354,4884,5267,5568,6473,7092,7521,7835,7835,8227,8773,10081,10587,10587,11115,11774,12940,13421,14223,14430,15235,16042,16283,16530,16899,19229,19621,21066,21636,22348,29097,29097,29097,30366,30380],
+     "tf_dmg": [618,659,387,922,974,340,1078,1130,1711,1233,1285,2202,1712,1758,1089,2104,2150,567,2379,2432,1901,2636,2720,351],
+     "lane_role": 2,
+     "roaming": false,
+     "lh10": 40,
+     "dn10": 3,
+     "dmg_taken": 24807,
+     "buybacks": [2397],
+     "dust_used": 2,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [126,120,558,360,0],
+     "sen_pos": [126,124,888,420,0],
+     "new_vision": 0.32,
+     "ward_vision": 0.27,
+     "death_log": [957,1,136,36,155,136,1115,4,166,36,184,148,1398,4,218,46,-1,-1,1732,2,271,52,115,163,2394,2,434,2,165,156,2461,1,432,115,-1,-1,2651,1,447,90,172,157],
+     "items": ["boots","blink","disperser","ultimate_scepter",null,"basher","conjurers_catalyst"],
+     "item_times": ["blink",1047,"ultimate_scepter",1625,"aghanims_shard",1832,"basher",2182,"disperser",2640],
+     "apm": 297,
+     "tf_part": 0.78,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [1,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [853,947,1013,1026,1261],
+     "runes": [0,1,0,1,0,2,0,2,0,0],
+     "courier_kills": 0,
+     "max_hit": [173,"pangolier_gyroshell","hoodwink"],
+     "pings": 13,
+     "bench": [40,35,29,16,55,20,42],
+     "smoke_kill_t": [1261]
+    },
+    {
+     "team": "b",
+     "name": "toastie",
+     "account_id": 158408530,
+     "player_key": "158408530",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 25,
+     "tag": null,
+     "hero": "Shadow Shaman",
+     "level": 17,
+     "kills": 1,
+     "deaths": 10,
+     "assists": 13,
+     "net_worth": 7345,
+     "last_hits": 36,
+     "denies": 1,
+     "gpm": 229,
+     "xpm": 380,
+     "hero_damage": 11851,
+     "hero_healing": 0,
+     "gold_t": [1,171,261,351,489,673,763,853,992,1149,1239,1470,1560,1696,1839,2271,2475,2849,3055,3180,3453,4001,4471,4755,4849,5020,5115,5210,5306,5484,5580,5680,6229,6378,6618,6718,7346,7630,7730,8052,8152,9857,9957,10057,10197,10417],
+     "networth_t": [521,611,671,711,799,873,963,893,982,1039,1103,1253,1293,1379,1522,1854,2007,2381,2457,2520,2743,3111,3499,3683,3635,3756,3851,3896,3992,3969,4015,4115,4564,4713,4953,4953,5481,5665,5715,6037,6037,6822,6922,6972,7112,7252],
+     "lane_kills": 15,
+     "neutral_kills": 7,
+     "ancient_kills": 0,
+     "camps_stacked": 1,
+     "obs_placed": 12,
+     "sen_placed": 32,
+     "obs_killed": 4,
+     "sen_killed": 11,
+     "position": 5,
+     "stuns": 102.465775,
+     "tower_damage": 485,
+     "lane_eff": 25,
+     "time_dead": 301,
+     "xp10": 1788,
+     "xp_t": [0,14,284,533,647,865,1103,1307,1527,1788,1788,1902,1902,2116,2284,3189,3374,3789,4096,4144,4239,4785,5165,6214,6214,6342,6493,6663,6915,8168,8168,8313,8811,8952,9151,9423,12823,12861,12861,13224,13606,15373,15373,17073,17182,17457],
+     "tf_dmg": [922,974,872,1078,1130,55,1233,1285,1529,1712,1758,44,2104,2150,301,2379,2432,2614,2636,2720,785],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 3,
+     "dn10": 1,
+     "dmg_taken": 20795,
+     "buybacks": [2415],
+     "dust_used": 2,
+     "smoke_used": 3,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [85,166,100,27,1,95,161,307,76,1,151,123,687,361,0,136,156,725,360,0,119,151,880,278,1,136,156,1326,360,0,151,125,1356,360,0,120,152,1479,118,1,136,156,1707,52,1,150,122,2141,360,0,127,127,2164,49,1,120,151,2203,127,1],
+     "sen_pos": [93,156,42,420,0,87,166,217,34,1,90,166,278,108,1,91,166,453,64,1,166,92,626,420,0,150,121,686,420,0,136,156,724,420,0,108,163,846,420,0,119,153,858,301,1,170,99,1030,420,0,155,151,1186,420,0,136,156,1219,420,0,164,134,1339,420,0,151,123,1351,420,0,177,142,1437,420,0,121,152,1472,127,1,136,174,1565,208,1,136,156,1704,59,1,107,163,1723,28,1,156,151,1790,420,0,141,173,1864,117,1,136,156,1874,14,1,148,173,2063,420,0,177,142,2085,421,0,151,123,2143,420,0,125,133,2192,420,0,120,153,2201,372,1,155,151,2256,15,1,168,151,2345,390,1,156,162,2387,420,0,155,151,2451,225,1,178,142,2528,420,0],
+     "new_vision": 1.96,
+     "ward_vision": 1.9,
+     "death_log": [-7,0,13,12,-1,-1,552,1,26,24,-1,-1,633,0,31,24,171,96,951,1,51,28,157,147,1101,4,62,30,180,130,1269,3,82,32,138,154,1383,4,92,34,-1,-1,1727,4,101,37,108,163,2408,4,151,7,179,171,2670,2,180,79,172,162],
+     "items": ["arcane_boots","magic_wand","blink","dust","glimmer_cape","ward_dispenser","conjurers_catalyst"],
+     "item_times": ["arcane_boots",1068,"glimmer_cape",1884,"blink",2438],
+     "apm": 366,
+     "tf_part": 0.78,
+     "first_blood": 0,
+     "first_death": 1,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [2414],
+     "runes": [0,0,0,0,0,1,0,0,1,0],
+     "courier_kills": 0,
+     "max_hit": [214,"shadow_shaman_ether_shock","mirana"],
+     "pings": 1,
+     "bench": [4,15,6,14,4,16,21],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "b",
+     "name": "oogie_boogie",
+     "account_id": 242021648,
+     "player_key": "242021648",
+     "team_name": "Stanley's Soldiers",
+     "standin": true,
+     "rank_tier": 32,
+     "tag": null,
+     "hero": "Spirit Breaker",
+     "level": 19,
+     "kills": 2,
+     "deaths": 12,
+     "assists": 9,
+     "net_worth": 8870,
+     "last_hits": 68,
+     "denies": 1,
+     "gpm": 249,
+     "xpm": 434,
+     "hero_damage": 14884,
+     "hero_healing": 0,
+     "gold_t": [1,171,261,424,598,814,904,994,1214,1304,1394,1484,1574,1668,2233,2713,2888,3180,3386,3522,3656,4023,4428,4523,4658,4855,5196,5372,5742,5993,6133,6398,6540,6769,6913,7595,8412,9092,9192,9423,9523,9990,10174,10274,10374,11370],
+     "networth_t": [571,711,771,904,1078,1264,1324,1354,1524,1614,1654,1744,1746,1840,2290,2770,2873,3165,3371,3507,3641,3831,4236,4224,4359,4556,4797,4973,5343,5514,5424,5689,5731,5960,5954,6556,7373,8053,8153,8253,8353,8820,9004,9104,9204,9002],
+     "lane_kills": 53,
+     "neutral_kills": 10,
+     "ancient_kills": 2,
+     "camps_stacked": 4,
+     "obs_placed": 4,
+     "sen_placed": 7,
+     "obs_killed": 2,
+     "sen_killed": 3,
+     "position": 4,
+     "stuns": 77.73286,
+     "tower_damage": 401,
+     "lane_eff": 28,
+     "time_dead": 387,
+     "xp10": 2263,
+     "xp_t": [0,84,196,526,729,1045,1420,1641,2093,2207,2263,2377,2377,2377,2735,3140,3580,3891,4219,4247,4556,4929,5211,5211,5330,5539,6056,6614,7259,7607,7778,8362,8540,8731,8779,9734,11958,13034,13224,13773,13773,13817,13988,15700,15784,19935],
+     "tf_dmg": [618,659,235,922,974,122,1078,1130,417,1233,1285,519,1712,1758,1198,2104,2150,1486,2379,2432,710,2636,2720,2353],
+     "lane_role": 3,
+     "roaming": false,
+     "lh10": 7,
+     "dn10": 1,
+     "dmg_taken": 29293,
+     "buybacks": [2681],
+     "dust_used": 4,
+     "smoke_used": 0,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [164,134,1455,360,0,115,150,1655,101,1,164,134,2486,-1,0,147,174,2517,-1,0],
+     "sen_pos": [173,99,457,420,0,159,90,588,420,0,111,174,821,420,0,135,133,1507,299,1,121,138,1517,420,0,154,163,1877,420,0,168,151,1897,420,0],
+     "new_vision": 0.89,
+     "ward_vision": 0.86,
+     "death_log": [85,2,17,12,-1,-1,511,2,39,24,-1,-1,644,2,43,24,175,110,937,3,72,28,154,122,1252,4,97,32,130,172,1372,0,107,32,-1,-1,1743,4,137,36,124,174,1991,0,150,45,-1,-1,2338,1,209,50,-1,-1,2398,4,208,50,164,155,2675,4,229,6,176,164,2705,1,225,-1,177,149],
+     "items": ["phase_boots","silver_edge",null,"dust",null,"bracer","giant_maul"],
+     "item_times": ["phase_boots",857,"silver_edge",2234],
+     "apm": 174,
+     "tf_part": 0.61,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [0,0,0,0],
+     "streaks": [0,0,0,0,0,0,0,0],
+     "kill_t": [814,855],
+     "runes": [0,0,0,0,0,1,0,0,1,1],
+     "courier_kills": 0,
+     "max_hit": [338,"spirit_breaker_greater_bash","troll_warlord"],
+     "pings": 1,
+     "bench": [6,17,5,4,23,15,52],
+     "smoke_kill_t": []
+    },
+    {
+     "team": "b",
+     "name": "Rene al'Thor",
+     "account_id": 154390881,
+     "player_key": "154390881",
+     "team_name": "Stanley's Soldiers",
+     "standin": false,
+     "rank_tier": 52,
+     "tag": null,
+     "hero": "Spectre",
+     "level": 26,
+     "kills": 8,
+     "deaths": 3,
+     "assists": 9,
+     "net_worth": 23357,
+     "last_hits": 438,
+     "denies": 9,
+     "gpm": 598,
+     "xpm": 918,
+     "hero_damage": 46975,
+     "hero_healing": 0,
+     "gold_t": [1,171,556,831,1076,1482,1848,2092,2451,2848,3161,3433,3683,3880,4258,4695,4957,5249,5745,6652,6819,7622,9194,9745,10432,11118,11769,12187,12814,13552,13648,13945,14767,15419,16264,16775,18272,19038,19453,20047,20840,22629,23512,24385,24880,26975],
+     "networth_t": [601,771,1126,1371,1586,1962,2328,2422,2651,3010,3211,3483,3695,3832,4173,4572,4774,5066,5502,6409,6576,7262,8774,9325,10012,10598,11249,11667,12294,12629,12725,13022,13844,14496,15123,15634,17131,17837,18152,18746,19539,21248,22131,23004,23449,22879],
+     "lane_kills": 201,
+     "neutral_kills": 240,
+     "ancient_kills": 13,
+     "camps_stacked": 4,
+     "obs_placed": 0,
+     "sen_placed": 0,
+     "obs_killed": 0,
+     "sen_killed": 0,
+     "position": 1,
+     "stuns": 3.9334397,
+     "tower_damage": 0,
+     "lane_eff": 63,
+     "time_dead": 90,
+     "xp10": 2373,
+     "xp_t": [0,71,341,590,801,1019,1257,1461,1806,2045,2373,2833,3198,3555,4171,4804,5144,5412,6393,7660,7840,8719,11947,12843,13986,14986,15903,16348,17434,19189,19189,19529,20806,21164,22288,22773,26236,27207,27877,28764,29434,33765,34899,35874,36434,41134],
+     "tf_dmg": [1233,1285,3966,1712,1758,4627,2104,2150,3584,2379,2432,6359,2636,2720,13752],
+     "lane_role": 1,
+     "roaming": false,
+     "lh10": 49,
+     "dn10": 8,
+     "dmg_taken": 22387,
+     "buybacks": [2666],
+     "dust_used": 5,
+     "smoke_used": 1,
+     "roshan_kills": 0,
+     "tormentor_kills": 0,
+     "obs_pos": [],
+     "sen_pos": [],
+     "new_vision": 0,
+     "ward_vision": 0,
+     "death_log": [550,4,75,24,-1,-1,1738,2,323,65,115,161,2664,0,595,1,171,154],
+     "items": ["abyssal_blade","manta",null,"power_treads","radiance","skadi","serrated_shiv"],
+     "item_times": ["power_treads",347,"radiance",1214,"manta",1595,"skadi",2165,"abyssal_blade",2749],
+     "apm": 356,
+     "tf_part": 0.94,
+     "first_blood": 0,
+     "first_death": 0,
+     "multi": [2,0,0,0],
+     "streaks": [2,0,0,0,0,0,0,0],
+     "kill_t": [1252,1270,1294,2119,2124,2417,2691],
+     "runes": [0,0,0,0,0,2,0,0,2,0],
+     "courier_kills": 0,
+     "max_hit": [188,null,"hoodwink"],
+     "pings": 10,
+     "bench": [53,60,29,11,92,61,18],
+     "smoke_kill_t": []
+    }
+   ]
+  },
   {
    "series_id": 20852,
    "draft": [
@@ -720,7 +2739,7 @@
      "courier_kills": 0,
      "max_hit": [548,null,"slark"],
      "pings": 3,
-     "bench": [42,72,36,41,34,42,56],
+     "bench": [42,71,38,42,34,42,57],
      "smoke_kill_t": []
     },
     {
@@ -790,7 +2809,7 @@
      "courier_kills": 0,
      "max_hit": [503,"dragon_knight_breathe_fire","slark"],
      "pings": 12,
-     "bench": [79,87,63,90,64,94,65],
+     "bench": [77,86,63,89,64,94,66],
      "smoke_kill_t": [2867]
     },
     {
@@ -860,7 +2879,7 @@
      "courier_kills": 0,
      "max_hit": [184,null,"lich"],
      "pings": 14,
-     "bench": [27,67,15,95,19,59,70],
+     "bench": [24,69,14,95,19,59,68],
      "smoke_kill_t": [1546]
     },
     {
@@ -930,7 +2949,7 @@
      "courier_kills": 0,
      "max_hit": [1393,"hoodwink_sharpshooter","tidehunter"],
      "pings": 2,
-     "bench": [65,88,90,49,43,28,77],
+     "bench": [67,88,88,47,46,30,77],
      "smoke_kill_t": [965,1569]
     },
     {
@@ -1000,7 +3019,7 @@
      "courier_kills": 0,
      "max_hit": [565,"witch_doctor_maledict","tidehunter"],
      "pings": 11,
-     "bench": [59,80,51,81,72,62,28],
+     "bench": [59,81,52,82,71,64,29],
      "smoke_kill_t": [2627,2858,2859]
     },
     {
@@ -1070,7 +3089,7 @@
      "courier_kills": 0,
      "max_hit": [332,"tidehunter_anchor_smash","witch_doctor"],
      "pings": 4,
-     "bench": [30,31,13,18,44,8,47],
+     "bench": [28,30,12,16,43,8,47],
      "smoke_kill_t": [1707]
     },
     {
@@ -1140,7 +3159,7 @@
      "courier_kills": 1,
      "max_hit": [296,null,"witch_doctor"],
      "pings": 2,
-     "bench": [33,58,53,37,18,40,41],
+     "bench": [33,56,53,36,18,40,40],
      "smoke_kill_t": []
     },
     {
@@ -1210,7 +3229,7 @@
      "courier_kills": 1,
      "max_hit": [559,"lich_chain_frost","dragon_knight"],
      "pings": 16,
-     "bench": [48,55,63,52,19,69,44],
+     "bench": [49,55,63,53,19,68,46],
      "smoke_kill_t": []
     },
     {
@@ -1280,7 +3299,7 @@
      "courier_kills": 2,
      "max_hit": [485,"juggernaut_omni_slash","witch_doctor"],
      "pings": 11,
-     "bench": [33,38,58,76,26,59,46],
+     "bench": [31,36,57,76,26,60,43],
      "smoke_kill_t": []
     },
     {
@@ -1350,7 +3369,7 @@
      "courier_kills": 0,
      "max_hit": [88,"dazzle_shadow_wave","viper"],
      "pings": 28,
-     "bench": [71,70,73,61,47,17,19],
+     "bench": [70,65,69,62,44,17,20],
      "smoke_kill_t": []
     }
    ]
@@ -1755,7 +3774,7 @@
      "courier_kills": 0,
      "max_hit": [535,null,"viper"],
      "pings": 4,
-     "bench": [21,27,15,37,38,14,25],
+     "bench": [21,29,16,37,39,15,23],
      "smoke_kill_t": []
     },
     {
@@ -1825,7 +3844,7 @@
      "courier_kills": 0,
      "max_hit": [310,"centaur_double_edge","sniper"],
      "pings": 3,
-     "bench": [20,23,15,25,42,35,28],
+     "bench": [24,29,15,30,45,36,28],
      "smoke_kill_t": []
     },
     {
@@ -1895,7 +3914,7 @@
      "courier_kills": 0,
      "max_hit": [290,"vengefulspirit_magic_missile","witch_doctor"],
      "pings": 10,
-     "bench": [18,22,39,36,26,12,21],
+     "bench": [16,20,39,36,26,12,20],
      "smoke_kill_t": [1753]
     },
     {
@@ -1965,7 +3984,7 @@
      "courier_kills": 0,
      "max_hit": [634,"lich_chain_frost","juggernaut"],
      "pings": 8,
-     "bench": [49,47,66,18,73,49,23],
+     "bench": [50,46,67,18,74,50,27],
      "smoke_kill_t": []
     },
     {
@@ -2035,7 +4054,7 @@
      "courier_kills": 0,
      "max_hit": [232,"dragon_knight_breathe_fire","spirit_breaker"],
      "pings": 5,
-     "bench": [11,17,21,32,14,18,23],
+     "bench": [11,17,20,31,14,18,21],
      "smoke_kill_t": []
     },
     {
@@ -2105,7 +4124,7 @@
      "courier_kills": 0,
      "max_hit": [398,"juggernaut_omni_slash","centaur"],
      "pings": 1,
-     "bench": [46,53,38,89,30,49,76],
+     "bench": [44,51,38,89,29,51,74],
      "smoke_kill_t": [1568,1575,2365]
     },
     {
@@ -2175,7 +4194,7 @@
      "courier_kills": 0,
      "max_hit": [540,"witch_doctor_maledict","lich"],
      "pings": 5,
-     "bench": [51,81,57,82,50,67,68],
+     "bench": [52,82,57,83,49,69,71],
      "smoke_kill_t": [1124,2364]
     },
     {
@@ -2245,7 +4264,7 @@
      "courier_kills": 0,
      "max_hit": [501,"sniper_assassinate","lich"],
      "pings": 13,
-     "bench": [77,84,65,66,84,25,65],
+     "bench": [77,84,65,65,85,25,64],
      "smoke_kill_t": []
     },
     {
@@ -2315,7 +4334,7 @@
      "courier_kills": 0,
      "max_hit": [371,"spirit_breaker_greater_bash","centaur"],
      "pings": 1,
-     "bench": [44,57,22,91,55,36,70],
+     "bench": [43,54,22,91,52,35,70],
      "smoke_kill_t": []
     },
     {
@@ -2385,7 +4404,7 @@
      "courier_kills": 1,
      "max_hit": [136,"viper_poison_attack","centaur"],
      "pings": 9,
-     "bench": [61,58,78,93,42,68,87],
+     "bench": [59,57,76,92,39,68,84],
      "smoke_kill_t": [1269,2218,2362]
     }
    ]
@@ -2818,7 +4837,7 @@
      "courier_kills": 0,
      "max_hit": [195,null,"zuus"],
      "pings": 2,
-     "bench": [19,19,9,26,48,12,30],
+     "bench": [17,17,7,24,51,9,29],
      "smoke_kill_t": []
     },
     {
@@ -2888,7 +4907,7 @@
      "courier_kills": 0,
      "max_hit": [182,"viper_viper_strike","dragon_knight"],
      "pings": 15,
-     "bench": [22,20,39,27,37,33,38],
+     "bench": [24,21,41,26,40,34,38],
      "smoke_kill_t": [872,888]
     },
     {
@@ -2958,7 +4977,7 @@
      "courier_kills": 0,
      "max_hit": [289,"dark_seer_normal_punch","vengefulspirit"],
      "pings": null,
-     "bench": [40,31,29,9,55,83,36],
+     "bench": [42,30,33,12,61,85,35],
      "smoke_kill_t": []
     },
     {
@@ -3028,7 +5047,7 @@
      "courier_kills": 1,
      "max_hit": [195,"shadow_shaman_urnaconda","dragon_knight"],
      "pings": 10,
-     "bench": [32,19,37,20,68,56,80],
+     "bench": [29,18,38,19,63,55,79],
      "smoke_kill_t": []
     },
     {
@@ -3098,7 +5117,7 @@
      "courier_kills": 0,
      "max_hit": [419,"ringmaster_tame_the_beasts","vengefulspirit"],
      "pings": 1,
-     "bench": [12,23,47,11,15,69,53],
+     "bench": [11,22,46,12,17,68,55],
      "smoke_kill_t": []
     },
     {
@@ -3168,7 +5187,7 @@
      "courier_kills": 0,
      "max_hit": [273,null,"shadow_shaman"],
      "pings": 25,
-     "bench": [98,91,80,40,99,79,89],
+     "bench": [98,91,79,39,99,78,90],
      "smoke_kill_t": [2517]
     },
     {
@@ -3238,7 +5257,7 @@
      "courier_kills": 0,
      "max_hit": [508,"zuus_thundergods_wrath","slark"],
      "pings": 14,
-     "bench": [84,69,39,89,80,53,98],
+     "bench": [84,68,38,89,79,50,97],
      "smoke_kill_t": [2429]
     },
     {
@@ -3308,7 +5327,7 @@
      "courier_kills": 0,
      "max_hit": [232,"dragon_knight_breathe_fire","slark"],
      "pings": 11,
-     "bench": [37,51,67,77,13,19,79],
+     "bench": [39,53,66,79,17,21,79],
      "smoke_kill_t": [1982]
     },
     {
@@ -3378,7 +5397,7 @@
      "courier_kills": 1,
      "max_hit": [297,"vengefulspirit_nether_swap","ringmaster"],
      "pings": 12,
-     "bench": [37,61,37,77,39,12,64],
+     "bench": [42,64,39,78,42,12,65],
      "smoke_kill_t": []
     },
     {
@@ -3448,7 +5467,7 @@
      "courier_kills": 0,
      "max_hit": [119,"jakiro_macropyre","dark_seer"],
      "pings": null,
-     "bench": [34,74,46,66,32,5,79],
+     "bench": [35,76,43,66,31,5,75],
      "smoke_kill_t": []
     }
    ]
@@ -3784,7 +5803,7 @@
      "courier_kills": 0,
      "max_hit": [668,"hoodwink_sharpshooter","lich"],
      "pings": 24,
-     "bench": [33,32,82,95,2,70,56],
+     "bench": [36,33,82,94,2,70,54],
      "smoke_kill_t": [838]
     },
     {
@@ -3854,7 +5873,7 @@
      "courier_kills": 0,
      "max_hit": [475,"axe_culling_blade","dragon_knight"],
      "pings": 7,
-     "bench": [47,33,83,84,47,57,36],
+     "bench": [49,34,83,84,45,58,33],
      "smoke_kill_t": []
     },
     {
@@ -3924,7 +5943,7 @@
      "courier_kills": 0,
      "max_hit": [214,"rattletrap_power_cogs","dragon_knight"],
      "pings": 6,
-     "bench": [18,32,32,81,33,14,60],
+     "bench": [18,33,30,83,29,14,62],
      "smoke_kill_t": []
     },
     {
@@ -3994,7 +6013,7 @@
      "courier_kills": 1,
      "max_hit": [284,"life_stealer_infest","pugna"],
      "pings": 6,
-     "bench": [71,55,97,87,59,72,50],
+     "bench": [70,55,96,87,62,71,50],
      "smoke_kill_t": []
     },
     {
@@ -4064,7 +6083,7 @@
      "courier_kills": 0,
      "max_hit": [335,"windrunner_powershot","clinkz"],
      "pings": 5,
-     "bench": [74,76,82,96,75,53,81],
+     "bench": [74,76,81,95,76,52,80],
      "smoke_kill_t": []
     },
     {
@@ -4134,7 +6153,7 @@
      "courier_kills": 0,
      "max_hit": [269,"pugna_nether_ward","life_stealer"],
      "pings": 17,
-     "bench": [2,7,3,19,4,16,22],
+     "bench": [4,10,3,20,5,17,22],
      "smoke_kill_t": []
     },
     {
@@ -4204,7 +6223,7 @@
      "courier_kills": 0,
      "max_hit": [133,null,"rattletrap"],
      "pings": null,
-     "bench": [13,9,20,26,28,25,8],
+     "bench": [14,10,20,25,26,27,8],
      "smoke_kill_t": []
     },
     {
@@ -4274,7 +6293,7 @@
      "courier_kills": 0,
      "max_hit": [244,"lich_chain_frost","rattletrap"],
      "pings": 5,
-     "bench": [9,3,30,11,19,59,28],
+     "bench": [10,3,30,12,19,60,27],
      "smoke_kill_t": []
     },
     {
@@ -4344,7 +6363,7 @@
      "courier_kills": 1,
      "max_hit": [274,"dragon_knight_breathe_fire","rattletrap"],
      "pings": 4,
-     "bench": [2,6,4,11,3,8,11],
+     "bench": [3,8,5,12,5,10,13],
      "smoke_kill_t": []
     },
     {
@@ -4414,7 +6433,7 @@
      "courier_kills": 0,
      "max_hit": [144,"spectre_spectral_dagger","axe"],
      "pings": 7,
-     "bench": [7,12,10,10,13,11,21],
+     "bench": [7,13,10,10,14,11,18],
      "smoke_kill_t": []
     }
    ]
@@ -4755,7 +6774,7 @@
      "courier_kills": 0,
      "max_hit": [453,"witch_doctor_maledict","life_stealer"],
      "pings": 38,
-     "bench": [33,64,47,94,46,55,38],
+     "bench": [35,65,47,95,44,54,39],
      "smoke_kill_t": [1238]
     },
     {
@@ -4825,7 +6844,7 @@
      "courier_kills": 0,
      "max_hit": [793,"legion_commander_overwhelming_odds","life_stealer"],
      "pings": 5,
-     "bench": [36,26,62,80,43,43,18],
+     "bench": [35,25,62,78,44,43,18],
      "smoke_kill_t": [1631,1634]
     },
     {
@@ -4895,7 +6914,7 @@
      "courier_kills": 0,
      "max_hit": [171,null,"lich"],
      "pings": 2,
-     "bench": [82,52,95,33,79,59,53],
+     "bench": [83,51,95,31,82,57,52],
      "smoke_kill_t": []
     },
     {
@@ -4965,7 +6984,7 @@
      "courier_kills": 0,
      "max_hit": [265,"spirit_breaker_greater_bash","life_stealer"],
      "pings": 3,
-     "bench": [12,35,17,88,4,19,36],
+     "bench": [13,36,19,87,4,21,35],
      "smoke_kill_t": []
     },
     {
@@ -5035,7 +7054,7 @@
      "courier_kills": 1,
      "max_hit": [484,"lina_laguna_blade","lich"],
      "pings": 14,
-     "bench": [62,57,55,97,73,85,58],
+     "bench": [62,58,58,97,74,85,57],
      "smoke_kill_t": []
     },
     {
@@ -5105,7 +7124,7 @@
      "courier_kills": 0,
      "max_hit": [241,null,"lina"],
      "pings": 3,
-     "bench": [28,28,18,51,52,33,35],
+     "bench": [28,26,16,49,55,31,35],
      "smoke_kill_t": []
     },
     {
@@ -5175,7 +7194,7 @@
      "courier_kills": 0,
      "max_hit": [136,null,"spectre"],
      "pings": 4,
-     "bench": [14,14,5,30,41,40,41],
+     "bench": [17,16,5,31,42,42,42],
      "smoke_kill_t": []
     },
     {
@@ -5245,7 +7264,7 @@
      "courier_kills": 0,
      "max_hit": [237,"dragon_knight_breathe_fire","legion_commander"],
      "pings": 2,
-     "bench": [16,23,28,18,24,39,20],
+     "bench": [18,24,27,19,28,40,20],
      "smoke_kill_t": []
     },
     {
@@ -5315,7 +7334,7 @@
      "courier_kills": 1,
      "max_hit": [390,"lich_chain_frost","legion_commander"],
      "pings": 6,
-     "bench": [11,18,40,12,27,71,64],
+     "bench": [12,19,39,12,26,73,66],
      "smoke_kill_t": []
     },
     {
@@ -5385,7 +7404,7 @@
      "courier_kills": 1,
      "max_hit": [179,"undying_soul_rip","legion_commander"],
      "pings": 9,
-     "bench": [13,17,18,7,28,16,32],
+     "bench": [11,16,19,7,24,16,28],
      "smoke_kill_t": []
     }
    ]
@@ -5810,7 +7829,7 @@
      "courier_kills": 0,
      "max_hit": [375,"axe_culling_blade","lina"],
      "pings": 1,
-     "bench": [43,29,59,49,38,24,87],
+     "bench": [44,30,61,46,36,25,86],
      "smoke_kill_t": [1421,1432,1763,1928,2397]
     },
     {
@@ -5880,7 +7899,7 @@
      "courier_kills": 0,
      "max_hit": [564,null,"nevermore"],
      "pings": 30,
-     "bench": [75,48,75,57,52,84,85],
+     "bench": [74,48,73,57,56,83,85],
      "smoke_kill_t": [2404]
     },
     {
@@ -5950,7 +7969,7 @@
      "courier_kills": 0,
      "max_hit": [382,"pangolier_gyroshell","undying"],
      "pings": 16,
-     "bench": [67,64,27,91,66,75,97],
+     "bench": [67,65,32,90,69,76,98],
      "smoke_kill_t": [1436,2406]
     },
     {
@@ -6020,7 +8039,7 @@
      "courier_kills": 0,
      "max_hit": [306,"vengefulspirit_nether_swap","nevermore"],
      "pings": 11,
-     "bench": [37,51,48,72,29,43,71],
+     "bench": [42,56,48,74,31,48,72],
      "smoke_kill_t": [1769]
     },
     {
@@ -6090,7 +8109,7 @@
      "courier_kills": 0,
      "max_hit": [214,"shadow_shaman_ether_shock","undying"],
      "pings": 1,
-     "bench": [37,35,19,42,46,27,67],
+     "bench": [35,35,18,42,41,25,64],
      "smoke_kill_t": [2413,2418]
     },
     {
@@ -6160,7 +8179,7 @@
      "courier_kills": 0,
      "max_hit": [287,"nevermore_shadowraze2","axe"],
      "pings": 2,
-     "bench": [22,22,17,23,51,28,39],
+     "bench": [18,19,16,20,48,27,33],
      "smoke_kill_t": [2404]
     },
     {
@@ -6230,7 +8249,7 @@
      "courier_kills": 0,
      "max_hit": [519,"lina_laguna_blade","shadow_shaman"],
      "pings": 6,
-     "bench": [24,22,15,25,46,10,39],
+     "bench": [24,24,17,24,46,12,38],
      "smoke_kill_t": []
     },
     {
@@ -6300,7 +8319,7 @@
      "courier_kills": 0,
      "max_hit": [374,"dragon_knight_breathe_fire","axe"],
      "pings": 6,
-     "bench": [25,38,14,53,52,29,33],
+     "bench": [27,40,15,56,56,30,34],
      "smoke_kill_t": []
     },
     {
@@ -6370,7 +8389,7 @@
      "courier_kills": 0,
      "max_hit": [119,"undying_decay","axe"],
      "pings": null,
-     "bench": [6,19,43,11,6,9,47],
+     "bench": [5,18,43,10,6,9,44],
      "smoke_kill_t": [1437]
     },
     {
@@ -6440,7 +8459,7 @@
      "courier_kills": 0,
      "max_hit": [174,"ogre_magi_fireblast","axe"],
      "pings": 7,
-     "bench": [28,22,28,22,47,31,55],
+     "bench": [27,19,25,20,46,29,53],
      "smoke_kill_t": [904]
     }
    ]
@@ -6871,7 +8890,7 @@
      "courier_kills": 1,
      "max_hit": [475,"lich_chain_frost","obsidian_destroyer"],
      "pings": 50,
-     "bench": [58,39,30,31,25,14,54],
+     "bench": [61,40,32,31,26,14,54],
      "smoke_kill_t": [1813]
     },
     {
@@ -6941,7 +8960,7 @@
      "courier_kills": 0,
      "max_hit": [654,"slardar_slithereen_crush","shadow_shaman"],
      "pings": 7,
-     "bench": [67,44,34,81,79,22,67],
+     "bench": [65,40,32,80,80,20,66],
      "smoke_kill_t": []
     },
     {
@@ -7011,7 +9030,7 @@
      "courier_kills": 0,
      "max_hit": [378,"mirana_arrow","dragon_knight"],
      "pings": 2,
-     "bench": [36,43,31,71,37,7,62],
+     "bench": [34,39,29,71,39,6,60],
      "smoke_kill_t": [963]
     },
     {
@@ -7081,7 +9100,7 @@
      "courier_kills": 0,
      "max_hit": [918,"juggernaut_omni_slash","obsidian_destroyer"],
      "pings": 5,
-     "bench": [69,35,87,33,36,55,85],
+     "bench": [68,32,86,30,36,53,86],
      "smoke_kill_t": [-24]
     },
     {
@@ -7151,7 +9170,7 @@
      "courier_kills": 0,
      "max_hit": [375,"primal_beast_onslaught","obsidian_destroyer"],
      "pings": 23,
-     "bench": [46,58,18,62,42,22,68],
+     "bench": [45,56,18,61,41,22,66],
      "smoke_kill_t": [849]
     },
     {
@@ -7221,7 +9240,7 @@
      "courier_kills": 0,
      "max_hit": [923,"obsidian_destroyer_sanity_eclipse","slardar"],
      "pings": 15,
-     "bench": [53,25,26,29,57,59,39],
+     "bench": [51,23,25,27,58,58,38],
      "smoke_kill_t": []
     },
     {
@@ -7291,7 +9310,7 @@
      "courier_kills": 2,
      "max_hit": [469,null,"mirana"],
      "pings": 10,
-     "bench": [51,45,19,19,76,47,45],
+     "bench": [47,41,16,14,73,41,44],
      "smoke_kill_t": []
     },
     {
@@ -7361,7 +9380,7 @@
      "courier_kills": 0,
      "max_hit": [231,"dragon_knight_breathe_fire","juggernaut"],
      "pings": 9,
-     "bench": [8,9,27,13,18,16,20],
+     "bench": [8,8,26,11,18,15,21],
      "smoke_kill_t": []
     },
     {
@@ -7431,7 +9450,7 @@
      "courier_kills": 0,
      "max_hit": [226,"shadow_shaman_ether_shock","juggernaut"],
      "pings": 1,
-     "bench": [10,10,5,5,10,3,12],
+     "bench": [10,10,5,5,12,4,12],
      "smoke_kill_t": []
     },
     {
@@ -7501,7 +9520,7 @@
      "courier_kills": 2,
      "max_hit": [400,"nyx_assassin_vendetta","juggernaut"],
      "pings": 15,
-     "bench": [5,8,2,9,45,3,31],
+     "bench": [4,7,2,8,44,2,28],
      "smoke_kill_t": []
     }
    ]
@@ -7879,7 +9898,7 @@
      "courier_kills": 0,
      "max_hit": [269,"dragon_knight_breathe_fire","death_prophet"],
      "pings": 4,
-     "bench": [13,13,42,73,8,11,32],
+     "bench": [17,15,43,74,9,14,34],
      "smoke_kill_t": []
     },
     {
@@ -7949,7 +9968,7 @@
      "courier_kills": 0,
      "max_hit": [380,"juggernaut_omni_slash","techies"],
      "pings": 3,
-     "bench": [59,38,87,98,45,57,78],
+     "bench": [61,39,87,97,49,57,78],
      "smoke_kill_t": []
     },
     {
@@ -8019,7 +10038,7 @@
      "courier_kills": 0,
      "max_hit": [202,"disruptor_glimpse","troll_warlord"],
      "pings": 13,
-     "bench": [56,29,88,79,58,92,70],
+     "bench": [56,30,88,80,57,91,67],
      "smoke_kill_t": []
     },
     {
@@ -8089,7 +10108,7 @@
      "courier_kills": 0,
      "max_hit": [422,"pugna_nether_ward","necrolyte"],
      "pings": 16,
-     "bench": [28,30,60,86,8,42,46],
+     "bench": [28,32,60,86,8,45,43],
      "smoke_kill_t": []
     },
     {
@@ -8159,7 +10178,7 @@
      "courier_kills": 0,
      "max_hit": [712,"lina_laguna_blade","death_prophet"],
      "pings": null,
-     "bench": [41,65,53,42,30,41,46],
+     "bench": [42,68,55,41,31,44,47],
      "smoke_kill_t": []
     },
     {
@@ -8229,7 +10248,7 @@
      "courier_kills": 0,
      "max_hit": [218,null,"disruptor"],
      "pings": 2,
-     "bench": [38,33,53,62,45,25,42],
+     "bench": [37,33,52,57,43,27,43],
      "smoke_kill_t": []
     },
     {
@@ -8299,7 +10318,7 @@
      "courier_kills": 0,
      "max_hit": [135,"witch_doctor_maledict","dragon_knight"],
      "pings": null,
-     "bench": [8,11,15,24,15,5,51],
+     "bench": [8,11,15,22,14,6,52],
      "smoke_kill_t": []
     },
     {
@@ -8369,7 +10388,7 @@
      "courier_kills": 0,
      "max_hit": [256,"death_prophet_carrion_swarm","dragon_knight"],
      "pings": 5,
-     "bench": [23,22,19,9,44,20,41],
+     "bench": [21,19,17,9,42,19,39],
      "smoke_kill_t": []
     },
     {
@@ -8439,7 +10458,7 @@
      "courier_kills": 0,
      "max_hit": [454,"techies_land_mines","juggernaut"],
      "pings": 40,
-     "bench": [9,8,18,67,10,30,45],
+     "bench": [10,9,20,66,9,30,47],
      "smoke_kill_t": []
     },
     {
@@ -8509,7 +10528,7 @@
      "courier_kills": 0,
      "max_hit": [465,"necrolyte_reapers_scythe","dragon_knight"],
      "pings": 3,
-     "bench": [14,25,14,64,19,24,31],
+     "bench": [13,25,13,64,20,24,32],
      "smoke_kill_t": []
     }
    ]
@@ -8958,7 +10977,7 @@
      "courier_kills": 1,
      "max_hit": [240,"shadow_shaman_ether_shock","ogre_magi"],
      "pings": 44,
-     "bench": [56,80,35,80,58,85,98],
+     "bench": [54,81,32,78,54,84,98],
      "smoke_kill_t": [1125,1127]
     },
     {
@@ -9028,7 +11047,7 @@
      "courier_kills": 1,
      "max_hit": [639,"shredder_whirling_death","ogre_magi"],
      "pings": 11,
-     "bench": [59,49,40,91,34,92,60],
+     "bench": [64,50,42,91,35,90,60],
      "smoke_kill_t": [1648]
     },
     {
@@ -9098,7 +11117,7 @@
      "courier_kills": 1,
      "max_hit": [409,"mirana_arrow","undying"],
      "pings": 4,
-     "bench": [24,70,20,66,22,4,47],
+     "bench": [23,70,19,67,19,4,43],
      "smoke_kill_t": [896,1654]
     },
     {
@@ -9168,7 +11187,7 @@
      "courier_kills": 0,
      "max_hit": [475,"bloodseeker_blood_bath","tidehunter"],
      "pings": 5,
-     "bench": [85,83,76,68,68,96,85],
+     "bench": [85,83,77,65,66,96,82],
      "smoke_kill_t": [1651,3349,3369]
     },
     {
@@ -9238,7 +11257,7 @@
      "courier_kills": 0,
      "max_hit": [540,"lina_laguna_blade","undying"],
      "pings": 51,
-     "bench": [57,52,57,62,41,47,71],
+     "bench": [60,56,59,62,42,50,72],
      "smoke_kill_t": [873,1124,1134,1660,3346]
     },
     {
@@ -9308,7 +11327,7 @@
      "courier_kills": 0,
      "max_hit": [300,"death_prophet_carrion_swarm","shredder"],
      "pings": 21,
-     "bench": [84,91,77,75,80,83,48],
+     "bench": [84,88,79,75,77,81,48],
      "smoke_kill_t": [1132,1133,1136,1983]
     },
     {
@@ -9378,7 +11397,7 @@
      "courier_kills": 0,
      "max_hit": [176,"ogre_magi_fireblast","bloodseeker"],
      "pings": 2,
-     "bench": [26,50,12,64,17,13,54],
+     "bench": [26,47,11,62,17,13,52],
      "smoke_kill_t": [884]
     },
     {
@@ -9448,7 +11467,7 @@
      "courier_kills": 0,
      "max_hit": [317,"tidehunter_ravage","bloodseeker"],
      "pings": 6,
-     "bench": [39,26,11,86,43,13,23],
+     "bench": [41,26,10,85,45,13,22],
      "smoke_kill_t": [868]
     },
     {
@@ -9518,7 +11537,7 @@
      "courier_kills": 0,
      "max_hit": [334,"undying_soul_rip","bloodseeker"],
      "pings": 7,
-     "bench": [21,26,4,31,63,12,20],
+     "bench": [20,29,4,32,57,13,20],
      "smoke_kill_t": [1123]
     },
     {
@@ -9588,7 +11607,7 @@
      "courier_kills": 0,
      "max_hit": [905,"bloodthorn","shredder"],
      "pings": 34,
-     "bench": [90,87,78,40,90,85,48],
+     "bench": [91,87,78,37,92,83,46],
      "smoke_kill_t": [1745]
     }
    ]
@@ -9973,7 +11992,7 @@
      "courier_kills": 0,
      "max_hit": [529,"pugna_nether_ward","queenofpain"],
      "pings": 10,
-     "bench": [21,39,9,86,16,28,59],
+     "bench": [20,38,7,86,14,30,54],
      "smoke_kill_t": []
     },
     {
@@ -10043,7 +12062,7 @@
      "courier_kills": 1,
      "max_hit": [280,"tidehunter_ravage","necrolyte"],
      "pings": 2,
-     "bench": [30,21,55,90,24,6,52],
+     "bench": [30,21,56,89,27,6,53],
      "smoke_kill_t": []
     },
     {
@@ -10113,7 +12132,7 @@
      "courier_kills": 0,
      "max_hit": [279,"riki_innate_backstab","necrolyte"],
      "pings": 3,
-     "bench": [76,55,93,23,73,64,71],
+     "bench": [76,58,94,23,71,64,71],
      "smoke_kill_t": [1397,1403,1609]
     },
     {
@@ -10183,7 +12202,7 @@
      "courier_kills": 0,
      "max_hit": [427,"juggernaut_omni_slash","lion"],
      "pings": 3,
-     "bench": [47,24,52,82,32,22,83],
+     "bench": [48,24,50,81,36,20,84],
      "smoke_kill_t": []
     },
     {
@@ -10253,7 +12272,7 @@
      "courier_kills": 0,
      "max_hit": [201,"disruptor_glimpse","drow_ranger"],
      "pings": 3,
-     "bench": [45,56,82,92,31,86,93],
+     "bench": [42,56,82,92,32,85,92],
      "smoke_kill_t": []
     },
     {
@@ -10323,7 +12342,7 @@
      "courier_kills": 0,
      "max_hit": [228,null,"juggernaut"],
      "pings": 1,
-     "bench": [5,6,5,1,25,4,18],
+     "bench": [5,6,5,1,27,4,17],
      "smoke_kill_t": []
     },
     {
@@ -10393,7 +12412,7 @@
      "courier_kills": 0,
      "max_hit": [274,"dagon","pugna"],
      "pings": 4,
-     "bench": [8,5,3,14,22,9,14],
+     "bench": [9,5,3,15,21,8,12],
      "smoke_kill_t": []
     },
     {
@@ -10463,7 +12482,7 @@
      "courier_kills": 0,
      "max_hit": [89,"warlock_imp_explode","tidehunter"],
      "pings": 2,
-     "bench": [2,3,13,2,5,16,23],
+     "bench": [1,3,14,2,3,16,25],
      "smoke_kill_t": []
     },
     {
@@ -10533,7 +12552,7 @@
      "courier_kills": 0,
      "max_hit": [609,"necrolyte_reapers_scythe","tidehunter"],
      "pings": 3,
-     "bench": [7,24,9,20,12,33,16],
+     "bench": [6,24,8,21,11,32,17],
      "smoke_kill_t": []
     },
     {
@@ -10603,7 +12622,7 @@
      "courier_kills": 0,
      "max_hit": [535,"lion_finger_of_death","riki"],
      "pings": 27,
-     "bench": [5,2,18,7,4,18,35],
+     "bench": [5,2,16,5,4,19,34],
      "smoke_kill_t": []
     }
    ]
@@ -11107,7 +13126,7 @@
      "courier_kills": 0,
      "max_hit": [2129,null,"lina"],
      "pings": 13,
-     "bench": [81,62,27,11,92,23,51],
+     "bench": [81,62,29,11,93,22,51],
      "smoke_kill_t": []
     },
     {
@@ -11177,7 +13196,7 @@
      "courier_kills": 2,
      "max_hit": [648,"spirit_breaker_greater_bash","juggernaut"],
      "pings": 2,
-     "bench": [94,92,9,26,95,14,99],
+     "bench": [93,92,10,24,94,14,100],
      "smoke_kill_t": []
     },
     {
@@ -11247,7 +13266,7 @@
      "courier_kills": 0,
      "max_hit": [1011,"lion_finger_of_death","juggernaut"],
      "pings": 12,
-     "bench": [46,88,9,58,41,29,93],
+     "bench": [45,88,9,58,40,28,92],
      "smoke_kill_t": []
     },
     {
@@ -11317,7 +13336,7 @@
      "courier_kills": 0,
      "max_hit": [2086,null,"witch_doctor"],
      "pings": 28,
-     "bench": [78,80,40,17,73,78,91],
+     "bench": [77,80,40,17,73,78,90],
      "smoke_kill_t": []
     },
     {
@@ -11387,7 +13406,7 @@
      "courier_kills": 0,
      "max_hit": [256,null,"lina"],
      "pings": 4,
-     "bench": [98,83,59,49,88,85,61],
+     "bench": [99,83,59,48,88,86,60],
      "smoke_kill_t": [1988]
     },
     {
@@ -11457,7 +13476,7 @@
      "courier_kills": 1,
      "max_hit": [735,"witch_doctor_maledict","lion"],
      "pings": 21,
-     "bench": [51,72,4,39,57,22,60],
+     "bench": [50,71,4,39,56,23,60],
      "smoke_kill_t": [1489]
     },
     {
@@ -11527,7 +13546,7 @@
      "courier_kills": 0,
      "max_hit": [585,"lina_laguna_blade","dark_seer"],
      "pings": 19,
-     "bench": [98,81,29,28,98,42,79],
+     "bench": [97,82,31,29,97,47,80],
      "smoke_kill_t": [1500,1844,3036,4162,4167]
     },
     {
@@ -11597,7 +13616,7 @@
      "courier_kills": 0,
      "max_hit": [721,"blade_mail","phantom_assassin"],
      "pings": 3,
-     "bench": [81,68,32,39,82,46,74],
+     "bench": [81,69,33,36,82,43,72],
      "smoke_kill_t": [1259,2332]
     },
     {
@@ -11667,7 +13686,7 @@
      "courier_kills": 0,
      "max_hit": [181,"shadow_shaman_urnaconda","phantom_assassin"],
      "pings": 2,
-     "bench": [14,52,4,16,1,2,50],
+     "bench": [12,52,4,16,1,1,48],
      "smoke_kill_t": []
     },
     {
@@ -11737,7 +13756,7 @@
      "courier_kills": 0,
      "max_hit": [930,"juggernaut_omni_slash","dark_seer"],
      "pings": 48,
-     "bench": [98,77,71,7,92,89,74],
+     "bench": [98,79,72,8,92,90,76],
      "smoke_kill_t": [3024,3024,3027,4834,4903]
     }
    ]
@@ -12060,7 +14079,7 @@
      "courier_kills": 0,
      "max_hit": [686,"hoodwink_sharpshooter","tidehunter"],
      "pings": 26,
-     "bench": [9,21,37,56,8,15,65],
+     "bench": [8,20,35,52,8,12,64],
      "smoke_kill_t": []
     },
     {
@@ -12130,7 +14149,7 @@
      "courier_kills": 0,
      "max_hit": [257,"medusa_mystic_snake","lion"],
      "pings": 8,
-     "bench": [59,43,69,59,55,16,58],
+     "bench": [57,44,64,59,55,15,54],
      "smoke_kill_t": [520]
     },
     {
@@ -12200,7 +14219,7 @@
      "courier_kills": 0,
      "max_hit": [734,"necrolyte_reapers_scythe","tidehunter"],
      "pings": 4,
-     "bench": [72,49,66,29,90,35,69],
+     "bench": [74,50,65,28,90,33,68],
      "smoke_kill_t": [1438]
     },
     {
@@ -12270,7 +14289,7 @@
      "courier_kills": 0,
      "max_hit": [226,"blade_mail","tidehunter"],
      "pings": 2,
-     "bench": [26,32,31,45,50,7,47],
+     "bench": [27,33,33,44,51,7,47],
      "smoke_kill_t": [1431]
     },
     {
@@ -12340,7 +14359,7 @@
      "courier_kills": 1,
      "max_hit": [288,"rubick_fade_bolt","juggernaut"],
      "pings": 6,
-     "bench": [11,28,37,27,18,11,65],
+     "bench": [10,26,37,26,19,11,63],
      "smoke_kill_t": []
     },
     {
@@ -12410,7 +14429,7 @@
      "courier_kills": 0,
      "max_hit": [322,"shadow_demon_shadow_poison","hoodwink"],
      "pings": 15,
-     "bench": [1,17,12,8,4,10,23],
+     "bench": [2,14,11,8,4,8,22],
      "smoke_kill_t": []
     },
     {
@@ -12480,7 +14499,7 @@
      "courier_kills": 0,
      "max_hit": [279,"tidehunter_anchor_smash","necrolyte"],
      "pings": 2,
-     "bench": [11,12,13,4,38,6,30],
+     "bench": [10,12,14,5,36,6,31],
      "smoke_kill_t": []
     },
     {
@@ -12550,7 +14569,7 @@
      "courier_kills": 0,
      "max_hit": [534,"lion_finger_of_death","necrolyte"],
      "pings": 7,
-     "bench": [1,5,2,1,23,2,25],
+     "bench": [1,5,2,1,22,2,24],
      "smoke_kill_t": []
     },
     {
@@ -12620,7 +14639,7 @@
      "courier_kills": 0,
      "max_hit": [79,null,"axe"],
      "pings": null,
-     "bench": [9,9,2,2,55,0,12],
+     "bench": [9,10,2,1,58,0,11],
      "smoke_kill_t": []
     },
     {
@@ -12690,7 +14709,7 @@
      "courier_kills": 0,
      "max_hit": [222,"leshrac_split_earth","necrolyte"],
      "pings": 6,
-     "bench": [23,32,16,3,48,30,36],
+     "bench": [18,25,14,3,44,26,31],
      "smoke_kill_t": []
     }
    ]
@@ -13060,7 +15079,7 @@
      "courier_kills": 0,
      "max_hit": [496,"lich_chain_frost","disruptor"],
      "pings": 34,
-     "bench": [74,48,97,58,17,86,66],
+     "bench": [74,47,97,56,18,87,65],
      "smoke_kill_t": [598,1639]
     },
     {
@@ -13130,7 +15149,7 @@
      "courier_kills": 0,
      "max_hit": [231,"dragon_knight_breathe_fire","skeleton_king"],
      "pings": 4,
-     "bench": [36,31,27,94,74,36,61],
+     "bench": [36,31,26,95,73,35,62],
      "smoke_kill_t": [1106,1364,1638]
     },
     {
@@ -13200,7 +15219,7 @@
      "courier_kills": 0,
      "max_hit": [277,"blade_mail","tidehunter"],
      "pings": 4,
-     "bench": [32,49,31,98,46,21,64],
+     "bench": [33,50,32,97,47,21,65],
      "smoke_kill_t": [1808]
     },
     {
@@ -13270,7 +15289,7 @@
      "courier_kills": 0,
      "max_hit": [310,null,"queenofpain"],
      "pings": 1,
-     "bench": [82,57,80,85,91,53,77],
+     "bench": [81,55,81,82,91,54,76],
      "smoke_kill_t": [1627,1642]
     },
     {
@@ -13340,7 +15359,7 @@
      "courier_kills": 1,
      "max_hit": [254,"grimstroke_spirit_walk","skeleton_king"],
      "pings": 11,
-     "bench": [41,48,49,90,86,60,60],
+     "bench": [41,48,47,92,87,62,61],
      "smoke_kill_t": []
     },
     {
@@ -13410,7 +15429,7 @@
      "courier_kills": 0,
      "max_hit": [330,null,"ursa"],
      "pings": null,
-     "bench": [31,26,32,36,64,58,41],
+     "bench": [31,25,31,38,65,60,41],
      "smoke_kill_t": []
     },
     {
@@ -13480,7 +15499,7 @@
      "courier_kills": 0,
      "max_hit": [266,"tidehunter_ravage","ursa"],
      "pings": 2,
-     "bench": [19,20,10,20,30,10,23],
+     "bench": [16,19,11,17,29,10,24],
      "smoke_kill_t": [1237]
     },
     {
@@ -13550,7 +15569,7 @@
      "courier_kills": 1,
      "max_hit": [201,"disruptor_glimpse","ursa"],
      "pings": 6,
-     "bench": [22,14,38,15,52,22,24],
+     "bench": [22,13,39,14,48,22,24],
      "smoke_kill_t": [1232]
     },
     {
@@ -13620,7 +15639,7 @@
      "courier_kills": 0,
      "max_hit": [281,"silencer_last_word","ursa"],
      "pings": 10,
-     "bench": [8,13,32,20,15,22,24],
+     "bench": [8,10,28,19,14,19,20],
      "smoke_kill_t": [1246]
     },
     {
@@ -13690,7 +15709,7 @@
      "courier_kills": 1,
      "max_hit": [297,"queenofpain_scream_of_pain","ursa"],
      "pings": 3,
-     "bench": [18,11,23,32,37,45,30],
+     "bench": [17,11,24,33,38,45,33],
      "smoke_kill_t": [1229,1636]
     }
    ]
@@ -14147,7 +16166,7 @@
      "courier_kills": 1,
      "max_hit": [451,"void_spirit_astral_step","bloodseeker"],
      "pings": 20,
-     "bench": [76,72,26,47,95,43,66],
+     "bench": [77,70,25,47,96,43,67],
      "smoke_kill_t": [1047,1211,3091]
     },
     {
@@ -14217,7 +16236,7 @@
      "courier_kills": 0,
      "max_hit": [1204,"ancient_apparition_ice_blast","undying"],
      "pings": 23,
-     "bench": [74,74,48,33,83,82,41],
+     "bench": [73,71,52,30,84,82,42],
      "smoke_kill_t": [1529,3066,3071,3885,3901]
     },
     {
@@ -14287,7 +16306,7 @@
      "courier_kills": 0,
      "max_hit": [633,"lion_finger_of_death","lion"],
      "pings": 10,
-     "bench": [67,61,40,58,78,47,61],
+     "bench": [68,61,39,57,78,45,59],
      "smoke_kill_t": [1219]
     },
     {
@@ -14357,7 +16376,7 @@
      "courier_kills": 1,
      "max_hit": [222,"shadow_shaman_ether_shock","obsidian_destroyer"],
      "pings": 2,
-     "bench": [30,65,4,36,59,55,83],
+     "bench": [27,67,4,37,57,55,84],
      "smoke_kill_t": []
     },
     {
@@ -14427,7 +16446,7 @@
      "courier_kills": 1,
      "max_hit": [474,"ancient_apparition_ice_blast","undying"],
      "pings": 8,
-     "bench": [77,75,67,23,85,86,46],
+     "bench": [76,78,67,22,85,88,46],
      "smoke_kill_t": [1215,1835]
     },
     {
@@ -14497,7 +16516,7 @@
      "courier_kills": 0,
      "max_hit": [702,"bloodseeker_rupture","ursa"],
      "pings": 11,
-     "bench": [60,48,16,21,79,43,77],
+     "bench": [56,50,15,18,80,37,79],
      "smoke_kill_t": [2651]
     },
     {
@@ -14567,7 +16586,7 @@
      "courier_kills": 0,
      "max_hit": [900,"obsidian_destroyer_sanity_eclipse","ursa"],
      "pings": 47,
-     "bench": [50,58,35,41,47,52,81],
+     "bench": [52,58,36,39,50,51,81],
      "smoke_kill_t": [1128]
     },
     {
@@ -14637,7 +16656,7 @@
      "courier_kills": 1,
      "max_hit": [1015,"lion_finger_of_death","shadow_shaman"],
      "pings": 12,
-     "bench": [47,77,7,42,64,45,83],
+     "bench": [47,77,7,41,63,44,82],
      "smoke_kill_t": [911]
     },
     {
@@ -14707,7 +16726,7 @@
      "courier_kills": 0,
      "max_hit": [482,"blade_mail","void_spirit"],
      "pings": 4,
-     "bench": [62,90,31,43,63,73,87],
+     "bench": [63,89,33,44,61,72,88],
      "smoke_kill_t": [927,1134]
     },
     {
@@ -14777,7 +16796,7 @@
      "courier_kills": 1,
      "max_hit": [327,null,"void_spirit"],
      "pings": 2,
-     "bench": [72,71,50,46,47,89,82],
+     "bench": [72,73,50,46,48,90,86],
      "smoke_kill_t": []
     }
    ]
@@ -15206,7 +17225,7 @@
      "courier_kills": 0,
      "max_hit": [229,"shadow_shaman_ether_shock","juggernaut"],
      "pings": 88,
-     "bench": [62,50,30,32,36,50,97],
+     "bench": [56,45,27,28,31,45,97],
      "smoke_kill_t": []
     },
     {
@@ -15276,7 +17295,7 @@
      "courier_kills": 0,
      "max_hit": [650,"slardar_slithereen_crush","lion"],
      "pings": 3,
-     "bench": [72,51,46,65,77,38,56],
+     "bench": [71,47,44,65,78,36,55],
      "smoke_kill_t": [1343,1345]
     },
     {
@@ -15346,7 +17365,7 @@
      "courier_kills": 0,
      "max_hit": [812,null,"witch_doctor"],
      "pings": 12,
-     "bench": [84,63,74,25,77,51,72],
+     "bench": [80,58,73,25,73,49,68],
      "smoke_kill_t": [-42]
     },
     {
@@ -15416,7 +17435,7 @@
      "courier_kills": 1,
      "max_hit": [409,"mirana_arrow","death_prophet"],
      "pings": 4,
-     "bench": [42,62,16,69,39,11,76],
+     "bench": [41,60,15,72,39,12,74],
      "smoke_kill_t": [1331]
     },
     {
@@ -15486,7 +17505,7 @@
      "courier_kills": 4,
      "max_hit": [338,"windrunner_powershot","juggernaut"],
      "pings": 23,
-     "bench": [47,34,18,66,54,57,65],
+     "bench": [47,33,18,66,56,60,66],
      "smoke_kill_t": []
     },
     {
@@ -15556,7 +17575,7 @@
      "courier_kills": 1,
      "max_hit": [314,"witch_doctor_maledict","slardar"],
      "pings": 3,
-     "bench": [12,15,37,26,49,16,38],
+     "bench": [12,15,37,23,48,15,36],
      "smoke_kill_t": [-30,1894]
     },
     {
@@ -15626,7 +17645,7 @@
      "courier_kills": 0,
      "max_hit": [331,"tidehunter_ravage","slardar"],
      "pings": 7,
-     "bench": [36,28,45,29,83,42,45],
+     "bench": [34,23,40,24,84,40,41],
      "smoke_kill_t": [-33,-29]
     },
     {
@@ -15696,7 +17715,7 @@
      "courier_kills": 0,
      "max_hit": [672,"lion_finger_of_death","windrunner"],
      "pings": 1,
-     "bench": [3,6,25,17,3,11,47],
+     "bench": [3,5,24,14,3,11,44],
      "smoke_kill_t": []
     },
     {
@@ -15766,7 +17785,7 @@
      "courier_kills": 2,
      "max_hit": [261,"death_prophet_carrion_swarm","slardar"],
      "pings": 14,
-     "bench": [25,16,2,41,79,19,33],
+     "bench": [28,17,1,42,80,20,36],
      "smoke_kill_t": []
     },
     {
@@ -15836,7 +17855,7 @@
      "courier_kills": 0,
      "max_hit": [676,"juggernaut_omni_slash","shadow_shaman"],
      "pings": 21,
-     "bench": [61,46,20,13,98,38,15],
+     "bench": [64,46,18,13,98,35,14],
      "smoke_kill_t": [2013]
     }
    ]
@@ -16277,7 +18296,7 @@
      "courier_kills": 1,
      "max_hit": [1210,"blade_mail","sniper"],
      "pings": 1,
-     "bench": [62,95,17,81,55,84,97],
+     "bench": [57,92,16,79,51,80,97],
      "smoke_kill_t": []
     },
     {
@@ -16347,7 +18366,7 @@
      "courier_kills": 0,
      "max_hit": [1865,null,"techies"],
      "pings": 4,
-     "bench": [50,65,30,50,45,44,67],
+     "bench": [46,62,26,48,49,39,64],
      "smoke_kill_t": []
     },
     {
@@ -16417,7 +18436,7 @@
      "courier_kills": 0,
      "max_hit": [735,"lina_laguna_blade","disruptor"],
      "pings": 14,
-     "bench": [74,62,73,72,58,68,94],
+     "bench": [75,61,73,71,61,68,94],
      "smoke_kill_t": [780,1622,1688]
     },
     {
@@ -16487,7 +18506,7 @@
      "courier_kills": 3,
      "max_hit": [583,"necronomicon_warrior_last_will","weaver"],
      "pings": 10,
-     "bench": [83,99,88,70,19,72,96],
+     "bench": [81,98,89,70,18,71,96],
      "smoke_kill_t": [1583,2290]
     },
     {
@@ -16557,7 +18576,7 @@
      "courier_kills": 0,
      "max_hit": [208,"dark_seer_vacuum","disruptor"],
      "pings": 6,
-     "bench": [83,86,17,82,87,76,65],
+     "bench": [81,81,15,83,88,74,63],
      "smoke_kill_t": []
     },
     {
@@ -16627,7 +18646,7 @@
      "courier_kills": 0,
      "max_hit": [598,"techies_land_mines","dark_seer"],
      "pings": 27,
-     "bench": [50,42,5,66,80,36,16],
+     "bench": [47,38,4,64,77,34,14],
      "smoke_kill_t": []
     },
     {
@@ -16697,7 +18716,7 @@
      "courier_kills": 0,
      "max_hit": [930,null,"undying"],
      "pings": 4,
-     "bench": [90,93,74,9,91,97,35],
+     "bench": [89,92,74,8,90,97,33],
      "smoke_kill_t": []
     },
     {
@@ -16767,7 +18786,7 @@
      "courier_kills": 0,
      "max_hit": [180,"disruptor_glimpse","phantom_assassin"],
      "pings": 25,
-     "bench": [72,76,28,27,82,46,25],
+     "bench": [72,78,28,26,78,46,23],
      "smoke_kill_t": []
     },
     {
@@ -16837,7 +18856,7 @@
      "courier_kills": 0,
      "max_hit": [292,"undying_soul_rip","undying"],
      "pings": 8,
-     "bench": [26,16,8,33,44,21,34],
+     "bench": [27,15,7,33,50,18,33],
      "smoke_kill_t": []
     },
     {
@@ -16907,7 +18926,7 @@
      "courier_kills": 0,
      "max_hit": [571,"weaver_shukuchi","undying"],
      "pings": 10,
-     "bench": [65,66,15,55,85,74,61],
+     "bench": [65,66,15,55,87,75,60],
      "smoke_kill_t": []
     }
    ]
@@ -17364,7 +19383,7 @@
      "courier_kills": 1,
      "max_hit": [448,"undying_soul_rip","slardar"],
      "pings": 12,
-     "bench": [19,22,45,9,47,34,38],
+     "bench": [17,20,43,9,45,30,36],
      "smoke_kill_t": [1138,1790]
     },
     {
@@ -17434,7 +19453,7 @@
      "courier_kills": 0,
      "max_hit": [448,"centaur_double_edge","slardar"],
      "pings": 9,
-     "bench": [10,9,5,32,18,21,27],
+     "bench": [10,9,3,27,21,18,22],
      "smoke_kill_t": []
     },
     {
@@ -17504,7 +19523,7 @@
      "courier_kills": 0,
      "max_hit": [201,"centaur_stampede","bloodseeker"],
      "pings": 4,
-     "bench": [2,20,4,22,2,13,47],
+     "bench": [2,16,5,18,1,11,42],
      "smoke_kill_t": []
     },
     {
@@ -17574,7 +19593,7 @@
      "courier_kills": 0,
      "max_hit": [327,"death_prophet_carrion_swarm","slardar"],
      "pings": 19,
-     "bench": [48,29,38,25,80,40,47],
+     "bench": [49,32,40,24,81,44,51],
      "smoke_kill_t": []
     },
     {
@@ -17644,7 +19663,7 @@
      "courier_kills": 0,
      "max_hit": [284,"life_stealer_infest","slardar"],
      "pings": 25,
-     "bench": [37,42,34,11,87,43,33],
+     "bench": [35,38,28,10,88,39,30],
      "smoke_kill_t": [1494]
     },
     {
@@ -17714,7 +19733,7 @@
      "courier_kills": 1,
      "max_hit": [298,"witch_doctor_maledict","centaur"],
      "pings": 87,
-     "bench": [73,57,76,41,87,78,91],
+     "bench": [73,55,75,40,86,77,89],
      "smoke_kill_t": [1637,2238]
     },
     {
@@ -17784,7 +19803,7 @@
      "courier_kills": 1,
      "max_hit": [540,"slardar_slithereen_crush","centaur"],
      "pings": 4,
-     "bench": [88,82,32,64,95,62,83],
+     "bench": [87,80,30,64,96,61,81],
      "smoke_kill_t": []
     },
     {
@@ -17854,7 +19873,7 @@
      "courier_kills": 1,
      "max_hit": [384,"mirana_arrow","centaur"],
      "pings": 2,
-     "bench": [49,65,19,53,53,30,81],
+     "bench": [48,62,18,56,51,32,78],
      "smoke_kill_t": [1819]
     },
     {
@@ -17924,7 +19943,7 @@
      "courier_kills": 1,
      "max_hit": [388,null,"death_prophet"],
      "pings": 10,
-     "bench": [83,69,46,91,76,54,92],
+     "bench": [82,67,45,89,75,48,90],
      "smoke_kill_t": [1037,1633,2224,2235]
     },
     {
@@ -17994,7 +20013,7 @@
      "courier_kills": 0,
      "max_hit": [729,"obsidian_destroyer_sanity_eclipse","centaur"],
      "pings": 23,
-     "bench": [48,46,20,82,58,49,47],
+     "bench": [49,45,18,80,63,47,49],
      "smoke_kill_t": [1632,2223]
     }
    ]
@@ -18402,7 +20421,7 @@
      "courier_kills": 0,
      "max_hit": [403,"dragon_knight_breathe_fire","witch_doctor"],
      "pings": 1,
-     "bench": [33,66,48,69,14,77,43],
+     "bench": [35,63,46,68,18,77,42],
      "smoke_kill_t": []
     },
     {
@@ -18472,7 +20491,7 @@
      "courier_kills": 0,
      "max_hit": [547,"juggernaut_omni_slash","ogre_magi"],
      "pings": 6,
-     "bench": [55,64,73,66,30,72,62],
+     "bench": [59,64,73,64,35,72,65],
      "smoke_kill_t": [2468,2470,2472]
     },
     {
@@ -18542,7 +20561,7 @@
      "courier_kills": 0,
      "max_hit": [318,"tidehunter_ravage","witch_doctor"],
      "pings": 3,
-     "bench": [29,29,21,38,28,12,51],
+     "bench": [28,25,18,34,32,11,46],
      "smoke_kill_t": []
     },
     {
@@ -18612,7 +20631,7 @@
      "courier_kills": 0,
      "max_hit": [215,"disruptor_glimpse","death_prophet"],
      "pings": 4,
-     "bench": [58,71,72,45,25,82,91],
+     "bench": [57,72,68,44,25,78,91],
      "smoke_kill_t": []
     },
     {
@@ -18682,7 +20701,7 @@
      "courier_kills": 0,
      "max_hit": [664,"techies_land_mines","witch_doctor"],
      "pings": 7,
-     "bench": [39,71,7,84,50,58,79],
+     "bench": [35,68,7,81,49,57,79],
      "smoke_kill_t": [2464,2468]
     },
     {
@@ -18752,7 +20771,7 @@
      "courier_kills": 0,
      "max_hit": [218,null,"disruptor"],
      "pings": 7,
-     "bench": [56,26,58,53,57,35,64],
+     "bench": [55,23,57,49,57,32,63],
      "smoke_kill_t": []
     },
     {
@@ -18822,7 +20841,7 @@
      "courier_kills": 0,
      "max_hit": [380,"witch_doctor_maledict","tidehunter"],
      "pings": 2,
-     "bench": [13,47,16,56,22,31,50],
+     "bench": [13,46,16,56,20,29,48],
      "smoke_kill_t": [3079]
     },
     {
@@ -18892,7 +20911,7 @@
      "courier_kills": 1,
      "max_hit": [441,null,"disruptor"],
      "pings": 3,
-     "bench": [51,22,34,32,68,49,53],
+     "bench": [52,20,34,32,71,51,54],
      "smoke_kill_t": [2717]
     },
     {
@@ -18962,7 +20981,7 @@
      "courier_kills": 1,
      "max_hit": [262,"death_prophet_carrion_swarm","juggernaut"],
      "pings": 15,
-     "bench": [51,39,30,50,64,41,57],
+     "bench": [51,41,30,50,67,44,60],
      "smoke_kill_t": [1141]
     },
     {
@@ -19032,7 +21051,7 @@
      "courier_kills": 1,
      "max_hit": [176,null,"juggernaut"],
      "pings": 8,
-     "bench": [26,33,55,68,21,54,40],
+     "bench": [27,34,54,69,24,52,40],
      "smoke_kill_t": [2056]
     }
    ]
@@ -19396,7 +21415,7 @@
      "courier_kills": 0,
      "max_hit": [79,null,"witch_doctor"],
      "pings": null,
-     "bench": [0,1,4,3,3,45,39],
+     "bench": [0,2,4,3,4,42,36],
      "smoke_kill_t": []
     },
     {
@@ -19466,7 +21485,7 @@
      "courier_kills": 0,
      "max_hit": [356,"bloodseeker_rupture","death_prophet"],
      "pings": 2,
-     "bench": [6,5,5,2,23,16,17],
+     "bench": [5,4,4,2,20,15,15],
      "smoke_kill_t": []
     },
     {
@@ -19536,7 +21555,7 @@
      "courier_kills": 0,
      "max_hit": [226,"silencer_last_word","life_stealer"],
      "pings": 6,
-     "bench": [18,13,10,1,76,48,24],
+     "bench": [16,12,8,1,71,43,19],
      "smoke_kill_t": []
     },
     {
@@ -19606,7 +21625,7 @@
      "courier_kills": 0,
      "max_hit": [84,null,"death_prophet"],
      "pings": 4,
-     "bench": [2,2,10,2,9,22,30],
+     "bench": [3,3,8,2,12,20,29],
      "smoke_kill_t": [-41]
     },
     {
@@ -19676,7 +21695,7 @@
      "courier_kills": 0,
      "max_hit": [89,"warlock_imp_explode","slardar"],
      "pings": null,
-     "bench": [2,2,14,2,8,45,6],
+     "bench": [1,1,13,1,7,43,6],
      "smoke_kill_t": []
     },
     {
@@ -19746,7 +21765,7 @@
      "courier_kills": 0,
      "max_hit": [202,"witch_doctor_maledict","bloodseeker"],
      "pings": 22,
-     "bench": [33,20,84,83,42,38,94],
+     "bench": [32,19,84,84,40,37,92],
      "smoke_kill_t": [-38,1659,1661]
     },
     {
@@ -19816,7 +21835,7 @@
      "courier_kills": 0,
      "max_hit": [423,null,"ogre_magi"],
      "pings": 2,
-     "bench": [48,25,56,99,49,62,64],
+     "bench": [48,24,55,99,50,60,61],
      "smoke_kill_t": []
     },
     {
@@ -19886,7 +21905,7 @@
      "courier_kills": 0,
      "max_hit": [240,"winter_wyvern_splinter_blast","ogre_magi"],
      "pings": 6,
-     "bench": [55,31,56,75,68,40,71],
+     "bench": [56,30,52,76,68,37,72],
      "smoke_kill_t": []
     },
     {
@@ -19956,7 +21975,7 @@
      "courier_kills": 0,
      "max_hit": [296,null,"abyssal_underlord"],
      "pings": 1,
-     "bench": [50,12,89,99,33,61,56],
+     "bench": [46,11,88,98,36,57,51],
      "smoke_kill_t": []
     },
     {
@@ -20026,7 +22045,7 @@
      "courier_kills": 1,
      "max_hit": [252,"death_prophet_carrion_swarm","silencer"],
      "pings": 12,
-     "bench": [48,40,97,86,25,60,72],
+     "bench": [49,42,98,86,27,62,76],
      "smoke_kill_t": [1664]
     }
    ]
@@ -20431,7 +22450,7 @@
      "courier_kills": 0,
      "max_hit": [874,null,"viper"],
      "pings": 16,
-     "bench": [84,50,93,74,58,90,94],
+     "bench": [83,48,92,73,59,87,92],
      "smoke_kill_t": [1653,1657,1660,1747]
     },
     {
@@ -20501,7 +22520,7 @@
      "courier_kills": 0,
      "max_hit": [514,"tidehunter_anchor_smash","ogre_magi"],
      "pings": 9,
-     "bench": [59,55,67,86,52,43,54],
+     "bench": [58,50,68,85,55,41,51],
      "smoke_kill_t": []
     },
     {
@@ -20571,7 +22590,7 @@
      "courier_kills": 1,
      "max_hit": [384,"witch_doctor_maledict","ogre_magi"],
      "pings": 1,
-     "bench": [45,45,11,86,23,6,43],
+     "bench": [44,44,11,86,21,6,42],
      "smoke_kill_t": [1345]
     },
     {
@@ -20641,7 +22660,7 @@
      "courier_kills": 1,
      "max_hit": [488,"pangolier_gyroshell","disruptor"],
      "pings": 11,
-     "bench": [71,78,82,95,29,98,67],
+     "bench": [65,73,81,95,27,97,65],
      "smoke_kill_t": []
     },
     {
@@ -20711,7 +22730,7 @@
      "courier_kills": 0,
      "max_hit": [342,"ringmaster_tame_the_beasts","ogre_magi"],
      "pings": 13,
-     "bench": [81,76,76,86,27,27,71],
+     "bench": [81,74,76,86,24,26,70],
      "smoke_kill_t": []
     },
     {
@@ -20781,7 +22800,7 @@
      "courier_kills": 0,
      "max_hit": [473,"juggernaut_omni_slash","witch_doctor"],
      "pings": null,
-     "bench": [25,39,28,47,47,37,18],
+     "bench": [25,39,26,46,52,35,17],
      "smoke_kill_t": []
     },
     {
@@ -20851,7 +22870,7 @@
      "courier_kills": 0,
      "max_hit": [96,"viper_viper_strike","tidehunter"],
      "pings": 3,
-     "bench": [17,11,8,46,45,15,23],
+     "bench": [16,10,7,45,49,15,20],
      "smoke_kill_t": []
     },
     {
@@ -20921,7 +22940,7 @@
      "courier_kills": 0,
      "max_hit": [350,"queenofpain_scream_of_pain","tidehunter"],
      "pings": 1,
-     "bench": [31,52,54,30,36,84,11],
+     "bench": [31,52,54,29,40,86,10],
      "smoke_kill_t": []
     },
     {
@@ -20991,7 +23010,7 @@
      "courier_kills": 2,
      "max_hit": [199,"disruptor_glimpse","tidehunter"],
      "pings": 16,
-     "bench": [29,12,80,14,41,81,54],
+     "bench": [27,12,77,14,39,78,53],
      "smoke_kill_t": []
     },
     {
@@ -21061,7 +23080,7 @@
      "courier_kills": 0,
      "max_hit": [106,"ogre_magi_smash","luna"],
      "pings": 9,
-     "bench": [2,8,4,31,7,27,24],
+     "bench": [2,6,4,27,8,23,21],
      "smoke_kill_t": []
     }
    ]
@@ -21450,7 +23469,7 @@
      "courier_kills": 0,
      "max_hit": [564,"lion_finger_of_death","razor"],
      "pings": 46,
-     "bench": [17,17,19,27,13,29,36],
+     "bench": [15,15,18,24,11,27,33],
      "smoke_kill_t": []
     },
     {
@@ -21520,7 +23539,7 @@
      "courier_kills": 0,
      "max_hit": [378,"mars_gods_rebuke","phoenix"],
      "pings": 5,
-     "bench": [28,24,10,18,62,17,44],
+     "bench": [27,23,10,13,66,17,42],
      "smoke_kill_t": []
     },
     {
@@ -21590,7 +23609,7 @@
      "courier_kills": 1,
      "max_hit": [266,"spirit_breaker_greater_bash","ogre_magi"],
      "pings": 5,
-     "bench": [2,10,13,7,4,2,26],
+     "bench": [1,9,12,6,3,2,24],
      "smoke_kill_t": []
     },
     {
@@ -21660,7 +23679,7 @@
      "courier_kills": 0,
      "max_hit": [1720,"terrorblade_sunder","ogre_magi"],
      "pings": 5,
-     "bench": [33,26,63,60,27,68,32],
+     "bench": [30,25,57,59,25,62,28],
      "smoke_kill_t": [2046,2151]
     },
     {
@@ -21730,7 +23749,7 @@
      "courier_kills": 0,
      "max_hit": [414,"zuus_thundergods_wrath","bloodseeker"],
      "pings": 8,
-     "bench": [35,24,36,22,66,24,49],
+     "bench": [31,21,33,20,63,21,46],
      "smoke_kill_t": [853]
     },
     {
@@ -21800,7 +23819,7 @@
      "courier_kills": 1,
      "max_hit": [575,"bloodseeker_rupture","spirit_breaker"],
      "pings": 1,
-     "bench": [56,43,57,44,57,16,80],
+     "bench": [51,39,60,35,53,15,77],
      "smoke_kill_t": []
     },
     {
@@ -21870,7 +23889,7 @@
      "courier_kills": 1,
      "max_hit": [89,null,"lion"],
      "pings": null,
-     "bench": [17,30,8,82,19,21,66],
+     "bench": [16,28,8,83,16,19,61],
      "smoke_kill_t": []
     },
     {
@@ -21940,7 +23959,7 @@
      "courier_kills": 0,
      "max_hit": [181,"ogre_magi_fireblast","spirit_breaker"],
      "pings": 3,
-     "bench": [41,39,61,78,46,22,79],
+     "bench": [41,35,60,77,45,20,79],
      "smoke_kill_t": [1495,2553]
     },
     {
@@ -22010,7 +24029,7 @@
      "courier_kills": 0,
      "max_hit": [811,"obsidian_destroyer_sanity_eclipse","spirit_breaker"],
      "pings": 28,
-     "bench": [55,46,61,80,39,42,70],
+     "bench": [56,45,60,78,44,40,70],
      "smoke_kill_t": [1121,2423]
     },
     {
@@ -22080,7 +24099,7 @@
      "courier_kills": 0,
      "max_hit": [196,null,"zuus"],
      "pings": 8,
-     "bench": [33,21,58,82,23,38,52],
+     "bench": [33,21,56,82,25,36,56],
      "smoke_kill_t": [2536]
     }
    ]
@@ -22458,7 +24477,7 @@
      "courier_kills": 0,
      "max_hit": [295,"rubick_fade_bolt","ogre_magi"],
      "pings": null,
-     "bench": [45,43,46,3,84,59,21],
+     "bench": [40,38,44,2,83,56,18],
      "smoke_kill_t": []
     },
     {
@@ -22528,7 +24547,7 @@
      "courier_kills": 0,
      "max_hit": [426,"juggernaut_omni_slash","ogre_magi"],
      "pings": 1,
-     "bench": [17,18,18,25,41,17,12],
+     "bench": [18,18,16,24,46,15,11],
      "smoke_kill_t": []
     },
     {
@@ -22598,7 +24617,7 @@
      "courier_kills": 1,
      "max_hit": [342,"lich_chain_frost","tidehunter"],
      "pings": 1,
-     "bench": [6,18,30,4,15,59,25],
+     "bench": [7,18,27,4,15,57,24],
      "smoke_kill_t": []
     },
     {
@@ -22668,7 +24687,7 @@
      "courier_kills": 0,
      "max_hit": [400,"nyx_assassin_vendetta","razor"],
      "pings": 10,
-     "bench": [2,8,8,7,3,15,28],
+     "bench": [2,7,7,7,3,12,27],
      "smoke_kill_t": [1336]
     },
     {
@@ -22738,7 +24757,7 @@
      "courier_kills": 0,
      "max_hit": [226,"legion_commander_overwhelming_odds","tidehunter"],
      "pings": 5,
-     "bench": [7,6,2,8,47,5,20],
+     "bench": [7,5,2,8,47,5,18],
      "smoke_kill_t": []
     },
     {
@@ -22808,7 +24827,7 @@
      "courier_kills": 0,
      "max_hit": [352,null,"lich"],
      "pings": 8,
-     "bench": [74,43,70,70,81,59,81],
+     "bench": [73,41,67,68,81,56,79],
      "smoke_kill_t": []
     },
     {
@@ -22878,7 +24897,7 @@
      "courier_kills": 0,
      "max_hit": [175,"ogre_magi_fireblast","legion_commander"],
      "pings": 3,
-     "bench": [10,36,10,68,2,3,48],
+     "bench": [10,32,8,67,2,3,45],
      "smoke_kill_t": []
     },
     {
@@ -22948,7 +24967,7 @@
      "courier_kills": 0,
      "max_hit": [329,"tidehunter_anchor_smash","lich"],
      "pings": 6,
-     "bench": [34,29,63,69,21,26,53],
+     "bench": [32,24,63,67,22,25,49],
      "smoke_kill_t": []
     },
     {
@@ -23018,7 +25037,7 @@
      "courier_kills": 0,
      "max_hit": [208,null,"nyx_assassin"],
      "pings": 6,
-     "bench": [86,56,86,50,71,59,77],
+     "bench": [86,52,86,50,72,57,78],
      "smoke_kill_t": []
     },
     {
@@ -23088,7 +25107,7 @@
      "courier_kills": 0,
      "max_hit": [263,"witch_doctor_maledict","legion_commander"],
      "pings": 8,
-     "bench": [35,28,72,68,12,14,53],
+     "bench": [34,27,72,69,11,14,51],
      "smoke_kill_t": [1000,1595,1988]
     }
    ]
@@ -23444,7 +25463,7 @@
      "courier_kills": 0,
      "max_hit": [240,"lone_druid_spirit_bear","lone_druid"],
      "pings": 38,
-     "bench": [51,52,78,37,56,70,88],
+     "bench": [46,48,75,37,52,66,86],
      "smoke_kill_t": []
     },
     {
@@ -23514,7 +25533,7 @@
      "courier_kills": 1,
      "max_hit": [361,"vengefulspirit_nether_swap","disruptor"],
      "pings": 4,
-     "bench": [62,43,10,66,63,73,70],
+     "bench": [64,40,9,63,68,75,71],
      "smoke_kill_t": []
     },
     {
@@ -23584,7 +25603,7 @@
      "courier_kills": 0,
      "max_hit": [467,"bloodseeker_rupture","centaur"],
      "pings": 7,
-     "bench": [78,36,90,53,64,89,77],
+     "bench": [77,32,91,47,61,88,75],
      "smoke_kill_t": []
     },
     {
@@ -23654,7 +25673,7 @@
      "courier_kills": 1,
      "max_hit": [313,"spirit_breaker_greater_bash","phantom_lancer"],
      "pings": 3,
-     "bench": [28,37,68,50,13,44,70],
+     "bench": [25,35,66,47,13,38,68],
      "smoke_kill_t": [-24]
     },
     {
@@ -23724,7 +25743,7 @@
      "courier_kills": 0,
      "max_hit": [560,"earthshaker_enchant_totem","disruptor"],
      "pings": 5,
-     "bench": [49,44,24,70,53,93,72],
+     "bench": [44,41,21,70,50,93,69],
      "smoke_kill_t": []
     },
     {
@@ -23794,7 +25813,7 @@
      "courier_kills": 1,
      "max_hit": [409,"centaur_double_edge","spirit_breaker"],
      "pings": 3,
-     "bench": [25,22,9,3,72,29,23],
+     "bench": [24,21,7,3,74,26,18],
      "smoke_kill_t": []
     },
     {
@@ -23864,7 +25883,7 @@
      "courier_kills": 0,
      "max_hit": [319,"centaur_stampede","spirit_breaker"],
      "pings": 2,
-     "bench": [15,18,5,2,52,9,31],
+     "bench": [16,17,5,2,53,9,30],
      "smoke_kill_t": []
     },
     {
@@ -23934,7 +25953,7 @@
      "courier_kills": 1,
      "max_hit": [262,"lich_chain_frost","vengefulspirit"],
      "pings": 5,
-     "bench": [9,7,6,4,60,25,46],
+     "bench": [9,7,5,4,59,24,45],
      "smoke_kill_t": []
     },
     {
@@ -24004,7 +26023,7 @@
      "courier_kills": 0,
      "max_hit": [203,"disruptor_glimpse","spirit_breaker"],
      "pings": 6,
-     "bench": [4,5,11,8,29,32,25],
+     "bench": [5,5,10,9,29,32,23],
      "smoke_kill_t": []
     },
     {
@@ -24074,7 +26093,7 @@
      "courier_kills": 0,
      "max_hit": [202,"centaur_stampede","spirit_breaker"],
      "pings": null,
-     "bench": [20,18,63,4,19,52,21],
+     "bench": [18,17,61,3,18,50,20],
      "smoke_kill_t": []
     }
    ]
@@ -24526,7 +26545,7 @@
      "courier_kills": 0,
      "max_hit": [150,"warlock_fatal_bonds","queenofpain"],
      "pings": null,
-     "bench": [32,60,14,48,26,33,32],
+     "bench": [31,57,13,46,25,31,31],
      "smoke_kill_t": []
     },
     {
@@ -24596,7 +26615,7 @@
      "courier_kills": 1,
      "max_hit": [545,"witch_doctor_maledict","spirit_breaker"],
      "pings": 23,
-     "bench": [75,90,57,26,80,63,66],
+     "bench": [74,89,55,23,78,62,65],
      "smoke_kill_t": [2716]
     },
     {
@@ -24666,7 +26685,7 @@
      "courier_kills": 0,
      "max_hit": [323,"tidehunter_ravage","spirit_breaker"],
      "pings": 9,
-     "bench": [28,53,6,41,37,12,51],
+     "bench": [27,48,5,38,39,12,46],
      "smoke_kill_t": []
     },
     {
@@ -24736,7 +26755,7 @@
      "courier_kills": 0,
      "max_hit": [264,null,"queenofpain"],
      "pings": 30,
-     "bench": [80,87,73,50,75,71,72],
+     "bench": [78,85,70,46,78,70,72],
      "smoke_kill_t": [1434,2518,3379]
     },
     {
@@ -24806,7 +26825,7 @@
      "courier_kills": 1,
      "max_hit": [668,"lina_laguna_blade","spirit_breaker"],
      "pings": 10,
-     "bench": [78,89,46,27,78,53,91],
+     "bench": [78,88,46,24,79,54,92],
      "smoke_kill_t": []
     },
     {
@@ -24876,7 +26895,7 @@
      "courier_kills": 0,
      "max_hit": [416,"vengefulspirit_nether_swap","faceless_void"],
      "pings": 1,
-     "bench": [41,64,27,75,39,42,49],
+     "bench": [42,65,25,73,42,42,49],
      "smoke_kill_t": [873]
     },
     {
@@ -24946,7 +26965,7 @@
      "courier_kills": 0,
      "max_hit": [525,"juggernaut_omni_slash","warlock"],
      "pings": 1,
-     "bench": [42,43,58,52,33,80,61],
+     "bench": [43,43,57,51,38,79,63],
      "smoke_kill_t": [864,2265]
     },
     {
@@ -25016,7 +27035,7 @@
      "courier_kills": 0,
      "max_hit": [592,"bloodthorn","faceless_void"],
      "pings": 24,
-     "bench": [45,46,35,40,45,22,72],
+     "bench": [45,45,34,38,49,23,70],
      "smoke_kill_t": []
     },
     {
@@ -25086,7 +27105,7 @@
      "courier_kills": 0,
      "max_hit": [474,"spirit_breaker_greater_bash","tidehunter"],
      "pings": 1,
-     "bench": [55,69,42,15,83,11,89],
+     "bench": [53,68,38,13,82,9,88],
      "smoke_kill_t": [2254,2259]
     },
     {
@@ -25156,7 +27175,7 @@
      "courier_kills": 0,
      "max_hit": [328,null,"lina"],
      "pings": 5,
-     "bench": [45,83,27,38,69,32,56],
+     "bench": [45,80,25,37,71,32,59],
      "smoke_kill_t": [745]
     }
    ]
@@ -25552,7 +27571,7 @@
      "courier_kills": 0,
      "max_hit": [229,"witch_doctor_maledict","lina"],
      "pings": 55,
-     "bench": [53,58,54,90,39,48,92],
+     "bench": [53,55,53,90,37,46,91],
      "smoke_kill_t": [1792]
     },
     {
@@ -25622,7 +27641,7 @@
      "courier_kills": 1,
      "max_hit": [384,"blade_mail","skeleton_king"],
      "pings": 5,
-     "bench": [72,41,63,68,94,48,44],
+     "bench": [70,38,62,67,94,43,41],
      "smoke_kill_t": [757,759,1183,1253]
     },
     {
@@ -25692,7 +27711,7 @@
      "courier_kills": 1,
      "max_hit": [196,"rattletrap_power_cogs","abyssal_underlord"],
      "pings": 5,
-     "bench": [20,42,10,69,29,4,77],
+     "bench": [17,41,6,74,23,5,72],
      "smoke_kill_t": []
     },
     {
@@ -25762,7 +27781,7 @@
      "courier_kills": 1,
      "max_hit": [256,"troll_warlord_whirling_axes_melee","skeleton_king"],
      "pings": 3,
-     "bench": [88,72,83,83,96,72,83],
+     "bench": [85,69,81,81,96,71,85],
      "smoke_kill_t": [567,572,2182]
     },
     {
@@ -25832,7 +27851,7 @@
      "courier_kills": 0,
      "max_hit": [484,"zuus_thundergods_wrath","skeleton_king"],
      "pings": 20,
-     "bench": [78,70,60,74,88,58,88],
+     "bench": [75,65,58,75,88,54,86],
      "smoke_kill_t": [1165,2179,2186]
     },
     {
@@ -25902,7 +27921,7 @@
      "courier_kills": 0,
      "max_hit": [661,"techies_land_mines","axe"],
      "pings": 17,
-     "bench": [3,7,2,52,18,25,35],
+     "bench": [3,6,2,47,16,22,32],
      "smoke_kill_t": []
     },
     {
@@ -25972,7 +27991,7 @@
      "courier_kills": 3,
      "max_hit": [464,"lich_chain_frost","axe"],
      "pings": 2,
-     "bench": [19,13,55,8,56,66,60],
+     "bench": [18,12,53,8,57,65,59],
      "smoke_kill_t": []
     },
     {
@@ -26042,7 +28061,7 @@
      "courier_kills": 0,
      "max_hit": [602,null,"witch_doctor"],
      "pings": 3,
-     "bench": [52,46,40,10,98,33,37],
+     "bench": [47,42,36,9,98,30,35],
      "smoke_kill_t": [2329]
     },
     {
@@ -26112,7 +28131,7 @@
      "courier_kills": 0,
      "max_hit": [159,null,"troll_warlord"],
      "pings": 7,
-     "bench": [21,15,35,19,35,4,52],
+     "bench": [23,15,29,19,41,5,53],
      "smoke_kill_t": [2182,2340]
     },
     {
@@ -26182,7 +28201,7 @@
      "courier_kills": 0,
      "max_hit": [714,"lina_laguna_blade","troll_warlord"],
      "pings": 2,
-     "bench": [24,35,15,37,45,35,30],
+     "bench": [24,34,15,35,48,35,28],
      "smoke_kill_t": []
     }
    ]
@@ -26572,7 +28591,7 @@
      "courier_kills": 1,
      "max_hit": [154,"spectre_dispersion","lina"],
      "pings": null,
-     "bench": [16,30,1,34,34,12,21],
+     "bench": [14,27,1,32,37,9,17],
      "smoke_kill_t": []
     },
     {
@@ -26642,7 +28661,7 @@
      "courier_kills": 0,
      "max_hit": [615,"witch_doctor_maledict","centaur"],
      "pings": 4,
-     "bench": [24,25,54,12,70,64,43],
+     "bench": [23,24,52,10,68,63,42],
      "smoke_kill_t": []
     },
     {
@@ -26712,7 +28731,7 @@
      "courier_kills": 0,
      "max_hit": [121,null,"sven"],
      "pings": 1,
-     "bench": [19,10,22,30,38,67,30],
+     "bench": [17,7,20,28,36,65,30],
      "smoke_kill_t": [732]
     },
     {
@@ -26782,7 +28801,7 @@
      "courier_kills": 0,
      "max_hit": [104,null,"centaur"],
      "pings": 5,
-     "bench": [33,25,36,9,41,39,40],
+     "bench": [32,24,32,8,46,39,39],
      "smoke_kill_t": []
     },
     {
@@ -26852,7 +28871,7 @@
      "courier_kills": 0,
      "max_hit": [293,"legion_commander_overwhelming_odds","centaur"],
      "pings": 7,
-     "bench": [5,3,3,17,37,7,31],
+     "bench": [5,3,2,16,37,6,28],
      "smoke_kill_t": []
     },
     {
@@ -26922,7 +28941,7 @@
      "courier_kills": 3,
      "max_hit": [316,"undying_soul_rip","viper"],
      "pings": 20,
-     "bench": [32,60,52,95,15,26,84],
+     "bench": [29,53,49,94,14,22,82],
      "smoke_kill_t": [1159]
     },
     {
@@ -26992,7 +29011,7 @@
      "courier_kills": 0,
      "max_hit": [675,"lion_finger_of_death","legion_commander"],
      "pings": 1,
-     "bench": [46,70,23,93,29,38,90],
+     "bench": [42,66,21,92,27,36,88],
      "smoke_kill_t": [1006]
     },
     {
@@ -27062,7 +29081,7 @@
      "courier_kills": 0,
      "max_hit": [333,"centaur_double_edge","legion_commander"],
      "pings": 8,
-     "bench": [38,44,42,93,28,36,55],
+     "bench": [37,42,39,92,32,34,54],
      "smoke_kill_t": []
     },
     {
@@ -27132,7 +29151,7 @@
      "courier_kills": 0,
      "max_hit": [598,"lina_laguna_blade","legion_commander"],
      "pings": 10,
-     "bench": [68,49,95,54,32,58,91],
+     "bench": [69,47,95,53,36,59,91],
      "smoke_kill_t": [1123,1160,1625,1778]
     },
     {
@@ -27202,7 +29221,7 @@
      "courier_kills": 0,
      "max_hit": [1386,"sven_great_cleave","warlock"],
      "pings": 40,
-     "bench": [77,63,87,26,69,79,76],
+     "bench": [76,60,86,22,71,78,75],
      "smoke_kill_t": [2232,2235,2235]
     }
    ]
@@ -27657,7 +29676,7 @@
      "courier_kills": 1,
      "max_hit": [826,"bloodthorn","life_stealer"],
      "pings": 24,
-     "bench": [90,84,54,54,96,88,75],
+     "bench": [88,81,49,52,96,87,75],
      "smoke_kill_t": [2362,3758,3763,3770]
     },
     {
@@ -27727,7 +29746,7 @@
      "courier_kills": 0,
      "max_hit": [381,null,"life_stealer"],
      "pings": 12,
-     "bench": [79,90,56,63,71,83,92],
+     "bench": [79,89,55,64,73,81,94],
      "smoke_kill_t": [2891,2896,3457]
     },
     {
@@ -27797,7 +29816,7 @@
      "courier_kills": 0,
      "max_hit": [351,"tidehunter_anchor_smash","life_stealer"],
      "pings": 4,
-     "bench": [49,70,32,58,47,19,69],
+     "bench": [48,68,29,56,50,18,66],
      "smoke_kill_t": [2882,3459]
     },
     {
@@ -27867,7 +29886,7 @@
      "courier_kills": 0,
      "max_hit": [156,"warlock_imp_explode","life_stealer"],
      "pings": 4,
-     "bench": [42,61,12,56,37,18,38],
+     "bench": [41,59,12,55,35,14,35],
      "smoke_kill_t": [2883]
     },
     {
@@ -27937,7 +29956,7 @@
      "courier_kills": 0,
      "max_hit": [363,"gyrocopter_call_down","abyssal_underlord"],
      "pings": 20,
-     "bench": [39,70,22,62,38,33,57],
+     "bench": [33,62,18,62,33,31,53],
      "smoke_kill_t": []
     },
     {
@@ -28007,7 +30026,7 @@
      "courier_kills": 0,
      "max_hit": [387,"life_stealer_infest","tidehunter"],
      "pings": 18,
-     "bench": [66,56,48,73,60,80,52],
+     "bench": [63,52,43,71,61,76,48],
      "smoke_kill_t": [1971]
     },
     {
@@ -28077,7 +30096,7 @@
      "courier_kills": 1,
      "max_hit": [525,"nyx_assassin_vendetta","razor"],
      "pings": 9,
-     "bench": [10,26,4,40,16,3,35],
+     "bench": [9,24,3,35,19,3,32],
      "smoke_kill_t": []
     },
     {
@@ -28147,7 +30166,7 @@
      "courier_kills": 1,
      "max_hit": [1166,"obsidian_destroyer_sanity_eclipse","spectre"],
      "pings": 28,
-     "bench": [59,55,51,21,57,61,47],
+     "bench": [60,53,51,20,61,60,49],
      "smoke_kill_t": [638,1355,1962,3248]
     },
     {
@@ -28217,7 +30236,7 @@
      "courier_kills": 1,
      "max_hit": [219,"gyrocopter_homing_missile","gyrocopter"],
      "pings": 13,
-     "bench": [45,66,20,46,52,83,37],
+     "bench": [47,64,16,47,57,81,36],
      "smoke_kill_t": []
     },
     {
@@ -28287,7 +30306,7 @@
      "courier_kills": 0,
      "max_hit": [227,"shadow_shaman_ether_shock","tidehunter"],
      "pings": 114,
-     "bench": [76,35,69,29,56,48,97],
+     "bench": [71,29,65,25,49,44,96],
      "smoke_kill_t": [1536]
     }
    ]
@@ -28711,7 +30730,7 @@
      "courier_kills": 1,
      "max_hit": [668,"lion_finger_of_death","clinkz"],
      "pings": 1,
-     "bench": [33,49,12,96,37,58,87],
+     "bench": [29,45,11,96,35,56,86],
      "smoke_kill_t": []
     },
     {
@@ -28781,7 +30800,7 @@
      "courier_kills": 0,
      "max_hit": [690,null,"centaur"],
      "pings": 1,
-     "bench": [60,55,86,80,29,70,95],
+     "bench": [56,50,85,81,23,68,95],
      "smoke_kill_t": [733]
     },
     {
@@ -28851,7 +30870,7 @@
      "courier_kills": 0,
      "max_hit": [274,"queenofpain_scream_of_pain","centaur"],
      "pings": 23,
-     "bench": [70,44,62,63,57,47,91],
+     "bench": [70,44,63,63,61,50,90],
      "smoke_kill_t": [2233]
     },
     {
@@ -28921,7 +30940,7 @@
      "courier_kills": 0,
      "max_hit": [75,"jakiro_macropyre","ancient_apparition"],
      "pings": 2,
-     "bench": [32,36,20,74,15,16,81],
+     "bench": [29,33,20,76,12,16,77],
      "smoke_kill_t": []
     },
     {
@@ -28991,7 +31010,7 @@
      "courier_kills": 0,
      "max_hit": [633,"necrolyte_reapers_scythe","centaur"],
      "pings": 4,
-     "bench": [32,24,74,57,14,20,86],
+     "bench": [33,22,76,56,15,19,88],
      "smoke_kill_t": [1338,1803,2210]
     },
     {
@@ -29061,7 +31080,7 @@
      "courier_kills": 0,
      "max_hit": [276,"ancient_apparition_ice_blast","nevermore"],
      "pings": 4,
-     "bench": [16,21,59,12,40,72,26],
+     "bench": [14,17,52,11,40,65,23],
      "smoke_kill_t": []
     },
     {
@@ -29131,7 +31150,7 @@
      "courier_kills": 0,
      "max_hit": [357,"orchid","queenofpain"],
      "pings": 1,
-     "bench": [40,39,23,41,60,44,34],
+     "bench": [38,37,19,42,63,39,32],
      "smoke_kill_t": []
     },
     {
@@ -29201,7 +31220,7 @@
      "courier_kills": 0,
      "max_hit": [370,"centaur_double_edge","queenofpain"],
      "pings": 5,
-     "bench": [12,11,66,38,14,37,39],
+     "bench": [12,10,64,34,18,35,35],
      "smoke_kill_t": []
     },
     {
@@ -29271,7 +31290,7 @@
      "courier_kills": 0,
      "max_hit": [209,"ancient_apparition_ice_blast","nevermore"],
      "pings": 5,
-     "bench": [15,30,4,23,40,10,21],
+     "bench": [14,27,4,22,44,8,17],
      "smoke_kill_t": []
     },
     {
@@ -29341,7 +31360,7 @@
      "courier_kills": 1,
      "max_hit": [313,"undying_soul_rip","necrolyte"],
      "pings": 1,
-     "bench": [11,17,9,28,37,36,39],
+     "bench": [9,15,9,26,36,31,36],
      "smoke_kill_t": []
     }
    ]
@@ -29738,7 +31757,7 @@
      "courier_kills": 0,
      "max_hit": [192,null,"warlock"],
      "pings": 5,
-     "bench": [54,45,77,62,62,57,33],
+     "bench": [52,42,73,61,64,51,29],
      "smoke_kill_t": [-39]
     },
     {
@@ -29808,7 +31827,7 @@
      "courier_kills": 0,
      "max_hit": [371,"centaur_stampede","phantom_lancer"],
      "pings": 73,
-     "bench": [16,29,50,65,4,25,36],
+     "bench": [16,28,50,62,4,25,34],
      "smoke_kill_t": []
     },
     {
@@ -29878,7 +31897,7 @@
      "courier_kills": 0,
      "max_hit": [618,"blade_mail","phantom_lancer"],
      "pings": 8,
-     "bench": [46,53,42,67,55,72,43],
+     "bench": [46,50,38,65,58,71,40],
      "smoke_kill_t": []
     },
     {
@@ -29948,7 +31967,7 @@
      "courier_kills": 0,
      "max_hit": [281,"centaur_stampede","void_spirit"],
      "pings": 3,
-     "bench": [16,24,54,17,43,11,31],
+     "bench": [14,22,50,16,41,12,32],
      "smoke_kill_t": [1381]
     },
     {
@@ -30018,7 +32037,7 @@
      "courier_kills": 0,
      "max_hit": [449,"lina_laguna_blade","phantom_lancer"],
      "pings": 19,
-     "bench": [61,52,34,81,80,76,55],
+     "bench": [61,50,33,81,81,77,57],
      "smoke_kill_t": [1854]
     },
     {
@@ -30088,7 +32107,7 @@
      "courier_kills": 0,
      "max_hit": [337,"centaur_double_edge","centaur"],
      "pings": 12,
-     "bench": [30,31,33,64,30,35,77],
+     "bench": [29,27,30,61,34,32,75],
      "smoke_kill_t": []
     },
     {
@@ -30158,7 +32177,7 @@
      "courier_kills": 0,
      "max_hit": [133,"warlock_imp_explode","centaur"],
      "pings": null,
-     "bench": [13,19,5,44,5,22,57],
+     "bench": [12,19,5,42,4,19,54],
      "smoke_kill_t": []
     },
     {
@@ -30228,7 +32247,7 @@
      "courier_kills": 0,
      "max_hit": [255,"void_spirit_astral_step","centaur"],
      "pings": 8,
-     "bench": [50,43,44,46,60,15,71],
+     "bench": [48,41,42,43,64,16,73],
      "smoke_kill_t": [1385,1397]
     },
     {
@@ -30298,7 +32317,7 @@
      "courier_kills": 0,
      "max_hit": [344,"gyrocopter_call_down","centaur"],
      "pings": 30,
-     "bench": [19,32,40,76,11,63,70],
+     "bench": [16,27,35,76,8,60,62],
      "smoke_kill_t": []
     },
     {
@@ -30368,7 +32387,7 @@
      "courier_kills": 0,
      "max_hit": [1156,"bloodthorn","centaur"],
      "pings": 12,
-     "bench": [78,78,66,57,80,89,67],
+     "bench": [76,76,65,56,78,86,66],
      "smoke_kill_t": []
     }
    ]
@@ -30767,7 +32786,7 @@
      "courier_kills": 0,
      "max_hit": [177,"warlock_fatal_bonds","rattletrap"],
      "pings": 3,
-     "bench": [19,20,26,17,36,96,39],
+     "bench": [17,19,23,13,34,96,37],
      "smoke_kill_t": [1272]
     },
     {
@@ -30837,7 +32856,7 @@
      "courier_kills": 3,
      "max_hit": [353,"ringmaster_tame_the_beasts","wisp"],
      "pings": null,
-     "bench": [9,12,21,13,31,81,25],
+     "bench": [7,10,19,11,29,81,24],
      "smoke_kill_t": []
     },
     {
@@ -30907,7 +32926,7 @@
      "courier_kills": 0,
      "max_hit": [404,"lina_laguna_blade","necrolyte"],
      "pings": null,
-     "bench": [7,3,1,12,29,12,12],
+     "bench": [8,3,1,11,33,13,11],
      "smoke_kill_t": []
     },
     {
@@ -30977,7 +32996,7 @@
      "courier_kills": 0,
      "max_hit": [658,"obsidian_destroyer_sanity_eclipse","necrolyte"],
      "pings": 16,
-     "bench": [14,10,29,41,15,50,17],
+     "bench": [15,11,29,38,17,48,16],
      "smoke_kill_t": []
     },
     {
@@ -31047,7 +33066,7 @@
      "courier_kills": 0,
      "max_hit": [276,null,"leshrac"],
      "pings": 3,
-     "bench": [5,10,9,2,13,12,17],
+     "bench": [5,9,8,2,13,11,16],
      "smoke_kill_t": []
     },
     {
@@ -31117,7 +33136,7 @@
      "courier_kills": 0,
      "max_hit": [107,null,"warlock"],
      "pings": 49,
-     "bench": [55,49,78,92,28,31,86],
+     "bench": [57,49,78,91,30,35,87],
      "smoke_kill_t": []
     },
     {
@@ -31187,7 +33206,7 @@
      "courier_kills": 0,
      "max_hit": [343,"necrolyte_reapers_scythe","lina"],
      "pings": 3,
-     "bench": [57,56,51,95,85,66,64],
+     "bench": [59,56,51,94,85,66,67],
      "smoke_kill_t": []
     },
     {
@@ -31257,7 +33276,7 @@
      "courier_kills": 0,
      "max_hit": [229,"rattletrap_power_cogs","ringmaster"],
      "pings": 3,
-     "bench": [49,37,46,68,57,13,71],
+     "bench": [42,35,40,72,47,12,65],
      "smoke_kill_t": []
     },
     {
@@ -31327,7 +33346,7 @@
      "courier_kills": 0,
      "max_hit": [733,null,"warlock"],
      "pings": 5,
-     "bench": [82,29,94,85,81,88,98],
+     "bench": [81,25,94,84,82,88,98],
      "smoke_kill_t": []
     },
     {
@@ -31397,7 +33416,7 @@
      "courier_kills": 0,
      "max_hit": [297,"leshrac_lightning_storm","skeleton_king"],
      "pings": 4,
-     "bench": [56,49,63,94,61,41,79],
+     "bench": [62,55,66,94,68,44,81],
      "smoke_kill_t": []
     }
    ]
@@ -31833,7 +33852,7 @@
      "courier_kills": 0,
      "max_hit": [1391,"sven_great_cleave","undying"],
      "pings": 26,
-     "bench": [89,84,51,42,95,86,53],
+     "bench": [89,82,51,40,96,86,50],
      "smoke_kill_t": [2994,3231,3325,3332]
     },
     {
@@ -31903,7 +33922,7 @@
      "courier_kills": 0,
      "max_hit": [576,"zuus_thundergods_wrath","undying"],
      "pings": 11,
-     "bench": [91,89,53,36,91,81,91],
+     "bench": [90,86,50,34,91,77,90],
      "smoke_kill_t": [1395,2319,3235,3330]
     },
     {
@@ -31973,7 +33992,7 @@
      "courier_kills": 0,
      "max_hit": [358,"undying_soul_rip","undying"],
      "pings": 9,
-     "bench": [34,39,21,41,44,60,60],
+     "bench": [33,38,22,40,45,59,58],
      "smoke_kill_t": [1391]
     },
     {
@@ -32043,7 +34062,7 @@
      "courier_kills": 1,
      "max_hit": [165,"shadow_shaman_ether_shock","spectre"],
      "pings": null,
-     "bench": [7,35,5,9,28,6,26],
+     "bench": [6,30,5,7,22,4,22],
      "smoke_kill_t": []
     },
     {
@@ -32113,7 +34132,7 @@
      "courier_kills": 0,
      "max_hit": [492,"ancient_apparition_ice_blast","bristleback"],
      "pings": 9,
-     "bench": [58,83,73,28,38,54,70],
+     "bench": [54,80,70,24,38,48,69],
      "smoke_kill_t": [1409]
     },
     {
@@ -32183,7 +34202,7 @@
      "courier_kills": 0,
      "max_hit": [577,"undying_soul_rip","primal_beast"],
      "pings": 4,
-     "bench": [43,70,57,63,31,28,64],
+     "bench": [39,62,54,61,31,25,62],
      "smoke_kill_t": [3239,3252,3539]
     },
     {
@@ -32253,7 +34272,7 @@
      "courier_kills": 1,
      "max_hit": [338,"silencer_last_word","primal_beast"],
      "pings": 3,
-     "bench": [28,68,4,68,49,25,79],
+     "bench": [25,63,3,69,45,22,76],
      "smoke_kill_t": []
     },
     {
@@ -32323,7 +34342,7 @@
      "courier_kills": 0,
      "max_hit": [322,null,"shadow_shaman"],
      "pings": 12,
-     "bench": [67,70,49,61,71,37,84],
+     "bench": [65,67,45,59,72,32,84],
      "smoke_kill_t": []
     },
     {
@@ -32393,7 +34412,7 @@
      "courier_kills": 0,
      "max_hit": [505,null,"sven"],
      "pings": 2,
-     "bench": [70,74,55,68,61,89,89],
+     "bench": [72,73,56,69,64,91,91],
      "smoke_kill_t": [2377,3221]
     },
     {
@@ -32463,7 +34482,7 @@
      "courier_kills": 0,
      "max_hit": [338,"bristleback_quill_spray","ancient_apparition"],
      "pings": 8,
-     "bench": [64,78,71,86,50,49,54],
+     "bench": [66,78,74,87,52,49,58],
      "smoke_kill_t": [2391,3223,3535]
     }
    ]
@@ -32860,7 +34879,7 @@
      "courier_kills": 0,
      "max_hit": [315,"lich_chain_frost","drow_ranger"],
      "pings": 65,
-     "bench": [14,29,26,91,8,23,70],
+     "bench": [13,30,23,90,9,21,67],
      "smoke_kill_t": [-19,1326]
     },
     {
@@ -32930,7 +34949,7 @@
      "courier_kills": 0,
      "max_hit": [477,"centaur_double_edge","lion"],
      "pings": 1,
-     "bench": [70,57,67,84,89,53,65],
+     "bench": [69,56,65,83,90,51,64],
      "smoke_kill_t": [881,1047]
     },
     {
@@ -33000,7 +35019,7 @@
      "courier_kills": 0,
      "max_hit": [251,"winter_wyvern_splinter_blast","drow_ranger"],
      "pings": 3,
-     "bench": [50,40,88,52,35,23,69],
+     "bench": [50,39,85,53,31,22,70],
      "smoke_kill_t": []
     },
     {
@@ -33070,7 +35089,7 @@
      "courier_kills": 0,
      "max_hit": [387,"centaur_stampede","witch_doctor"],
      "pings": 2,
-     "bench": [67,48,72,98,70,63,81],
+     "bench": [66,43,71,96,68,57,78],
      "smoke_kill_t": [1307]
     },
     {
@@ -33140,7 +35159,7 @@
      "courier_kills": 0,
      "max_hit": [725,"lina_laguna_blade","dragon_knight"],
      "pings": 2,
-     "bench": [61,57,85,83,49,82,95],
+     "bench": [61,55,87,82,51,83,95],
      "smoke_kill_t": []
     },
     {
@@ -33210,7 +35229,7 @@
      "courier_kills": 0,
      "max_hit": [354,null,"lina"],
      "pings": 2,
-     "bench": [10,11,3,4,50,13,17],
+     "bench": [9,9,2,3,53,12,15],
      "smoke_kill_t": []
     },
     {
@@ -33280,7 +35299,7 @@
      "courier_kills": 0,
      "max_hit": [566,"lion_finger_of_death","centaur"],
      "pings": 12,
-     "bench": [9,11,13,6,67,21,48],
+     "bench": [7,9,12,5,64,20,45],
      "smoke_kill_t": []
     },
     {
@@ -33350,7 +35369,7 @@
      "courier_kills": 0,
      "max_hit": [222,"dragon_knight_breathe_fire","centaur"],
      "pings": 2,
-     "bench": [4,3,45,2,7,12,24],
+     "bench": [3,3,42,2,9,12,23],
      "smoke_kill_t": [-21]
     },
     {
@@ -33420,7 +35439,7 @@
      "courier_kills": 0,
      "max_hit": [339,"witch_doctor_maledict","centaur"],
      "pings": null,
-     "bench": [4,7,20,7,20,42,35],
+     "bench": [5,8,21,6,19,41,34],
      "smoke_kill_t": [1170]
     },
     {
@@ -33490,7 +35509,7 @@
      "courier_kills": 0,
      "max_hit": [113,"abyssal_underlord_firestorm","centaur"],
      "pings": 7,
-     "bench": [5,3,16,11,11,55,39],
+     "bench": [6,4,13,11,15,49,38],
      "smoke_kill_t": []
     }
    ]
@@ -33900,7 +35919,7 @@
      "courier_kills": 0,
      "max_hit": [551,null,"shadow_shaman"],
      "pings": 3,
-     "bench": [44,32,16,32,89,87,39],
+     "bench": [42,32,14,32,89,84,35],
      "smoke_kill_t": []
     },
     {
@@ -33970,7 +35989,7 @@
      "courier_kills": 0,
      "max_hit": [356,"centaur_double_edge","juggernaut"],
      "pings": 9,
-     "bench": [19,32,22,40,29,45,28],
+     "bench": [19,30,19,36,33,43,24],
      "smoke_kill_t": []
     },
     {
@@ -34040,7 +36059,7 @@
      "courier_kills": 0,
      "max_hit": [175,"ogre_magi_fireblast","tidehunter"],
      "pings": 9,
-     "bench": [12,18,5,16,37,24,24],
+     "bench": [12,15,5,12,36,21,21],
      "smoke_kill_t": []
     },
     {
@@ -34110,7 +36129,7 @@
      "courier_kills": 0,
      "max_hit": [303,"centaur_stampede","juggernaut"],
      "pings": 9,
-     "bench": [20,40,23,15,44,37,23],
+     "bench": [18,37,19,14,48,33,20],
      "smoke_kill_t": []
     },
     {
@@ -34180,7 +36199,7 @@
      "courier_kills": 0,
      "max_hit": [335,"silencer_last_word","juggernaut"],
      "pings": 2,
-     "bench": [10,27,67,12,24,63,41],
+     "bench": [9,23,64,12,22,58,37],
      "smoke_kill_t": []
     },
     {
@@ -34250,7 +36269,7 @@
      "courier_kills": 1,
      "max_hit": [392,"tidehunter_ravage","silencer"],
      "pings": 8,
-     "bench": [72,56,82,84,57,71,73],
+     "bench": [73,51,82,81,60,70,69],
      "smoke_kill_t": []
     },
     {
@@ -34320,7 +36339,7 @@
      "courier_kills": 0,
      "max_hit": [349,"centaur_double_edge","centaur"],
      "pings": 17,
-     "bench": [54,76,36,93,36,56,72],
+     "bench": [49,72,36,91,34,50,70],
      "smoke_kill_t": []
     },
     {
@@ -34390,7 +36409,7 @@
      "courier_kills": 0,
      "max_hit": [143,"shadow_shaman_ether_shock","ogre_magi"],
      "pings": 1,
-     "bench": [28,53,4,72,14,15,90],
+     "bench": [23,47,5,70,11,12,88],
      "smoke_kill_t": []
     },
     {
@@ -34460,7 +36479,7 @@
      "courier_kills": 1,
      "max_hit": [641,null,"ogre_magi"],
      "pings": 23,
-     "bench": [93,86,88,54,90,99,67],
+     "bench": [93,85,88,53,90,99,69],
      "smoke_kill_t": [-17,1849,2825]
     },
     {
@@ -34530,7 +36549,7 @@
      "courier_kills": 0,
      "max_hit": [422,"ringmaster_wheel","life_stealer"],
      "pings": 19,
-     "bench": [63,67,71,60,35,27,95],
+     "bench": [60,66,71,59,34,27,95],
      "smoke_kill_t": [1275,1853]
     }
    ]
@@ -34982,6 +37001,20 @@
    0
   ],
   "23321118": [
+   1793942255,
+   "Tidehunter",
+   1,
+   5,
+   1,
+   36,
+   1,
+   1793939500,
+   "Lich",
+   0,
+   3,
+   8,
+   9,
+   1,
    1793328944,
    "Grimstroke",
    0,
@@ -35107,16 +37140,23 @@
    19,
    9,
    19,
-   1,
-   1791338241,
-   "Crystal Maiden",
-   1,
-   5,
-   3,
-   15,
    1
   ],
   "44917413": [
+   1793943090,
+   "Death Prophet",
+   0,
+   5,
+   9,
+   2,
+   1,
+   1793940950,
+   "Outworld Destroyer",
+   1,
+   19,
+   1,
+   16,
+   1,
    1793857040,
    "Death Prophet",
    1,
@@ -35361,13 +37401,6 @@
    26,
    14,
    37,
-   1,
-   1791345925,
-   "Spectre",
-   0,
-   7,
-   4,
-   20,
    1
   ],
   "61789935": [
@@ -35541,6 +37574,13 @@
    1
   ],
   "80382621": [
+   1793924330,
+   "Void Spirit",
+   0,
+   6,
+   4,
+   12,
+   0,
    1793914765,
    "Troll Warlord",
    0,
@@ -35960,23 +38000,7 @@
    17,
    5,
    18,
-   1,
-   1791334374,
-   "Dragon Knight",
-   1,
-   2,
-   4,
-   18,
    1
-  ],
-  "82341738": [
-   1791341610,
-   "Rubick",
-   0,
-   5,
-   16,
-   22,
-   0
   ],
   "83839131": [
    1793848884,
@@ -36413,30 +38437,16 @@
    6,
    5,
    8,
-   1,
-   1791341610,
-   "Dark Seer",
-   0,
-   7,
-   5,
-   25,
-   0,
-   1791337371,
-   "Dragon Knight",
-   1,
-   7,
-   7,
-   21,
-   0,
-   1791334700,
-   "Axe",
-   0,
-   8,
-   11,
-   8,
-   0
+   1
   ],
   "111720159": [
+   1793924330,
+   "Dragon Knight",
+   0,
+   4,
+   14,
+   7,
+   0,
    1793849009,
    "Windranger",
    0,
@@ -36737,20 +38747,6 @@
    1,
    15,
    17,
-   0,
-   1791340313,
-   "Tidehunter",
-   0,
-   0,
-   16,
-   10,
-   0,
-   1791336446,
-   "Legion Commander",
-   0,
-   2,
-   7,
-   4,
    0
   ],
   "113362359": [
@@ -37117,30 +39113,16 @@
    18,
    6,
    17,
-   1,
-   1791352260,
-   "Shadow Shaman",
-   1,
-   4,
-   6,
-   19,
-   1,
-   1791344075,
-   "Vengeful Spirit",
-   0,
-   6,
-   13,
-   9,
-   1,
-   1791339013,
-   "Nyx Assassin",
-   0,
-   7,
-   15,
-   22,
    1
   ],
   "145773657": [
+   1793939500,
+   "Tinker",
+   0,
+   6,
+   11,
+   4,
+   1,
    1793852725,
    "Sniper",
    1,
@@ -37364,30 +39346,44 @@
    10,
    14,
    12,
-   1,
-   1791348215,
-   "Legion Commander",
-   1,
-   4,
-   15,
-   28,
-   1,
-   1791345015,
-   "Sand King",
-   0,
-   1,
-   10,
-   12,
-   1,
-   1791342427,
-   "Pangolier",
-   0,
-   4,
-   13,
-   10,
    1
   ],
   "154390881": [
+   1793941060,
+   "Sven",
+   1,
+   11,
+   1,
+   9,
+   1,
+   1793938600,
+   "Spectre",
+   0,
+   5,
+   9,
+   6,
+   1,
+   1793924900,
+   "Sven",
+   1,
+   16,
+   4,
+   11,
+   1,
+   1793922714,
+   "Spectre",
+   1,
+   15,
+   2,
+   11,
+   1,
+   1793919800,
+   "Techies",
+   0,
+   1,
+   15,
+   11,
+   1,
    1793853140,
    "Luna",
    1,
@@ -37989,16 +39985,16 @@
    2,
    6,
    0,
-   0,
-   1791334374,
-   "Spectre",
-   1,
-   15,
-   3,
-   13,
-   1
+   0
   ],
   "158408530": [
+   1793924330,
+   "Shadow Shaman",
+   0,
+   1,
+   8,
+   10,
+   0,
    1793845912,
    "Shadow Shaman",
    1,
@@ -38225,6 +40221,20 @@
    0
   ],
   "174273718": [
+   1793943090,
+   "Phantom Lancer",
+   0,
+   3,
+   4,
+   1,
+   1,
+   1793940950,
+   "Juggernaut",
+   1,
+   24,
+   1,
+   11,
+   1,
    1793857040,
    "Phantom Lancer",
    1,
@@ -38700,20 +40710,6 @@
    12,
    7,
    12,
-   1,
-   1791345925,
-   "Phantom Lancer",
-   1,
-   15,
-   1,
-   13,
-   1,
-   1791342372,
-   "Shadow Shaman",
-   0,
-   3,
-   14,
-   9,
    1
   ],
   "191299676": [
@@ -38849,16 +40845,16 @@
    3,
    13,
    18,
-   1,
-   1791336986,
-   "Pugna",
-   1,
-   3,
-   6,
-   15,
    1
   ],
   "242021648": [
+   1793924330,
+   "Undying",
+   0,
+   4,
+   16,
+   10,
+   0,
    1793846882,
    "Warlock",
    1,
@@ -39082,28 +41078,7 @@
    4,
    7,
    20,
-   1,
-   1791341610,
-   "Weaver",
-   0,
-   9,
-   9,
-   12,
-   0,
-   1791337371,
-   "Undying",
-   1,
-   9,
-   9,
-   25,
-   0,
-   1791334700,
-   "Phoenix",
-   0,
-   3,
-   10,
-   12,
-   0
+   1
   ],
   "287766104": [
    1793662716,
