@@ -297,6 +297,9 @@ for (const [acct, o] of ONLY ? [] : owner) {
     }
   }
 }
+// Misticketed games are checked even if no rostered account's history lists them; buildGame
+// still drops them for divisions whose rosters didn't play them.
+for (const id of SEASON.misticketed ?? []) candidates.add(id);
 console.log(`  ${candidates.size} candidate practice-lobby games; pubs for ${pubRows.size} players`);
 
 // All-time hero totals per player (main account, smurfs merged): games and wins on each hero in
@@ -362,7 +365,8 @@ for (const id of [...candidates].sort()) {
 // builds go into `detail`.
 async function buildGame(id) {
   const d = await matchDetail(id);
-  if (d.leagueid !== LEAGUE_ID || !Array.isArray(d.players) || d.players.length !== 10) return null;
+  const misticketed = (SEASON.misticketed ?? []).includes(Number(id));
+  if ((d.leagueid !== LEAGUE_ID && !misticketed) || !Array.isArray(d.players) || d.players.length !== 10) return null;
   // A remake: lobby made, game never played; every player 0/0/0.
   if (d.players.every((p) => !p.kills && !p.deaths && !p.assists)) return null;
   // Which division team is each side? Majority of its 5 accounts.

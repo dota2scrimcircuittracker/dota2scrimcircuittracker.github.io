@@ -14,11 +14,15 @@
 // played after it would read as postseason: list its PlayOn series id in regularIds.
 // playoffNights: the night of each playoff week (PlayOn's brackets; Thanksgiving week is off,
 // so week 6, the grand final, is Dec 3). Bracket columns show them.
-// New season: phase "regular", regularEnd null, regularIds [], playoffNights [].
+// misticketed: match ids a lobby host ticketed to the wrong Dota league; the sync takes them as
+// this season's games anyway (they still need both sides on the division's rosters).
+// New season: phase "regular", regularEnd null, regularIds [], playoffNights [], misticketed [].
 export const SEASON = {
   name: "S48", long: "Season 48", dotaLeague: 20077,
   phase: "playoffs", regularEnd: Date.UTC(2026, 9, 12) / 1000, regularIds: [],
   playoffNights: ["2026-10-22", "2026-10-29", "2026-11-05", "2026-11-12", "2026-11-19", "2026-12-03"],
+  // Conqueror WoT v Cult of the One Mag God game 1, Nov 5: ticketed to league 20056.
+  misticketed: [9077998469],
 };
 export const playoffs = SEASON.phase === "playoffs";
 // Teams AD2L removed from the league (PlayOn team id → when, as Y-M-D). Their results still
