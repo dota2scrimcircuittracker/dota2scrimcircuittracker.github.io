@@ -6,7 +6,7 @@ import { mainAccount } from "./stats.js";
 
 // Fantasy league, one per AD2L division, over the playoffs. Each week you pick five of that
 // league's rostered players, one per position (slot 1–5), from teams with a series that week;
-// picks lock at the week's first series start. A pick scores the tier model's game score (no bell
+// picks lock an hour after the week's first series start (LOCK_GRACE). A pick scores the tier model's game score (no bell
 // curve) with every game read as the slot's position, and only their best two games of the week
 // count, added together (a Bo3: the best two of three). You can pick yourself and your teammates.
 // The leaderboard is the playoffs so far.
@@ -102,10 +102,18 @@ export function bracketSeries(league, teams, series) {
   return out;
 }
 
+// Picks stay open for the first hour of the night: games start 9pm ET (6pm PT), picks lock 10pm ET
+// (7pm PT). PlayOn and the bracket date nights at 01:00 UTC, which is 9pm ET only in daylight time;
+// in standard time (Nov to Mar) it reads 8pm ET, so add the hour back. From the week of Nov 2 2026 on,
+// so weeks already scored keep their lock.
+export const LOCK_GRACE = 3600, LOCK_GRACE_FROM = "2026-11-02";
+const isEST = (t) => new Date(t * 1000).toLocaleString("en-US", { timeZone: "America/New_York", timeZoneName: "short" }).endsWith("EST");
+export const graceLock = (w) => (w.key < LOCK_GRACE_FROM || !Number.isFinite(w.lock) ? w.lock : w.lock + LOCK_GRACE + (isEST(w.lock) ? 3600 : 0));
+
 export function playoffWeeks(league, series, teams = null) {
   return fantasyWeeks([...withAnnounced(league, series), ...bracketSeries(league, teams, series)].filter((s) => isPostseason(s)).map(onNight)
     .filter((s) => !TEST_WEEK || weekKey(s.time) > TEST_WEEK.key))
-    .map((w) => ({ ...w, league, lock: Math.min(w.lock, LOCK_EARLY[league]?.[w.key] ?? Infinity) }));
+    .map((w) => ({ ...w, league, lock: Math.min(graceLock(w), LOCK_EARLY[league]?.[w.key] ?? Infinity) }));
 }
 export function testWeek(divisions) {
   if (!TEST_WEEK) return null;

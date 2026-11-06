@@ -155,7 +155,8 @@ test("LOCK_EARLY locks a week before its first series; other leagues and weeks k
   const night = T("2026-10-30T01:00:00Z"), early = LOCK_EARLY.conqueror["2026-10-26"];
   assert.equal(early, T("2026-10-27T01:00:00Z")); // Mon 10/26 9pm EDT
   const s = [{ id: 1, time: night, home: 10, away: 11 }, { id: 2, time: T("2026-11-06T01:00:00Z"), home: 12, away: 13 }];
-  assert.deepEqual(playoffWeeks("conqueror", s).map((w) => w.lock), [early, T("2026-11-06T01:00:00Z")]);
+  // From Nov 2 on, an hour after 9pm ET: PlayOn's 01:00 UTC is 8pm EST, so the lock is 03:00 UTC (7pm PST).
+  assert.deepEqual(playoffWeeks("conqueror", s).map((w) => w.lock), [early, T("2026-11-06T03:00:00Z")]);
   assert.equal(playoffWeeks("heroic", s)[0].lock, night);
   // Open until the early lock, then the next week is.
   assert.equal(openWeek(playoffWeeks("conqueror", s), early - 1)?.key, "2026-10-26");
