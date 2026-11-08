@@ -2,7 +2,7 @@
  "season": "S48 Explorer League - Amateur Dota 2 League",
  "playon_season_id": 670,
  "league_id": 20077,
- "updated": "2026-11-08T14:07:20.493Z",
+ "updated": "2026-11-08T22:41:44.009Z",
  "teams": [
   {
    "id": 13288,
@@ -312,6 +312,14 @@
    "home": 13288,
    "away": 14516,
    "home_score": 2,
+   "away_score": 0
+  },
+  {
+   "id": 20853,
+   "time": 1794531600,
+   "home": 14516,
+   "away": 15055,
+   "home_score": 0,
    "away_score": 0
   }
  ],
@@ -38326,6 +38334,20 @@
    1
   ],
   "102279457": [
+   1794170000,
+   "Witch Doctor",
+   0,
+   7,
+   5,
+   23,
+   1,
+   1794166101,
+   "Witch Doctor",
+   0,
+   10,
+   9,
+   22,
+   1,
    1792732395,
    "Ancient Apparition",
    1,
