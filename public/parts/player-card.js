@@ -261,6 +261,13 @@ export function showBigCard(c) {
   if (c.classList.contains("ft-fit")) fitDesignCards(copy);
   copy.querySelector(".ft-turn")?.focus();
 }
+// The design a turning twin shows now: its 10 s loop has the back up from about 50% to 95%.
+// Corner Peel has no loop on a mouse (it turns on hover), so it's on its front.
+function twinShowing(twin) {
+  const loop = twin.firstElementChild?.getAnimations?.().find((a) => a.animationName?.startsWith("twin-"));
+  const t = loop?.currentTime == null ? 0 : (loop.currentTime % 10000) / 10000;
+  return t > 0.5 && t < 0.95 ? "b" : "a";
+}
 const wired = new WeakSet();
 // openOnCard makes the card itself open the full-screen view. The normal card grids still flip
 // on a face click; the Feed uses this option because its cards are posts to inspect, not picks.
@@ -274,7 +281,8 @@ export function wirePlayerCards(host, { openOnCard = false } = {}) {
     if (openOnCard && !ev.target.closest(".ft-turn")) { showBigCard(c); return; }
     // A Twin Card (lib/card-arcana.js) turns to its other design instead of its stats, and holds there.
     const twin = c.parentElement?.classList.contains("ft-twin") ? c.parentElement : null;
-    if (twin) { twin.dataset.held = twin.dataset.held === "b" ? "a" : "b"; return; }
+    // Its turn plays once (card-arcana.css). The first click turns away from whichever design is up.
+    if (twin) { twin.dataset.held = (twin.dataset.held ?? twinShowing(twin)) === "b" ? "a" : "b"; return; }
     flipPlayerCard(c, !c.classList.contains("flipped"));
   });
   host.addEventListener("error", (ev) => {

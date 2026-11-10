@@ -139,13 +139,82 @@
 .twin-options { margin-top: 12px; }
 .twin-fields { display: flex; flex-wrap: wrap; gap: 10px; }
 .twin-fields label { display: grid; gap: 4px; }
-/* Clicked: the twin stops turning and holds one design (parts/player-card.js); each click turns it over. */
+/* Clicked: the twin stops turning and holds one design (parts/player-card.js). Each click turns it over
+   once with the card's own turn: Flip flips, Peel peels, Shuffle shuffles, Scan scans, Glitch glitches.
+   data-held names the design that ends on top; the other runs its out half and stays hidden after. */
 .ft-twin[data-held] { cursor: pointer; }
-.ft-twin[data-held] > .ft-card { animation: twin-held .35s ease-out !important; clip-path: none !important; transform: none; filter: none; opacity: 1; visibility: visible; }
-.ft-twin[data-held="a"] > .ft-twin-b, .ft-twin[data-held="b"] > .ft-card:first-child { visibility: hidden; animation: none !important; }
+.ft-twin[data-held] > .ft-card { animation-name: none; animation-duration: .5s; animation-iteration-count: 1; animation-fill-mode: both; animation-timing-function: ease-in-out; transform: none; filter: none; opacity: 1; visibility: visible; }
+.ft-twin[data-held="a"] > .ft-twin-b, .ft-twin[data-held="b"] > .ft-card:first-child { visibility: hidden; }
 .ft-twin[data-held]::after { display: none; }
-@keyframes twin-held { from { transform: perspective(1200px) rotateY(90deg); } to { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .ft-twin[data-held] > .ft-card { animation: none !important; } }
+
+.ft-twin[data-twin="flip"][data-held="b"] > .ft-twin-b, .ft-twin[data-twin="flip"][data-held="a"] > .ft-card:first-child { animation-name: twin-flip-in; animation-timing-function: linear; }
+.ft-twin[data-twin="flip"][data-held="b"] > .ft-card:first-child, .ft-twin[data-twin="flip"][data-held="a"] > .ft-twin-b { animation-name: twin-flip-out; animation-timing-function: linear; }
+@keyframes twin-flip-out { 0% { transform: rotateY(0); visibility: visible; animation-timing-function: ease-in; } 50% { transform: rotateY(-90deg); visibility: visible; } 50.01%, 100% { transform: rotateY(-90deg); visibility: hidden; } }
+@keyframes twin-flip-in { 0%, 49.99% { transform: rotateY(90deg); visibility: hidden; } 50% { transform: rotateY(90deg); visibility: visible; animation-timing-function: ease-out; } 100% { transform: rotateY(0); visibility: visible; } }
+
+/* Peel: the back always sits underneath; the front peels off it, or lays back down over it. */
+.ft-twin[data-twin="peel"][data-held] > .ft-twin-b { visibility: visible; }
+.ft-twin[data-twin="peel"][data-held] > .ft-card:first-child { animation-duration: .7s; animation-timing-function: cubic-bezier(.3, .1, .2, 1); }
+.ft-twin[data-twin="peel"][data-held="b"] > .ft-card:first-child { animation-name: twin-peel-off; }
+.ft-twin[data-twin="peel"][data-held="a"] > .ft-card:first-child { animation-name: twin-peel-on; }
+@keyframes twin-peel-off {
+  0% { clip-path: polygon(0 0, 82% 0, 100% 13%, 100% 100%, 0 100%); visibility: visible; }
+  60% { clip-path: polygon(0 0, 0 0, 100% 140%, 100% 100%, 0 100%); visibility: visible; }
+  99.99% { clip-path: polygon(0 100%, 0 100%, 0 100%, 0 100%, 0 100%); visibility: visible; }
+  100% { clip-path: polygon(0 100%, 0 100%, 0 100%, 0 100%, 0 100%); visibility: hidden; }
+}
+@keyframes twin-peel-on {
+  0% { clip-path: polygon(0 100%, 0 100%, 0 100%, 0 100%, 0 100%); }
+  40% { clip-path: polygon(0 0, 0 0, 100% 140%, 100% 100%, 0 100%); }
+  100% { clip-path: polygon(0 0, 82% 0, 100% 13%, 100% 100%, 0 100%); }
+}
+
+/* Shuffle: the top card slides off and tucks in behind, still peeking out like a deck. */
+.ft-twin[data-twin="shuffle"][data-held] > .ft-card { animation-duration: .7s; visibility: visible; z-index: 0; }
+.ft-twin[data-twin="shuffle"][data-held="b"] > .ft-twin-b, .ft-twin[data-twin="shuffle"][data-held="a"] > .ft-card:first-child { animation-name: twin-shuffle-in; z-index: 2; }
+.ft-twin[data-twin="shuffle"][data-held="b"] > .ft-card:first-child, .ft-twin[data-twin="shuffle"][data-held="a"] > .ft-twin-b { animation-name: twin-shuffle-out; }
+@keyframes twin-shuffle-out {
+  0% { transform: none; filter: none; z-index: 2; }
+  50% { transform: translateX(-112%) rotate(-10deg); filter: none; z-index: 2; }
+  51%, 100% { transform: translate(14px, 8px) rotate(5deg) scale(.95); filter: brightness(.6); z-index: 0; }
+}
+@keyframes twin-shuffle-in {
+  0%, 45% { transform: translate(14px, 8px) rotate(5deg) scale(.95); filter: brightness(.6); z-index: 0; }
+  51% { z-index: 2; }
+  80%, 100% { transform: none; filter: none; z-index: 2; }
+}
+
+/* Scan: the line runs down to draw the back over the front, and back up to wipe it away. */
+.ft-twin[data-twin="scan"][data-held] > .ft-card:first-child { visibility: visible; }
+.ft-twin[data-twin="scan"][data-held] > .ft-card { animation-duration: .6s; animation-timing-function: linear; }
+.ft-twin[data-twin="scan"][data-held="b"] > .ft-twin-b { animation-name: twin-scan-in; }
+.ft-twin[data-twin="scan"][data-held="a"] > .ft-twin-b { animation-name: twin-scan-out; }
+.ft-twin[data-twin="scan"][data-held]::after { display: block; animation: twin-scanbar-down .6s linear both; }
+.ft-twin[data-twin="scan"][data-held="a"]::after { animation-name: twin-scanbar-up; }
+@keyframes twin-scan-in { 0% { clip-path: inset(0 0 100% 0); } 100% { clip-path: inset(0); } }
+@keyframes twin-scan-out { 0% { clip-path: inset(0); visibility: visible; } 99.99% { clip-path: inset(0 0 100% 0); visibility: visible; } 100% { clip-path: inset(0 0 100% 0); visibility: hidden; } }
+@keyframes twin-scanbar-down { 0% { opacity: 1; top: 0; } 95% { opacity: 1; top: 100%; } 100% { opacity: 0; top: 100%; } }
+@keyframes twin-scanbar-up { 0% { opacity: 1; top: 100%; } 95% { opacity: 1; top: 0; } 100% { opacity: 0; top: 0; } }
+
+/* Glitch: a few torn frames, then the other design. */
+.ft-twin[data-twin="glitch"][data-held] > .ft-card { animation-duration: .35s; animation-timing-function: steps(1); }
+.ft-twin[data-twin="glitch"][data-held="b"] > .ft-twin-b, .ft-twin[data-twin="glitch"][data-held="a"] > .ft-card:first-child { animation-name: twin-glitch-in; }
+.ft-twin[data-twin="glitch"][data-held="b"] > .ft-card:first-child, .ft-twin[data-twin="glitch"][data-held="a"] > .ft-twin-b { animation-name: twin-glitch-out; }
+@keyframes twin-glitch-out {
+  0% { visibility: visible; transform: none; filter: none; clip-path: inset(0); }
+  20% { visibility: visible; transform: translate(-6px, 2px); filter: hue-rotate(90deg) saturate(2); clip-path: inset(10% 0 55% 0); }
+  40% { visibility: visible; transform: translate(5px, -3px); filter: hue-rotate(-60deg); clip-path: inset(60% 0 8% 0); }
+  60% { visibility: visible; transform: translate(-3px, 0); filter: invert(.2); clip-path: inset(30% 0 30% 0); }
+  80%, 100% { visibility: hidden; transform: none; filter: none; clip-path: inset(0); }
+}
+@keyframes twin-glitch-in {
+  0% { visibility: hidden; }
+  20% { visibility: visible; transform: translate(5px, -2px); filter: hue-rotate(-90deg); clip-path: inset(0 0 60% 0); }
+  40% { visibility: visible; transform: translate(-4px, 3px); filter: none; clip-path: inset(50% 0 10% 0); }
+  60% { visibility: visible; transform: translate(2px, 0); filter: invert(.2); clip-path: inset(20% 0 40% 0); }
+  80%, 100% { visibility: visible; transform: none; filter: none; clip-path: inset(0); }
+}
+@media (prefers-reduced-motion: reduce) { .ft-twin[data-held] > .ft-card, .ft-twin[data-held]::after { animation: none !important; } }
 
 /* The editor preview turns a Twin Card too, unless paused; the copy never takes clicks or drags. */
 [data-card-editor] .ft-twin > .ft-twin-b { pointer-events: none; }
