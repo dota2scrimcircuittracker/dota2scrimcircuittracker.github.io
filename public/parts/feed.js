@@ -277,12 +277,16 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     } else {
       // A pull: the cards of the rarities the player auto-posts, and loading screens if they post those.
       const items = (p.items ?? []).map(itemByKey).filter(Boolean), screens = (p.screens ?? []).map(screenArt).filter(Boolean);
-      const top = PULL_RARITIES.findLast((r) => items.some((i) => i.rarity === r));
+      // Arcana pulls lead the post and are named in its headline.
+      items.sort((a, b) => (b.rarity === 'arcana') - (a.rarity === 'arcana'));
+      const arcana = items.filter((i) => i.rarity === 'arcana'), rest = items.length - arcana.length;
+      const top = arcana.length ? 'arcana' : PULL_RARITIES.findLast((r) => items.some((i) => i.rarity === r));
       rarity = top ? colors[top] : SCREEN_COLOR;
       media = `<ul class="feed-pulls">${items.map((i) => `<li style="--rarity:${colors[i.rarity]}">${swatch(i, nameOf(p.account))}<span><strong>${esc(i.name)}</strong><small>${i.rarity} ${esc(typeLabel(i.type))}</small></span></li>`).join('')}${screens.map((sc) => `<li class="feed-pull-screen" style="--rarity:${SCREEN_COLOR}"><img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async"><span><strong>${esc(sc.label)}</strong><small>loading screen</small></span></li>`).join('')}</ul>`;
-      const got = [items.length === 1 ? `a${items[0].rarity === 'epic' ? 'n' : ''} ${items[0].rarity}` : items.length ? `${items.length} cards` : '',
+      const got = arcana.length ? [`${arcana.length === 1 ? 'an arcana' : `${arcana.length} arcanas`}: ${arcana.map((i) => esc(i.name)).join(', ')}`, rest ? `${rest} card${rest === 1 ? '' : 's'}` : '',
+        screens.length ? `${screens.length === 1 ? 'a' : screens.length} loading screen${screens.length === 1 ? '' : 's'}` : ''].filter(Boolean) : [items.length === 1 ? `a${items[0].rarity === 'epic' ? 'n' : ''} ${items[0].rarity}` : items.length ? `${items.length} cards` : '',
         screens.length ? `${screens.length === 1 ? 'a' : screens.length} loading screen${screens.length === 1 ? '' : 's'}` : ''].filter(Boolean);
-      what = `pulled ${got.join(' and ') || 'something'} from a pack`;
+      what = `pulled ${got.join(' and ') || 'something'} from ${p.packs > 1 ? `${p.packs} packs` : 'a pack'}`;
     }
     return `<article class="feed-post${pinned ? ' feed-pinned' : ''}${p.pinned ? ' feed-pin-top' : ''}" data-post="${esc(p.id)}" data-account="${esc(p.account)}" style="--rarity:${rarity}">
       ${pinned ? '<p class="feed-pin-note">From your notifications</p>' : ''}${p.pinned ? '<p class="feed-pin-badge">Pinned by Fav</p>' : ''}

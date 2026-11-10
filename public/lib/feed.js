@@ -353,9 +353,10 @@ export function setFeedAuto(state, { cards, rarities, screens } = {}) {
 }
 // What a freshly opened pack posts: the cards of the rarities switched on, and the loading screens
 // when those are on. A copy of a card the player already had is never posted, only its first pull.
-// Null when there's nothing to post.
+// An arcana always posts, copies too (each copy counts: Double finish adds a layer per copy): it's
+// the rarest pull there is. Null when there's nothing to post.
 export function pullPost(rewards, screens, auto, rarityOf) {
-  const items = (rewards ?? []).filter((r) => !r.duplicate).map((r) => r.key).filter((k) => auto.rarities.includes(rarityOf(k)));
+  const items = (rewards ?? []).filter((r) => rarityOf(r.key) === 'arcana' || (!r.duplicate && auto.rarities.includes(rarityOf(r.key)))).map((r) => r.key);
   const shown = auto.screens ? [...(screens ?? [])] : [];
   return items.length || shown.length ? { items, ...(shown.length ? { screens: shown } : {}) } : null;
 }
@@ -374,15 +375,38 @@ export function packHistory(receipts) {
 
 // Pull posts made before copies were skipped: keep each player's first post of a card, drop the
 // later ones (a pull left with only repeats disappears; screens-only pulls stay).
-export function dedupePulls(pulls) {
+// Arcana posts are always kept (isArcana tells them apart).
+export function dedupePulls(pulls, isArcana = () => false) {
   const seen = new Set();
   const keep = [];
   for (const p of [...pulls].sort((a, b) => a.at - b.at)) {
-    const items = (p.items ?? []).filter((k) => !seen.has(`${p.account}:${k}`));
+    const items = (p.items ?? []).filter((k) => isArcana(k) || !seen.has(`${p.account}:${k}`));
     items.forEach((k) => seen.add(`${p.account}:${k}`));
     if (items.length || p.screens?.length) keep.push({ ...p, items });
   }
   return keep;
+}
+
+// Packs opened back to back make one pull post: a pull within PULL_MERGE_MS of the player's last
+// one joins it. mergePull adds a new pull to the stored row (the Worker does this as packs open);
+// mergePulls joins rows stored before that, but only rows nobody has reacted to or commented on,
+// so no reaction or comment is lost. The joined post keeps the first row's id and the latest time.
+export const PULL_MERGE_MS = 30 * 60 * 1000;
+export function mergePull(row, pull) {
+  const screens = [...(row.screens ?? []), ...(pull.screens ?? [])];
+  return { ...row, at: Math.max(row.at, pull.at), packs: (row.packs ?? 1) + (pull.packs ?? 1), items: [...(row.items ?? []), ...(pull.items ?? [])], ...(screens.length ? { screens } : {}) };
+}
+const untouched = (p) => !Object.keys(p.reactions ?? {}).length && !(p.comments ?? []).length;
+export function mergePulls(pulls) {
+  const out = [], last = new Map();
+  for (const p of [...pulls].sort((a, b) => a.at - b.at)) {
+    const prev = last.get(String(p.account));
+    if (prev && p.at - prev.at <= PULL_MERGE_MS && untouched(p)) {
+      const joined = mergePull(prev, p);
+      out[out.indexOf(prev)] = joined; last.set(String(p.account), joined);
+    } else { out.push(p); last.set(String(p.account), p); }
+  }
+  return out;
 }
 
 // Bans: Fav stops a player posting, commenting or reacting, any mix of the three. Stored on the

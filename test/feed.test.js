@@ -486,3 +486,22 @@ test('vault pack-history: the signed-in player\'s own opened packs only',async()
   assert.equal(rows.has(`receipt:301:history-request-${String(n).padStart(6,'0')}`),false,'a read leaves no receipt');
   assert.equal((await (await as(302,{action:'pack-history'})).json()).packs.length,1);
 });
+
+test('arcana pulls always post, copies too, and are never deduped',async()=>{
+  const {pullPost,dedupePulls}=await import('../public/lib/feed.js');
+  const rarity={'tool:double-finish':'arcana',c:'common'};
+  assert.deepEqual(pullPost([{key:'tool:double-finish',arcana:true,duplicate:true},{key:'c'}],[],{cards:true,rarities:[],screens:false},k=>rarity[k]),{items:['tool:double-finish']});
+  const isArcana=k=>rarity[k]==='arcana';
+  assert.equal(dedupePulls([{id:'p:1',account:'1',at:1,items:['tool:double-finish']},{id:'p:2',account:'1',at:2,items:['tool:double-finish']}],isArcana).length,2);
+  assert.equal(dedupePulls([{id:'p:1',account:'1',at:1,items:['c']},{id:'p:2',account:'1',at:2,items:['c']}],isArcana).length,1);
+});
+
+test('pulls opened back to back join one post',async()=>{
+  const {mergePulls,mergePull,PULL_MERGE_MS}=await import('../public/lib/feed.js');
+  const out=mergePulls([{id:'p:1',account:'1',at:1000,items:['a']},{id:'p:2',account:'1',at:2000,items:['b']},{id:'p:3',account:'2',at:2500,items:['c']},{id:'p:4',account:'1',at:2000+PULL_MERGE_MS+1,items:['d']}]);
+  assert.deepEqual(out.map(p=>[p.id,p.items,p.packs??1]),[['p:1',['a','b'],2],['p:3',['c'],1],['p:4',['d'],1]]);
+  assert.equal(out[0].at,2000);
+  // A pull someone reacted to keeps its own post.
+  assert.equal(mergePulls([{id:'p:1',account:'1',at:1,items:['a']},{id:'p:2',account:'1',at:2,items:['b'],reactions:{'5':['🔥']}}]).length,2);
+  assert.deepEqual(mergePull({account:'1',at:1,items:['a']},{account:'1',at:5,items:['b'],screens:['s']}),{account:'1',at:5,packs:2,items:['a','b'],screens:['s']});
+});

@@ -94,7 +94,7 @@ test('pull log: epic and legendary pulls only, newest first, filled once from ol
   const opened=await (await as(402,{action:'open',packIndex:0})).json();
   const log=await pulls();
   assert.equal(log.length,2);assert.equal(log[0].account,'402');
-  // A random pack can repeat an item; the Feed posts first copies only.
-  assert.deepEqual(log[0].items,opened.rewards.filter(r=>!r.duplicate&&!r.arcana).map(r=>r.key));
-  assert.ok(log[0].items.every(k=>['epic','legendary'].includes(CATALOG.find(i=>i.key===k).rarity)));
+  // A random pack can repeat an item; the Feed posts first copies only, except arcana, which always post.
+  assert.deepEqual(log[0].items,opened.rewards.filter(r=>r.arcana||!r.duplicate).map(r=>r.key));
+  assert.ok(log[0].items.every(k=>['epic','legendary'].includes(CATALOG.find(i=>i.key===k).rarity)||CATALOG.find(i=>i.key===k).rarity==='arcana'));
 });

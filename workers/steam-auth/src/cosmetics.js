@@ -5,7 +5,7 @@ import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pa
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
 import { checkImages } from './image-check.js';
 import { CLAUDE_ACCOUNT, CLAUDE_ACTIONS } from '../../../public/lib/claude-account.js';
-import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, packHistory, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
+import { isPostId, postOwner, toggleReaction, reactionTally, addComment, deleteComment, reactToComment, pushNotice, markNoticesSeen, cardPostId, FEED_PAGE, COMMENT_GAP, POST_GAP, MAX_IMAGES, MAX_IMAGE_BYTES, userPostId, buildUserPost, canRemovePost, feedAutoOf, setFeedAuto, pullPost, dedupePulls, mergePull, mergePulls, PULL_MERGE_MS, packHistory, setFollow, setBlock, setBan, isBanned, feedTypesOf, feedExcludesOf, feedShows, feedSortOf, feedRangeOf, FEED_RANGES, FEED_TYPES, postScore, sortFeed, castPollVote, pollTally } from '../../../public/lib/feed.js';
 import { pingTargets, plainMentions } from '../../../public/lib/mentions.js';
 import { CUP, PRIZES, CATEGORIES, MAX_STRIKES, categoryOf, entryId, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess, lateSeats, lateOpen, roundLength } from '../../../public/lib/arcana-cup.js';
 import { buyItem, creditTokens, tokensForPayment, bundleFor, reverseTokens, giftItem, buySlot, orderCommission, refundCommission, refundable, REFUND_WINDOW_MS } from '../../../public/lib/shop.js';
@@ -283,7 +283,7 @@ export class CosmeticsVault {
       } else {
         const rows=who==null?[...await this.ctx.storage.list({prefix:'post:'})]:[...await this.ctx.storage.list({prefix:`post:c:${who}:`}),...await this.ctx.storage.list({prefix:`post:u:${who}:`})];
         const cards=rows.map(([k,v])=>({id:k.slice(5),...v}));
-        const pulls=dedupePulls([...(await this.ctx.storage.list({prefix:'pull:'}))].map(([k,v])=>({id:`p:${k.slice(5)}`,kind:'pull',...v}))).filter(p=>who==null||String(p.account)===who);
+        const pulls=mergePulls(dedupePulls([...(await this.ctx.storage.list({prefix:'pull:'}))].map(([k,v])=>({id:`p:${k.slice(5)}`,kind:'pull',...v})),k=>itemByKey(k)?.rarity==='arcana')).filter(p=>who==null||String(p.account)===who);
         posts=[...cards,...pulls].filter(p=>feedShows(type,exclude,p));
         if(from)posts=posts.filter(p=>from.has(String(p.account)));
         // Fav's pinned post leads the first page of the whole Feed and is left out of the rest.
@@ -815,7 +815,12 @@ export class CosmeticsVault {
         // Feed receipts keep only the post: its comments can be long and are read fresh anyway.
         await txn.put(receipt,{action:body.action,result:['react','comment','comment-delete','comment-react','poll-vote'].includes(body.action)?{post:result.post}:body.action==='post'?{post:result.post.id}:body.action==='post-delete'?{post:result.removed}:result,...(body.action==='open'?{openedAt,packType:saved.packs[body.packIndex]}:{})});
         const pull=body.action==='open'&&autoPullRow(saved,account,openedAt,saved.packs[body.packIndex],result);
-        if(pull)await txn.put(pullKey(openedAt,account,body.requestId),pull);
+        // A pack opened soon after the player's last pull post joins that post (lib/feed.js mergePull).
+        if(pull){
+          const recent=[...(await txn.list({prefix:'pull:',reverse:true,limit:100}))].find(([,v])=>String(v.account)===String(account));
+          if(recent&&openedAt-recent[1].at<=PULL_MERGE_MS)await txn.put(recent[0],mergePull(recent[1],pull));
+          else await txn.put(pullKey(openedAt,account,body.requestId),pull);
+        }
         return result;
       });
       return json({...result,serverNow:Date.now()});
