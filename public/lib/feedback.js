@@ -49,20 +49,47 @@ function around(box, pad, minW, minH) {
   return { x, y, w, h };
 }
 
-// A short CSS selector: up to the nearest id, else six levels, with nth-of-type where needed.
+// Data attributes that name a thing (a player, a row, a tab) rather than its place: a selector
+// built on one still finds it when the list is sorted or filtered differently on replay.
+const KEY_ATTRS = ["data-key", "data-pick", "data-id", "data-pid", "data-account", "data-hero", "data-tab", "data-sort", "data-role", "data-vs", "data-ver", "data-n", "data-shot"];
+const unique = (sel) => { try { return document.querySelectorAll(sel).length === 1; } catch { return false; } };
+// A short CSS selector: up to the nearest id or uniquely named element, else six levels, with
+// nth-of-type where needed.
 function selectorOf(el) {
   const parts = [];
   for (let e = el; e && e !== document.body && e !== document.documentElement && parts.length < 6; e = e.parentElement) {
     if (e.id) { parts.unshift(`#${CSS.escape(e.id)}`); break; }
     let s = e.tagName.toLowerCase();
-    const cls = [...e.classList].slice(0, 2);
+    const attr = KEY_ATTRS.find((a) => e.hasAttribute(a) && e.getAttribute(a).length <= 60);
+    // A named element keeps one class: the second is often state (its tier, "open") that differs on replay.
+    const cls = [...e.classList].slice(0, attr ? 1 : 2);
     if (cls.length) s += "." + cls.map((c) => CSS.escape(c)).join(".");
-    const same = e.parentElement ? [...e.parentElement.children].filter((c) => c.tagName === e.tagName) : [];
-    if (same.length > 1) s += `:nth-of-type(${same.indexOf(e) + 1})`;
+    if (attr) s += `[${attr}="${CSS.escape(e.getAttribute(attr))}"]`;
+    else {
+      const same = e.parentElement ? [...e.parentElement.children].filter((c) => c.tagName === e.tagName) : [];
+      if (same.length > 1) s += `:nth-of-type(${same.indexOf(e) + 1})`;
+    }
     parts.unshift(s);
+    if (attr && unique(parts.join(" > "))) break;
   }
   return parts.join(" > ").slice(0, 400);
 }
+
+// The clicks made on this page before a note (opening a breakdown, a popup, a sub-tab that
+// isn't in the address), so a replay can click them again and show what the visitor saw.
+// Reset whenever the address changes.
+const MAX_STEPS = 8;
+let steps = [], stepsFor = "";
+function recordClick(e) {
+  if (e.button !== 0 || !e.isTrusted) return;
+  const t = e.target instanceof Element ? e.target : null;
+  if (!t || t.closest(".fb, .fbr, [data-feedback], #fb-open")) return;
+  if (stepsFor !== pageKey()) { steps = []; stepsFor = pageKey(); }
+  const el = t.closest("a, button, summary, label, [role='button'], [role='tab'], [tabindex], [data-key], [data-pick]") ?? t;
+  steps.push({ sel: selectorOf(el), text: textOf(el).slice(0, 80) });
+  if (steps.length > MAX_STEPS) steps.shift();
+}
+const stepsNow = () => (stepsFor === pageKey() ? steps.map((s) => ({ ...s })) : []);
 const textOf = (el) => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("alt") || "")
   .replace(/\s+/g, " ").trim().slice(0, 200);
 
@@ -527,7 +554,7 @@ async function addNote() {
   items.push({
     key: pageKey(), box: round(p.box ?? (p.strokes ? boundsOf(p.strokes) : area)), kind: p.kind, page: location.href.slice(0, 400), league: document.body.dataset.league ?? "",
     theme: themeNow(), viewport: { w: innerWidth, h: innerHeight }, note: note.slice(0, 1000), area,
-    target: p.target ?? null, strokes: p.strokes ? pathOf(p.strokes) : null, shot,
+    target: p.target ?? null, strokes: p.strokes ? pathOf(p.strokes) : null, shot, steps: stepsNow(),
   });
   save();
   noteBox.querySelector(".fb-add").textContent = "Add note";
@@ -692,6 +719,7 @@ export function initFeedback() {
   if (!openBtn) return;
   openBtn.onclick = () => setOn(!on);
   document.addEventListener("keydown", onKey, true);
+  document.addEventListener("click", recordClick, true);
   addDialogButtons();
   refresh();
   // Local server only: replay a ticket (?fbreview=FB-XXXXXX, files from scripts/feedback.cjs show).

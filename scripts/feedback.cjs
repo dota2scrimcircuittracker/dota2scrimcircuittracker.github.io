@@ -85,7 +85,7 @@ async function listAll(collectionPath, mask) {
   return out;
 }
 
-const ITEM_FIELDS = ["kind", "page", "league", "theme", "viewport", "note", "area", "target"];
+const ITEM_FIELDS = ["kind", "page", "league", "theme", "viewport", "note", "area", "target", "steps"];
 async function tickets({ withShots = false } = {}) {
   const docs = await listAll(`${BASE}/feedback`);
   const out = [];
@@ -121,6 +121,7 @@ const summary = (t) => ({
   notes: t.items.map((it) => ({
     n: it.n + 1, kind: it.kind, page: it.page, note: it.note,
     ...(it.target ? { element: it.target.text || null, selector: it.target.sel } : {}),
+    ...(it.steps?.length ? { clickedFirst: it.steps.map((s) => s.text || s.sel) } : {}),
     screen: it.viewport ? `${it.viewport.w}×${it.viewport.h} ${it.theme}` : null,
   })),
 });
@@ -189,7 +190,7 @@ const commands = {
     fs.mkdirSync(REVIEW, { recursive: true });
     fs.writeFileSync(path.join(REVIEW, `${t.id}.json`), JSON.stringify({
       id: t.id, from: t.name, sent: t.createdAt,
-      items: t.items.map(({ n, kind, page, league, theme, viewport, note, area, target, strokes, shot }) => ({ n, kind, page, league, theme, viewport, note, area, target, strokes, shot })),
+      items: t.items.map(({ n, kind, page, league, theme, viewport, note, area, target, strokes, shot, steps }) => ({ n, kind, page, league, theme, viewport, note, area, target, strokes, shot, steps: steps ?? [] })),
     }));
     console.log(JSON.stringify(summary(t), null, 2));
     console.log(`Screenshots: ${dir}`);

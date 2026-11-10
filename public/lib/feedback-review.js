@@ -37,6 +37,8 @@ export async function initReview() {
   if (!ticket) return;
   focus = Number(sessionStorage.getItem(`${KEY}-focus`) ?? -1);
   build();
+  // A fresh load of a note's page: click what the visitor clicked before the note.
+  if (ticket.items[focus]?.steps?.length && pageOf(ticket.items[focus].page) === here()) replaySteps(focus);
   // The app renders pages asynchronously and swaps them without reloading: redraw when the
   // page or its content changes.
   let last = "";
@@ -70,14 +72,43 @@ function close() {
   ticket = null;
 }
 
-// Open a note: its page (reloading only if it's another page), then scroll to its mark.
+// Open a note: its page (reloading if it's another page, or if the note has clicks to replay,
+// so they start from the page as it first loads), then scroll to its mark.
 function go(i) {
   focus = i;
   sessionStorage.setItem(`${KEY}-focus`, String(i));
   const want = localOf(ticket.items[i].page);
   if (pageOf(ticket.items[i].page) !== here()) { location.assign(want); return; }
+  if (ticket.items[i].steps?.length) { location.reload(); return; }
   draw();
   scrollToFocus();
+}
+
+// Replaying runs the clicks under Jonah's own sign-in, so anything that spends, sends or
+// changes data is skipped and listed instead.
+const RISKY = /\b(buy|purchase|pay|send|submit|confirm|claim|delete|remove|sell|spend|redeem|open( the)? pack|save|lock( in)?|vote|sign ?(in|out)|log ?(in|out)|equip|trade|upload|enter|join|reset|clear)\b/i;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const replayed = new Map(); // note index -> [{ text, ok, why }]
+async function replaySteps(i) {
+  const log = [];
+  replayed.set(i, log);
+  for (const s of ticket.items[i].steps) {
+    if (RISKY.test(s.text)) { log.push({ label: s.text, ok: false, why: "skipped, could change data" }); continue; }
+    let el = null;
+    // Pages render after load and after each click: give the element a few seconds to appear.
+    for (let t = 0; t < 25 && !el; t++) {
+      try { el = document.querySelector(s.sel); } catch { break; }
+      if (!el) await wait(200);
+    }
+    const label = s.text || s.sel;
+    if (!el) { log.push({ label, ok: false, why: "not found" }); continue; }
+    if (el.closest("form") || el.matches("[type=submit], input, select, textarea")) { log.push({ label, ok: false, why: "skipped, could change data" }); continue; }
+    el.click();
+    log.push({ label, ok: true });
+    await wait(350);
+  }
+  scrolledFor = null;
+  draw();
 }
 
 function scrollToFocus() {
@@ -139,6 +170,8 @@ function renderPanel(onPage) {
           <p>${esc(it.note)}</p>
           ${it.target?.text ? `<span class="fbr-meta">Element: ${esc(it.target.text.slice(0, 80))}</span>` : ""}
           ${off ? `<span class="fbr-meta warn">Made at ${vw}px wide (yours: ${innerWidth}px), so the box may sit off.</span>` : ""}
+          ${it.steps?.length ? `<span class="fbr-meta">Clicked first: ${(replayed.get(i) ?? it.steps.map((s) => ({ label: s.text || s.sel }))).map((s) =>
+            `<span class="${s.ok === false ? "warn" : ""}">${esc(String(s.label).slice(0, 40))}${s.why ? ` (${esc(s.why)})` : s.ok ? " ✓" : ""}</span>`).join(" → ")}</span>` : ""}
         </div>
         ${it.shot ? `<img src="${it.shot}" alt="Their screenshot" data-shot="${i}" title="Their screenshot">` : ""}
       </li>`;

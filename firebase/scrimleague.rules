@@ -447,6 +447,15 @@
     // admin view. Tickets hold names and screenshots, so they aren't public.
     match /scrimLeague/data/feedback/{ticketId} {
       function admin() { return request.auth != null && request.auth.token.email == "jonahbyu@gmail.com"; }
+      function feedbackStep(s, i) {
+        return i >= s.size() || (s[i] is map && s[i].keys().hasOnly(['sel', 'text'])
+          && s[i].sel is string && s[i].sel.size() <= 400 && s[i].text is string && s[i].text.size() <= 80);
+      }
+      function feedbackSteps(s) {
+        return s is list && s.size() >= 1 && s.size() <= 8
+          && feedbackStep(s, 0) && feedbackStep(s, 1) && feedbackStep(s, 2) && feedbackStep(s, 3)
+          && feedbackStep(s, 4) && feedbackStep(s, 5) && feedbackStep(s, 6) && feedbackStep(s, 7);
+      }
       allow get, list, delete: if admin();
       // Written in one batch with the rate limiter below, which must name this ticket.
       allow create: if request.auth != null
@@ -473,8 +482,11 @@
           && !exists(/databases/$(database)/documents/scrimLeague/data/feedback/$(ticketId))
           && int(n) < getAfter(/databases/$(database)/documents/scrimLeague/data/feedback/$(ticketId)).data.items
           && getAfter(/databases/$(database)/documents/scrimLeague/data/feedback/$(ticketId)).data.uid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['v', 'kind', 'page', 'league', 'theme', 'viewport', 'note', 'area', 'target', 'strokes', 'shot', 'uid', 'createdAt'])
-          && request.resource.data.keys().size() == 13
+          && request.resource.data.keys().hasOnly(['v', 'kind', 'page', 'league', 'theme', 'viewport', 'note', 'area', 'target', 'strokes', 'shot', 'steps', 'uid', 'createdAt'])
+          && request.resource.data.keys().hasAll(['v', 'kind', 'page', 'league', 'theme', 'viewport', 'note', 'area', 'target', 'strokes', 'shot', 'uid', 'createdAt'])
+          // Optional: up to 8 clicks made on the page before the note ({sel, text}), so the
+          // replay can open the same popups and rows.
+          && (!('steps' in request.resource.data) || feedbackSteps(request.resource.data.steps))
           && request.resource.data.v == 1
           && request.resource.data.kind in ['snip', 'click', 'draw']
           // The full address, e.g. https://…/warrior/players/?tab=tiers (the site's hosts only).

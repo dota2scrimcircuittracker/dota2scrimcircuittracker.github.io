@@ -489,6 +489,9 @@ export async function submitFeedback(name, items) {
   items.forEach((it, n) => batch.set(doc(ticket, "items", String(n)), {
     v: 1, kind: it.kind, page: it.page, league: it.league, theme: it.theme, viewport: it.viewport,
     note: it.note, area: it.area, target: it.target ?? null, strokes: it.strokes ?? null, shot: it.shot ?? null,
+    // The clicks before the note (open popups, expanded rows), for the replay. Left out when
+    // there are none, so a plain note is the same 13 fields as before.
+    ...(it.steps?.length ? { steps: it.steps.slice(-8).map((s) => ({ sel: String(s.sel).slice(0, 400), text: String(s.text).slice(0, 80) })) } : {}),
     uid, createdAt: serverTimestamp(),
   }));
   await batch.commit();
