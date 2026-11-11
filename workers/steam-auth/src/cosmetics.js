@@ -104,7 +104,25 @@ export class CosmeticsVault {
   // closed or has a removed card (in order, so winners fill the next round), and once the grand
   // final is settled sends 1st to 3rd of that bracket their packs. Fav's removed entries are kept
   // but forfeit, and never win a prize. Returns every category as everyone sees it.
+  // One-time reopens Fav asked for, each applied once: drop a match's result (and the grand final's,
+  // which follows from it) and give its round extra hours. 2026-11-11: a deploy from a branch with the
+  // old cup times settled the Artistic losers final 0-0 before it opened; it gets 48 hours.
+  async cupReopen(txn) {
+    if(this.cupConfig||this.cup.id!==1)return;
+    for(const r of [{key:'2026-11-11-lf',category:'artistic',match:'l7-0',step:8,hours:24}]) {
+      const done=`cup:1:reopened:${r.key}`;
+      if(await txn.get(done))continue;
+      const rk=`cup:1:${r.category}:results`,results={...(await txn.get(rk)??{})};
+      delete results[r.match];delete results.gf;
+      await txn.put(rk,results);
+      const ek='cup:1:extend',extend={...(await txn.get(ek)??{})};
+      extend[r.step]=(extend[r.step]??0)+r.hours*36e5;
+      await txn.put(ek,extend);
+      await txn.put(done,Date.now());
+    }
+  }
   async cupSettle(txn,now=this.now()) {
+    await this.cupReopen(txn);
     const out={},all=await this.cupEntries(txn);
     for(const category of Object.keys(CATEGORIES))out[category]=await this.cupSettleCategory(txn,now,category,all.filter(e=>e.category===category));
     return out;
