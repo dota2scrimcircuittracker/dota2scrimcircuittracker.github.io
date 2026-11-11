@@ -236,7 +236,7 @@
 .feed-pulls{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .feed-pulls li{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:12px}
 .feed-pulls .collection-swatch{height:48px;line-height:38px;font-size:16px}.feed-pulls .collection-signature .autograph-lettering{font-size:18px}.feed-pulls .collection-signature svg{height:36px}
-.feed-pulls strong{display:block;color:var(--rarity)}.feed-pulls small{color:#9f95aa;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.feed-pulls .tool-swatch{overflow:hidden}.feed-pulls .tool-art{width:auto;height:40px;margin:0}.feed-pulls strong{display:block;color:var(--rarity)}.feed-pulls small{color:#9f95aa;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
 .feed-pack-count{margin:0;color:#c4b9cf;font-size:13px}
 .feed-pack-history{padding:12px 14px;border:1px solid #3a3144;border-radius:12px;background:#17131c}
 .feed-pack-history header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 10px}.feed-pack-history header time,.feed-pack-history header small{color:#9f95aa;font-size:12px}
