@@ -31,6 +31,7 @@ import {particleControlsHtml,normalizeParticles} from '../lib/cosmetics-particle
 import {expansionBorderSwatchHtml,expansionFinishSwatchHtml,expansionFinishHtml,defaultExpansionEmblems,borderEmblemList,hasExpansionEmblems} from '../lib/cosmetics-expansion.js';
 import {createEditorDrafts,positionAtPointer} from '../lib/card-editor-workspace.js';
 import {mountCardEditorUI} from './card-editor-ui.js';
+import {cupRewardHtml} from '../lib/cup-rewards.js';
 
 const pointerPoint=e=>({x:e.clientX,y:e.clientY});
 const dragBounds=(el,contents=false)=>{
@@ -1029,19 +1030,21 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     fitDesignCards(section);
     wirePlayerCards(section.querySelector('.profile-collection-card'));
     if(showcase)mountRatings(section,account).catch(()=>{});
+    // An Arcana Cup winner's reward video takes the achievements column's place, left of the cards (lib/cup-rewards.js).
+    const reward=cupRewardHtml(account,esc);
+    if(reward){const v=document.createElement('div');v.className='cup-reward';v.innerHTML=reward;section.prepend(v);}
+    const mountAch=(own)=>{if(reward)return;const ach=document.createElement('div');section.append(ach);import('./achievements.js').then(m=>m.mountAchievementSummary(ach,account,...(own?[]:[false]))).catch(()=>ach.remove());};
     steamAccount().catch(()=>null).then(async viewer=>{
       if(!section.isConnected)return;
       // Anyone else's profile: their achievement progress and claims, in the same column.
       if(String(viewer)!==String(account)){
         if(data.unavailable)return;
         mountFollowButton(data,account,viewer);
-        const ach=document.createElement('div');section.append(ach);
-        import('./achievements.js').then(m=>m.mountAchievementSummary(ach,account,false)).catch(()=>ach.remove());
+        mountAch(false);
         return;
       }
       // Achievement progress is its own column right of the collection (parts/achievements.js, loaded on demand).
-      const ach=document.createElement('div');section.append(ach);
-      import('./achievements.js').then(m=>m.mountAchievementSummary(ach,account)).catch(()=>ach.remove());
+      mountAch(true);
       // Your empty card slots show as outlines with an Add button that goes to that slot on the Gallery's Customize tab.
       const designsBox=section.querySelector('.profile-card-designs');
       preferences.cardDesigns.forEach((design,i)=>{
