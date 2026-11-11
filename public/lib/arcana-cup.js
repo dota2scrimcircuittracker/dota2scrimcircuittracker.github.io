@@ -83,9 +83,10 @@ export function buildBracket(seeds, results = {}, cup = CUP) {
   const win = (id) => results[id] ? results[id].winner : undefined, lose = (id) => results[id] ? results[id].loser : undefined;
   // cup.extend ({ step: ms }) is Fav's extensions: a round that ran long pushes every later round back.
   const offset = (step) => { let t = 0; for (let s = 0; s < step; s++) t += roundLength(s, cup); return t; };
+  // cup.reopen ({ matchId: { opensAt, closesAt } }) is a settled match Fav reopened on its own times.
   const add = (bracket, round, step, index, a, b) => {
-    const id = bracket === 'gf' ? 'gf' : `${bracket}${round}-${index}`, opensAt = cup.votingAt + offset(step);
-    (rounds[step] ??= []).push({ id, bracket, round, step, a, b, opensAt, closesAt: opensAt + roundLength(step, cup), result: results[id] ?? null });
+    const id = bracket === 'gf' ? 'gf' : `${bracket}${round}-${index}`, opensAt = cup.votingAt + offset(step), own = cup.reopen?.[id];
+    (rounds[step] ??= []).push({ id, bracket, round, step, a, b, opensAt: own?.opensAt ?? opensAt, closesAt: own?.closesAt ?? opensAt + roundLength(step, cup), result: results[id] ?? null });
   };
   for (let r = 0; r < k; r++) for (let i = 0; i < seeds.length / 2 ** (r + 1); i++)
     add('w', r, r, i, ...(r === 0 ? [seeds[i * 2], seeds[i * 2 + 1]] : [win(`w${r - 1}-${i * 2}`), win(`w${r - 1}-${i * 2 + 1}`)]));

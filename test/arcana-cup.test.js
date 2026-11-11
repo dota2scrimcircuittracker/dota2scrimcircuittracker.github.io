@@ -295,3 +295,13 @@ test('vault cup: Fav extending a round sends every other player one cup notice, 
   got=await cupNotices(402);
   assert.equal(got.length,1);assert.match(got[0].text,/12 more hours/); // replaced, not piled up
 });
+
+test('a reopened match uses its own window and stays open while later rounds wait', () => {
+  const c = { ...cup, reopen: { 'w1-0': { opensAt: 2000, closesAt: 2300 } } };
+  const results = { 'w0-0': { winner: 'a', loser: 'b' }, 'w0-1': { winner: 'c', loser: 'd' }, 'l0-0': { winner: 'b', loser: 'd' } };
+  const rounds = buildBracket(['a', 'b', 'c', 'd'], results, c), m = rounds.flat().find((x) => x.id === 'w1-0');
+  assert.equal(m.opensAt, 2000);
+  assert.equal(m.closesAt, 2300);
+  assert.ok(isVotable(m, 2100));
+  assert.deepEqual(dueMatches(rounds, 2100).map((x) => x.id), []);
+});

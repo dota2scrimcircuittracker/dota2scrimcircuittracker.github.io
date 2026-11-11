@@ -1,7 +1,7 @@
 import { grantLogin, applyPackGrants, rollPack, recycleCards, openArcanaUpgrade, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, slotCount, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
 import { designKey, castVote, tally } from '../../../public/lib/card-ratings.js';
 import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-catalog.js';
-import { isAdmin, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
+import { isAdmin, ADMIN_ACCOUNT, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
 import { checkImages } from './image-check.js';
 import { CLAUDE_ACCOUNT, CLAUDE_ACTIONS } from '../../../public/lib/claude-account.js';
@@ -104,21 +104,36 @@ export class CosmeticsVault {
   // closed or has a removed card (in order, so winners fill the next round), and once the grand
   // final is settled sends 1st to 3rd of that bracket their packs. Fav's removed entries are kept
   // but forfeit, and never win a prize. Returns every category as everyone sees it.
-  // One-time reopens Fav asked for, each applied once: drop a match's result (and the grand final's,
-  // which follows from it) and give its round extra hours. 2026-11-11: a deploy from a branch with the
-  // old cup times settled the Artistic losers final 0-0 before it opened; it gets 48 hours.
+  // One-time reopens Fav asked for, each applied once, in order: drop the listed results, add hours
+  // to rounds (extend: { step: hours }, which moves every later round back), give a reopened match
+  // its own window from now (open: { match, until }), and tell every signed-in player.
+  // 2026-11-11 lf: a deploy from a branch with the old cup times settled the Artistic losers final
+  // 0-0 before it opened; it gets 48 hours.
+  // 2026-11-11 wf: the Artistic winners final was a 2-2 tie (settled on ratings); it reopens for 48
+  // hours with its votes kept, and the losers final (48h) and grand final move back behind it.
   async cupReopen(txn) {
     if(this.cupConfig||this.cup.id!==1)return;
-    for(const r of [{key:'2026-11-11-lf',category:'artistic',match:'l7-0',step:8,hours:24}]) {
+    const REOPENS=[
+      {key:'2026-11-11-lf',category:'artistic',drop:['l7-0','gf'],extend:{8:24}},
+      {key:'2026-11-11-wf',category:'artistic',drop:['w4-0','l7-0','gf'],extend:{7:48},open:{match:'w4-0',until:Date.UTC(2026,10,13,4)},
+        notice:'The Artistic winners final ended in a 2-2 tie, so it is open again for 48 hours. Vote by 11pm ET Thursday, Nov 12. The losers final and grand final follow.'},
+    ];
+    for(const r of REOPENS) {
       const done=`cup:1:reopened:${r.key}`;
       if(await txn.get(done))continue;
-      const rk=`cup:1:${r.category}:results`,results={...(await txn.get(rk)??{})};
-      delete results[r.match];delete results.gf;
-      await txn.put(rk,results);
+      const now=Date.now(),p=`cup:1:${r.category}:`,results={...(await txn.get(`${p}results`)??{})};
+      for(const id of r.drop)delete results[id];
+      await txn.put(`${p}results`,results);
       const ek='cup:1:extend',extend={...(await txn.get(ek)??{})};
-      extend[r.step]=(extend[r.step]??0)+r.hours*36e5;
+      for(const [step,hours] of Object.entries(r.extend??{}))extend[step]=(extend[step]??0)+hours*36e5;
       await txn.put(ek,extend);
-      await txn.put(done,Date.now());
+      if(r.open)await txn.put(`${p}reopen`,{...(await txn.get(`${p}reopen`)??{}),[r.open.match]:{opensAt:now,closesAt:r.open.until}});
+      if(r.notice) {
+        const notice={kind:'cup',step:null,closesAt:r.open?.until??null,from:ADMIN_ACCOUNT,fromName:'Fav',text:r.notice,at:now};
+        for(const [k,state] of await txn.list({prefix:'user:',limit:5000}))
+          if(k!==`user:${ADMIN_ACCOUNT}`)await txn.put(k,pushNotice({...state,notices:(state.notices??[]).filter(n=>n.kind!=='cup')},notice));
+      }
+      await txn.put(done,now);
     }
   }
   async cupSettle(txn,now=this.now()) {
@@ -128,7 +143,7 @@ export class CosmeticsVault {
     return out;
   }
   async cupSettleCategory(txn,now,category,entries) {
-    const p=`cup:${this.cup.id}:${category}:`,cup={...this.cup,extend:await txn.get(`cup:${this.cup.id}:extend`)??{},late:await txn.get(`${p}late`)??{}};
+    const p=`cup:${this.cup.id}:${category}:`,cup={...this.cup,extend:await txn.get(`cup:${this.cup.id}:extend`)??{},late:await txn.get(`${p}late`)??{},reopen:await txn.get(`${p}reopen`)??{}};
     if(now<cup.votingAt)return {entries,rounds:null,phase:'entries',order:null,late:null};
     let seeded=await txn.get(`${p}seeds`);
     // Seeded before the close moved later (a worker with the old close kept running): drop that
