@@ -9,7 +9,9 @@
 //   node scripts/claude-bot.mjs react <post> <emoji>  react (again to take it back)
 //   node scripts/claude-bot.mjs comment <post> "text" comment on a post
 //   node scripts/claude-bot.mjs items [type]          owned items, optionally one type (border, finish, ...)
-//   node scripts/claude-bot.mjs equip '<json>'        save card equipment, e.g. '{"border":"solar","cardSlot":0}'
+//   node scripts/claude-bot.mjs equip '<json>'        save card equipment, e.g. '{"border":"solar","cardSlot":0}';
+//                                                     hide the league label and name with
+//                                                     '{"layout":{"front":{"team":{"show":false},"name":{"show":false}}}}'
 //   node scripts/claude-bot.mjs call '<json>'         any allowed action, e.g. '{"action":"nickname","nickname":"Claude"}'
 //
 // The key: CLAUDE_BOT_TOKEN, or the file .claude-bot-key at the repo root (gitignored). --local talks
@@ -74,6 +76,6 @@ try {
   } else if (cmd === 'call') {
     out(await act(JSON.parse(rest[0])));
   } else {
-    console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//')).slice(0, 17).join('\n'));
+    console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//')).slice(0, 19).join('\n'));
   }
 } catch (e) { console.error(e.message); process.exit(1); }
