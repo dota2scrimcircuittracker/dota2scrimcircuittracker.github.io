@@ -10,8 +10,8 @@
 //   node scripts/claude-bot.mjs comment <post> "text" comment on a post
 //   node scripts/claude-bot.mjs items [type]          owned items, optionally one type (border, finish, ...)
 //   node scripts/claude-bot.mjs equip '<json>'        save card equipment, e.g. '{"border":"solar","cardSlot":0}';
-//                                                     hide the league label and name with
-//                                                     '{"layout":{"front":{"team":{"show":false},"name":{"show":false}}}}'
+//                                                     hide the league label, name and record with
+//                                                     '{"layout":{"front":{"team":{"show":false},"name":{"show":false},"record":{"show":false}}}}'
 //   node scripts/claude-bot.mjs call '<json>'         any allowed action, e.g. '{"action":"nickname","nickname":"Claude"}'
 //
 // The key: CLAUDE_BOT_TOKEN, or the file .claude-bot-key at the repo root (gitignored). --local talks
