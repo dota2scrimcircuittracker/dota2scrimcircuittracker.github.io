@@ -28,4 +28,5 @@ export const LIVING_BORDERS = [
   living('shimmer', 'Shimmer Sweep', 'A sheen of light runs across your border every few seconds.'),
   living('embers', 'Rising Embers', 'Sparks lift off your border and drift up the card.'),
   living('trace', 'Rune Trace', 'A line of light traces your border, like a rune being drawn.'),
+  { ...living('lightning', 'Arc Lightning', 'Electric arcs crawl round your border, flickering and jumping the corners.'), a: '#8fd8ff', b: '#2a3aff' },
 ];

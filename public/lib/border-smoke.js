@@ -161,15 +161,20 @@ export const SMOKE_OUTWARD = {
   rimblast: { ...WINDY, name: 'Rim Blast', blurb: 'The art stays clear. Sand blows straight out off the frame on every side.',
     wind: { dir: 'out', in: 1, art: 0, out: 52, gust: .2, lines: .2, spd: 1.1 } },
 };
+// Overlay styles: not catalog items of their own. Living borders use them over whatever border is equipped,
+// so only the effect draws (overlay: no smoke band of its own). Arc Lightning: lib/card-arcana.js.
+export const SMOKE_OVERLAY = {
+  'living-arcs': { ...SMOKE_ADV.arcs, overlay: 1 },
+};
 const LOOK = { mercury: 1, ink: 2, oil: 3, marble: 5, cloud: 6, galaxy: 7, sand: 8,
   frost: 9, geode: 10, shatter: 11, arcs: 12, vines: 13, rain: 14, haze: 15, horizon: 16 };
 const BLEND = { patches: 1, sweep: 2, prism: 3 };
-const ALL = { ...SMOKE_VARIANTS, ...SMOKE_STYLES, ...SMOKE_MULTI, ...SMOKE_REAL, ...SMOKE_ADV, ...SMOKE_WIND, ...SMOKE_OUTWARD };
+const ALL = { ...SMOKE_VARIANTS, ...SMOKE_STYLES, ...SMOKE_MULTI, ...SMOKE_REAL, ...SMOKE_ADV, ...SMOKE_WIND, ...SMOKE_OUTWARD, ...SMOKE_OVERLAY };
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
 
 const VERT = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
 const FRAG = `precision highp float;
-uniform vec2 uRes,uSize,uCard;uniform vec3 uC0,uC1,uC2,uC3,uB0,uB1,uB2,uB3;uniform sampler2D uMask,uArt;uniform vec4 uArtRect,uWA,uWB;uniform vec2 uArtFade;uniform float uArtOn,uFlow,uSwirl,uLanes,uStars,uBlend,uDpr,uTime,uBorder,uRadius,uScale,uReach,uTurb,uRise,uDensity,uLight,uEmit,uFlash;
+uniform vec2 uRes,uSize,uCard;uniform vec3 uC0,uC1,uC2,uC3,uB0,uB1,uB2,uB3;uniform sampler2D uMask,uArt;uniform vec4 uArtRect,uWA,uWB;uniform float uOver,uGlow;uniform vec2 uArtFade;uniform float uArtOn,uFlow,uSwirl,uLanes,uStars,uBlend,uDpr,uTime,uBorder,uRadius,uScale,uReach,uTurb,uRise,uDensity,uLight,uEmit,uFlash;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
@@ -266,7 +271,7 @@ void main(){
   }
   float rag=(den-.5)*2.;
   float wob=fbm(uv*.6+vec2(T*.07,-T*.05))-.5;
-  float a, ink=0., soot=0.;
+  float a, ink=0., soot=0., aSig=0.;
   if(uMode>1.5){
     // Finish: a smoke veil drifting over the whole face, thin in the middle so the art reads, thicker at the edges.
     float inside=1.-smoothstep(-1.,1.,d);
@@ -285,7 +290,13 @@ void main(){
     float wA=texture2D(uMask,(p+vec2(0.,sg*ph*L)+wv*(1.+ph*4.))/uSize).g*(1.-ph);
     float wB=texture2D(uMask,(p+vec2(0.,sg*ph2*L)+wv*(1.+ph2*4.)+vec2(9.,0.))/uSize).g*(1.-ph2);
     float aW=clamp((wA+wB)*1.5,0.,1.)*smoothstep(.34,.74,den)*uDensity;
-    a=clamp(max(max(aCore,aW),soot),0.,1.);
+    // Glow (over a scene signature that draws its own letters): only the wisps rising off the name.
+    // Halo: the blurred name, burning in the effect. Full strength as a glow behind a scene signature's own
+    // letters; softer behind lettering drawn in the effect. Letters and halo take the bright end of the
+    // palette, so dark styles (void, tidal, ink) still read on dark art.
+    float halo=clamp(texture2D(uMask,(p+wv*.5)/uSize).g*smoothstep(.2,.6,den)*2.4,0.,1.)*mix(.5,1.,uGlow);
+    den=max(den,max(.62+halo*.3,.7+ink*.25)*max(halo,ink*(1.-uGlow)));
+    a=clamp(max(max(aCore*(1.-uGlow),aW*(1.+uGlow)),max(soot*(1.-uGlow),halo)),0.,1.); aSig=a;
   } else {
   float core=smoothstep(3.,-uBorder*.4,d-rag*3.)*smoothstep(-uBorder-7.,-uBorder+1.,d-rag*5.);
   float dOut=max(d-rag*uTurb*uReach*.55,0.);
@@ -302,6 +313,7 @@ void main(){
   float aIn=exp(-max(dIn-rag*uTurb*inR*.6,0.)/(inR*.4))*smoothstep(.36,.76,den)*uDensity*.85*step(d,-uBorder*.4);
   aIn*=1.-smoothstep(inR*.2,inR*.85,dIn-rag*inR*.25+wob*inR*.5);
   a=clamp(max(aBand,max(aOut,aIn)),0.,1.);
+  if(uOver>.5)a=uLook>11.5&&uLook<12.5?clamp(L1*1.3,0.,1.):aOut; // overlay: just the bolts (or just what escapes)
   if(uWA.x>.5){ // directional wind (see SMOKE_WIND): streaks advected one way, shaped by a one-sided envelope
     vec2 hc=uCard*.5; float sp=T*60.*uWB.z, per=2.*(uCard.x+uCard.y), s=atan(rel.y,rel.x)/6.2832*per;
     // wp = (along the wind, across it). wq = the same field one lap back round the card, crossfaded in near
@@ -441,8 +453,17 @@ void main(){
   }
   if(uLook>7.5&&uLook<8.5)a*=.72+.28*grain;
   if(uMode<.5&&uLook<13.5)col*=mix(.82,1.,smoothstep(-uBorder,0.,d)); // (not over bent art: it must match)
+  // Signature effects: looks that bend the art (rain, haze, black hole), or are dark or sparse by design (ink,
+  // marble, galaxies, geode, shards, vines), or a full spectrum (prism) can't carry a name. In sig mode they paint
+  // it from the palette's brightest colours instead, so every style's lettering reads.
+  if(uMode>.5&&uMode<1.5&&(uLook>1.5&&uLook<2.5||uLook>4.5&&uLook<5.5||uLook>6.5&&uLook<7.5||uLook>9.5&&uLook<11.5||uLook>12.5||uBlend>2.5)){
+    vec3 lw=vec3(.3,.59,.11); vec3 br=dot(uC0,lw)>dot(uC2,lw)?uC0:uC2;
+    br=mix(br,uC3,.25+.4*step(dot(br,lw),.35));
+    if(uBlend>2.5)br=mix(hue(fract(p.x/uSize.x*2.6+T*.06)),vec3(1.),.15); // prism: a clean spectrum along the name
+    col=mix(mix(mix(uC1,br,.35),br,smoothstep(.35,.75,den)),uC3,hi*.7); a=aSig;
+  }
   // Glowing styles: bright parts give back some of their coverage, so they add light (premultiplied alpha).
-  if(uMode>.5&&uMode<1.5)col=mix(uC0*.5,col,clamp(max(ink,(a-soot)*2.),0.,1.));
+  if(uMode>.5&&uMode<1.5&&!(uLook>4.5&&uLook<5.5&&dot(uC1,vec3(.3,.59,.11))<.1))col=mix(uC0*.5,col,clamp(max(ink,(a-soot)*2.),0.,1.));
   float glow=uEmit*smoothstep(.4,.9,den)*(1.-ink*.75);
   gl_FragColor=vec4(col*a*(1.+glow*.4),a*(1.-glow*.85));
 }`;
@@ -461,6 +482,8 @@ function inkMask(w, h, pad, { text, font, fontSize, slant = -7 }) {
     x.fillStyle = x.strokeStyle = '#fff'; x.font = `${fontSize}px ${font}`; x.textAlign = 'center'; x.textBaseline = 'middle';
     x.translate(w / 2, h / 2); x.transform(1, 0, Math.tan(slant * Math.PI / 180), 1, 0, 0);
     x.fillText(text, 0, 0);
+    // Thicken thin script fonts so the effect has letters to fill.
+    x.lineWidth = fontSize * .05; x.lineJoin = 'round'; x.strokeText(text, 0, 0);
     const tw = Math.min(x.measureText(text).width, w - pad * 2);
     x.lineWidth = fontSize * .035; x.lineCap = 'round'; x.beginPath();
     x.moveTo(-tw * .5, fontSize * .42); x.quadraticCurveTo(0, fontSize * .62, tw * .58, fontSize * .3); x.stroke();
@@ -509,7 +532,7 @@ function program(look, mode) {
   gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FRAG.replace('precision highp float;\n',
     `precision highp float;\n#define uLook ${look.toFixed(1)}\n#define uMode ${mode.toFixed(1)}\n`)));
   gl.bindAttribLocation(prog, 0, 'a'); gl.linkProgram(prog);
-  const U = {}; for (const n of ['uRes', 'uSize', 'uCard', 'uDpr', 'uTime', 'uBorder', 'uRadius', 'uScale', 'uReach', 'uTurb', 'uRise', 'uDensity', 'uLight', 'uEmit', 'uFlash', 'uC0', 'uC1', 'uC2', 'uC3', 'uB0', 'uB1', 'uB2', 'uB3', 'uBlend', 'uMask', 'uSwirl', 'uLanes', 'uStars', 'uArt', 'uArtOn', 'uArtRect', 'uArtFade', 'uFlow', 'uWA', 'uWB']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uRes', 'uSize', 'uCard', 'uDpr', 'uTime', 'uBorder', 'uRadius', 'uScale', 'uReach', 'uTurb', 'uRise', 'uDensity', 'uLight', 'uEmit', 'uFlash', 'uC0', 'uC1', 'uC2', 'uC3', 'uB0', 'uB1', 'uB2', 'uB3', 'uBlend', 'uMask', 'uSwirl', 'uLanes', 'uStars', 'uArt', 'uArtOn', 'uArtRect', 'uArtFade', 'uFlow', 'uWA', 'uWB', 'uOver', 'uGlow']) U[n] = gl.getUniformLocation(prog, n);
   P = { prog, U }; G.progs.set(key, P); return P;
 }
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -532,7 +555,7 @@ function loop(t) {
 const kick = () => { if (G && !G.raf && G.list.size && !reduced()) { G.last = 0; G.raf = requestAnimationFrame(loop); } };
 
 export function attachSmoke(el, styleId, { border = 6, radius = 14, speed = 1, amount = 1, maxDpr = 2, mode = 'border', sig = null,
-  pad = mode === 'finish' ? 0 : mode === 'sig' ? 30 : PAD, z = 3, art = null, unit = 1 } = {}) {
+  pad = mode === 'finish' ? 0 : mode === 'sig' ? 30 : PAD, z = 3, art = null, unit = 1, glow = false } = {}) {
   // unit: CSS px per effect px. The styles were tuned on a 210 px card; a card of width w passes w / 210 so the
   // smoke keeps its proportions. border, radius and pad are in effect px.
   const base = ALL[styleId]; if (!base) throw new Error(`No smoke style ${styleId}`);
@@ -595,7 +618,7 @@ export function attachSmoke(el, styleId, { border = 6, radius = 14, speed = 1, a
     gl.uniform1f(U.uDpr, dpr * k); gl.uniform1f(U.uTime, clock); gl.uniform1f(U.uBorder, border); gl.uniform1f(U.uRadius, radius);
     gl.uniform1f(U.uScale, v.scale); gl.uniform1f(U.uReach, v.reach * (.6 + .4 * opts.amount)); gl.uniform1f(U.uTurb, v.turb);
     gl.uniform1f(U.uRise, v.rise); gl.uniform1f(U.uDensity, v.density * opts.amount); gl.uniform1f(U.uLight, v.light);
-    gl.uniform1f(U.uEmit, v.emit ?? 0); gl.uniform1f(U.uFlash, flash); cols.forEach((col, i) => gl.uniform3fv(U[`uC${i}`], col));
+    gl.uniform1f(U.uOver, v.overlay ?? 0); gl.uniform1f(U.uGlow, glow ? 1 : 0); gl.uniform1f(U.uEmit, v.emit ?? 0); gl.uniform1f(U.uFlash, flash); cols.forEach((col, i) => gl.uniform3fv(U[`uC${i}`], col));
     colsB.forEach((col, i) => gl.uniform3fv(U[`uB${i}`], col)); gl.uniform1f(U.uBlend, BLEND[v.blend] ?? 0);
     gl.uniform1f(U.uArtOn, artImg ? 1 : 0); gl.uniform2f(U.uArtFade, ...artFade);
     if (artImg) { // cover-crop, matching CSS background-size: cover at posY

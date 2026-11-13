@@ -7,9 +7,9 @@ import {CosmeticsVault,cosmeticsRequest} from '../workers/steam-auth/src/cosmeti
 
 test('approved collection has all tiers, no language samples in signature drops',()=>{
   assert.equal(new Set(CATALOG.map(i=>i.key)).size,CATALOG.length);
-  // 283 card items, 5 living borders, 6 arcana tools (lib/cosmetics-arcana-catalog.js) and the 36 living
+  // 283 card items, 6 living borders, 6 arcana tools (lib/cosmetics-arcana-catalog.js) and the 36 living
   // effects as a border, a finish and a signature effect modifier each (SMOKE_CATALOG).
-  assert.equal(CATALOG.length,427);
+  assert.equal(CATALOG.length,428);
   assert.deepEqual(PACK_ODDS,{common:69,rare:17,epic:10,legendary:4});
   for(const tier of TIERS)assert.ok(CATALOG.some(i=>i.rarity===tier));
   for(const item of CATALOG.filter(i=>i.type==='autograph')) {assert.equal(item.sample,undefined);assert.equal(item.script,undefined);}

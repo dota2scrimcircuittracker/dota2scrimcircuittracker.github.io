@@ -13,7 +13,9 @@ const trace = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><rect x="1.
 export function livingBorderHtml(e) {
   const id = e?.living;
   if (!id || !itemByKey(`living:${id}`)) return '';
-  return `<span class="living-fx living-${id}" data-living-id="${id}" aria-hidden="true">${id === 'embers' ? sparks : id === 'trace' ? trace : ''}</span>`;
+  // Arc Lightning is drawn in WebGL (lib/smoke-fx.js, the living-arcs overlay style): bolts only, over any border.
+  const bolts = '<span class="smoke-fx" data-smoke="living-arcs" data-smoke-mode="border"></span>';
+  return `<span class="living-fx living-${id}" data-living-id="${id}" aria-hidden="true">${id === 'embers' ? sparks : id === 'trace' ? trace : id === 'lightning' ? bolts : ''}</span>`;
 }
 
 // The Twin Card a design carries ({turn, design}), or null. The design is the card's back, built in the

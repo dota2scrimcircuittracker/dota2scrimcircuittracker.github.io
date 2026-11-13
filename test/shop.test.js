@@ -25,7 +25,7 @@ test('prices by rarity, every card item for sale, loading screens never',()=>{
   assert.deepEqual(PRICES,{common:1,rare:3,epic:5,legendary:10,arcana:30});
   assert.equal(priceOf(common.key),1);
   assert.equal(priceOf(legendary.key),10);
-  assert.equal(SHOP_ITEMS.length,CATALOG.filter(i=>!i.commission).length);
+  assert.equal(SHOP_ITEMS.length,CATALOG.filter(i=>!i.commission&&i.drops!==false).length); // retired items (drops:false) aren't sold
   assert.ok(CATALOG.filter(i=>i.commission).every(i=>priceOf(i.key)!=null&&!SHOP_ITEMS.includes(i)));
   assert.equal(priceOf('screen:1'),null);
   assert.throws(()=>buyItem({tokens:99,inventory:{}},'screen:1'),/not for sale/);
@@ -207,7 +207,7 @@ test('arcana tools sell for ARCANA_PRICE like any item; arcana player cards are 
   const tools=SHOP_ITEMS.filter(i=>i.rarity==='arcana').map(i=>i.key);
   assert.deepEqual(tools,['tool:double-finish','tool:twin-flip','tool:twin-peel','tool:twin-shuffle','tool:twin-scan','tool:twin-glitch']);
   for(const key of tools)assert.equal(priceOf(key),30);
-  assert.deepEqual(SHOP_ITEMS.filter(i=>i.type==='living').map(i=>priceOf(i.key)),[10,10,10,10,10]);
+  assert.deepEqual(SHOP_ITEMS.filter(i=>i.type==='living').map(i=>priceOf(i.key)),[10,10,10,10,10,10]);
   const {state,price}=buyItem({tokens:30,inventory:{}},'tool:twin-scan');
   assert.deepEqual([state.tokens,state.inventory['tool:twin-scan'],price],[0,1,30]);
   assert.throws(()=>buyItem({tokens:29,inventory:{}},'tool:double-finish'),/30 tokens/);

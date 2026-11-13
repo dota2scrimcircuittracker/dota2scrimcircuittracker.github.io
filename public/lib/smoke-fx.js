@@ -28,11 +28,13 @@ async function boot(el) {
     const img = face.querySelector('.ft-art img');
     opts = { mode, unit, radius, z: 3, art: img?.currentSrc || img?.src ? { src: img.currentSrc || img.src, posY: .3 } : null };
   } else {
-    const sig = el.closest('.card-autograph'), letters = sig?.querySelector('.autograph-lettering');
-    const size = Number.parseFloat(letters ? getComputedStyle(letters).fontSize : '') || 40;
+    const sig = el.closest('.card-autograph'), letters = sig?.querySelector('.autograph-lettering'), glow = el.dataset.glowText;
+    // A glow over a scene signature (lib/signatures.js) has no lettering of its own: size the name to its box.
+    const size = glow != null ? Math.max(12, (sig?.clientHeight || 60) * .62) : Number.parseFloat(letters ? getComputedStyle(letters).fontSize : '') || 40;
     await document.fonts.load(`${size}px ${SIG_FONT}`).catch(() => {});
     if (!el.isConnected) { el._smokeBooting = false; return; }
-    opts = { mode: 'sig', unit, pad: 30, z: 1, sig: { text: letters?.textContent?.trim() || 'Fav', font: SIG_FONT, fontSize: size, slant: 0 } };
+    // A glow sits behind the scene's own letters (z -1).
+    opts = { mode: 'sig', unit, pad: 30, z: glow != null ? -1 : 1, glow: glow != null, sig: { text: (glow ?? letters?.textContent)?.trim() || 'Fav', font: SIG_FONT, fontSize: size, slant: 0 } };
   }
   let h = null;
   // Soft smoke holds up at low resolution: borders and finishes draw at 0.6 px per CSS px and the browser smooths

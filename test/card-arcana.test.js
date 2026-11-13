@@ -11,7 +11,7 @@ const player=(inventory={})=>({...grantLogin(null),inventory});
 test('the catalog has the six arcana tools and five legendary living borders, keys unique',()=>{
   assert.deepEqual(ARCANA_TOOLS.map(i=>i.key),['tool:double-finish',...TWIN_TURNS.map(t=>`tool:twin-${t}`)]);
   assert.ok(ARCANA_TOOLS.every(i=>i.rarity==='arcana'&&itemByKey(i.key)===i));
-  assert.deepEqual(LIVING_BORDERS.map(i=>[i.key,i.rarity]),['pulse','orbit','shimmer','embers','trace'].map(id=>[`living:${id}`,'legendary']));
+  assert.deepEqual(LIVING_BORDERS.map(i=>[i.key,i.rarity]),['pulse','orbit','shimmer','embers','trace','lightning'].map(id=>[`living:${id}`,'legendary']));
   assert.equal(new Set(CATALOG.map(i=>i.key)).size,CATALOG.length);
   // Arcana isn't a pack tier, so tools never drop; living borders drop with the borders.
   assert.ok(!TIERS.includes('arcana'));

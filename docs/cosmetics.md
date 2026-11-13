@@ -62,10 +62,15 @@ To hand one out: flip `PERSONAL_LIVE`, deploy the Worker, then gift it with an i
 `SMOKE_CATALOG` (`lib/cosmetics-catalog.js`): each of the 36 WebGL styles in `lib/border-smoke.js` (elements, multi-colour,
 realistic, advanced) as a legendary border, finish and signature effect, 108 items, ids `smoke-<style>`. Live since
 2026-11-12 (`SMOKE_LIVE`): they drop from packs and sell in the shop like any legendary.
+Arc Lightning is a living border instead (`living:lightning`, the `living-arcs` overlay style: bolts only, over any
+border); its old `border:smoke-arcs` item stays for owners but no longer drops or sells.
 
 Signature effects are modifiers, type `namefx` (equipment `namefx`, default `none`), a second modifier slot beside the
-language modifier (`translation`), so the two stack: the signature, in any style and any script, is drawn in the effect
-(`signatureHtml` in `lib/signatures.js`). Shown under Modifier in the collection and shop filters; the editor's
+language modifier (`translation`), so the two stack (`signatureHtml` in `lib/signatures.js`). On a plain signature style
+the lettering, in any script, is drawn in the effect. On a scene signature (`expansion`, 65 of them: Lotus Pond, Laser
+Etch...) the scene stays and the effect burns behind it as a halo with wisps (`.smoke-glow`, `glow` in
+`lib/border-smoke.js`), wide enough to show round opaque plates. Looks that bend the art or are dark by design (rain,
+haze, horizon, ink, marble, galaxies, geode, shards, vines, prism) paint signatures from their brightest colours. Shown under Modifier in the collection and shop filters; the editor's
 "Signature effect" picker appears once you own one. Signature packs can roll them.
 
 `lib/cosmetics.js` and `lib/signatures.js` write a `.smoke-fx` span; `lib/smoke-fx.js` starts the effect, scaled to the

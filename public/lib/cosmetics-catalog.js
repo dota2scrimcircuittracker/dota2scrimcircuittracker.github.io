@@ -1117,7 +1117,8 @@ const SMOKE_ALL={...SMOKE_STYLES,...SMOKE_MULTI,...SMOKE_REAL,...SMOKE_ADV};
 export const SMOKE_CATALOG=Object.entries(SMOKE_ALL).flatMap(([id,v])=>{
   const base={rarity:'legendary',description:v.blurb,smoke:id};
   return [
-    {...base,id:`smoke-${id}`,name:`${v.name} Border`,type:'border',key:`border:smoke-${id}`,a:v.colors[2],b:v.colors[0],texture:'metal',symbol:''},
+    // Arc Lightning became a living border (works over any border); its border item stays for anyone who has it.
+    {...base,id:`smoke-${id}`,name:`${v.name} Border`,type:'border',key:`border:smoke-${id}`,a:v.colors[2],b:v.colors[0],texture:'metal',symbol:'',...(id==='arcs'?{drops:false}:{})},
     {...base,id:`smoke-${id}`,name:`${v.name} Lettering`,type:'namefx',key:`namefx:smoke-${id}`,a:v.colors[2],b:v.colors[1],
       description:`${v.blurb} Your signature is drawn in it; works with any signature style and language modifier.`},
     {...base,id:`smoke-${id}`,name:`${v.name} Finish`,type:'finish',key:`finish:smoke-${id}`},
