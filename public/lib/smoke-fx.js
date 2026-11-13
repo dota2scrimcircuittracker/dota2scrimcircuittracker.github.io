@@ -15,6 +15,26 @@ function tuning(el, mode) {
   return { speed: Number.isFinite(border) ? border : Math.max(.25, +el.dataset.spd || 1), amount: Math.max(.25, +el.dataset.amt || 1) };
 }
 
+// The SVG as an image, for a mask. Its inline shapes and gradients carry over; page CSS and fonts don't, which is
+// fine for an outline. Animated parts are taken at their resting state.
+function silhouette(svg) {
+  if (!svg) return Promise.resolve(null);
+  const copy = svg.cloneNode(true); copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  copy.setAttribute('width', svg.clientWidth || 300); copy.setAttribute('height', svg.clientHeight || 110);
+  const img = new Image();
+  return new Promise((res) => { img.onload = () => res(img); img.onerror = () => res(null);
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(copy))}`; });
+}
+
+// How much of the box the image covers (0-1), sampled small.
+function coverage(img) {
+  const cv = document.createElement('canvas'); cv.width = 60; cv.height = 22;
+  const x = cv.getContext('2d'); x.drawImage(img, 0, 0, 60, 22);
+  const d = x.getImageData(0, 0, 60, 22).data; let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 40) n++;
+  return n / (60 * 22);
+}
+
 async function boot(el) {
   if (live.has(el) || el._smokeBooting) return;
   const id = el.dataset.smoke, mode = el.dataset.smokeMode;
@@ -29,13 +49,19 @@ async function boot(el) {
     opts = { mode, unit, radius, z: 3, art: img?.currentSrc || img?.src ? { src: img.currentSrc || img.src, posY: .3 } : null };
   } else {
     const sig = el.closest('.card-autograph'), letters = sig?.querySelector('.autograph-lettering'), glow = el.dataset.glowText;
+    // A scene signature's glow traces its drawing: rasterize the SVG for a silhouette (null if it won't load).
+    // Letters-only scenes barely survive as an image (their fonts and CSS fills don't carry over): under ~12% of
+    // the box, glow behind the letters instead (z -1, cosmetics-fx.css).
+    let image = glow != null ? await silhouette(sig?.querySelector('svg.exp-signature-svg')) : null;
+    if (image && coverage(image) < .12) { image = null; el.classList.add('glow-behind'); }
+    if (!el.isConnected) { el._smokeBooting = false; return; }
     // A glow over a scene signature (lib/signatures.js) has no lettering of its own: size the name to its box.
     const size = glow != null ? Math.max(12, (sig?.clientHeight || 60) * .62) : Number.parseFloat(letters ? getComputedStyle(letters).fontSize : '') || 40;
     await document.fonts.load(`${size}px ${SIG_FONT}`).catch(() => {});
     if (!el.isConnected) { el._smokeBooting = false; return; }
     // A glow over a scene signature is screened on top (cosmetics-fx.css): it lights the plate and letters
     // without covering them, so it shows even on opaque plates like Lotus Pond.
-    opts = { mode: 'sig', unit, pad: 30, z: 1, glow: glow != null, sig: { text: (glow ?? letters?.textContent)?.trim() || 'Fav', font: SIG_FONT, fontSize: size, slant: 0 } };
+    opts = { mode: 'sig', unit, pad: 30, z: glow != null && !image ? -1 : 1, glow: glow == null ? false : image ? 'outline' : true, sig: { text: (glow ?? letters?.textContent)?.trim() || 'Fav', font: SIG_FONT, fontSize: size, slant: 0, image } };
   }
   let h = null;
   // Soft smoke holds up at low resolution: borders and finishes draw at 0.6 px per CSS px and the browser smooths

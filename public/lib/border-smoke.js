@@ -294,9 +294,12 @@ void main(){
     // Halo: the blurred name, burning in the effect. Full strength as a glow behind a scene signature's own
     // letters; softer behind lettering drawn in the effect. Letters and halo take the bright end of the
     // palette, so dark styles (void, tidal, ink) still read on dark art.
-    float halo=clamp(texture2D(uMask,(p+wv*.5)/uSize).g*smoothstep(.2,.6,den)*2.4,0.,1.)*mix(.5,1.,uGlow);
-    den=max(den,max(.62+halo*.3,.7+ink*.25)*max(halo,ink*(1.-uGlow)));
-    a=clamp(max(max(aCore*(1.-uGlow),aW*(1.+uGlow)),max(soot*(1.-uGlow),halo)),0.,1.); aSig=a;
+    float halo=clamp(texture2D(uMask,(p+wv*.5)/uSize).g*smoothstep(.2,.6,den)*2.4,0.,1.)*mix(.5,1.,min(uGlow,1.));
+    // Glow round a scene signature: a ring outside its silhouette (red = the art), never over the art itself.
+    float sil=smoothstep(.15,.6,texture2D(uMask,p/uSize).r)*step(1.5,uGlow); // 2 = trace the art's outline
+    halo*=1.-sil; aW*=1.-sil;
+    den=max(den,max(.62+halo*.3,.7+ink*.25)*max(halo,ink*(1.-min(uGlow,1.))));
+    a=clamp(max(max(aCore*(1.-min(uGlow,1.)),aW*(1.+min(uGlow,1.))),max(soot*(1.-min(uGlow,1.)),halo)),0.,1.)*(1.-sil); aSig=a;
   } else {
   float core=smoothstep(3.,-uBorder*.4,d-rag*3.)*smoothstep(-uBorder-7.,-uBorder+1.,d-rag*5.);
   float dOut=max(d-rag*uTurb*uReach*.55,0.);
@@ -475,10 +478,13 @@ function compile(gl, type, src) {
 }
 
 // Draws the signature ink into a mask: red = the letters (plus an underline swash), green = a wide blur of them.
-function inkMask(w, h, pad, { text, font, fontSize, slant = -7 }) {
+// With image (a scene signature's own drawing, sized to the box inside pad) the mask is its silhouette instead,
+// with a wider blur: the glow traces the outside of the art (lib/smoke-fx.js).
+function inkMask(w, h, pad, { text, font, fontSize, slant = -7, image = null }) {
   const k = 2, mk = () => { const cv = document.createElement('canvas'); cv.width = w * k; cv.height = h * k; return cv; };
   const ink = (cv, blur) => {
-    const x = cv.getContext('2d'); x.scale(k, k); x.filter = blur ? `blur(${blur}px)` : 'none';
+    const x = cv.getContext('2d'); x.scale(k, k); x.filter = blur ? `blur(${image ? blur * 1.6 : blur}px)` : 'none';
+    if (image) { x.drawImage(image, pad, pad, w - pad * 2, h - pad * 2); return x.getImageData(0, 0, cv.width, cv.height).data; }
     x.fillStyle = x.strokeStyle = '#fff'; x.font = `${fontSize}px ${font}`; x.textAlign = 'center'; x.textBaseline = 'middle';
     x.translate(w / 2, h / 2); x.transform(1, 0, Math.tan(slant * Math.PI / 180), 1, 0, 0);
     x.fillText(text, 0, 0);
@@ -554,6 +560,7 @@ function loop(t) {
 }
 const kick = () => { if (G && !G.raf && G.list.size && !reduced()) { G.last = 0; G.raf = requestAnimationFrame(loop); } };
 
+// glow (sig mode): true = a halo behind a scene signature's letters, 'outline' = a ring round its art.
 export function attachSmoke(el, styleId, { border = 6, radius = 14, speed = 1, amount = 1, maxDpr = 2, mode = 'border', sig = null,
   pad = mode === 'finish' ? 0 : mode === 'sig' ? 30 : PAD, z = 3, art = null, unit = 1, glow = false } = {}) {
   // unit: CSS px per effect px. The styles were tuned on a 210 px card; a card of width w passes w / 210 so the
@@ -618,7 +625,7 @@ export function attachSmoke(el, styleId, { border = 6, radius = 14, speed = 1, a
     gl.uniform1f(U.uDpr, dpr * k); gl.uniform1f(U.uTime, clock); gl.uniform1f(U.uBorder, border); gl.uniform1f(U.uRadius, radius);
     gl.uniform1f(U.uScale, v.scale); gl.uniform1f(U.uReach, v.reach * (.6 + .4 * opts.amount)); gl.uniform1f(U.uTurb, v.turb);
     gl.uniform1f(U.uRise, v.rise); gl.uniform1f(U.uDensity, v.density * opts.amount); gl.uniform1f(U.uLight, v.light);
-    gl.uniform1f(U.uOver, v.overlay ?? 0); gl.uniform1f(U.uGlow, glow ? 1 : 0); gl.uniform1f(U.uEmit, v.emit ?? 0); gl.uniform1f(U.uFlash, flash); cols.forEach((col, i) => gl.uniform3fv(U[`uC${i}`], col));
+    gl.uniform1f(U.uOver, v.overlay ?? 0); gl.uniform1f(U.uGlow, glow === 'outline' ? 2 : glow ? 1 : 0); gl.uniform1f(U.uEmit, v.emit ?? 0); gl.uniform1f(U.uFlash, flash); cols.forEach((col, i) => gl.uniform3fv(U[`uC${i}`], col));
     colsB.forEach((col, i) => gl.uniform3fv(U[`uB${i}`], col)); gl.uniform1f(U.uBlend, BLEND[v.blend] ?? 0);
     gl.uniform1f(U.uArtOn, artImg ? 1 : 0); gl.uniform2f(U.uArtFade, ...artFade);
     if (artImg) { // cover-crop, matching CSS background-size: cover at posY

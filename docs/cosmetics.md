@@ -68,8 +68,9 @@ border); its old `border:smoke-arcs` item stays for owners but no longer drops o
 Signature effects are modifiers, type `namefx` (equipment `namefx`, default `none`), a second modifier slot beside the
 language modifier (`translation`), so the two stack (`signatureHtml` in `lib/signatures.js`). On a plain signature style
 the lettering, in any script, is drawn in the effect. On a scene signature (`expansion`, 65 of them: Lotus Pond, Laser
-Etch...) the scene stays and the effect is screened over it as a halo with wisps (`.smoke-glow`, `glow` in
-`lib/border-smoke.js`): it lights the plate and letters without covering them, so it shows on opaque plates too. Looks that bend the art or are dark by design (rain,
+Etch...) the scene stays and the effect traces the outside of its drawing (`.smoke-glow`; `lib/smoke-fx.js` rasterizes the
+SVG for a silhouette, `glow: 'outline'` in `lib/border-smoke.js`), so plates like Lotus Pond get a ring of fire or
+smoke round their edge and nothing covers the letters. Letters-only scenes (under ~12% coverage) glow behind the name. Looks that bend the art or are dark by design (rain,
 haze, horizon, ink, marble, galaxies, geode, shards, vines, prism) paint signatures from their brightest colours. Shown under Modifier in the collection and shop filters; the editor's
 "Signature effect" picker appears once you own one. Signature packs can roll them.
 
