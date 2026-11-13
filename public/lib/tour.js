@@ -34,7 +34,15 @@ const visible = (el) => !!el && el.getClientRects().length > 0 && !el.closest("[
 const rectOf = (els) => els.filter(visible).map((e) => e.getBoundingClientRect()).reduce((a, r) => ({
   top: Math.min(a.top, r.top), left: Math.min(a.left, r.left), bottom: Math.max(a.bottom, r.bottom), right: Math.max(a.right, r.right),
 }), { top: Infinity, left: Infinity, bottom: -Infinity, right: -Infinity });
-const navHref = (key) => document.querySelector(`#nav a[data-nav="${key}"]`)?.getAttribute("href");
+// Players and Heroes share the Meta tab (its link opens Players); the Drafter and Upload sit under Tools.
+const navHref = (key) => {
+  const meta = document.querySelector('#nav a[data-nav="meta"]')?.getAttribute("href");
+  if (key === "players" && meta) return meta;
+  if (key === "heroes" && meta) return meta.replace(/\/players$/, "/heroes");
+  const tools = document.querySelector('#nav a[data-nav="tools"]')?.getAttribute("href");
+  if (key === "upload") return tools && !tools.startsWith("#/all/") ? tools.replace(/\/tools$/, "/upload") : null;
+  return document.querySelector(`#nav a[data-nav="${key}"]`)?.getAttribute("href");
+};
 // The first letters of a real team or player name on the page, for the search stop to type.
 const nameStart = () => (document.querySelector('#standings a.team-link, #app a[href*="/teams/"], #app a[href*="player/"]')?.textContent ?? "").trim().slice(0, 3) || "a";
 

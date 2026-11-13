@@ -209,8 +209,10 @@ if(typeof document!=='undefined'){
  },{rootMargin:'120px'}):null;
  const syncCards=cards=>{
   for(const card of cards){
-   if(!card.isConnected){visibility?.unobserve(card);watched.delete(card);continue;}
-   if(visibility&&!watched.has(card)){watched.add(card);visibility.observe(card);}
+   // A Twin Card pauses as a pair (lib/card-motion.js says why), or its two designs drift apart.
+   const host=card.parentElement?.classList.contains('ft-twin')?card.parentElement:card;
+   if(!card.isConnected){visibility?.unobserve(host);watched.delete(host);continue;}
+   if(visibility&&!watched.has(host)){watched.add(host);visibility.observe(host);if(host!==card)for(const k of host.children)if(watched.has(k)){visibility.unobserve(k);watched.delete(k);k.removeAttribute('data-effects-offscreen');}}
    const image=card.querySelector('.ft-art img');if(!image)continue;
    const src=image.getAttribute('src'),other=otherArtwork(src,image.dataset.wide);
    for(const fragment of card.querySelectorAll('.exp-finish image,.exp-mirror image')){const want=fragment.classList.contains('exp-other-time')?other:src;if(fragment.getAttribute('href')!==want)fragment.setAttribute('href',want);}

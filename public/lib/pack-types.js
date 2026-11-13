@@ -25,7 +25,7 @@ export const themedLabel = (pack) => {
 // the next one it has. The engine rolls the same way.
 export function packOdds(pack) {
   const { tier, kind } = parsePack(pack), types = kind ? PACK_KIND_TYPES[kind] : null;
-  const groups = TIERS.slice(TIERS.indexOf(tier)).map((r) => ({ r, w: PACK_ODDS[r], n: CATALOG.filter((i) => (!types || types.includes(i.type)) && i.rarity === r).length }));
+  const groups = TIERS.slice(TIERS.indexOf(tier)).map((r) => ({ r, w: PACK_ODDS[r], n: CATALOG.filter((i) => i.drops !== false && (!types || types.includes(i.type)) && i.rarity === r).length }));
   const total = groups.reduce((s, g) => s + g.w, 0), out = Object.fromEntries(TIERS.map((t) => [t, 0]));
   groups.forEach((g, i) => { out[(types ? groups.slice(i).find((x) => x.n) ?? groups.findLast((x) => x.n) : g).r] += g.w / total; });
   return out;

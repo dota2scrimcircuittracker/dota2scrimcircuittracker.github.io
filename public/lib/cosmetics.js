@@ -1,4 +1,5 @@
-import { CATALOG, DEFAULT_EQUIPMENT, itemByKey } from './cosmetics-catalog.js';
+import { CATALOG, DEFAULT_EQUIPMENT, itemByKey, SMOKE_CATALOG, smokeStyleOf } from './cosmetics-catalog.js';
+import './smoke-fx.js';
 import { signatureHtml } from './signatures.js';
 import {equipmentUpdateKeys} from './cosmetics-update-keys.js';
 import { steamAccount, steamIdToken } from './store.js';
@@ -12,16 +13,18 @@ import {expansionBorderHtml,expansionFinishHtml,expansionSymbolHtml,borderEmblem
 import {WAVE_ANIMATED_FINISHES} from './cosmetics-wave-catalog.js';
 import {hasParticleGroups} from './cosmetics-particle-groups.js';
 // Finishes with a speed setting: the particle ones, plus fx- finishes that animate (lib/card-fx.js, cosmetics-fx.css).
-export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight','fx-drift','fx-sheen','fx-waves','supernova','deep-sea','reality-rift','shattered-time','ink-water','lenticular',...WAVE_ANIMATED_FINISHES,...Object.keys(CANVAS_FINISHES)]);
+export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight','fx-drift','fx-sheen','fx-waves','supernova','deep-sea','reality-rift','shattered-time','ink-water','lenticular',...WAVE_ANIMATED_FINISHES,...Object.keys(CANVAS_FINISHES),...SMOKE_CATALOG.filter(i=>i.type==='finish').map(i=>i.id)]);
 // Finishes drawn on a canvas; fx- borders have a border speed.
 export const isCanvasFinish=id=>id in CANVAS_FINISHES;
 // Finishes with the one particle amount setting: particle finishes without particles of their own (fx-sheen, fx-waves...)
 // or their own per-group counts (lib/cosmetics-particle-groups.js).
 export const hasParticleAmount=id=>PARTICLE_FINISHES.includes(id)&&!['fx-sheen','fx-waves','supernova','shattered-time','ink-water','lenticular',...WAVE_ANIMATED_FINISHES].includes(id)&&!hasParticleGroups('finish',id);
-export const isFxBorder=id=>typeof id==='string'&&(id.startsWith('fx-')||(itemByKey(`border:${id}`)?.expansion&&itemByKey(`border:${id}`)?.rarity!=='common'));
+export const isFxBorder=id=>typeof id==='string'&&(id.startsWith('fx-')||id.startsWith('smoke-')||(itemByKey(`border:${id}`)?.expansion&&itemByKey(`border:${id}`)?.rarity!=='common'));
 const tuning=e=>({speed:(e.particleSpeed??DEFAULT_EQUIPMENT.particleSpeed)/100,amount:(e.particleAmount??DEFAULT_EQUIPMENT.particleAmount)/100,border:(e.borderSpeed??DEFAULT_EQUIPMENT.borderSpeed)/100});
 // The layer a finish draws its particles in: a canvas, or a set of small elements the stylesheet animates.
 export function particleLayerHtml(finish,e={},count=24) {
+  const smoke=smokeStyleOf('finish',finish);
+  if(smoke){const t=tuning(e);return `<span class="particles smoke-fx" data-smoke="${smoke}" data-smoke-mode="finish" data-amt="${t.amount}" data-spd="${t.speed}" aria-hidden="true"></span>`;}
   const expanded=itemByKey(`finish:${finish}`);if(expanded?.expansion)return expansionFinishHtml(expanded,e);
   if(isCanvasFinish(finish)) {const t=tuning(e);return `<span class="particles" aria-hidden="true"><canvas class="fx-canvas" data-fx="${CANVAS_FINISHES[finish]}" data-amt="${t.amount}" data-spd="${t.speed}"></canvas></span>`;}
   if(hasParticleAmount(finish))count=Math.round(count*tuning(e).amount);
@@ -164,7 +167,7 @@ function symbolLayers(e,outside){
 }
 export const cosmeticEmblems=e=>symbolLayers(e,true);
 // The frame belongs beside the faces; the front's overflow clips artwork to its inner window.
-export const cosmeticBorder=e=>expansionBorderHtml(itemByKey(`border:${e?.border}`),{settings:e?.borderSettings?.[e?.border]});
+export const cosmeticBorder=e=>{const s=smokeStyleOf('border',e?.border);return s?`<span class="exp-border smoke-fx smoke-border" data-border-id="${e.border}" data-smoke="${s}" data-smoke-mode="border" aria-hidden="true"></span>`:expansionBorderHtml(itemByKey(`border:${e?.border}`),{settings:e?.borderSettings?.[e?.border]});};
 const renderedEquipment=new WeakMap(),aspectImages=new WeakSet();
 // Whether a custom-cropped picture is wider than its art window, so style.css can size it to cover the window
 // (data-art-fit). A hidden card has no window to measure yet, so it uses the card's 5:7.
@@ -210,7 +213,7 @@ export function applyEquipment(card,e,name) {
     face.querySelectorAll('.finish-layer,.particles,.exp-finish').forEach(n=>n.remove());
     face.insertAdjacentHTML('beforeend',finishLayersHtml(e));
   }
-  for(const canvas of face.querySelectorAll('.fx-canvas')){canvas.dataset.spd=tuning(e).speed;canvas.dataset.amt=tuning(e).amount;}
+  for(const canvas of face.querySelectorAll('.fx-canvas,.smoke-fx[data-smoke-mode="finish"]')){canvas.dataset.spd=tuning(e).speed;canvas.dataset.amt=tuning(e).amount;}
   if(keys.signature!==previous.signature){
     face.querySelectorAll('.card-autograph').forEach(n=>n.remove());
     face.insertAdjacentHTML('beforeend',signatureHtml(e,e.layout?.name??name));
@@ -225,7 +228,7 @@ export function applyEquipment(card,e,name) {
   const living=card.querySelector('.ft-flip>.living-fx');
   if((living?.dataset.livingId??'')!==(e.living&&livingBorderHtml(e)?e.living:'')){living?.remove();card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',livingBorderHtml(e));}
   const frame=card.querySelector('.ft-flip>.exp-border');
-  if(frame?.dataset.borderId!==border?.id||!border?.expansion||keys.border!==previous.border){card.querySelectorAll('.exp-border').forEach(n=>n.remove());card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',cosmeticBorder(e));}
+  if(frame?.dataset.borderId!==border?.id||!(border?.expansion||border?.smoke)||keys.border!==previous.border){card.querySelectorAll('.exp-border').forEach(n=>n.remove());card.querySelector('.ft-flip').insertAdjacentHTML('beforeend',cosmeticBorder(e));}
   renderedEquipment.set(card,keys);
 }
 export function applyExpandedEquipment(panel,raw,name) {

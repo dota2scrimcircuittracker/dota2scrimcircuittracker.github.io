@@ -1,10 +1,12 @@
 // Explicit loopback-only review mode in the normal Gallery UI. No collection API writes.
+// ?reviewCosmetics=1 lists only the expansion items; ?reviewCosmetics=all unlocks and lists every item, local-only ones too.
 import {CATALOG,DEFAULT_EQUIPMENT} from './cosmetics-catalog.js';
 import {grantLogin,rollPack,recycleCards,openArcanaUpgrade,saveCardDesign,setCardPreferences,setCardName,setCardOrder,setNickname} from './cosmetics-engine.js';
 import {createPlayerCards,PAINT_FILTER} from '../parts/player-card.js';
 const key='ad2l-local-expansion-site-v1';
 export function localCosmeticsReview(){
- if(!['127.0.0.1','localhost','[::1]'].includes(location.hostname)||new URLSearchParams(location.search).get('reviewCosmetics')!=='1')return null;
+ if(!['127.0.0.1','localhost','[::1]'].includes(location.hostname)||!['1','all'].includes(new URLSearchParams(location.search).get('reviewCosmetics')))return null;
+ const all=new URLSearchParams(location.search).get('reviewCosmetics')==='all';
  const design=(border,finish,autograph,hero=74)=>({...DEFAULT_EQUIPMENT,border,finish,autograph,rotation:0,baseCard:{hero,art:null,style:'cinema'}});
  const fresh=()=>{
   const first=design('ancient-war','reality-rift','stacked');
@@ -15,7 +17,7 @@ export function localCosmeticsReview(){
  state.inventory={...Object.fromEntries(CATALOG.map(i=>[i.key,1])),...state.inventory};
  const matches=[{start_time:1,winner:'Radiant',players:[{account_id:101,team:'Radiant',hero:'Invoker',position:2,kills:12,deaths:3,assists:18,gpm:620,xpm:740,hero_damage:32000,last_hits:265}]}];
  const renderer=createPlayerCards(matches,{cards:new Map([[101,{hero:74,style:'cinema'}]]),tiers:new Map([['101',{tier:'A',rating:86}]])});
- return {name:'Fav',cardHtml:PAINT_FILTER+renderer.card({account:101,name:'Fav',team:'AD2L SCRIM LEAGUE'},2,{own:true,equipmentOverride:state.equipment}),adapter:{account:101,expansionReview:true,state,action:async(action,details={})=>{
+ return {name:'Fav',cardHtml:PAINT_FILTER+renderer.card({account:101,name:'Fav',team:'AD2L SCRIM LEAGUE'},2,{own:true,equipmentOverride:state.equipment}),all,adapter:{account:101,expansionReview:!all,state,action:async(action,details={})=>{
   let result;
   if(action==='equip')result={state:saveCardDesign(state,details.equipment,details.cardSlot)};
   else if(action==='card-settings')result={state:setCardPreferences(state,details)};

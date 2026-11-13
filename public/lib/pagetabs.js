@@ -31,7 +31,8 @@ export const PREDICT_TABS = [["fantasy", "Fantasy"], ["ftable", "Fantasy table"]
 // The Drafter's starting points (buttons on the page, not tabs, but linked the same way).
 export const DRAFTER_MODES = [["upcoming", "Upcoming series"], ["teams", "Any two teams"], ["game", "Past game"]];
 // The Gallery: [collection.js tab, label, address segment]; the sub-tab is in the path (#/gallery/packs), not ?tab=.
-export const GALLERY_TABS = [["feed", "Feed", ""], ["gallery", "Gallery", "gallery"], ["packs", "Packs", "packs"], ["collection", "Collection", "collection"], ["customize", "Customize", "customize"], ["recycle", "Recycle", "recycle"], ["cup", "Arcana Cup", "cup"], ...(shopVisible() ? [["shop", "Shop", "shop"]] : [])]; // Shop: local dev hosts only until it opens (lib/shop.js)
+// The Gallery sub-tab is first and opens at plain #/gallery; #/gallery/gallery (its old address) still opens it.
+export const GALLERY_TABS = [["gallery", "Gallery", ""], ["feed", "Feed", "feed"], ["cup", "Arcana Cup", "cup"], ["collection", "Collection", "collection"], ["customize", "Customize", "customize"], ["packs", "Packs", "packs"], ["recycle", "Recycle", "recycle"], ...(shopVisible() ? [["shop", "Shop", "shop"]] : [])]; // Shop: local dev hosts only until it opens (lib/shop.js)
 // The scrims' Schedule page: the scrim scheduler, and your team's availability and calendar.
 export const SCHEDULE_TABS = [["scrims", "Scrims"], ["players", "Player schedule"]];
 // The scrims' Teams page: the table built from the games, every match, and the team cards.

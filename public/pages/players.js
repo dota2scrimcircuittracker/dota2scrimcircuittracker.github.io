@@ -4,7 +4,7 @@ import { hasDetails, playerLeaderboard } from "../lib/stats.js";
 import { pubSummary, pubsSince } from "../lib/predict.js";
 import { info } from "../lib/glossary.js";
 import { RANK_STATS, rankStat, ends, placeOf, ordinal, formatStat } from "../lib/ranks.js";
-import { floorOf, inLeague, portrait, overallBadge, playerLink, teamLink, esc, LEAGUE_COUNT, app, pageHead, playerTabs, wirePlayerTabs, pubStart, sortableTable, pct, fmt, dec, PUB_DAYS, heroStrip } from "../core.js";
+import { floorOf, inLeague, portrait, overallBadge, playerLink, teamLink, esc, LEAGUE_COUNT, app, pageHead, metaTitle, playerTabs, wirePlayerTabs, pubStart, sortableTable, pct, fmt, dec, PUB_DAYS, heroStrip } from "../core.js";
 import { loading, errorBox, weekOfFn, lanesSection, laneCutsOf } from "../parts/lanes.js";
 import { overallStats, statRows } from "../parts/ranks.js";
 import { meter, tierSection, tierRef } from "../parts/tiers.js";
@@ -116,7 +116,7 @@ function leadersSection(src, allRows) {
 export async function renderPlayers(src) {
   app.innerHTML = loading(src.kicker, "Players");
   let matches;
-  try { matches = (await src.load()).filter(hasDetails); } catch (e) { app.innerHTML = `${pageHead(src.kicker, "Players")}${errorBox(e)}`; return; }
+  try { matches = (await src.load()).filter(hasDetails); } catch (e) { app.innerHTML = `${pageHead(src.kicker, metaTitle(src, "players"))}${errorBox(e)}`; return; }
   const data = playerLeaderboard(matches);
   const tiers = data.length ? tierSection(src, matches, await tierRef(src)) : null;
   const leaders = data.length ? leadersSection(src, statRows(matches)) : null;
@@ -133,7 +133,7 @@ export async function renderPlayers(src) {
     <div id="t" class="reveal"></div>
     ${src.ad2l ? `<p class="table-note">Players are matched by their PlayOn name (smurfs included).</p>` : ""}`],
   ]), { store: "playersTab", label: "Players sections" });
-  app.innerHTML = `${pageHead(src.kicker, "Players", data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}.` : "", tabs?.bar)}
+  app.innerHTML = `${pageHead(src.kicker, metaTitle(src, "players"), data.length ? `${data.length} players across ${matches.length} ${matches.length === 1 ? "game" : "games"}.` : "", tabs?.bar)}
     ${data.length ? tabs.panels : `<div class="panel empty"><strong>No players yet</strong>${src.empty}</div>`}`;
   if (!data.length) return;
   wirePlayerTabs();

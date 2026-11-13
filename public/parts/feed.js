@@ -67,6 +67,8 @@ const viewBarHtml = (scoped = false) => `<div class="feed-view" role="group" ari
 // account: one player's Feed (their profile's Feed tab, collection.js mountProfileFeed): only their
 // posts, no post box, and on your own profile your auto-post settings (lib/feed.js feedAutoOf).
 export async function drawFeed(body, { viewer, signIn, action, swatch, colors, typeLabel, ago, focus = null, account = null }) {
+  // "legendary border", or just "arcana" for an arcana tool, whose type label is its rarity.
+  const kindOf = (i) => (typeLabel(i.type) === i.rarity ? i.rarity : `${i.rarity} ${typeLabel(i.type)}`);
   const token = {}; body._feedToken = token;
   body.innerHTML = '<p>Loading feed…</p>';
   let first, focused = null, teams, matches, overrides;
@@ -282,7 +284,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       const arcana = items.filter((i) => i.rarity === 'arcana'), rest = items.length - arcana.length;
       const top = arcana.length ? 'arcana' : PULL_RARITIES.findLast((r) => items.some((i) => i.rarity === r));
       rarity = top ? colors[top] : SCREEN_COLOR;
-      media = `<ul class="feed-pulls">${items.map((i) => `<li style="--rarity:${colors[i.rarity]}">${swatch(i, nameOf(p.account))}<span><strong>${esc(i.name)}</strong><small>${i.rarity} ${esc(typeLabel(i.type))}</small></span></li>`).join('')}${screens.map((sc) => `<li class="feed-pull-screen" style="--rarity:${SCREEN_COLOR}"><img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async"><span><strong>${esc(sc.label)}</strong><small>loading screen</small></span></li>`).join('')}</ul>`;
+      media = `<ul class="feed-pulls">${items.map((i) => `<li style="--rarity:${colors[i.rarity]}">${swatch(i, nameOf(p.account))}<span><strong>${esc(i.name)}</strong><small>${esc(kindOf(i))}</small></span></li>`).join('')}${screens.map((sc) => `<li class="feed-pull-screen" style="--rarity:${SCREEN_COLOR}"><img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async"><span><strong>${esc(sc.label)}</strong><small>loading screen</small></span></li>`).join('')}</ul>`;
       const got = arcana.length ? [`${arcana.length === 1 ? 'an arcana' : `${arcana.length} arcanas`}: ${arcana.map((i) => esc(i.name)).join(', ')}`, rest ? `${rest} card${rest === 1 ? '' : 's'}` : '',
         screens.length ? `${screens.length === 1 ? 'a' : screens.length} loading screen${screens.length === 1 ? '' : 's'}` : ''].filter(Boolean) : [items.length === 1 ? `a${items[0].rarity === 'epic' ? 'n' : ''} ${items[0].rarity}` : items.length ? `${items.length} cards` : '',
         screens.length ? `${screens.length === 1 ? 'a' : screens.length} loading screen${screens.length === 1 ? '' : 's'}` : ''].filter(Boolean);
@@ -458,7 +460,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     const items = p.rewards.map((r) => {
       if (String(r.key).startsWith('arcana:')) return `<li style="--rarity:#ff5ab4"><span></span><span><strong>Arcana card</strong><small>arcana · ${r.key === 'arcana:owed' ? 'arrives on release' : 'new'}</small></span></li>`;
       const i = itemByKey(r.key);
-      return i ? `<li style="--rarity:${colors[i.rarity]}">${swatch(i, nameOf(me))}<span><strong>${esc(i.name)}</strong><small>${i.rarity} ${esc(typeLabel(i.type))} · ${r.duplicate ? 'duplicate' : 'new'}</small></span></li>`
+      return i ? `<li style="--rarity:${colors[i.rarity]}">${swatch(i, nameOf(me))}<span><strong>${esc(i.name)}</strong><small>${esc(kindOf(i))} · ${r.duplicate ? 'duplicate' : 'new'}</small></span></li>`
         : `<li style="--rarity:${colors.common}"><span></span><span><strong>New item</strong><small>Refresh the page to see it</small></span></li>`;
     }).join('');
     const screens = p.screens.map(screenArt).filter(Boolean).map((sc) => `<li class="feed-pull-screen" style="--rarity:${SCREEN_COLOR}"><img src="${esc(sc.src)}" alt="" loading="lazy" decoding="async"><span><strong>${esc(sc.label)}</strong><small>loading screen</small></span></li>`).join('');

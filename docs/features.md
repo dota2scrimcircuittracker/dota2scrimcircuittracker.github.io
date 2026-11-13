@@ -11,7 +11,7 @@ and change it: [maintaining.md](maintaining.md).
   browser (Tesseract OCR, no AI, no API keys), you check them, and the game is saved. Every scrim
   page lives under `/scrims/` (`/scrims/week/`, `/scrims/players/`, `/scrims/teams/<team>`…),
   like a division's; the old `/week/`, `/teams/`, `/#/match/…` addresses forward. The nav
-  matches AD2L's: Teams | Content | Players | Heroes | Predict | Upload. **Teams** (`/scrims/`)
+  matches AD2L's: Teams | Content | Meta | Predict | Tools | Gallery (Gallery highlighted, since it belongs to no league). **Teams** (`/scrims/`)
   opens on **Table**: every team by game wins (then fewest losses), with win %, average kill
   difference, last-five form and streak; **Matches** lists every game; **Teams** shows the team
   cards. Private scrims count.
@@ -75,21 +75,27 @@ and change it: [maintaining.md](maintaining.md).
 - **Guided tour** ("New here?" in the footer) — tours AD2L divisions only: its first stop waits
   for you to pick one (Scrim League is hidden). Pause it and the button reads Resume. Spec:
   `docs/superpowers/specs/2026-09-29-guided-tour-design.md`.
-- **Feedback** (top bar) — anyone can mark up the site and say what they'd change: Snip (drag a
+- **Feedback** (footer, and Tools in the nav) — anyone can mark up the site and say what they'd change: Snip (drag a
   box), Click (pick an element), Draw, and Use site (browse to another page). Every mark asks for
   a note; Submit sends them all as one ticket with the sender's name, at most 5 per browser per
   hour. Tickets can't be read back from the site. Screenshots are drawn from the page, so hero
   art (Steam's CDN won't share it) shows as grey boxes and the display font falls back. Spec:
   `docs/superpowers/specs/2026-09-30-feedback-design.md`.
 - **Footer** — where the data comes from and, on an AD2L page, when that division last synced;
-  the tour and the Discord invite.
+  the Feedback button, the tour and the Discord invite.
 - **Settings** (cog) — dark, grey or light theme, colour-blind mode, My team, and the **time machine**
   (pick weeks: standings, the Players and Heroes tabs, and team, player and hero pages are
   recomputed over just those weeks; a short pick lowers the 3-game floor to the weeks picked).
 - **Nav dropdowns** — hovering a nav tab (or Arrow Down on it) opens a short list: Teams lists
-  the team names, Content the weeks, and Players, Heroes, Predict (AD2L) and Drafter their page's
-  own tabs (from `public/lib/pagetabs.js`).
-- **Phone nav** — Teams, Content, Players and Heroes, then **More ▾** (Predict, Drafter, Upload),
+  the team names, Content the weeks, Predict (AD2L) its page's own tabs (from `public/lib/pagetabs.js`),
+  **Meta** the Players and Heroes tabs grouped under each name, and **Tools** the Drafter (AD2L
+  divisions), Upload (not on All divisions), the table builder and Feedback.
+- **Meta** — the Players and Heroes pages under one nav tab. Each page's title is a switch,
+  "Players  Heroes", the other page a link. The Meta link opens Players.
+- **Tools** (`/<league>/tools`, `public/pages/tools.js`) — one card per tool: Drafter, Upload,
+  Table builder, Feedback (turns on feedback mode). The table builder's top-bar button is gone;
+  the Drafter, Upload and table-builder pages light up Tools in the nav.
+- **Phone nav** — Teams, Content, Meta and Predict, then **More ▾** (Tools, Gallery),
   on one line with no sideways scroll. More opens on a tap. The league name drops the season and
   shortens ("Champion", "All", "Heroic" with an "A" badge) so it fits beside the header buttons.
 - **Opening tab** — a league's Teams page always opens on Table, and a team page on Overview,
@@ -754,8 +760,9 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   Gallery › Customize or on your own profile (the Worker keeps it). Shown, it's the name on all
   your cards and signatures (a card's own name from its layout still wins on that card), on
   Gallery captions, and your profile title reads "Nickname (in-game name)". Plain text, up to 24.
-- **Gallery** (nav tab in every league, `#/<league>/gallery`; `/cards` still works):
-  opens on the **Feed**: player posts, newly saved cards and pack pulls (what each player
+- **Gallery** (highlighted nav tab in every league, `#/gallery`; `/cards` still works):
+  opens on the **Gallery** sub-tab. Sub-tabs in order: Gallery, Feed, Arcana Cup, Collection,
+  Customize, Packs, Recycle, Shop. The **Feed** (`#/gallery/feed`): player posts, newly saved cards and pack pulls (what each player
   auto-posts; see Profile Feed), newest first. **Show** filters to one kind (posts, clips, games, screenshots, polls, card designs, pack pulls) and **Newest / Trending / Top** sorts (Trending is the default; Top has a timeline: all time, today, this week, this month): Top by score (one point per player who reacted, two per comment), Trending by that score fading with age (lib/feed.js sortFeed; the Worker sorts before paging). Profile Feeds have the same bar. Fav can **Pin** one post (Pin/Unpin in its header, whole Feed only): it leads page one of every sort and filter it matches, marked "Pinned by Fav", and isn't repeated further down. Signed in, the post box takes text (Dota emoticon codes work), up to 4 images (pick,
   paste or drop; shrunk in the browser), a clip link (YouTube, Twitch and Streamable play in the
   post behind a play button; Medal and Allstar show as a link) and **Highlight a game**: one of
@@ -776,16 +783,16 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   swearing passes), images through an AI check (nudity, real gore, hate symbols), and Fav can
   delete any post and **Ban** a player (on their post or comment) from posting, commenting or
   reacting, any mix of the three, for some days or until lifted (list with what each ban covers,
-  Change and Unban above the feed). **Gallery** sub-tab (`#/<league>/gallery/gallery`) is every saved card
+  Change and Unban above the feed). **Gallery** sub-tab (`#/gallery`; `#/gallery/gallery` still works) is every saved card
   anyone in the league has changed from the default, each with its ratings and the same vote
-  buttons as the profile. The other sub-tabs (Packs, Collection, Customize, Recycle;
+  buttons as the profile. The other sub-tabs (Collection, Customize, Packs, Recycle;
   `#/<league>/gallery/<tab>`) are your own collection on a full page, the same as the collection
   dialog; the top bar's gift button opens Gallery › Packs. The dialog still opens from Fantasy and
-  profiles, with the same tab order. Two rows of cards a page, with page buttons under
+  profiles, with the same tabs in the same order. Two rows of cards a page, with page buttons under
   them (columns follow the screen width). Sort by newest (the default), voted rarity
   (legendary first; among equals, the clearer verdict, then more votes), most votes, or player
   name; the sort you pick is remembered in that browser. Signed in, "Not rated by me" leaves the cards you can still rate. Names link to profiles.
-- **Arcana Cup** (`#/gallery/cup`, the last Gallery sub-tab): a card-design contest for player
+- **Arcana Cup** (`#/gallery/cup`, the third Gallery sub-tab): a card-design contest for player
   packs in the next mini, with two lanes in a sub-tab switcher: **Artistic** (craft and taste) and
   **Funny** (the best joke), each its own bracket so a meme card never beats a carefully made one.
   Signed-in players enter up to three of their saved cards in all, each as Artistic or Funny with two at most in one, until

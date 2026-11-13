@@ -1,7 +1,7 @@
 // Team histories, from the same match list the other pages use. Works for both leagues:
 // scrim teams are identified by name (case-insensitive); AD2L games also carry PlayOn
 // team ids (team_a_id / team_b_id), which are preferred when present.
-import { hasDetails } from "./stats.js";
+import { hasDetails, wardLife } from "./stats.js";
 
 export const teamSlug = (name) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "team";
 
@@ -153,7 +153,7 @@ export function teamLeaderboard(matches) {
     for (const side of ["a", "b"]) {
       const id = side === "a" ? m.team_a_id : m.team_b_id, name = (side === "a" ? m.team_a : m.team_b).trim();
       const key = id != null ? `id:${id}` : name.toLowerCase();
-      const r = rows.get(key) ?? rows.set(key, { key, id: id ?? null, name, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, gpm: 0, xpm: 0, damage: 0, minutes: 0, sums: {}, lead10: [], fb: [] }).get(key);
+      const r = rows.get(key) ?? rows.set(key, { key, id: id ?? null, name, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, gpm: 0, xpm: 0, damage: 0, minutes: 0, sums: {}, mins: {}, ward_t: 0, ward_n: 0, lead10: [], fb: [] }).get(key);
       const ps = m.players.filter((p) => p.team === side);
       r.games++; if (m.winner === side) r.wins++;
       r.kills += side === "a" ? m.score_a : m.score_b;
@@ -164,16 +164,19 @@ export function teamLeaderboard(matches) {
       r.damage += ps.reduce((s, p) => s + (p.hero_damage ?? 0), 0);
       r.minutes += minutes;
       // Replay-only fields: a team total for the game when every player has it.
-      const add = (k, f) => { if (ps.every((p) => f(p) != null)) (r.sums[k] ??= []).push(ps.reduce((s, p) => s + f(p), 0)); };
+      const add = (k, f) => { if (ps.every((p) => f(p) != null)) { (r.sums[k] ??= []).push(ps.reduce((s, p) => s + f(p), 0)); r.mins[k] = (r.mins[k] ?? 0) + minutes; } };
       add("obs", (p) => p.obs_placed); add("sen", (p) => p.sen_placed);
       add("dewards", (p) => (p.obs_killed == null ? null : p.obs_killed + (p.sen_killed ?? 0)));
       add("stacks", (p) => p.camps_stacked); add("healing", (p) => p.hero_healing); add("stuns", (p) => p.stuns);
       add("building", (p) => p.tower_damage); add("roshans", (p) => p.roshan_kills); add("tormentors", (p) => p.tormentor_kills);
+      for (const p of ps) { const wl = wardLife(p, m.duration_sec); if (wl) { r.ward_t += wl.t; r.ward_n += wl.n; } }
       if (Array.isArray(m.gold_adv) && m.gold_adv.length > 10) r.lead10.push(side === "a" ? m.gold_adv[10] : -m.gold_adv[10]);
       if (ps.some((p) => p.first_blood != null)) r.fb.push(ps.some((p) => p.first_blood > 0) ? 1 : 0);
     }
   }
   const avg = (xs) => (xs?.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+  // A team total per minute, over the minutes of the games that record it.
+  const pm = (r, k) => (r.mins[k] ? r.sums[k].reduce((s, x) => s + x, 0) / r.mins[k] : null);
   return [...rows.values()].map((r) => ({
     key: r.key, id: r.id, name: r.name, games: r.games, wins: r.wins,
     win_rate: r.wins / r.games,
@@ -186,6 +189,8 @@ export function teamLeaderboard(matches) {
     lead10: avg(r.lead10), fb_rate: avg(r.fb),
     obs_pg: avg(r.sums.obs), sen_pg: avg(r.sums.sen), dewards_pg: avg(r.sums.dewards), stacks_pg: avg(r.sums.stacks),
     healing_pg: avg(r.sums.healing), stuns_pg: avg(r.sums.stuns),
+    obs_pm: pm(r, "obs"), sen_pm: pm(r, "sen"), dewards_pm: pm(r, "dewards"), stuns_pm: pm(r, "stuns"),
+    ward_life: r.ward_n ? r.ward_t / r.ward_n : null,
     building_pg: avg(r.sums.building), roshans_pg: avg(r.sums.roshans), tormentors_pg: avg(r.sums.tormentors),
   }));
 }

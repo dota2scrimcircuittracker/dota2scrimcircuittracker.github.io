@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { RANK_STATS, withPerGame, rankStat, ends, placeOf, ordinal, formatStat } from "../public/lib/ranks.js";
 import { heroRatings, heroTierList, heroPowerList, ratingOf, K_HERO, gameRatings, tierModel, tierList, MIN_GAMES, TIERS } from "../public/lib/tiers.js";
-import { playerLeaderboard } from "../public/lib/stats.js";
+import { playerLeaderboard, wardLife } from "../public/lib/stats.js";
+import { teamLeaderboard } from "../public/lib/teams.js";
 import { parseDuration } from "../public/lib/validate.js";
 
 const stat = (key) => RANK_STATS.find((s) => s.key === key);
@@ -48,7 +49,9 @@ test("ordinal and formatStat", () => {
   assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 101].map(ordinal), ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "101st"]);
   assert.equal(formatStat(stat("win_rate"), 0.456), "46%");
   assert.equal(formatStat(stat("kda"), 3.14159), "3.14");
-  assert.equal(formatStat(stat("obs_pg"), null), "—");
+  assert.equal(formatStat(stat("obs_pm"), null), "—");
+  assert.equal(formatStat(stat("obs_pm"), 0.2468), "0.25");
+  assert.equal(formatStat(stat("ward_life"), 245.4), "4:05");
 });
 
 test("withPerGame: totals become per-game numbers", () => {
@@ -144,4 +147,33 @@ test("heroRatings: pos keeps only that position's games", () => {
     const all = [...heroRatings(games, { model, pos }).values()].flat();
     assert.ok(all.length && all.every((p) => p.pos === pos));
   }
+});
+
+// Two games of one support: 20 and 40 minutes. Per-minute numbers are totals over total minutes,
+// so the long game doesn't count double; ward uptime is averaged over every observer.
+test("wards and stuns a minute, and average ward uptime", () => {
+  const sup = (obs, sen, stuns, obs_pos) => ({ team: "a", account_id: 1, name: "Sup", hero: "Lion", kills: 0, deaths: 0, assists: 0, gpm: 300, xpm: 400, hero_damage: 0, net_worth: 0,
+    obs_placed: obs, sen_placed: sen, obs_killed: 1, sen_killed: 1, stuns, obs_pos });
+  const game = (min, p) => ({ duration_sec: min * 60, winner: "a", score_a: 10, score_b: 5, team_a: "A", team_b: "B", team_a_id: 1, team_b_id: 2, players: [p] });
+  // 20 min: one observer killed after 100s, one still up when the game ends at 1200s (placed at 1000s: 200s).
+  // 40 min: one observer that lived its full 360s.
+  const games = [game(20, sup(4, 6, 30, [0, 0, 60, 100, 0, 0, 0, 1000, -1, 0])), game(40, sup(8, 12, 60, [0, 0, 300, 360, 0]))];
+  assert.deepEqual(wardLife(games[0].players[0], 1200), { t: 300, n: 2 });
+  const [r] = playerLeaderboard(games);
+  assert.equal(r.obs_pm, 12 / 60);
+  assert.equal(r.sen_pm, 18 / 60);
+  assert.equal(r.dewards_pm, 4 / 60);
+  assert.equal(r.stuns_pm, 90 / 60);
+  assert.equal(r.ward_life, (100 + 200 + 360) / 3);
+  // Team lines: five of that support on side a, five players without replay stats on side b.
+  const full = games.map((g) => ({ ...g, players: [
+    ...[1, 2, 3, 4, 5].map((id) => ({ ...g.players[0], account_id: id })),
+    ...[6, 7, 8, 9, 10].map((id) => ({ ...g.players[0], team: "b", account_id: id, obs_placed: null, sen_placed: null, obs_killed: null, sen_killed: null, stuns: null, obs_pos: null })),
+  ] }));
+  const tl = teamLeaderboard(full), t = tl.find((x) => x.id === 1), b = tl.find((x) => x.id === 2);
+  assert.equal(t.obs_pm, (5 * 12) / 60);
+  assert.equal(t.stuns_pm, (5 * 90) / 60);
+  assert.equal(t.ward_life, 220);
+  assert.equal(b.obs_pm, null);
+  assert.equal(b.ward_life, null);
 });

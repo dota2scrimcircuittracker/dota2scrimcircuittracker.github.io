@@ -50,3 +50,10 @@ Completed feedback tickets: ID · date · what was done. Names stay out (this re
 - FB-HDIS38 · 2026-11-03 · PlayOn posted Rats and Bunnies v Rubick's Cube for this week; today's sync added it, so Warrior's pick pool is 4 teams again
 - FB-PJU7K9 · 2026-11-03 · Customize moved from the popup to the Gallery page (more room), and on wide screens the adjustments box now has its own right-hand column so the controls no longer jump sideways
 - FB-BILATY · 2026-11-03 · RnB v 9 to 5 Guys was played Mon Nov 2, 4 days after its date, so its games never linked to the series. The sync now links playoff games up to 6 days late, and they count for the scheduled week: RnB and 9 to 5 have their Oct 26 points (Heroic's late series too)
+- FB-LRTTFY · 2026-11-05 · Gallery shows two rows of cards a page instead of three, so fewer cards render at once (a2e752d)
+- FB-YX6AJE · 2026-11-06 · Fixed the broken line from the upper final to the grand final in the bracket.
+- FB-IUKGTC · 2026-11-10 · Team and player Support stats now count observers, sentries, dewards and stun seconds per minute, so short games aren't penalised; added Average ward uptime.
+- FB-64WHEA · 2026-11-10 · Player stat tiles are wider and wrap on small screens, so the All leagues place is no longer cut off.
+- FB-7M5NUQ · 2026-11-12 · Saved for later: docs/ideas/2026-11-12-tier-scoring-feedback.md
+- FB-1IFSMS · 2026-11-12 · Saved for later: docs/ideas/2026-11-12-tier-scoring-feedback.md
+- FB-V9SNSM · 2026-11-12 · Saved for later: docs/ideas/2026-11-12-tier-scoring-feedback.md

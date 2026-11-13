@@ -16,7 +16,7 @@ export const bundleBonus = (b) => Math.round((b.tokens / b.dollars / (BUNDLES[0]
 export const ARCANA_PRICE = 30;
 export const PRICES = { common: 1, rare: 3, epic: 5, legendary: 10, arcana: ARCANA_PRICE };
 // Commissioned items (catalog `commission: true`) go in packs, never on sale here.
-export const SHOP_ITEMS = CATALOG.filter((i) => PRICES[i.rarity] != null && !i.commission);
+export const SHOP_ITEMS = CATALOG.filter((i) => PRICES[i.rarity] != null && !i.commission && i.drops !== false);
 // An extra card design slot, up to MAX_EXTRA_SLOTS of them.
 export const SLOT_PRICE = 10, MAX_EXTRA_SLOTS = 3;
 // Commissions: Fav designs it with you. single = one signature style, border or finish;

@@ -5,7 +5,7 @@ import { byHero } from "../lib/timeline.js";
 import { draftAnalysis } from "../lib/draft.js";
 import { info } from "../lib/glossary.js";
 import { firstBloodRecord, sideRecord } from "../lib/combat.js";
-import { app, pageHead, pct, heroLink, minBar, MIN_DEFAULT, wireMinBar, sortableTable, portrait, fmt, esc, playerTabs, wirePlayerTabs } from "../core.js";
+import { app, pageHead, metaTitle, pct, heroLink, minBar, MIN_DEFAULT, wireMinBar, sortableTable, portrait, fmt, esc, playerTabs, wirePlayerTabs } from "../core.js";
 import { pageTabs, HEROES_PAGE_TABS } from "../lib/pagetabs.js";
 import { loading, errorBox } from "../parts/lanes.js";
 import { heroRanks } from "../parts/ranks.js";
@@ -16,7 +16,7 @@ import { heroTierSection, heroPowerSection } from "../parts/herotiers.js";
 export async function renderHeroes(src) {
   app.innerHTML = loading(src.kicker, "Heroes");
   let all;
-  try { all = await src.load(); } catch (e) { app.innerHTML = `${pageHead(src.kicker, "Heroes")}${errorBox(e)}`; return; }
+  try { all = await src.load(); } catch (e) { app.innerHTML = `${pageHead(src.kicker, metaTitle(src, "heroes"))}${errorBox(e)}`; return; }
   const matches = all.filter(hasDetails);
   const rows = heroStats(matches);
   const ratings = matches.length ? heroRanks(matches, await tierRef(src)) : null;
@@ -59,7 +59,7 @@ export async function renderHeroes(src) {
     ["table", `${cards}${minBar(a.games ? "Show heroes picked or banned at least" : "Show heroes picked at least", "times", MIN_DEFAULT(matches))}<div id="t" class="reveal"></div>
       ${a.games ? `<p class="table-note">B1–B3 = bans in draft phase 1–3; P1–P3 = picks, with the win % when picked in that phase (P3 = last picks).</p>` : ""}`],
   ]), { store: "heroesTab", label: "Heroes sections" });
-  app.innerHTML = `${pageHead(src.kicker, "Heroes", merged.length ? `${rows.length} heroes picked across ${matches.length} ${matches.length === 1 ? "game" : "games"}${a.games ? `, with bans and picks by draft phase from ${a.games} Captains Mode drafts` : ""}.` : "", tabs?.bar)}
+  app.innerHTML = `${pageHead(src.kicker, metaTitle(src, "heroes"), merged.length ? `${rows.length} heroes picked across ${matches.length} ${matches.length === 1 ? "game" : "games"}${a.games ? `, with bans and picks by draft phase from ${a.games} Captains Mode drafts` : ""}.` : "", tabs?.bar)}
     ${merged.length ? tabs.panels : `<div class="panel empty"><strong>No picks yet</strong>${src.empty}</div>`}`;
   if (!merged.length) return;
   wirePlayerTabs();

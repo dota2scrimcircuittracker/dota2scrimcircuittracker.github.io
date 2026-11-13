@@ -47,6 +47,25 @@ returns "The shop is not open yet." Paid checkouts still credit. The Stripe webh
 
 Local testing: `?testShop=1` (fake wallet, 30 tokens), `?testShop=reset`, `?testShop=fav` (Fav's
 orders panel) on a local dev host only (`lib/local-shop-test.js`).
+## Personal items (local only)
+
+One-off items made for a single player, in `PERSONAL_CATALOG` (`lib/cosmetics-catalog.js`). `drops:false` keeps them out of
+normal and themed packs, pack-odds counts and the shop. They join the catalog only on loopback while `PERSONAL_LIVE` is false.
+To hand one out: flip `PERSONAL_LIVE`, deploy the Worker, then gift it with an item gift (`kind:'item'`).
+- Brown Wisp (`border:fx-brown-wisp`, legendary), for Brown (75379546). Drawn by the `crosswind` WebGL style
+  (`SMOKE_WIND` in `lib/border-smoke.js`): brown sand blowing in off the left of the frame, drifting thin across the art
+  and trailing off the right. `smokeStyleOf` maps the item to it. Its texture `fx-brown-sand` (`cosmetics-fx.css`) is a plain
+  brown frame under the sand and the no-WebGL fallback. Other sand takes: `public/_review/sand-wind.html`.
+
+## Living effects (local only)
+
+`SMOKE_CATALOG` (`lib/cosmetics-catalog.js`): each of the 36 WebGL styles in `lib/border-smoke.js` (elements, multi-colour,
+realistic, advanced) as a legendary border, signature and finish, 108 items, ids `smoke-<style>`. `drops:false`; loopback only
+while `SMOKE_LIVE` is false. `lib/cosmetics.js` and `lib/signatures.js` write a `.smoke-fx` span; `lib/smoke-fx.js` starts the
+effect, scaled to the card (styles were tuned on a 210 px card). All effects share one WebGL context and draw only on screen.
+Test with every item unlocked: `?reviewCosmetics=all#/gallery/customize` on localhost (no account writes). Review pages:
+`public/_review/smoke-{borders,sigs,bench}.html` (gitignored).
+
 ## November 3 wave (local only)
 
 25 items left after Fav's Nov 4 vote: 7 borders (Cedar, Cork, Damascus, Lapis, Stitched Leather, Lantern Festival,

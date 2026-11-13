@@ -4,16 +4,122 @@
     {
       "name": "scrim-league",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
+      "runtimeArgs": [
+        "start"
+      ],
       "port": 3000,
       "autoPort": true
     },
     {
+      "name": "scheduler-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../Dota Scrim League - scheduler/server.js"
+      ],
+      "port": 56145
+    },
+    {
+      "name": "collection-tab-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../DSL-collection-tab/server.js"
+      ],
+      "port": 56145,
+      "autoPort": false
+    },
+    {
       "name": "site-build",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js", "_site"],
+      "runtimeArgs": [
+        "server.js",
+        "_site"
+      ],
       "port": 3001,
       "autoPort": true
+    },
+    {
+      "name": "shop-launch-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/Jonah/AppData/Local/Temp/claude/C--Users-Jonah--claude-spares-spare-cXB367/68ab6136-bd8c-4464-90bd-f23c9f778612/scratchpad/wkwt/server.js"
+      ],
+      "port": 3014,
+      "autoPort": false,
+      "env": {
+        "PORT": "3014"
+      }
+    },
+    {
+      "name": "release-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../DSL-release/server.js"
+      ],
+      "port": 3011,
+      "autoPort": false,
+      "env": {
+        "PORT": "3011"
+      }
+    },
+    {
+      "name": "scheduler-release",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/Jonah/AppData/Local/Temp/claude/d9b09eefac26206a/68ab6136-bd8c-4464-90bd-f23c9f778612/scratchpad/schedwt/server.js"
+      ],
+      "port": 56145,
+      "autoPort": false,
+      "env": {
+        "PORT": "56145"
+      }
+    },
+    {
+      "name": "flipfix-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../DSL-flipfix/server.js"
+      ],
+      "port": 56145,
+      "autoPort": false,
+      "env": {
+        "PORT": "56145"
+      }
+    },
+    {
+      "name": "release-all",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/Jonah/AppData/Local/Temp/claude/d9b09eefac26206a/68ab6136-bd8c-4464-90bd-f23c9f778612/scratchpad/relwt/server.js"
+      ],
+      "port": 56145,
+      "autoPort": false,
+      "env": {
+        "PORT": "56145"
+      }
+    },
+    {
+      "name": "cupfix-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../dsl-cupfix/server.js"
+      ],
+      "port": 56145,
+      "autoPort": false,
+      "env": {
+        "PORT": "56145"
+      }
+    },
+    {
+      "name": "twinturn-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../DSL-twinturn/server.js"
+      ],
+      "port": 56145,
+      "autoPort": false,
+      "env": {
+        "PORT": "56145"
+      }
     }
   ]
 }

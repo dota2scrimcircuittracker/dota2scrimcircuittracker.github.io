@@ -16,6 +16,7 @@ import { renderPlayers } from "./pages/players.js";
 import { renderStandings } from "./pages/standings.js";
 import { renderTeams } from "./pages/teams.js";
 import { renderWeek } from "./pages/week.js";
+import { renderTools, toolList, startFeedbackMode } from "./pages/tools.js";
 import { mountMe, myLeagueHome } from "./parts/me.js";
 import { mountGift } from './parts/collection.js';
 import { startPlusLevels } from "./lib/hero-levels.js";
@@ -65,8 +66,6 @@ const setSettings = (open) => {
 settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(settingsPop.hidden); };
 document.addEventListener("click", (e) => { if (!e.target.closest(".settings")) setSettings(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSettings(false); });
-// The table builder (pages/search.js &table=): a button next to the search, in the league being viewed.
-const tableBtn = document.getElementById("table-btn");
 // My team (core.js myTeam): the list loads the first time the menu opens.
 const myTeamSel = document.getElementById("my-team");
 const fillMyTeam = async () => { myTeamSel.innerHTML = await myTeamOptions(); };
@@ -312,8 +311,19 @@ async function teamMenu(src) {
 }
 // A page's own tabs (Players, Heroes, Predict, Drafter).
 const pageMenu = (list, path) => async (src) => ({ items: tabList(list, src).map(([id, label]) => ({ name: label, href: `${src.root}/${path}?tab=${id}` })) });
-const playerMenu = pageMenu(PLAYERS_PAGE_TABS, "players");
-const heroMenu = pageMenu(HEROES_PAGE_TABS, "heroes");
+// Meta: the Players and Heroes pages under one tab, each page's tabs grouped under its name.
+const metaMenu = async (src) => ({ items: [
+  ...(await pageMenu(PLAYERS_PAGE_TABS, "players")(src)).items.map((x) => ({ ...x, group: "Players" })),
+  ...(await pageMenu(HEROES_PAGE_TABS, "heroes")(src)).items.map((x) => ({ ...x, group: "Heroes" })),
+] });
+// Tools: the Drafter, Upload, the table builder and Feedback (pages/tools.js).
+const toolsMenu = async (src) => ({ items: toolList(src).map(({ name, href, action }) => ({ name, href: href ?? "#", action })) });
+// The nav tab a page belongs to: Players and Heroes live under Meta; the Drafter, Upload and the
+// table builder under Tools.
+const NAV_OF = { players: "meta", heroes: "meta", drafter: "tools", upload: "tools", search: "tools" };
+const navOf = (section) => NAV_OF[section] ?? section;
+// The page's own name for the window title, where it isn't its nav tab's.
+const SECTION_TITLE = { players: "Players", heroes: "Heroes", drafter: "Drafter", upload: "Upload", search: "Search" };
 // The Gallery keeps its sub-tab in the path and no league in the address.
 const galleryMenu = async () => ({ items: GALLERY_TABS.map(([, label, seg]) => ({ name: label, href: `#/gallery${seg ? `/${seg}` : ""}` })) });
 async function weekMenu(src) {
@@ -326,14 +336,14 @@ async function weekMenu(src) {
   });
   return { items };
 }
-// Phones: the tabs after the first four (Predict, Drafter, Upload) fold under "More ▾". Predict's
+// Phones: the tabs after the first four (Tools, Gallery) fold under "More ▾". Predict's
 // own tabs follow it there, indented, so the Leaderboard is named one tap from the nav.
 const NAV_SHOWN = 4;
 const moreMenu = async (src) => ({ items: (await Promise.all(src.nav.slice(NAV_SHOWN).map(async ([href, key, label]) => [
   { name: label, href },
   ...(key === "predict" && hasMenu(key, src) ? (await NAV_MENUS.predict(src)).items.map((x) => ({ ...x, child: true })) : []),
 ]))).flat() });
-const NAV_MENUS = { standings: teamMenu, players: playerMenu, heroes: heroMenu, week: weekMenu,
+const NAV_MENUS = { standings: teamMenu, meta: metaMenu, tools: toolsMenu, week: weekMenu,
   predict: pageMenu(PREDICT_TABS, "predict"), drafter: pageMenu(DRAFTER_MODES, "drafter"), gallery: galleryMenu, more: moreMenu };
 // Scrim Predict has no tabs, so no dropdown.
 const hasMenu = (key, src) => !!NAV_MENUS[key] && !(key === "predict" && !src.ad2l);
@@ -368,7 +378,7 @@ async function openNavMenu(it) {
   const list = menu.items.map((x, i) => {
     const g = x.group != null && x.group !== group ? `<div class="nd-group">${esc(x.group)}</div>` : "";
     group = x.group ?? group;
-    return `${g}<a class="nd-item${x.child ? " nd-child" : ""}" href="${x.href}" data-i="${i}"><span class="nd-name">${esc(x.name)}</span>${x.sub ? `<span class="nd-sub">${esc(x.sub)}</span>` : ""}</a>`;
+    return `${g}<a class="nd-item${x.child ? " nd-child" : ""}" href="${x.href}" data-i="${i}"${x.action ? ` data-action="${x.action}"` : ""}><span class="nd-name">${esc(x.name)}</span>${x.sub ? `<span class="nd-sub">${esc(x.sub)}</span>` : ""}</a>`;
   }).join("");
   drop.innerHTML = `<div class="nd-list">${list}</div>`;
   // Mark where you are (a team's page, or the tab a link opened), scrolled into view.
@@ -399,7 +409,13 @@ function fitNavDrop(drop) {
   nav.addEventListener("mouseleave", () => { if (canHover.matches) later(() => closeNavMenus(), 200); });
   nav.addEventListener("focusout", (e) => { if (!navItemOf(e.relatedTarget)) closeNavMenus(); });
   nav.addEventListener("click", (e) => {
-    if (e.target.closest(".nav-drop a")) { clearTimeout(timer); closeNavMenus(); return; }
+    const pick = e.target.closest(".nav-drop a");
+    if (pick) {
+      clearTimeout(timer); closeNavMenus();
+      // Feedback (Tools) is a mode, not a page.
+      if (pick.dataset.action === "feedback") { e.preventDefault(); startFeedbackMode(); }
+      return;
+    }
     // More ▾ (phones) opens on a tap, since there's no hover.
     const more = e.target.closest(".nav-more > button");
     if (more) { const it = more.parentElement; if (it.classList.contains("open")) closeNavMenus(); else openNavMenu(it); }
@@ -532,6 +548,7 @@ export function route() {
     else if (new RegExp(`^${r}/edit/[0-9a-f]{32}$`).test(h)) { section = "week"; page = async () => (await uploadPage()).renderEdit(h.slice(`${r}/edit/`.length), src.key); }
     else if (h.startsWith(`${r}/upload`)) { section = "upload"; page = async () => { const { endEdit, upload, checkDraft, renderUpload } = await uploadPage(); endEdit(); upload.league = src.key; await src.data().catch(() => null); await divUploaded(src.key); if (upload.draft) upload.check = checkDraft(upload.draft); return renderUpload(); }; }
     else if (h.startsWith(`${r}/search`)) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }
+    else if (h.startsWith(`${r}/tools`)) { section = "tools"; page = () => renderTools(src); }
     else if (/^\/(cards|gallery)(\/|$)/.test(h.slice(r.length))) { section = "gallery"; page = async () => (await galleryPage()).renderGallery(src, h.slice(r.length).split("/")[2], !!gal); }
     else if (/^(\/(standings|matches|crosstable|race)?)?\/?$/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
     else page = () => renderNotFound(src);
@@ -562,6 +579,7 @@ export function route() {
     else if (p.startsWith("/hero/")) { section = "heroes"; tm = true; page = () => renderHero(t, p.slice("/hero/".length)); }
     else if (p.startsWith("/heroes")) { section = "heroes"; tm = true; page = () => renderHeroes(t); }
     else if (p.startsWith("/search")) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }
+    else if (p.startsWith("/tools")) { section = "tools"; page = () => renderTools(src); }
     else if (/^\/(cards|gallery)(\/|$)/.test(p)) { section = "gallery"; page = async () => (await galleryPage()).renderGallery(src, p.split("/")[2], !!gal); }
     // Teams: the table, the matches and the team grid. /teams and /matches were their own pages once.
     else if (/^(\/(standings|matches|teams)?)?\/?$/.test(p)) { section = "standings"; tm = true; page = () => renderMatches(t); }
@@ -569,11 +587,12 @@ export function route() {
   }
   // Tabs past the first four carry nav-extra: phones hide them and show them under More ▾.
   const extra = src.nav.length > NAV_SHOWN + 1;
+  const navKey = navOf(section);
   document.getElementById("nav").innerHTML = src.nav.map(([href, key, label, cls], i) => {
     const x = extra && i >= NAV_SHOWN ? " nav-extra" : "";
-    const a = `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === section ? " active" : ""}${hasMenu(key, src) ? "" : x}"${key === section ? ' aria-current="page"' : ""}${hasMenu(key, src) ? ' aria-haspopup="true" aria-expanded="false"' : ""}>${label}</a>`;
+    const a = `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === navKey ? " active" : ""}${hasMenu(key, src) ? "" : x}"${key === navKey ? ' aria-current="page"' : ""}${hasMenu(key, src) ? ' aria-haspopup="true" aria-expanded="false"' : ""}>${label}</a>`;
     return hasMenu(key, src) ? `<div class="nav-item${x}" data-menu="${key}">${a}<div class="nav-drop" hidden></div></div>` : a;
-  }).join("") + (extra ? `<div class="nav-item nav-more" data-menu="more"><button type="button" class="${src.nav.slice(NAV_SHOWN).some(([, key]) => key === section) ? "active" : ""}" aria-haspopup="true" aria-expanded="false">More<span class="caret" aria-hidden="true"></span></button><div class="nav-drop more-drop" hidden></div></div>` : "");
+  }).join("") + (extra ? `<div class="nav-item nav-more" data-menu="more"><button type="button" class="${src.nav.slice(NAV_SHOWN).some(([, key]) => key === navKey) ? "active" : ""}" aria-haspopup="true" aria-expanded="false">More<span class="caret" aria-hidden="true"></span></button><div class="nav-drop more-drop" hidden></div></div>` : "");
   // Phones scroll the tabs sideways: bring the current one into view.
   const navEl = document.getElementById("nav"), cur = navEl.querySelector("a.active");
   if (cur && navEl.scrollWidth > navEl.clientWidth) {
@@ -581,7 +600,6 @@ export function route() {
     navEl.scrollLeft += c.left - n.left - (n.width - c.width) / 2;
   }
   navSrc = src;
-  tableBtn.href = `${src.root}/search?table=team`;
   // League menu: each league opens on the tab you're on (Players stays Players). A team,
   // game or player page opens that tab's list, since it needn't exist in the other league.
   // Teams lands on the other league's Teams. The scrims have no Drafter (and divisions no
@@ -595,14 +613,14 @@ export function route() {
   timeBar(src, tm);
   // The tab's own name first ("Players · AD2L S48 Warrior"); detail pages put theirs in front
   // when they draw (crumbs).
-  const label = src.nav.find(([, key]) => key === section)?.[2] ?? "";
+  const label = SECTION_TITLE[section] ?? src.nav.find(([, key]) => key === section)?.[2] ?? "";
   setTitle(...(label ? [label] : []), leagueTitle);
   return Promise.resolve(page()).then(goToSection).finally(() => footSync(src));
 }
 // An address that isn't a page: say so, with the way back, rather than quietly showing another page.
 function renderNotFound(src) {
   setTitle("Page not found");
-  const links = src.nav.filter(([, , , cls]) => !cls).map(([href, , label]) => `<a class="week-btn" href="${href}">${esc(label)}</a>`).join("");
+  const links = src.nav.map(([href, , label]) => `<a class="week-btn" href="${href}">${esc(label)}</a>`).join("");
   app.innerHTML = `${pageHead(src.ad2l ? `AD2L · ${esc(src.all ? "All divisions" : src.division)}` : "Scrim League", "Page not found")}
     <p class="nf-text">There's no page at <code>${esc(location.pathname + location.hash)}</code>. It may have moved, or the link was cut short.</p>
     <div class="nf-links">${links}<a class="week-btn" href="#/">All leagues</a></div>`;

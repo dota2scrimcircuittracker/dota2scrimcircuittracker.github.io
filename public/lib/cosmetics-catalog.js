@@ -1,3 +1,4 @@
+import {SMOKE_STYLES,SMOKE_MULTI,SMOKE_REAL,SMOKE_ADV} from './border-smoke.js';
 import {EXPANSION_CATALOG} from './cosmetics-expansion-catalog.js';
 import {WAVE_CATALOG,DOTA_CATALOG,ENSO_CATALOG,WAVE2_CATALOG,WAVE3_CATALOG,WAVE3_LIVE} from './cosmetics-wave-catalog.js';
 import {ARCANA_TOOLS,LIVING_BORDERS} from './cosmetics-arcana-catalog.js';
@@ -1100,6 +1101,29 @@ CATALOG.push(...EXPANSION_CATALOG,...WAVE_CATALOG,...DOTA_CATALOG,...ENSO_CATALO
 const loopback=['127.0.0.1','localhost','[::1]'].includes(globalThis.location?.hostname);
 if(WAVE3_LIVE||loopback)CATALOG.push(...WAVE3_CATALOG);
 CATALOG.push(...LIVING_BORDERS,...ARCANA_TOOLS);
+// One-off items made for a single player. drops:false keeps them out of every pack; Fav hands them out with an item gift.
+// Local only until PERSONAL_LIVE.
+export const PERSONAL_LIVE=false;
+export const PERSONAL_CATALOG=[
+  {id:'fx-brown-wisp',name:'Brown Wisp',rarity:'legendary',a:'#c8925a',b:'#24120a',texture:'fx-brown-sand',smoke:'crosswind',
+    description:'Brown sand blowing in off the left of the frame, drifting across the card and trailing off the right. Made for Brown.',type:'border',symbol:'',key:'border:fx-brown-wisp',drops:false},
+];
+if(PERSONAL_LIVE||loopback)CATALOG.push(...PERSONAL_CATALOG);
+// Living effects (lib/border-smoke.js): every smoke style as a border, a signature and a finish, drawn in WebGL by
+// lib/smoke-fx.js. Local only until SMOKE_LIVE, and drops:false keeps them out of packs; ?reviewCosmetics=all unlocks all.
+export const SMOKE_LIVE=false;
+const SMOKE_ALL={...SMOKE_STYLES,...SMOKE_MULTI,...SMOKE_REAL,...SMOKE_ADV};
+export const SMOKE_CATALOG=Object.entries(SMOKE_ALL).flatMap(([id,v])=>{
+  const c=v.colorsB??v.colors,base={rarity:'legendary',description:v.blurb,drops:false,smoke:id};
+  return [
+    {...base,id:`smoke-${id}`,name:`${v.name} Border`,type:'border',key:`border:smoke-${id}`,a:v.colors[2],b:v.colors[0],texture:'metal',symbol:''},
+    {...base,id:`smoke-${id}`,name:`${v.name} Signature`,type:'autograph',key:`autograph:smoke-${id}`,flourish:'simple',rough:false},
+    {...base,id:`smoke-${id}`,name:`${v.name} Finish`,type:'finish',key:`finish:smoke-${id}`},
+  ];
+});
+if(SMOKE_LIVE||loopback)CATALOG.push(...SMOKE_CATALOG);
+// Personal items can be drawn by a smoke style too (Brown Wisp is the Crosswind sand border).
+export const smokeStyleOf=(type,id)=>typeof id!=='string'?null:(id.startsWith('smoke-')?SMOKE_CATALOG:PERSONAL_CATALOG).find(i=>i.key===`${type}:${id}`)?.smoke??null;
 export const PEN_MARKS = {
   "simple": [
     "M55 65 Q145 85 260 53"

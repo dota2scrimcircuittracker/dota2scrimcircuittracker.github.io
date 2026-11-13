@@ -157,7 +157,7 @@ function preferNew(item,items,inventory,random) {
 // normal-pack timer.
 function rollThemedPack(state, packIndex, random) {
   const {tier,kind}=parsePack(state.packs[packIndex]), types=PACK_KIND_TYPES[kind], next=structuredClone(state), rewards=[];
-  const groups=TIERS.slice(TIERS.indexOf(tier)).map(rarity=>({rarity,weight:PACK_ODDS[rarity],items:CATALOG.filter(i=>types.includes(i.type)&&i.rarity===rarity)}));
+  const groups=TIERS.slice(TIERS.indexOf(tier)).map(rarity=>({rarity,weight:PACK_ODDS[rarity],items:CATALOG.filter(i=>i.drops!==false&&types.includes(i.type)&&i.rarity===rarity)}));
   if(!groups.some(g=>g.items.length)) throw new Error('That pack has nothing to give.');
   const ARCANA_ODDS=arcanaOdds(tier);
   for(let n=0;n<3;n++) {
@@ -192,7 +192,7 @@ export function rollPack(state, packIndex, random = Math.random, now = new Date(
     next.screens=[...(next.screens??[]),...screens];next.packs.splice(packIndex,1);
     return {state:next,rewards,screens};
   }
-  const groups=TIERS.slice(min).map(rarity=>({rarity,weight:PACK_ODDS[rarity],items:CATALOG.filter(i=>i.rarity===rarity)}));
+  const groups=TIERS.slice(min).map(rarity=>({rarity,weight:PACK_ODDS[rarity],items:CATALOG.filter(i=>i.drops!==false&&i.rarity===rarity)}));
   if(groups.some(g=>!g.items.length)) throw new Error('The collection is missing a rarity.');
   const ARCANA_ODDS=arcanaOdds(next.packs[packIndex]);
   for(let n=0;n<3;n++) {

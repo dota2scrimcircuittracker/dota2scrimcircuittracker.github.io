@@ -116,6 +116,17 @@ export function combatSummary(played) {
   };
 }
 
+// Seconds each observer in one player-game stayed up, summed, and how many there were. obs_pos
+// is [x, y, placed, lived, ...] in fives (lived -1: still up at the end, so it gets the time left,
+// its 6 minutes at most). Same rule as the tier list's "Average ward uptime".
+export function wardLife(p, durationSec) {
+  const o = p.obs_pos;
+  if (!Array.isArray(o) || o.length < 5) return null;
+  let t = 0, n = 0;
+  for (let i = 0; i + 4 < o.length; i += 5) { t += o[i + 3] >= 0 ? o[i + 3] : Math.min(360, Math.max(0, durationSec - Math.max(0, o[i + 2]))); n++; }
+  return { t, n };
+}
+
 // Average of one field over the player-games that have it; null if none do.
 function perGameOf(played, field) {
   const g = played.filter((p) => p[field] != null);
@@ -131,7 +142,9 @@ export function playerLeaderboard(matches) {
     for (const t of Object.values(byNw)) t.sort((x, y) => y.net_worth - x.net_worth);
     for (const p of m.players) {
       const key = playerKey(p);
-      const r = rows.get(key) ?? { key, account_id: p.account_id ?? null, name: p.name, teams: {}, pos: {}, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, gold: 0, xp: 0, minutes: 0, damage: 0, net_worth: 0, kp: [], heroes: new Set(), played: [] };
+      const r = rows.get(key) ?? { key, account_id: p.account_id ?? null, name: p.name, teams: {}, pos: {}, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, gold: 0, xp: 0, minutes: 0, damage: 0, net_worth: 0, kp: [], heroes: new Set(), played: [],
+        // Per-minute totals: wards over the minutes of games with map stats, stuns over games with stuns.
+        map_min: 0, obs: 0, sen: 0, dewards: 0, stun_min: 0, stuns: 0, ward_t: 0, ward_n: 0 };
       // Count roster games and stand-in games per team separately.
       if (p.team_name) {
         const t = (r.teams[p.team_name] ??= { roster: 0, standin: 0 });
@@ -149,6 +162,10 @@ export function playerLeaderboard(matches) {
       const pos = p.position ?? (byNw[p.team]?.length === 5 ? byNw[p.team].indexOf(p) + 1 : null);
       if (pos) r.pos[pos] = (r.pos[pos] ?? 0) + 1;
       r.played.push(p);
+      if (hasMapStats(p)) { r.map_min += minutes; r.obs += p.obs_placed ?? 0; r.sen += p.sen_placed ?? 0; r.dewards += (p.obs_killed ?? 0) + (p.sen_killed ?? 0); }
+      if (p.stuns != null) { r.stun_min += minutes; r.stuns += p.stuns; }
+      const wl = wardLife(p, m.duration_sec);
+      if (wl) { r.ward_t += wl.t; r.ward_n += wl.n; }
       rows.set(key, r);
     }
   }
@@ -187,6 +204,10 @@ export function playerLeaderboard(matches) {
     building_pg: perGameOf(r.played, "tower_damage"),
     healing_pg: perGameOf(r.played, "hero_healing"),
     stuns_pg: perGameOf(r.played, "stuns"),
+    // Per minute, so long games don't outscore short ones; ward uptime in seconds per observer.
+    obs_pm: r.map_min ? r.obs / r.map_min : null, sen_pm: r.map_min ? r.sen / r.map_min : null,
+    dewards_pm: r.map_min ? r.dewards / r.map_min : null, stuns_pm: r.stun_min ? r.stuns / r.stun_min : null,
+    ward_life: r.ward_n ? r.ward_t / r.ward_n : null,
     dmg_taken_pg: perGameOf(r.played, "dmg_taken"),
     buybacks_pg: perGameOf(r.played.map((p) => ({ n: p.buybacks?.length ?? null })), "n"),
     ...(mapSummary(r.played) ?? NO_MAP),

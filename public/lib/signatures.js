@@ -119,6 +119,8 @@ export function signatureHtml(equipment,name) {
   // Expansion SVGs already fit lettering to their viewBox. Applying the text-font cap here
   // shrinks long names a second time, including their ornaments and animation.
   if(item.expansion)return `<span class="card-autograph exp-autograph" data-autograph="${item.id}" data-writing="${equipment.translation==='kanji'?'ja':writingOf(text)}" style="left:${equipment.x}%;top:${equipment.y}%;--signature-size:${equipment.size}cqi;--placement-rotation:${equipment.rotation}deg;--sig-text:${(equipment.textSize??100)/100}" aria-label="Signature: ${escape(text)}">${expansionSignatureHtml(item,text,{plate:equipment.plateText})}</span>`;
+  // Living-effect signatures (lib/smoke-fx.js): the lettering keeps its box but is drawn in smoke instead of ink.
+  if(item.smoke)return `<span class="card-autograph smoke-sig" data-autograph="${item.id}" data-writing="${writingOf(text)}" style="left:${equipment.x}%;top:${equipment.y}%;--signature-size:${signatureSize(equipment.size,text)}cqi;--placement-rotation:${equipment.rotation}deg;--sig-text:${(equipment.textSize??100)/100}" aria-label="Signature: ${escape(text)}"><span class="autograph-lettering">${escape(text)}</span><span class="smoke-fx" data-smoke="${item.smoke}" data-smoke-mode="sig" aria-hidden="true"></span></span>`;
   const glyphs=item.rough?[...text].map((c,i)=>`<span class="signature-glyph" style="--glyph-lift:${(i%3)-1}px;--glyph-tilt:${(i%5-2)*2}deg">${escape(c)}</span>`).join(''):escape(text);
   const paths=(PEN_MARKS[item.flourish]??PEN_MARKS.simple).map(d=>`<path d="${d}"/>`).join('');
   const size=signatureSize(equipment.size,text);

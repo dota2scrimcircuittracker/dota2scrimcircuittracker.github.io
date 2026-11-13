@@ -157,7 +157,7 @@ export const WAVE3_CATALOG=[
  item3('border','lapis','Lapis','rare','#2c4fb3','#e9c25a','Deep blue lapis flecked with gold. The flecks catch the light as it moves.'),
  item3('border','stitched-leather','Stitched Leather','rare','#7d4627','#e3c08a','Tooled brown leather with a cream saddle stitch and brass rivets in the corners.'),
  item3('border','lantern-festival','Lantern Festival','epic','#c4302b','#f0c060','Red lacquer and gold. Paper lanterns hang off the top edge, swaying and glowing.'),
- item3('border','radiant-dire','Radiant & Dire','legendary','#9fd66a','#b0260f','Radiant light on the left, Dire fire on the right. Motes and embers rise up each side and clash at the seams.'),
+ item3('border','radiant-dire','Radiant & Dire','epic','#9fd66a','#b0260f','Radiant light on the left, Dire fire on the right. Motes and embers rise up each side and clash at the seams.'),
  item3('finish','linen','Linen','common','#efe6d2','#8a7d66','A fine woven linen texture pressed into the art.'),
  item3('finish','mosaic','Mosaic','rare','#e0a93a','#2a1e12','The art set in small square tiles with dark grout. Now and then a tile catches the light.'),
  item3('finish','polaroid','Polaroid','rare','#f3e2c0','#ff8a3d','Faded instant-film colour with a warm vignette and a light leak breathing in the corner.'),

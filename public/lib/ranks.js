@@ -31,12 +31,13 @@ export const RANK_STATS = [
   { key: "ultras", label: "Ultra kills", group: "combat", fmt: "0", map: true },
   { key: "runes_pg", label: "Runes a game", group: "combat", fmt: "1", map: true },
   { key: "courier_kills", label: "Courier kills", group: "combat", fmt: "0", map: true },
-  { key: "obs_pg", label: "Observers a game", group: "support", fmt: "1", map: true },
-  { key: "sen_pg", label: "Sentries a game", group: "support", fmt: "1", map: true },
-  { key: "dewards_pg", label: "Dewards a game", group: "support", fmt: "1", map: true },
+  { key: "obs_pm", label: "Observers a minute", group: "support", fmt: "2", map: true },
+  { key: "sen_pm", label: "Sentries a minute", group: "support", fmt: "2", map: true },
+  { key: "dewards_pm", label: "Dewards a minute", group: "support", fmt: "2", map: true },
+  { key: "ward_life", label: "Average ward uptime", group: "support", fmt: "time", map: true },
   { key: "stacks_pg", label: "Stacks a game", group: "support", fmt: "1", map: true },
   { key: "healing_pg", label: "Healing a game", group: "support", fmt: "0", map: true },
-  { key: "stuns_pg", label: "Stun seconds a game", group: "support", fmt: "1", map: true },
+  { key: "stuns_pm", label: "Stun seconds a minute", group: "support", fmt: "2", map: true },
   { key: "lane_pg", label: "Lane creeps a game", group: "economy", fmt: "0", map: true },
   { key: "neutral_pg", label: "Neutrals a game", group: "economy", fmt: "0", map: true },
   { key: "building_pg", label: "Building damage a game", group: "objectives", fmt: "0", map: true },
@@ -47,6 +48,8 @@ export const RANK_STATS = [
 export function formatStat(stat, v) {
   if (v == null) return "—";
   if (stat.fmt === "pct") return `${Math.round(v * 100)}%`;
+  // "time": seconds as m:ss.
+  if (stat.fmt === "time") { const t = Math.round(v); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; }
   // "+0", "+1": signed, for margins and leads.
   if (stat.fmt[0] === "+") { const t = Number(v).toFixed(Number(stat.fmt.slice(1))); return Number(t) > 0 ? `+${t}` : t; }
   return Number(v).toFixed(Number(stat.fmt));
