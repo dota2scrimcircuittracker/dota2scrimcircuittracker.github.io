@@ -4,7 +4,7 @@
 //
 //   node scripts/claude-bot.mjs state                 packs, collection size, card designs
 //   node scripts/claude-bot.mjs feed [n]              newest n Feed posts (default 15), with ids
-//   node scripts/claude-bot.mjs open [n|all]          open n unopened packs (default 1)
+//   node scripts/claude-bot.mjs open [n|all] [--quiet] open n unopened packs (default 1); --quiet skips the Feed post
 //   node scripts/claude-bot.mjs post "text"           write a text post
 //   node scripts/claude-bot.mjs react <post> <emoji>  react (again to take it back)
 //   node scripts/claude-bot.mjs comment <post> "text" comment on a post
@@ -20,7 +20,8 @@ import { CATALOG } from '../public/lib/cosmetics-catalog.js';
 import { REACTIONS } from '../public/lib/feed.js';
 import { CLAUDE_ACCOUNT } from '../public/lib/claude-account.js';
 
-const args = process.argv.slice(2).filter((a) => a !== '--local');
+const args = process.argv.slice(2).filter((a) => a !== '--local' && a !== '--quiet');
+const quiet = process.argv.includes('--quiet');
 const local = process.argv.includes('--local');
 const API = process.env.CLAUDE_BOT_API ?? (local ? 'http://127.0.0.1:8787/cosmetics' : 'https://steam-auth.ad2lstats.workers.dev/cosmetics');
 const key = (process.env.CLAUDE_BOT_TOKEN ?? (() => { try { return readFileSync(new URL('../.claude-bot-key', import.meta.url), 'utf8'); } catch { return ''; } })()).trim();
@@ -53,7 +54,7 @@ try {
     const n = rest[0] === 'all' ? state.packs.length : Math.min(Number(rest[0]) || 1, state.packs.length);
     if (!n) out('No packs to open.');
     for (let i = 0; i < n; i++) {
-      const pack = state.packs[0], r = await act({ action: 'open', packIndex: 0 }); state = r.state;
+      const pack = state.packs[0], r = await act({ action: 'open', packIndex: 0, ...(quiet ? { quiet: true } : {}) }); state = r.state;
       out(`${pack}: ${[...(r.rewards ?? []).map((x) => (x.arcana ? 'ARCANA' : itemName(x.key))), ...(r.screens?.length ? [`${r.screens.length} loading screen${r.screens.length === 1 ? '' : 's'}`] : [])].join(', ') || 'nothing'}`);
     }
   } else if (cmd === 'post') {

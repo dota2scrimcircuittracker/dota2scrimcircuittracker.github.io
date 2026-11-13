@@ -847,7 +847,8 @@ export class CosmeticsVault {
         const openedAt=Date.now();
         // Feed receipts keep only the post: its comments can be long and are read fresh anyway.
         await txn.put(receipt,{action:body.action,result:['react','comment','comment-delete','comment-react','poll-vote'].includes(body.action)?{post:result.post}:body.action==='post'?{post:result.post.id}:body.action==='post-delete'?{post:result.removed}:result,...(body.action==='open'?{openedAt,packType:saved.packs[body.packIndex]}:{})});
-        const pull=body.action==='open'&&autoPullRow(saved,account,openedAt,saved.packs[body.packIndex],result);
+        // The Claude account can open a pack quietly (body.quiet): no Feed post. Players can't.
+        const pull=body.action==='open'&&!(body.quiet===true&&String(account)===CLAUDE_ACCOUNT)&&autoPullRow(saved,account,openedAt,saved.packs[body.packIndex],result);
         // A pack opened soon after the player's last pull post joins that post (lib/feed.js mergePull).
         if(pull){
           const recent=[...(await txn.list({prefix:'pull:',reverse:true,limit:100}))].find(([,v])=>String(v.account)===String(account));

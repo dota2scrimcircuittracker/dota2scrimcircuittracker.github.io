@@ -393,7 +393,8 @@ export function equipCosmetics(state, raw) {
 // players. Each shows in the "Fav sent you" notice (parts/pack-gifts.js).
 // A grant with an account goes to that account only (the Claude account's starter packs, lib/claude-account.js).
 export const PACK_GRANTS=[{id:'screens-2026-10',packs:['screens','screens','screens'],note:"Loading screens are here. Each pack has five you don't have yet."},
-  {id:'claude-start-2026-11',account:'4000000001',packs:Array(10).fill('common'),note:'Ten common packs to start your collection.'}];
+  {id:'claude-start-2026-11',account:'4000000001',packs:Array(10).fill('common'),note:'Ten common packs to start your collection.'},
+  {id:'claude-extra-2026-11-12',account:'4000000001',packs:['rare','rare','rare','epic','epic'],note:'A few extra packs for your profile cards.'}];
 export function applyPackGrants(state,now=Date.now(),account=null) {
   const due=PACK_GRANTS.filter(g=>!(state.grants??[]).includes(g.id)&&(!g.account||g.account===String(account??'')));
   if(!due.length)return state;
