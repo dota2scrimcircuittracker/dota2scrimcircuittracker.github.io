@@ -33,8 +33,9 @@ async function boot(el) {
     const size = glow != null ? Math.max(12, (sig?.clientHeight || 60) * .62) : Number.parseFloat(letters ? getComputedStyle(letters).fontSize : '') || 40;
     await document.fonts.load(`${size}px ${SIG_FONT}`).catch(() => {});
     if (!el.isConnected) { el._smokeBooting = false; return; }
-    // A glow sits behind the scene's own letters (z -1).
-    opts = { mode: 'sig', unit, pad: 30, z: glow != null ? -1 : 1, glow: glow != null, sig: { text: (glow ?? letters?.textContent)?.trim() || 'Fav', font: SIG_FONT, fontSize: size, slant: 0 } };
+    // A glow over a scene signature is screened on top (cosmetics-fx.css): it lights the plate and letters
+    // without covering them, so it shows even on opaque plates like Lotus Pond.
+    opts = { mode: 'sig', unit, pad: 30, z: 1, glow: glow != null, sig: { text: (glow ?? letters?.textContent)?.trim() || 'Fav', font: SIG_FONT, fontSize: size, slant: 0 } };
   }
   let h = null;
   // Soft smoke holds up at low resolution: borders and finishes draw at 0.6 px per CSS px and the browser smooths

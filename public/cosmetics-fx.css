@@ -114,6 +114,6 @@
    pushed the whole page sideways. clip (not hidden) cuts it off without making a scroll container, so sticky
    headers keep working. On main, not html: html's overflow passes to the window, which treats clip as hidden. */
 #app{overflow-x:clip}
-/* Signature effect over a scene signature: behind its art (canvas z -1 inside an isolated box), an aura. */
+/* Signature effect over a scene signature: screened over its art, so it adds light without hiding the letters. */
 .smoke-glow{position:absolute;inset:0;pointer-events:none}
-.exp-autograph:has(> .smoke-glow){isolation:isolate}
+.smoke-glow>canvas{mix-blend-mode:screen}
