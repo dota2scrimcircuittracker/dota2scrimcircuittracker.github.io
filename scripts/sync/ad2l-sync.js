@@ -529,9 +529,13 @@ async function bySeries() {
   console.log(`  --series: ${targets.length} series`);
   const file = JSON.parse(await readFile(OUT, "utf8"));
   const fileDetail = existsSync(detailName(OUT)) ? JSON.parse(await readFile(detailName(OUT), "utf8")) : {};
+  // PlayOn's own scores, kept apart: scoreFromGames below fills in every 0–0 series from the
+  // file's games, so a later target would otherwise keep a score made from its old games and
+  // stop searching at that count.
+  const playon = new Map(series.map((x) => [x.id, [x.home_score, x.away_score]]));
   for (const s of targets) {
     const label = `${teams.find((t) => t.id === s.home).name} v ${teams.find((t) => t.id === s.away).name}`;
-    const played = (s.home_score ?? 0) + (s.away_score ?? 0);
+    const played = playon.get(s.id).reduce((a, b) => a + (b ?? 0), 0);
     const found = new Map(), seen = new Set();
     const accounts = [...owner].filter(([, o]) => o.team === s.home || o.team === s.away);
     // From 8 days before PlayOn's time: teams sometimes play a playoff series early.
@@ -549,6 +553,7 @@ async function bySeries() {
       }
     }
     file.games = file.games.filter((g) => !found.has(g.match_id)).concat([...found.values()]).sort((a, b) => b.start_time - a.start_time);
+    for (const x of series) [x.home_score, x.away_score] = playon.get(x.id);
     scoreFromGames(series, file.games);
     file.series = series;
     file.updated = new Date().toISOString();
