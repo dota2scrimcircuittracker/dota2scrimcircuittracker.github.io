@@ -224,7 +224,7 @@ export const RECYCLE_COST=10;
 // and handed out once the pool is filled.
 export const ARCANA_CARDS=[];
 // Any card in any pack can instead be an arcana: the top of its roll, above legendary (arcanaOdds in
-// lib/cosmetics-catalog.js: 0.5% a card in a common pack up to 15% in a legendary one). An arcana from a
+// lib/cosmetics-catalog.js: 0.25% a card in a common pack up to 7.5% in a legendary one). An arcana from a
 // pack or a recycle is an arcana tool (Double finish or a Twin Card, lib/cosmetics-arcana-catalog.js),
 // each equally likely; arcana player cards (ARCANA_CARDS) will come from player packs. Returns its key.
 const ARCANA_DROPS=()=>CATALOG.filter(i=>i.type==='tool');

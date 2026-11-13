@@ -1173,8 +1173,9 @@ export const PEN_MARKS = {
 export const TIERS = ['common','rare','epic','legendary'];
 export const PACK_ODDS = {common:69,rare:17,epic:10,legendary:4};
 // Any card in any pack can instead be an arcana card (lib/cosmetics-engine.js): this fraction, above legendary.
-// It climbs about 3x per pack rarity, normal and themed packs alike, up to 15% a card in a legendary pack.
-export const ARCANA_ODDS_BY_TIER = {common:0.005,rare:0.015,epic:0.05,legendary:0.15};
+// It climbs about 3x per pack rarity, normal and themed packs alike, up to 7.5% a card in a legendary pack
+// (halved on 2026-11-12: arcanas were dropping too often).
+export const ARCANA_ODDS_BY_TIER = {common:0.0025,rare:0.0075,epic:0.025,legendary:0.075};
 export const ARCANA_ODDS = ARCANA_ODDS_BY_TIER.common;
 // A pack's arcana chance per card, by its rarity ("epic", "epic:border").
 export const arcanaOdds = pack => ARCANA_ODDS_BY_TIER[String(pack).split(':')[0]] ?? ARCANA_ODDS;

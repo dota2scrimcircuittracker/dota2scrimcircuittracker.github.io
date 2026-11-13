@@ -33,7 +33,7 @@ test('eight-hour refill accrues offline up to three, pauses at capacity and resu
   assert.equal(grantLogin(withUpgrade,new Date('2026-11-01')).packs.length,5);
 });
 test('roll boundaries follow exact odds; packs contain three and do not mutate input',()=>{
-  const first=grantLogin(null),seq=[.6865,0,.6866,0,.8558,0];let at=0;
+  const first=grantLogin(null),seq=[.6882,0,.6884,0,.8580,0];let at=0;
   const result=rollPack(first,0,()=>seq[at++]);
   assert.deepEqual(result.rewards.map(r=>CATALOG.find(i=>i.key===r.key).rarity),['common','rare','epic']);
   assert.equal(result.state.packs.length,2);assert.equal(first.packs.length,3);
@@ -288,7 +288,7 @@ test('the signature size slider ends where the signature stops growing',()=>{
 });
 
 test('any pack card can be an arcana tool: the top of its roll, likelier in rarer packs',()=>{
-  const edge={common:.995,rare:.985,epic:.95,legendary:.85};
+  const edge={common:.9975,rare:.9925,epic:.975,legendary:.925};
   for(const pack of ['common','legendary','common:border','epic:signature','rare','legendary:finish']){
     const e=edge[pack.split(':')[0]];
     const hit=rollPack({packs:[pack],inventory:{},screens:[]},0,()=>e+.001);
@@ -302,15 +302,15 @@ test('any pack card can be an arcana tool: the top of its roll, likelier in rare
     assert.equal(miss.state.arcanaOwed,undefined);
   }
   // An arcana is always dealt last: a hit on the first card moves behind the other two.
-  let at=0;const firstHit=rollPack({packs:['common'],inventory:{},screens:[]},0,()=>[.996,0,0,0,0,0,0,0,0,0][at++]??0);
+  let at=0;const firstHit=rollPack({packs:['common'],inventory:{},screens:[]},0,()=>[.998,0,0,0,0,0,0,0,0,0][at++]??0);
   assert.deepEqual(firstHit.rewards.map(r=>!!r.arcana),[false,false,true]);
   assert.equal(firstHit.state.arcanaSealed,undefined);
   let cards=0,arcana=0;
   for(let n=0;n<40000;n++)for(const r of rollPack({packs:['common'],inventory:{},screens:[]},0).rewards){cards++;if(r.arcana)arcana++;}
-  assert.ok(Math.abs(arcana/cards-.005)<.0015,`arcana rate ${arcana/cards}`);
+  assert.ok(Math.abs(arcana/cards-.0025)<.001,`arcana rate ${arcana/cards}`);
   cards=0;arcana=0;
   for(let n=0;n<4000;n++)for(const r of rollPack({packs:['legendary'],inventory:{},screens:[]},0).rewards){cards++;if(r.arcana)arcana++;}
-  assert.ok(Math.abs(arcana/cards-.15)<.02,`legendary arcana rate ${arcana/cards}`);
+  assert.ok(Math.abs(arcana/cards-.075)<.015,`legendary arcana rate ${arcana/cards}`);
 });
 
 test('the Claude account signs in with its bot key, only for the actions it is allowed',async()=>{

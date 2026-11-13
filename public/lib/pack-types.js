@@ -31,10 +31,11 @@ export function packOdds(pack) {
   return out;
 }
 const pct = (x) => `${Math.round(x * 1000) / 10}%`;
+const pct2 = (x) => `${Math.round(x * 10000) / 100}%`; // arcana odds are small: 0.25%, not 0.3%
 // "Rare 54.8% · Epic 32.3% · Legendary 12.9%": the rarities that can come up.
 // Plus the arcana chance every card has on top (arcanaOdds, by the pack's rarity); the rarities
 // above are the odds when it misses.
-export const oddsText = (pack) => [...Object.entries(packOdds(pack)).filter(([, v]) => v > 0).map(([t, v]) => `${cap(t)} ${pct(v)}`), `Arcana ${pct(arcanaOdds(pack))}`].join(' · ');
+export const oddsText = (pack) => [...Object.entries(packOdds(pack)).filter(([, v]) => v > 0).map(([t, v]) => `${cap(t)} ${pct(v)}`), `Arcana ${pct2(arcanaOdds(pack))}`].join(' · ');
 // What a pack holds, for the odds table: [pack, name, what's in it].
 export const ODDS_ROWS = ['common', 'rare', 'epic', 'legendary'].flatMap((t) => [[t, `${cap(t)} pack`, '3 cards + 2 screens'], ...Object.keys(PACK_KIND_TYPES).map((k) => [`${t}:${k}`, themedLabel(`${t}:${k}`), k === 'border' ? `3 border items + ${PACK_ODDS.legendary}% legendary background` : `3 ${k} items`])]);
 

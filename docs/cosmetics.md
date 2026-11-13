@@ -94,7 +94,7 @@ arcana before the sealed box existed (arcana or `arcanaOwed`, nothing sealed) co
 The arcana from packs and recycling is an arcana tool (`giveArcana`: Double finish or one of the five
 Twin Cards, equally likely; reward `{key: "tool:...", arcana: true}`); arcana player cards (`ARCANA_CARDS`)
 will come from player packs and are never sold. Recycling ten spare legendaries gives one. Every card in every
-pack has `arcanaOdds(pack)` (by pack rarity: common 0.5%, rare 1.5%, epic 5%, legendary 15%;
+pack has `arcanaOdds(pack)` (by pack rarity: common 0.25%, rare 0.75%, epic 2.5%, legendary 7.5%;
 `ARCANA_ODDS_BY_TIER` in `lib/cosmetics-catalog.js`) to be an arcana instead, the top of its
 roll, and arcana are always dealt last. New arcana no longer seal a box; `arcanaOwed`, `arcana:owed`
 rewards and sealed boxes from before still work and still add layers. A stacked copy of

@@ -23,7 +23,7 @@ test('arcana tools drop from packs, more often in rarer packs',()=>{
     for(let i=0;i<3000;i++){s.packs=[pack];const r=rollPack(s,0,random);s=r.state;for(const x of r.rewards){cards++;if(x.key.startsWith('tool:'))tools++;}}
     return tools/cards;};
   const [c,l]=[rate('common'),rate('legendary')];
-  assert.ok(c>0.001&&c<0.012,'common '+c);assert.ok(l>0.12&&l<0.18,'legendary '+l);
+  assert.ok(c<0.007,'common '+c);assert.ok(l>0.055&&l<0.095,'legendary '+l);
 });
 
 test('Double finish: a bought copy unlocks stacking, one layer per copy, up to four stacked',()=>{
