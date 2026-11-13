@@ -7,8 +7,9 @@ import {CosmeticsVault,cosmeticsRequest} from '../workers/steam-auth/src/cosmeti
 
 test('approved collection has all tiers, no language samples in signature drops',()=>{
   assert.equal(new Set(CATALOG.map(i=>i.key)).size,CATALOG.length);
-  // 283 card items, 5 living borders and 6 arcana tools (lib/cosmetics-arcana-catalog.js).
-  assert.equal(CATALOG.length,319);
+  // 283 card items, 5 living borders, 6 arcana tools (lib/cosmetics-arcana-catalog.js) and the 36 living
+  // effects as a border, a finish and a signature effect modifier each (SMOKE_CATALOG).
+  assert.equal(CATALOG.length,427);
   assert.deepEqual(PACK_ODDS,{common:69,rare:17,epic:10,legendary:4});
   for(const tier of TIERS)assert.ok(CATALOG.some(i=>i.rarity===tier));
   for(const item of CATALOG.filter(i=>i.type==='autograph')) {assert.equal(item.sample,undefined);assert.equal(item.script,undefined);}
@@ -328,4 +329,16 @@ test('the Claude account signs in with its bot key, only for the actions it is a
     delete env.CLAUDE_BOT_TOKEN;assert.equal((await call('right-key',{action:'session'})).status,401);
     assert.equal(seen.length,2);
   } finally {globalThis.fetch=original;}
+});
+
+test('signature effects are modifiers that stack with a language modifier and drop as legendaries',()=>{
+  const fx=CATALOG.filter(i=>i.type==='namefx');
+  assert.equal(fx.length,36);assert.ok(fx.every(i=>i.rarity==='legendary'&&i.drops!==false&&i.smoke));
+  const state={...grantLogin(null),inventory:{'autograph:brush-ink':1,'translation:greek':1,'namefx:smoke-inferno':1}};
+  const e=equipCosmetics(state,{autograph:'brush-ink',translation:'greek',namefx:'smoke-inferno'}).equipment;
+  assert.equal(e.translation,'greek');assert.equal(e.namefx,'smoke-inferno');
+  assert.throws(()=>equipCosmetics(state,{namefx:'smoke-solar'}),/Collect/);
+  assert.equal(equipCosmetics(state,{autograph:'brush-ink'}).equipment.namefx,'none');
+  const html=signatureHtml({...DEFAULT_EQUIPMENT,autograph:'brush-ink',translation:'greek',namefx:'smoke-inferno'},'Fav');
+  assert.match(html,/data-smoke="inferno"/);assert.match(html,/data-smoke-mode="sig"/);
 });

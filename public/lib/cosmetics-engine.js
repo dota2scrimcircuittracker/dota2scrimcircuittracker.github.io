@@ -293,7 +293,7 @@ function validEmblems(emblems){
 export function equipCosmetics(state, raw) {
   if(!raw || typeof raw!=='object') throw new Error('Choose your card cosmetics.');
   const equipment={...DEFAULT_EQUIPMENT};
-  for(const type of ['border','finish','autograph','translation']) {
+  for(const type of ['border','finish','autograph','translation','namefx']) {
     const id=raw[type]??equipment[type];
     if(typeof id!=='string') throw new Error('Invalid cosmetic.');
     if(id!==DEFAULT_EQUIPMENT[type] && !(state.inventory[`${type}:${id}`]>0)) throw new Error('Collect this cosmetic before equipping it.');

@@ -57,14 +57,21 @@ To hand one out: flip `PERSONAL_LIVE`, deploy the Worker, then gift it with an i
   and trailing off the right. `smokeStyleOf` maps the item to it. Its texture `fx-brown-sand` (`cosmetics-fx.css`) is a plain
   brown frame under the sand and the no-WebGL fallback. Other sand takes: `public/_review/sand-wind.html`.
 
-## Living effects (local only)
+## Living effects
 
 `SMOKE_CATALOG` (`lib/cosmetics-catalog.js`): each of the 36 WebGL styles in `lib/border-smoke.js` (elements, multi-colour,
-realistic, advanced) as a legendary border, signature and finish, 108 items, ids `smoke-<style>`. `drops:false`; loopback only
-while `SMOKE_LIVE` is false. `lib/cosmetics.js` and `lib/signatures.js` write a `.smoke-fx` span; `lib/smoke-fx.js` starts the
-effect, scaled to the card (styles were tuned on a 210 px card). All effects share one WebGL context and draw only on screen.
-Test with every item unlocked: `?reviewCosmetics=all#/gallery/customize` on localhost (no account writes). Review pages:
-`public/_review/smoke-{borders,sigs,bench}.html` (gitignored).
+realistic, advanced) as a legendary border, finish and signature effect, 108 items, ids `smoke-<style>`. Live since
+2026-11-12 (`SMOKE_LIVE`): they drop from packs and sell in the shop like any legendary.
+
+Signature effects are modifiers, type `namefx` (equipment `namefx`, default `none`), a second modifier slot beside the
+language modifier (`translation`), so the two stack: the signature, in any style and any script, is drawn in the effect
+(`signatureHtml` in `lib/signatures.js`). Shown under Modifier in the collection and shop filters; the editor's
+"Signature effect" picker appears once you own one. Signature packs can roll them.
+
+`lib/cosmetics.js` and `lib/signatures.js` write a `.smoke-fx` span; `lib/smoke-fx.js` starts the effect, scaled to the
+card (styles were tuned on a 210 px card). All effects share one WebGL context and draw only on screen. Test with every
+item unlocked: `?reviewCosmetics=all#/gallery/customize` on localhost (no account writes). Review pages:
+`public/_review/smoke-{borders,sigs,bench}.html` and `sand-wind.html` (gitignored).
 
 ## November 3 wave (local only)
 

@@ -4,7 +4,7 @@
 // packs hold signatures and their modifiers. Player card packs come later.
 import { TIERS, CATALOG, PACK_ODDS, arcanaOdds } from './cosmetics-catalog.js';
 
-export const PACK_KIND_TYPES = { border: ['border', 'living'], finish: ['finish'], signature: ['autograph', 'translation'] };
+export const PACK_KIND_TYPES = { border: ['border', 'living'], finish: ['finish'], signature: ['autograph', 'translation', 'namefx'] };
 export const KIND_NAMES = { border: 'border', finish: 'finish', signature: 'signature', player: 'player card' };
 export const THEMED_PACKS = TIERS.flatMap((t) => Object.keys(PACK_KIND_TYPES).map((k) => `${t}:${k}`));
 

@@ -1109,15 +1109,17 @@ export const PERSONAL_CATALOG=[
     description:'Brown sand blowing in off the left of the frame, drifting across the card and trailing off the right. Made for Brown.',type:'border',symbol:'',key:'border:fx-brown-wisp',drops:false},
 ];
 if(PERSONAL_LIVE||loopback)CATALOG.push(...PERSONAL_CATALOG);
-// Living effects (lib/border-smoke.js): every smoke style as a border, a signature and a finish, drawn in WebGL by
-// lib/smoke-fx.js. Local only until SMOKE_LIVE, and drops:false keeps them out of packs; ?reviewCosmetics=all unlocks all.
-export const SMOKE_LIVE=false;
+// Living effects (lib/border-smoke.js): every smoke style as a border, a finish and a signature modifier
+// (type `namefx`: the signature drawn in that effect, stacking with the language modifiers), drawn in WebGL
+// by lib/smoke-fx.js. Live legendaries since 2026-11-12: they drop from packs and sell in the shop.
+export const SMOKE_LIVE=true;
 const SMOKE_ALL={...SMOKE_STYLES,...SMOKE_MULTI,...SMOKE_REAL,...SMOKE_ADV};
 export const SMOKE_CATALOG=Object.entries(SMOKE_ALL).flatMap(([id,v])=>{
-  const c=v.colorsB??v.colors,base={rarity:'legendary',description:v.blurb,drops:false,smoke:id};
+  const base={rarity:'legendary',description:v.blurb,smoke:id};
   return [
     {...base,id:`smoke-${id}`,name:`${v.name} Border`,type:'border',key:`border:smoke-${id}`,a:v.colors[2],b:v.colors[0],texture:'metal',symbol:''},
-    {...base,id:`smoke-${id}`,name:`${v.name} Signature`,type:'autograph',key:`autograph:smoke-${id}`,flourish:'simple',rough:false},
+    {...base,id:`smoke-${id}`,name:`${v.name} Lettering`,type:'namefx',key:`namefx:smoke-${id}`,a:v.colors[2],b:v.colors[1],
+      description:`${v.blurb} Your signature is drawn in it; works with any signature style and language modifier.`},
     {...base,id:`smoke-${id}`,name:`${v.name} Finish`,type:'finish',key:`finish:smoke-${id}`},
   ];
 });
@@ -1179,6 +1181,6 @@ export const ARCANA_ODDS_BY_TIER = {common:0.0025,rare:0.0075,epic:0.025,legenda
 export const ARCANA_ODDS = ARCANA_ODDS_BY_TIER.common;
 // A pack's arcana chance per card, by its rarity ("epic", "epic:border").
 export const arcanaOdds = pack => ARCANA_ODDS_BY_TIER[String(pack).split(':')[0]] ?? ARCANA_ODDS;
-export const DEFAULT_EQUIPMENT = {border:'grey',finish:'none',autograph:'none',translation:'none',text:'',x:50,y:60,size:15,rotation:-7,particleSpeed:100,particleAmount:100,borderSpeed:100};
+export const DEFAULT_EQUIPMENT = {border:'grey',finish:'none',autograph:'none',translation:'none',namefx:'none',text:'',x:50,y:60,size:15,rotation:-7,particleSpeed:100,particleAmount:100,borderSpeed:100};
 export const itemByKey = key => CATALOG.find(item=>item.key===key);
 

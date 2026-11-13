@@ -185,7 +185,7 @@ test('themed packs: finish and signature draw only their types, never below thei
     const finish = rollPack({ packs: ['epic:finish'], inventory: {}, screens: [] }, 0, Math.random);
     assert.ok(finish.rewards.every((r) => r.arcana || itemByKey(r.key).type === 'finish' && ['epic', 'legendary'].includes(itemByKey(r.key).rarity)));
     const sig = rollPack({ packs: ['common:signature'], inventory: {}, screens: [] }, 0, Math.random);
-    assert.ok(sig.rewards.every((r) => r.arcana || ['autograph', 'translation'].includes(itemByKey(r.key).type)));
+    assert.ok(sig.rewards.every((r) => r.arcana || ['autograph', 'translation', 'namefx'].includes(itemByKey(r.key).type)));
   }
 });
 

@@ -46,6 +46,7 @@ const demoEquipment = (key = demoItem) => {
 const demoItemEquipment = (item, base) => {
   const id = item.key.slice(item.type.length + 1);
   if (item.type === 'living') return { border: 'gold', living: id };
+  if (item.type === 'namefx') return { autograph: 'brush-ink', namefx: id }; // an effect needs lettering to show on
   if (item.key === 'tool:double-finish') return { finish: 'starlight', finishStack: ['fx-sheen'] };
   if (item.turn) {
     const other = DEMO_BASES[(demoBase + 1) % DEMO_BASES.length];
@@ -70,8 +71,8 @@ const loadStyles = () => {
 export function drawShop(body, { state, editable, viewer, signIn, run, colors, typeLabel, name, redraw }) {
   loadStyles();
   const tokens = state?.tokens ?? 0, inventory = state?.inventory ?? {};
-  const types = [...new Set(SHOP_ORDER.map((i) => i.type))];
-  const items = SHOP_ORDER.filter((i) => (filter === 'all' || i.type === filter) && (rarity === 'all' || i.rarity === rarity));
+  const types = [...new Set(SHOP_ORDER.map((i) => (i.type === 'namefx' ? 'translation' : i.type)))]; // signature effects sit under Modifier
+  const items = SHOP_ORDER.filter((i) => (filter === 'all' || i.type === filter || (filter === 'translation' && i.type === 'namefx')) && (rarity === 'all' || i.rarity === rarity));
   const pages = Math.max(1, Math.ceil(items.length / PER_PAGE));
   page = Math.min(page, pages - 1);
   const pager = pages > 1 ? `<nav class="shop-pager" aria-label="Shop pages"><button type="button" data-shop-page="${page - 1}" ${page === 0 ? 'disabled' : ''}>‹ Prev</button>${Array.from({ length: pages }, (_, n) => `<button type="button" data-shop-page="${n}" ${n === page ? 'aria-current="page"' : ''}>${n + 1}</button>`).join('')}<button type="button" data-shop-page="${page + 1}" ${page === pages - 1 ? 'disabled' : ''}>Next ›</button></nav>` : '';
@@ -341,7 +342,7 @@ export async function mountShopGift(host, account, name, me, adapter = null) {
   const draw = (note = '') => {
     const tokens = state.tokens ?? 0;
     section.innerHTML = `<h3>Buy ${esc(name)} a card</h3><p class="muted">Paid with your tokens. You have ${tokens}. They get a notice saying it's from you.</p>
-      <form class="gift-form"><label>Card item <select name="item">${SHOP_ORDER.map((i) => `<option value="${esc(i.key)}" ${PRICES[i.rarity] > tokens ? 'disabled' : ''}>${esc(i.name)} · ${esc(i.type === 'translation' ? 'modifier' : i.type)} · ${PRICES[i.rarity]} token${PRICES[i.rarity] === 1 ? '' : 's'}</option>`).join('')}</select></label>
+      <form class="gift-form"><label>Card item <select name="item">${SHOP_ORDER.map((i) => `<option value="${esc(i.key)}" ${PRICES[i.rarity] > tokens ? 'disabled' : ''}>${esc(i.name)} · ${esc(i.type === 'translation' || i.type === 'namefx' ? 'modifier' : i.type)} · ${PRICES[i.rarity]} token${PRICES[i.rarity] === 1 ? '' : 's'}</option>`).join('')}</select></label>
       <label class="gift-note">Note <input name="note" maxlength="120" placeholder="Optional, shown to them"></label><button type="submit" ${tokens ? '' : 'disabled'}>Buy and send</button></form>
       <span class="gift-msg" role="status" aria-live="polite">${esc(note)}</span>`;
     const form = section.querySelector('form');
