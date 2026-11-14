@@ -147,10 +147,13 @@ games (best `GAMES_COUNTED`) matter, as today.
 - **A pack has 5 cards, one per position** (pos 1–5).
 - **Pool:** every rostered player on a team in the Winter tournament, across every division, who
   has a main position.
-- **Per card:** roll a rarity with the existing `PACK_ODDS` (common 69, rare 17, epic 10,
-  legendary 4) and arcana with the existing arcana odds. Then pick uniformly among that position's
-  players who have a card at that rarity. If none do, step down a rarity (legendary → epic → rare
-  → common).
+- **Per card:** roll a rarity with the player packs' own odds, `PLAYER_PACK_ODDS` in
+  `lib/player-packs.js` (common 68, rare 17, epic 10, legendary 4, arcana 1; cosmetics packs keep
+  `PACK_ODDS`). Then pick uniformly among that position's players who have a card at that rarity.
+- **Empty rarities:** when some positions have nobody at a rarity, that rarity rolls more often at
+  the positions that do (`positionOdds`), so the overall rate per card stays at the odds above.
+  Example: no pos 5 legendary, so pos 1–4 roll legendary at 5%. Common takes what's left at each
+  position.
 - **Duplicates** are kept. Each copy has its own two subs. Inventory holds copies, not counts:
   `{ key: "player:<account>:<rarity>", subs: [{ stat, pct } x2], at }`.
 - **Recycling:** 3 copies of the same player at the same rarity trade in for 1 copy of that player
@@ -210,7 +213,7 @@ Trading, dusting or crafting duplicates, arcana unique effects, rarity for non-W
 
 - Unit tests (Node, `test/`): slot assignment (every table row above, plus no-vote and
   equal-rating cases), bonus sizing (equal ceiling per budget), pack roll (5 positions,
-  step-down when a rarity is empty, subs distinct and never equal to main), gated `checkPicks`, scoring with
+  overall rates hold when a rarity is empty at some positions, subs distinct and never equal to main), gated `checkPicks`, scoring with
   bonuses and captain.
 - Worker: self-rating stored apart from community votes; a pick without an owned copy is
   rejected.

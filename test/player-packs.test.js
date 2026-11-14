@@ -18,3 +18,33 @@ test('pulls count in the inventory and flag duplicates',()=>{
   assert.deepEqual(state.inventory,{'player:1':2,'player:2':2});
   assert.deepEqual(rewards.map(r=>r.duplicate),[true,false,true]);
 });
+
+// Winter player packs (spec section 3): legendary 4%, arcana 1% per card overall, even when some
+// positions have nobody at a rarity.
+import {PLAYER_PACK_ODDS,positionOdds} from '../public/lib/player-packs.js';
+const all=['common','rare','epic','legendary','arcana'];
+const full=Object.fromEntries([1,2,3,4,5].map(p=>[p,all]));
+const overall=(odds,r)=>[1,2,3,4,5].reduce((s,p)=>s+odds[p][r],0)/5;
+test('player pack odds: legendary 4, arcana 1, summing to 100',()=>{
+  assert.equal(PLAYER_PACK_ODDS.legendary,4);
+  assert.equal(PLAYER_PACK_ODDS.arcana,1);
+  assert.equal(Object.values(PLAYER_PACK_ODDS).reduce((a,b)=>a+b,0),100);
+});
+test('every position has every rarity: odds are the base odds',()=>{
+  const odds=positionOdds(full);
+  for(const p of [1,2,3,4,5]) assert.deepEqual(odds[p],PLAYER_PACK_ODDS);
+});
+test('missing rarities move to positions that have them, overall rate unchanged',()=>{
+  const has={...full,3:['common','rare','epic','legendary'],5:['common','rare','epic']};
+  const odds=positionOdds(has);
+  assert.equal(odds[5].legendary,0);
+  assert.equal(odds[5].arcana,0);
+  assert.equal(odds[1].legendary,5);
+  assert.ok(Math.abs(odds[1].arcana-5/3)<1e-9);
+  for(const r of all) assert.ok(Math.abs(overall(odds,r)-PLAYER_PACK_ODDS[r])<1e-9,r);
+  for(const p of [1,2,3,4,5]) assert.ok(Math.abs(Object.values(odds[p]).reduce((a,b)=>a+b,0)-100)<1e-9);
+});
+test('a rarity nobody has goes to common',()=>{
+  const odds=positionOdds(Object.fromEntries([1,2,3,4,5].map(p=>[p,['common','rare','epic','legendary']])));
+  for(const p of [1,2,3,4,5]){ assert.equal(odds[p].arcana,0); assert.equal(odds[p].common,PLAYER_PACK_ODDS.common+1); }
+});
