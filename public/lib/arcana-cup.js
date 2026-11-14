@@ -157,6 +157,28 @@ export function placings(rounds, info = {}) {
   return [...top, ...out.map((o) => o.id)];
 }
 
+// The podium: the top places of a settled bracket, from placings' order, skipping entries Fav
+// removed (they never win a prize). The Worker sends 1st to 3rd their packs from this, the Cup page
+// shows it, and its entries are the Arcana player cards. order null (not settled) -> [].
+export const podium = (order, entries, n = ARCANA_PLACES) => {
+  const byId = new Map((entries ?? []).map((e) => [e.id, e]));
+  return (order ?? []).map((id) => byId.get(id)).filter((e) => e && !e.removed).slice(0, n);
+};
+
+// The Arcana player cards (docs/superpowers/specs/2026-11-13-player-packs-design.md section 1
+// "Arcana"): each settled bracket's podium, 6 in all once both are settled. categories:
+// { <category>: { order, entries } } (the Worker's cupSettle, or the public /cup answer).
+// -> [{ entry (entry id), account, key (designKey), design (frozen at entry), category, place (0-2) }]
+export function arcanaCards(categories) {
+  const out = [];
+  for (const category of Object.keys(CATEGORIES)) {
+    const c = categories?.[category];
+    podium(c?.order, c?.entries).forEach((e, place) => out.push({ entry: e.id, account: String(e.account), key: e.key, design: e.design ?? null, category, place }));
+  }
+  return out;
+}
+export const placeLabel = (place) => ['1st', '2nd', '3rd'][place] ?? `${place + 1}th`;
+
 // Each matchup has a discussion thread. A live one stays shut until you have voted in it, so the
 // vote count and the comments can't sway your pick. The owner of a card in it (who can't vote) and
 // Fav see it from the start. Once the match is settled anyone can read it; comments close with it.

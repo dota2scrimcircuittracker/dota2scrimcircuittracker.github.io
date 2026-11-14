@@ -891,15 +891,22 @@ What is live before then (`parts/pack-cards.js`, on your own profile beside each
 - **Swap in** — a design in Card 5 or later can take the place of one of the four. Once you change a
   stat or swap, your choice is saved (Worker action `pack-cards`); until then it follows your slots.
   A saved pack card that goes back to plain is replaced by your next design.
-- **Arcana is a 5th card** — a design that uses an arcana item (a Twin Card, or finishes stacked with
-  Double finish) never takes one of the four. Your lowest-slot arcana design is an extra arcana pack
-  card with its own bonus stat; another arcana design can **Swap in as arcana**. It isn't voted.
+- **Lock** — each of the four has a Lock button (asks to confirm). A locked card's design can't be
+  re-saved or cleared, it can't be swapped out and its bonus is fixed until packs open on Dec 1
+  (Worker action `pack-lock`, stored as `packLocks`). Votes and your own rating carry on. You can't
+  unlock it.
+- **Arcana cards come only from the Arcana Cup** — the top 3 of each Cup bracket (6 in all,
+  `lib/arcana-cup.js` `arcanaCards`, the same podium that gets the Cup's prize packs) are the only
+  arcana player cards: the entry's design as frozen in the Cup, for its owner, as an extra pack card on
+  top of their four. Owners choose its bonus stat in an "Arcana pack cards" row on their profile; it
+  isn't voted. No settled bracket, no arcana cards. Arcana items on a profile design (Twin Card,
+  stacked finishes) don't make it an arcana card: it's an ordinary design and can be one of the four.
 - **Rarity comes from votes** — the community's ratings in Gallery (`#/gallery`) set each pack
   card's rarity (`lib/player-cards.js`); your own rating breaks ties. You rate your own pack cards
   beside them (Worker action `self-rate`). Each card shows its current rarity live.
 - **Changing the design starts its votes over.** Anyone's pack cards are read from
   `GET /cosmetics/player-cards/<account>` (vote counts only); visitors see a chip on each one.
 - **Voting closes at the end of Thanksgiving**, Thu Nov 26 2026 US Eastern; pack cards, including
-  the arcana card and ones entered automatically, then freeze.
+  arcana cards and ones entered automatically, then freeze.
 - A one-time notice (`lib/winter-notice.js`) points people to their profile, from Nov 14 until
   voting closes.

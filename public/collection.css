@@ -700,5 +700,11 @@ html:has(dialog.collection-dialog[open]){overflow:hidden}.collection-dialog{over
 .pc-bonus{display:flex;flex-direction:column;gap:3px;margin:0;text-transform:none;letter-spacing:0;font-size:11px;color:#8f8797}.pc-bonus select{width:100%;min-width:0;max-width:100%;font-size:11px;padding:3px 4px}
 .pc-self-wrap{display:flex;flex-direction:column;gap:3px;color:#8f8797}.pc-self button{padding:3px 2px}
 .pc-strip .pc-error,.pc-foot .pc-error{margin:0;color:#ff8a7a;font-size:11px}.pc-error:empty{display:none}
+.pc-padlock{width:11px;height:11px;margin-right:4px;vertical-align:-1px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}.pc-lock{display:inline-flex;align-items:center;justify-content:center}.pc-locked{margin:0;display:flex;align-items:center;justify-content:center;color:#eac47e;font:600 10px/1.25 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+/* Arcana pack cards (Arcana Cup podium): a row above the cards, not profile slots. */
+.pc-arcana{--rc:#ff5ab4;margin:0 0 12px;font-size:12px;color:#bfb7c4}.pc-arcana[hidden]{display:none}.pc-arcana-head{margin:0 0 6px}.pc-arcana-head b{color:var(--rc);font-weight:600}
+.pc-arcana-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}.pc-arcana-item{display:flex;align-items:center;gap:10px;min-width:0;max-width:100%;padding:7px 9px;border:1px solid color-mix(in srgb,var(--rc) 40%,transparent);border-radius:8px;background:color-mix(in srgb,var(--rc) 6%,#17141b)}
+.pc-arcana-thumb{flex:0 0 64px;width:64px}.pc-arcana-info{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11px}.pc-arcana-info .pc-rarity{margin:0;text-align:left}.pc-arcana-place,.pc-arcana-bonus{margin:0;color:#d8cfdb}.pc-arcana-info .pc-bonus select{min-width:150px}.pc-arcana .pc-error{margin:0;color:#ff8a7a;font-size:11px}
+@media(max-width:420px){.pc-arcana-item{flex:1 1 100%}.pc-arcana-info{flex:1}.pc-arcana-info .pc-bonus select{min-width:0}}
 /* Narrow cards (three to a row on a phone): one rating button per row, so no label spills out. */
 .pc-foot,.profile-card-designs .card-rating{container-type:inline-size}@container (max-width:150px){.pc-self.card-rating-votes,.card-rating-votes{grid-template-columns:1fr}.pc-chip b,.pc-rarity b{letter-spacing:0}}

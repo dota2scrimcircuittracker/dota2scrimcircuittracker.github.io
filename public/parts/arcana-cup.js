@@ -9,7 +9,7 @@ import { divisionTiers } from './tiers.js';
 import { listCards } from '../lib/store.js';
 import { collectionState, collectionAction, cupView, myCardVotes, galleryCards } from '../lib/cosmetics.js';
 import { cardDesignState, cardSlotName } from '../lib/cosmetics-engine.js';
-import { ARCANA_PLACES, CATEGORIES, MAX_STRIKES, matchLabel, CUP, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, phaseAt, threadAccess } from '../lib/arcana-cup.js';
+import { ARCANA_PLACES, CATEGORIES, MAX_STRIKES, matchLabel, CUP, seedBracket, buildBracket, dueMatches, forfeits, isVotable, decideMatch, placings, podium, phaseAt, threadAccess } from '../lib/arcana-cup.js';
 import { isAdmin } from '../lib/pack-gifts.js';
 import { castVote, tally } from '../lib/card-ratings.js';
 import { createPlayerCards, PAINT_FILTER, wirePlayerCards, fitDesignCards } from './player-card.js';
@@ -226,7 +226,7 @@ export async function drawCup(body, { viewer, signIn }) {
     live = all.filter((m) => !m.result && m.a && m.b && now() >= m.opensAt && now() < m.closesAt);
     bracket = { rounds, size };
     if (done) {
-      const top = cat.order.map((id) => byId.get(id)).filter((e) => e && !e.removed).slice(0, ARCANA_PLACES);
+      const top = podium(cat.order, cat.entries);
       // How each card got there: every match it played, with the votes, each one opening its thread.
       const path = (id) => all.filter((m) => m.result && m.a && m.b && (m.a === id || m.b === id)).sort((x, y) => x.step - y.step).map((m) => {
         const other = m.a === id ? m.b : m.a, won = m.result.winner === id;

@@ -19,17 +19,19 @@ A card is one league player at one rarity: `player:<account>:<rarity>`.
 - **Each player has up to 4 rarity slots:** at most one card per rarity.
 - **Position:** a card's position is the player's main position, the one they played most in the
   league's games (`rosterOf` in `fantasy.js`). A player with no games has no card yet.
-- **Arcana:** a player who has an arcana design gets an arcana card as a **5th pack card**, on top
-  of the four voted ones. An arcana design is a saved design that uses an arcana-rarity item (a
-  Twin Card, stacked finishes from Double finish, or any later arcana item). It's entered
-  automatically and isn't voted. With several arcana designs, the lowest slot is the arcana card
-  unless the owner swaps another in. Arcana designs never take one of the four voted places.
+- **Arcana:** only from the Arcana Cup. The top 3 of each Cup bracket (6 entries in all,
+  `lib/arcana-cup.js`) are the only arcana player cards. Each is that entry's design as frozen in
+  the Cup, for the entry's owner, at their main position. It's a **5th pack card** for that player on
+  top of their four voted ones, isn't voted, and has a main stat the owner chooses (default: their
+  position's top stat). A player with two podium entries has two arcana cards. Arcana items on a
+  profile design (Twin Card, stacked finishes) don't make it an arcana card; such designs are
+  ordinary designs and can be among the four.
 
 ### 1.1 Where each rarity's card comes from
 
 Card designs are the saved designs players already make (`cardDesigns` in the collection Worker).
 Players already have `CARD_SLOTS` (5) design slots plus any bought in the shop. **Pack cards are
-entered automatically:** a player's first four saved non-arcana designs, by slot (Card 1, Card 2…),
+entered automatically:** a player's first four saved designs, by slot (Card 1, Card 2…),
 are their four voted pack cards, each with a default main stat (the top-weighted stat for their
 position) that the owner can change. Designs in Card 5 and above sit out, with a **Swap in** option
 that replaces one of the four. Once the owner changes anything, the choice is stored
@@ -64,6 +66,13 @@ cards enter the slot assignment below. The `rate` action's stale limit (`cardSlo
 
 The owner's rating only orders designs inside a conflict. It never lifts a design over one with a
 higher voted rarity.
+
+**Lock.** Each of the four pack cards has a Lock button. A locked card can't change until packs
+ship (`WINTER.opensAt`): its design can't be re-saved or cleared (`equip` on that slot is refused),
+it can't be swapped out, and its bonus stat is fixed. Votes and the owner's self-rating carry on as
+normal until the Thanksgiving close. Locking is final until packs ship (the button asks to
+confirm). It exists so a player can't reset a card's votes by accident. Stored as `packLocks`
+(slots) on the collection state; ignored from `opensAt` on.
 
 **Voting closes on Thanksgiving** (`WINTER.votesCloseAt`: end of Thursday 26 November 2026, US
 Eastern). From then on:

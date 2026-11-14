@@ -1,20 +1,26 @@
 // Winter pack cards as a profile shows them (parts/pack-cards.js): which saved designs are pack
 // cards (lib/pack-card-list.js: the first four designs unless the owner swapped), the rarity each
-// holds right now (or froze at on Thanksgiving), the arcana 5th card, and the chip text.
+// holds right now (or froze at on Thanksgiving), which are locked, the player's arcana cards from
+// the Arcana Cup podium, and the chip text.
 // Pure: res is the public /player-cards answer (workers/steam-auth/src/cosmetics.js).
 import { assignSlots, votesFromCounts } from "./player-cards.js";
 import { RATINGS, designKey } from "./card-ratings.js";
 import { packCardList } from "./pack-card-list.js";
+import { CATEGORIES, placeLabel } from "./arcana-cup.js";
 
 export const rarityLabel = (r) => r[0].toUpperCase() + r.slice(1);
 
-// res: { locked, designs: [{ slot, main, savedAt, self, counts }], arcana: { slot, main } | null, slots? }.
+// res: { locked, designs: [{ slot, main, savedAt, self, counts }], arcana: [{ entry, key, design,
+// main, category, place }], locks: [slot], slots? }.
 // designs: the profile's saved designs by slot (to re-check the list, and spot a frozen slot
 // redesigned since).
 // -> { locked, cards: Map(slot -> { main, rarity, self, changed }), order: [slot] (the four, in order),
-//      arcana: { slot, main, rarity: "arcana", changed } | null, count, defaultCommon }
+//      arcana: [{ entry, key, design, main, category, place, rarity: "arcana" }], locks: Set(slot),
+//      count, defaultCommon }
 export function packCardView(res, designs = []) {
   const cards = new Map();
+  const arcana = (Array.isArray(res?.arcana) ? res.arcana : []).map((a) => ({ ...a, main: a.main ?? null, rarity: "arcana" }));
+  const locks = new Set(Array.isArray(res?.locks) ? res.locks : []);
   if (res?.locked) {
     const order = [];
     for (const r of RATINGS) {
@@ -23,15 +29,13 @@ export function packCardView(res, designs = []) {
       cards.set(x.slot, { main: x.main ?? null, rarity: r, self: null, changed: changedSince(designs, x) });
       order.push(x.slot);
     }
-    const a = res.slots?.arcana;
-    const arcana = a && typeof a === "object" ? { slot: a.slot, main: a.main ?? null, rarity: "arcana", changed: changedSince(designs, a) } : null;
-    return { locked: true, cards, order, arcana, count: cards.size, defaultCommon: res.slots?.common === "default" };
+    return { locked: true, cards, order, arcana, locks, count: cards.size, defaultCommon: res.slots?.common === "default" };
   }
   const rows = new Map((res?.designs ?? []).map((x) => [x.slot, x]));
   // The Worker's list, run through the same rules against the designs this page shows.
   const list = designs.length
-    ? packCardList({ cardDesigns: designs, packCards: res?.designs ?? [], packArcana: res?.arcana ?? null })
-    : { voted: (res?.designs ?? []).map((x) => ({ slot: x.slot, main: x.main ?? null })), arcana: res?.arcana ?? null };
+    ? packCardList({ cardDesigns: designs, packCards: res?.designs ?? [] })
+    : { voted: (res?.designs ?? []).map((x) => ({ slot: x.slot, main: x.main ?? null })) };
   const seats = assignSlots(list.voted.map((c, i) => {
     const x = rows.get(c.slot);
     return { slot: c.slot, votes: votesFromCounts(x?.counts), self: x?.self ?? null, savedAt: x?.savedAt ?? i };
@@ -39,8 +43,7 @@ export function packCardView(res, designs = []) {
   for (const c of list.voted) {
     cards.set(c.slot, { main: c.main, rarity: RATINGS.find((r) => seats[r] === c.slot) ?? null, self: rows.get(c.slot)?.self ?? null, changed: false });
   }
-  const arcana = list.arcana ? { slot: list.arcana.slot, main: list.arcana.main ?? null, rarity: "arcana", changed: false } : null;
-  return { locked: false, cards, order: list.voted.map((c) => c.slot), arcana, count: cards.size, defaultCommon: seats.common === "default" };
+  return { locked: false, cards, order: list.voted.map((c) => c.slot), arcana, locks, count: cards.size, defaultCommon: seats.common === "default" };
 }
 const changedSince = (designs, x) => { const now = designs[x.slot]; return !now || designKey(now) !== x.designKey; };
 
@@ -52,6 +55,8 @@ export function chipText({ rarity, changed }, { locked, own }) {
   const now = locked || rarity === "arcana" ? "" : " now";
   return `${head} · ${rarityLabel(rarity)}${now}${locked && changed ? " (design changed since)" : ""}`;
 }
+// Where an arcana card came from: "Arcana Cup · Funny · 1st".
+export const arcanaPlaceText = ({ category, place }) => `Arcana Cup · ${CATEGORIES[category]?.name ?? category} · ${placeLabel(place)}`;
 
 // The owner's strip above their cards.
 export function stripText(view, { closesText }) {
@@ -59,17 +64,18 @@ export function stripText(view, { closesText }) {
   return `Winter pack cards · Voting closes ${closesText}`;
 }
 
-// What the Worker's pack-cards action takes after one change: the full list of four, each with
-// its stat, plus the arcana card when that's what changed. Sending it stores the owner's choice.
+// What the Worker's pack-cards action takes after one change: always the full list of four, each
+// with its stat (a locked card must be sent unchanged). Sending it stores the owner's choice.
 const votedList = (view) => view.order.map((slot) => ({ slot, main: view.cards.get(slot)?.main ?? null }));
-// A new main stat for one pack card (one of the four, or the arcana card).
-export function withMain(view, slot, main) {
-  if (view.arcana?.slot === slot && !view.cards.has(slot)) return { cards: votedList(view), arcana: { slot, main } };
-  return { cards: votedList(view).map((c) => (c.slot === slot ? { slot, main } : c)) };
-}
+// A new main stat for one of the four.
+export const withMain = (view, slot, main) => ({ cards: votedList(view).map((c) => (c.slot === slot ? { slot, main } : c)) });
+// A new main stat for one of the player's arcana cards (by Cup entry id).
+export const withArcanaMain = (view, entry, main) => ({ cards: votedList(view), arcana: [{ entry, main }] });
 // A design that sits out takes the place of one of the four (replace: that one's slot), default stat.
 export function swapIn(view, slot, replace) {
   return { cards: votedList(view).map((c) => (c.slot === replace ? { slot, main: null } : c)) };
 }
-// Another arcana design becomes the arcana card, default stat.
-export const swapArcana = (view, slot) => ({ cards: votedList(view), arcana: { slot, main: null } });
+// The four a sitting-out design can replace: not the locked ones.
+export const swapTargets = (view) => view.order.filter((s) => !view.locks.has(s));
+// Whether one of the four can still be locked or changed by its owner: before packs open, not yet locked.
+export const lockable = (view, slot, now, opensAt) => now < opensAt && view.order.includes(slot) && !view.locks.has(slot);
