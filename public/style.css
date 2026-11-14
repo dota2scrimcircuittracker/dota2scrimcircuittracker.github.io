@@ -5475,11 +5475,3 @@ dialog.pb-modal { width: min(1320px, 96vw); }
   .profile-collection:has(>div.cup-reward) { flex-wrap: wrap; }
   .profile-collection>div.cup-reward { flex-basis: 100%; max-width: none; min-width: 0; }
 }
-
-/* Winter pack cards panel (parts/pack-cards.js) under the card editor's slot list. */
-.pack-cards-panel { margin: 12px 0; }
-.pack-cards { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; }
-.pack-cards li { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
-.pack-cards li > label { display: inline-flex; flex-direction: row; align-items: center; gap: .4rem; min-width: 10rem; }
-.pack-cards li > label input { width: auto; margin: 0; }
-.pack-cards-panel .pc-error { color: var(--err); }

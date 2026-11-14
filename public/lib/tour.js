@@ -1043,7 +1043,9 @@ let invite = null;
 function closeInvite() { invite?.remove(); invite = null; }
 
 function showInvite() {
-  if (invite || run) return;
+  if (invite || run || localGet(SEEN_KEY)) return;
+  // One card at a time: while the Cup or Winter notice is up, wait for it to go.
+  if (document.querySelector(".tour-invite")) return void setTimeout(showInvite, 1000);
   invite = document.createElement("div");
   invite.className = "tour-invite";
   invite.setAttribute("role", "dialog");

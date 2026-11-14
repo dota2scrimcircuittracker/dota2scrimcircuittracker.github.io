@@ -22,7 +22,8 @@ function show(go) {
     <span>Winter Fantasy uses player cards. Pick up to ${PACK_CARDS_MAX} of your card designs as your pack cards and choose each one's bonus. Votes set their rarity. Voting closes on Thanksgiving.</span>
     <div class="tour-btns"><button type="button" class="tour-btn winter-later">Later</button><button type="button" class="tour-btn tour-primary winter-go">Choose my pack cards</button></div>`;
   card.querySelector(".winter-later").onclick = close;
-  card.querySelector(".winter-go").onclick = () => { close(); go("#/gallery/customize"); };
+  // Pack cards are chosen on your own profile, beside each card. Signed out: the Gallery asks you to sign in.
+  card.querySelector(".winter-go").onclick = async () => { close(); go(await import("../parts/me.js").then((m) => m.myProfileHref()).catch(() => null) ?? "#/gallery/customize"); };
   document.body.append(card);
 }
 
@@ -35,7 +36,8 @@ export function initWinterNotice({ go }) {
     if (!shouldShowWinterNotice(Date.now(), seen())) return;
     const busy = document.querySelector(".tour-invite") || document.body.classList.contains("touring") || document.body.classList.contains("tour-pick");
     if (busy || (!document.getElementById("app")?.children.length && Date.now() < wait)) return void setTimeout(tick, 1000);
-    setTimeout(() => show(go), 1500);
+    // Checked again when it shows: the tour invite may have appeared in the meantime.
+    setTimeout(() => (document.querySelector(".tour-invite") ? tick() : show(go)), 1500);
   };
   tick();
 }

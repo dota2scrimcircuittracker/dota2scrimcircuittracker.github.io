@@ -65,6 +65,11 @@ async function myPage(account) {
   const r = await myRoster(account);
   return playerHref(SOURCES[r?.div ?? viewedDiv() ?? Object.keys(DIVISIONS)[0]], String(account));
 }
+// Your player page, or null when signed out (the Winter notice sends you to your pack cards there).
+export async function myProfileHref() {
+  const account = await steamAccount().catch(() => null);
+  return account == null ? null : myPage(account);
+}
 // The league home of the division whose roster has you (My team's division searched first), or
 // null when signed out or on no roster. app.js opens it in place of the hub on arrival.
 export async function myLeagueHome() {

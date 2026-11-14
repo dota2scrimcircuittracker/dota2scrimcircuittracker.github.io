@@ -46,7 +46,8 @@ export function initCupNotice({ go, here }) {
     if (here().startsWith("#/gallery/cup")) return markSeen();
     const busy = document.querySelector(".tour-invite:not(.cup-notice)") || document.body.classList.contains("touring") || document.body.classList.contains("tour-pick");
     if (busy || (!document.getElementById("app")?.children.length && Date.now() < wait)) return void setTimeout(tick, 1000);
-    setTimeout(() => show(go), 1500);
+    // Checked again when it shows: the tour invite may have appeared in the meantime.
+    setTimeout(() => (document.querySelector(".tour-invite") ? tick() : show(go)), 1500);
   };
   tick();
 }

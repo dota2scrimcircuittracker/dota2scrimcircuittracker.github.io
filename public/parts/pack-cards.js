@@ -1,16 +1,18 @@
-// "Winter pack cards" panel in the card editor (docs/superpowers/specs/2026-11-13-player-packs-design.md
-// section 1.1, 2.3): choose up to 4 saved designs for Winter player packs, each with its bonus stat,
-// rate your own, and see which rarity each would be right now.
+// Winter pack cards on a profile (docs/superpowers/specs/2026-11-13-player-packs-design.md
+// section 1.1, 2.3), beside each saved card. Everyone sees which cards are pack cards and the
+// rarity each holds now; the owner nominates up to 4, picks each one's bonus stat and rates their
+// own. Lives under parts/collection.js mountProfileCollection's cards.
 import { esc } from "../core.js";
 import { WINTER, PACK_CARDS_MAX } from "../lib/winter.js";
-import { assignSlots, votesFromCounts } from "../lib/player-cards.js";
 import { statsFor, bonusText } from "../lib/card-bonus.js";
 import { METRICS } from "../lib/tiers.js";
-import { RATINGS, isPlainDesign, designKey } from "../lib/card-ratings.js";
+import { RATINGS, isPlainDesign } from "../lib/card-ratings.js";
+import { packCardView, chipText, stripText, nextPackCards, rarityLabel } from "../lib/pack-card-view.js";
 
-const label = (r) => r[0].toUpperCase() + r.slice(1);
 const statLabel = (s) => METRICS[s]?.label ?? s;
 const ALL_STATS = [...new Set([1, 2, 3, 4, 5].flatMap(statsFor))];
+const CLOSES = "Thanksgiving, Nov 26";
+const HELP = "Votes set each card's rarity. Your own rating breaks ties. Changing a pack card's design starts its votes over.";
 
 // The player's main position from the Winter player pool, or null if they aren't in it.
 let pool = null;
@@ -19,78 +21,94 @@ export function poolPosition(account) {
   return pool.then((p) => p.players?.find((x) => x.account === Number(account))?.pos ?? null);
 }
 
-// One rendered row's "Now:" line from the preview seats.
-const nowText = (rarity, pos, main) =>
-  `Now: ${label(rarity)}${pos && main ? ` · ${esc(bonusText(pos, main, rarity))}` : ""}`;
+// One bonus option: "+14% Kill share" at this rarity for the player's position, else the stat name.
+const optionText = (pos, stat, rarity) => (pos ? bonusText(pos, stat, rarity ?? "common") : statLabel(stat));
 
-// el: container. ctx: { account, pos (1-5 or null), designs (slot -> design|null), slotName(slot),
-//   packCards [{slot, main}], fetchCards(account) -> { designs }, act(body) -> { state } | { error } }
-export async function renderPackCards(el, ctx) {
-  if (Date.now() < WINTER.prepAt) { el.hidden = true; return; }
-  el.hidden = false;
-  let fetched = [], loadError = "", res = {};
-  try { res = await ctx.fetchCards(ctx.account); fetched = res.designs ?? []; } catch (e) { loadError = e.message; }
-  // After Thanksgiving the server sends locked + the frozen slots: read-only. If that fails after the
-  // close, still read-only: never the editable view.
-  if (loadError && Date.now() >= WINTER.votesCloseAt) {
-    el.innerHTML = `<h3>Winter pack cards</h3>
-      <p class="muted">Pack cards are locked for Winter.</p>
-      <p class="pc-error" role="alert">${esc(loadError)}</p>`;
-    return;
+// section: the profile's .profile-collection. own: the viewer is this player.
+// designs: their saved designs by slot. fetchCards(account) -> /player-cards answer.
+// act(action, details) -> Worker reply; throws with a message.
+export async function mountPackCards(section, { account, own, designs, fetchCards, act }) {
+  if (Date.now() < WINTER.prepAt) return;
+  const figOf = (slot) => section.querySelector(`[data-design-slot="${slot}"]`)?.closest("figure");
+  let res, loadError = "";
+  try { res = await fetchCards(account); } catch (e) { loadError = e.message; }
+  if (!section.isConnected) return;
+  const pos = own ? await poolPosition(account) : null;
+  let view = res ? packCardView(res, designs) : null;
+  let strip = null;
+  if (own) {
+    strip = document.createElement("div");
+    strip.className = "pc-strip";
+    section.querySelector(".profile-card-designs")?.before(strip);
   }
-  if (res.locked) {
-    const frozen = RATINGS.slice().reverse().map((r) => [r, res.slots?.[r]]).filter(([, x]) => x && typeof x === "object");
-    const pos = ctx.pos;
-    // The frozen design is what counts; say so if the slot has been redesigned since.
-    const name = (x) => `${ctx.slotName(x.slot)}${(ctx.designs?.[x.slot] ? designKey(ctx.designs[x.slot]) : null) !== x.designKey ? " (design changed since)" : ""}`;
-    el.innerHTML = `<h3>Winter pack cards</h3>
-      <p class="muted">Pack cards are locked for Winter.</p>
-      ${frozen.length ? `<ul class="pack-cards pack-cards-locked">${frozen.map(([r, x]) =>
-        `<li>${label(r)} · ${esc(name(x))}${pos && x.main ? ` · ${esc(bonusText(pos, x.main, r))}` : x.main ? ` · ${esc(statLabel(x.main))}` : ""}</li>`).join("")}</ul>` : ""}
-      ${res.slots?.common === "default" ? `<p class="pc-default muted">Your common is the default card.</p>` : ""}`;
-    return;
-  }
-  const chosen = new Map((ctx.packCards ?? []).map((c) => [c.slot, c.main]));
-  // Only designs still nominated count toward the preview.
-  const live = fetched.filter((x) => chosen.has(x.slot));
-  const seats = assignSlots(live.map((x) => ({ slot: x.slot, votes: votesFromCounts(x.counts), self: x.self, savedAt: x.savedAt })));
-  const rarityOf = (slot) => RATINGS.find((r) => seats[r] === slot) ?? null;
-  const selfOf = (slot) => fetched.find((x) => x.slot === slot)?.self ?? null;
-  const pos = ctx.pos, stats = pos ? statsFor(pos) : ALL_STATS, full = chosen.size >= PACK_CARDS_MAX;
-  const rows = ctx.designs.map((d, slot) => {
-    if (isPlainDesign(d)) return "";
-    const on = chosen.has(slot), main = chosen.get(slot), rarity = rarityOf(slot);
-    return `<li data-slot="${slot}">
-      <label><input type="checkbox" class="pc-pick" ${on ? "checked" : full ? "disabled" : ""}> ${esc(ctx.slotName(slot))}</label>
-      <select class="pc-main" aria-label="Bonus stat">${stats.map((s) => `<option value="${s}" ${main === s ? "selected" : ""}>${esc(statLabel(s))}</option>`).join("")}${on && main && !stats.includes(main) ? `<option value="${esc(main)}" selected>${esc(statLabel(main))} (not on your position's list)</option>` : ""}</select>
-      ${on ? `<select class="pc-self" aria-label="Your rating"><option value="">Your rating</option>${RATINGS.map((r) => `<option value="${r}" ${selfOf(slot) === r ? "selected" : ""}>${label(r)}</option>`).join("")}</select>
-      <span class="pc-now">${rarity ? nowText(rarity, pos, main) : "Not in a pack slot right now"}</span>` : ""}
-    </li>`;
-  }).join("");
-  el.innerHTML = `<h3>Winter pack cards</h3>
-    <p class="muted">Pick up to ${PACK_CARDS_MAX} of your saved designs for Winter player packs and choose each one's bonus stat. Votes decide each card's rarity; your own rating breaks ties.${pos ? "" : " Every stat is listed for now: you'll get a position once you've played league games."}</p>
-    <p class="muted">Voting closes on Thanksgiving, Nov 26.</p>
-    ${rows ? `<ul class="pack-cards">${rows}</ul>` : `<p class="muted">Save a card design first.</p>`}
-    ${chosen.size ? `<p class="pc-note muted">Changing a pack card's design starts its votes over.</p>` : ""}
-    <p class="pc-default muted">${!loadError && seats.common === "default" ? "Your common is the default card." : ""}</p>
-    <p class="pc-error" role="alert">${esc(loadError)}</p>`;
-  const error = (text) => { el.querySelector(".pc-error").textContent = text ?? ""; };
-  const lock = () => el.querySelectorAll("input, select").forEach((x) => { x.disabled = true; });
-  const save = async () => {
-    const cards = [...el.querySelectorAll("li")].filter((li) => li.querySelector(".pc-pick").checked)
-      .map((li) => ({ slot: +li.dataset.slot, main: li.querySelector(".pc-main").value }));
-    lock();
-    const r = await ctx.act({ action: "pack-cards", cards });
-    if (r.error) { await renderPackCards(el, ctx); error(r.error); return; }
-    ctx.packCards = r.state?.packCards ?? cards;
-    renderPackCards(el, ctx);
+
+  const clear = () => section.querySelectorAll(".pc-chip, .pc-foot").forEach((x) => x.remove());
+  // A chip above the rating block (the rating redraws itself at the figure's end).
+  const putChip = (fig, card, locked) => {
+    const chip = document.createElement("p");
+    chip.className = "pc-chip";
+    chip.innerHTML = `<b data-rarity="${card.rarity ?? ""}">${esc(chipText(card, { locked, own: false }))}</b>`;
+    const before = fig.querySelector(".card-rating");
+    if (before) before.before(chip); else fig.append(chip);
   };
-  el.querySelectorAll(".pc-pick").forEach((x) => x.addEventListener("change", save));
-  el.querySelectorAll(".pc-main").forEach((x) => x.addEventListener("change", () => { if (x.closest("li").querySelector(".pc-pick").checked) save(); }));
-  el.querySelectorAll(".pc-self").forEach((x) => x.addEventListener("change", async () => {
-    lock();
-    const r = await ctx.act({ action: "self-rate", cardSlot: +x.closest("li").dataset.slot, rating: x.value || null });
-    await renderPackCards(el, ctx);
-    if (r.error) error(r.error);
-  }));
+
+  const draw = () => {
+    clear();
+    const locked = view?.locked || (!view && Date.now() >= WINTER.votesCloseAt);
+    if (strip) {
+      const line = view ? stripText(view, { max: PACK_CARDS_MAX, closesText: CLOSES }) : locked ? "Winter pack cards are locked." : "Winter pack cards";
+      strip.innerHTML = `<p class="pc-strip-line"><b>${esc(line)}</b>${view?.defaultCommon ? " · Your common is the default card." : ""}</p>
+        ${!locked && view ? `<p class="pc-strip-help">${esc(HELP)}${pos ? "" : " Every stat is listed for now: you'll get a position once you've played league games."}</p>` : ""}
+        <p class="pc-error" role="alert">${esc(loadError)}</p>`;
+    }
+    if (!view) return;
+    // Visitors, and everyone once locked: chips only.
+    if (!own || locked) {
+      for (const [slot, card] of view.cards) { const fig = figOf(slot); if (fig) putChip(fig, card, locked); }
+      return;
+    }
+    const full = view.count >= PACK_CARDS_MAX, stats = pos ? statsFor(pos) : ALL_STATS;
+    designs.forEach((d, slot) => {
+      const fig = figOf(slot);
+      if (!fig || isPlainDesign(d)) return;
+      const card = view.cards.get(slot);
+      fig.classList.toggle("pc-picked", !!card);
+      const foot = document.createElement("div");
+      foot.className = "pc-foot";
+      foot.dataset.slot = slot;
+      if (!card) {
+        foot.innerHTML = `<button type="button" class="pc-use" ${full ? `disabled title="You've chosen ${PACK_CARDS_MAX} pack cards. Remove one first."` : ""}>Use as Winter pack card</button>
+          <p class="pc-error" role="alert"></p>`;
+        foot.querySelector(".pc-use").onclick = () => save(foot, nextPackCards(view.cards, { slot, main: stats[0] }));
+      } else {
+        const off = card.main && !stats.includes(card.main);
+        foot.innerHTML = `<p class="pc-rarity"><b data-rarity="${card.rarity ?? ""}">${esc(chipText(card, { locked: false, own: true }))}</b></p>
+          <label class="pc-bonus"><span>Bonus</span><select aria-label="Bonus stat">${stats.map((s) => `<option value="${esc(s)}" ${card.main === s ? "selected" : ""}>${esc(optionText(pos, s, card.rarity))}</option>`).join("")}${off ? `<option value="${esc(card.main)}" selected>${esc(optionText(pos, card.main, card.rarity))}</option>` : ""}</select></label>
+          <div class="pc-self-wrap"><span>Your rating</span><div class="card-rating-votes pc-self" role="group" aria-label="Your rating">${RATINGS.map((r) => `<button type="button" data-self="${r}" data-rarity="${r}" aria-pressed="${card.self === r}" title="${card.self === r ? "Clear your rating" : `Rate it ${rarityLabel(r)}`}">${rarityLabel(r)}</button>`).join("")}</div></div>
+          <button type="button" class="pc-remove">Remove</button>
+          <p class="pc-error" role="alert"></p>`;
+        foot.querySelector("select").onchange = (e) => save(foot, nextPackCards(view.cards, { slot, main: e.target.value }));
+        foot.querySelector(".pc-remove").onclick = () => save(foot, nextPackCards(view.cards, { slot, remove: true }));
+        foot.querySelectorAll("[data-self]").forEach((b) => b.onclick = () =>
+          send(foot, "self-rate", { cardSlot: slot, rating: b.getAttribute("aria-pressed") === "true" ? null : b.dataset.self }));
+      }
+      fig.append(foot);
+    });
+  };
+
+  // Every change saves straight away; afterwards every chip is refreshed, since one contest can move others.
+  const send = async (foot, action, details) => {
+    section.querySelectorAll(".pc-foot button, .pc-foot select").forEach((x) => { x.disabled = true; });
+    let error = "";
+    try { await act(action, details); } catch (e) { error = e.message; }
+    try { res = await fetchCards(account); view = packCardView(res, designs); loadError = ""; } catch (e) { error ||= e.message; }
+    if (!section.isConnected) return;
+    draw();
+    if (error) {
+      const at = section.querySelector(`.pc-foot[data-slot="${foot.dataset.slot}"] .pc-error`) ?? strip?.querySelector(".pc-error");
+      if (at) at.textContent = error;
+    }
+  };
+  const save = (foot, cards) => send(foot, "pack-cards", { cards });
+  draw();
 }
