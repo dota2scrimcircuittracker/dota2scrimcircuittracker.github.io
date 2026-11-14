@@ -906,7 +906,9 @@ What is live before then (`parts/pack-cards.js`, on your own profile beside each
   beside them (Worker action `self-rate`). Each card shows its current rarity live.
 - **Changing the design starts its votes over.** Anyone's pack cards are read from
   `GET /cosmetics/player-cards/<account>` (vote counts only); visitors see a chip on each one.
-- **Voting closes at the end of Thanksgiving**, Thu Nov 26 2026 US Eastern; pack cards, including
-  arcana cards and ones entered automatically, then freeze.
+- **Voting closes at the end of Thanksgiving**, Thu Nov 26 2026 US Eastern; the four pack cards,
+  including ones entered automatically, then freeze, and arcana bonus stats and locks can't change.
+  Arcana cards aren't frozen per player: they're always read from the Cup podium, which is stored
+  (`cup:<id>:<category>:podium`) and fixed once the bracket's prizes go out.
 - A one-time notice (`lib/winter-notice.js`) points people to their profile, from Nov 14 until
   voting closes.

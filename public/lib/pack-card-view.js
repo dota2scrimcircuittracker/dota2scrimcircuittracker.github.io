@@ -7,6 +7,7 @@ import { assignSlots, votesFromCounts } from "./player-cards.js";
 import { RATINGS, designKey } from "./card-ratings.js";
 import { packCardList } from "./pack-card-list.js";
 import { CATEGORIES, placeLabel } from "./arcana-cup.js";
+import { votingOpen } from "./winter.js";
 
 export const rarityLabel = (r) => r[0].toUpperCase() + r.slice(1);
 
@@ -77,5 +78,6 @@ export function swapIn(view, slot, replace) {
 }
 // The four a sitting-out design can replace: not the locked ones.
 export const swapTargets = (view) => view.order.filter((s) => !view.locks.has(s));
-// Whether one of the four can still be locked or changed by its owner: before packs open, not yet locked.
-export const lockable = (view, slot, now, opensAt) => now < opensAt && view.order.includes(slot) && !view.locks.has(slot);
+// Whether one of the four can still be locked by its owner: while Winter voting is open (the
+// Thanksgiving close freezes the four anyway), before packs open, not yet locked.
+export const lockable = (view, slot, now, opensAt) => votingOpen(now) && now < opensAt && view.order.includes(slot) && !view.locks.has(slot);

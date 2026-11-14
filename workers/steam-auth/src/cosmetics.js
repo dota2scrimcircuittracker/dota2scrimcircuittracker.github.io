@@ -1,7 +1,7 @@
 import { grantLogin, applyPackGrants, rollPack, recycleCards, openArcanaUpgrade, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, slotCount, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
 import { designKey, castVote, tally, RATINGS, isPlainDesign } from '../../../public/lib/card-ratings.js';
 import { statsFor } from '../../../public/lib/card-bonus.js';
-import { PACK_CARDS_MAX, votingOpen } from '../../../public/lib/winter.js';
+import { PACK_CARDS_MAX, votingOpen, WINTER } from '../../../public/lib/winter.js';
 import { assignSlots } from '../../../public/lib/player-cards.js';
 import { packCardList, packLocksOf } from '../../../public/lib/pack-card-list.js';
 import { itemByKey } from '../../../public/lib/cosmetics-catalog.js';
@@ -62,6 +62,16 @@ const pullKey=(at,account,requestId)=>`pull:${String(at).padStart(15,'0')}:${acc
 // writes commit together. Browser input never supplies drop odds, items or counts.
 // Refusals while a Winter pack card is locked (pack-lock), until packs open.
 const LOCKED_DESIGN='This card is locked for Winter packs until Dec 1.',LOCKED_CARD='That card is locked.';
+// Collection actions that can settle the Arcana Cup (cupSettle, cupSettleCategory, cupMatch, and
+// cupPodiums before the Cup is awarded). Settling can write user rows (prize packs, cup notices),
+// the caller's own included, so these settle once at the start of the transaction, before the
+// caller's row is read: the action then builds on a row that already has the prize, and the
+// settles inside the action find nothing left to do.
+const CUP_SETTLING=new Set(['cup-enter','cup-vote','cup-comment','cup-comment-delete','cup-extend','pack-cards']);
+// Backstop: the user rows a Cup settle wrote during one collection action, by transaction. An
+// action whose own row was written after it was read is refused (rolled back) rather than
+// overwriting what the Cup sent.
+const CUP_TOUCHED=new WeakMap(),cupTouched=(txn,key)=>CUP_TOUCHED.get(txn)?.add(key);
 export class CosmeticsVault {
   constructor(ctx,env={}) {this.ctx=ctx;this.env=env;}
   // The token shop (lib/shop.js) is off until the Worker's SHOP_ENABLED variable is "on".
@@ -94,37 +104,58 @@ export class CosmeticsVault {
     }
     return designs;
   }
+  // The Arcana Cup podiums as arcanaCards takes them ({ <category>: { order, entries } }), from the
+  // podium stored when each bracket was awarded (cupSettleCategory): fixed from then on, the same
+  // three that got the prize packs. null until every category is awarded (then cupPodiums settles).
+  async storedPodiums(storage) {
+    const out={};
+    for(const category of Object.keys(CATEGORIES)) {
+      const p=`cup:${this.cup.id}:${category}:`,top=await storage.get(`${p}awarded`)&&await storage.get(`${p}podium`);
+      if(!top)return null;
+      out[category]={order:top.map(e=>e.id),entries:top};
+    }
+    return out;
+  }
+  // The same, settling first when a bracket isn't awarded yet. txn: a transaction (cupSettle may
+  // seed or settle the Cup, as the public /cup read does).
+  async cupPodiums(txn) {
+    const stored=await this.storedPodiums(txn);
+    if(stored)return stored;
+    const out={};
+    for(const [category,v] of Object.entries(await this.cupSettle(txn)))out[category]={order:v.podium?.map(e=>e.id)??null,entries:v.podium??[]};
+    return out;
+  }
   // One player's arcana pack cards (spec 1 "Arcana"): their entries on the Arcana Cup podium (top 3
-  // of each settled bracket, lib/arcana-cup.js arcanaCards, from the same cupSettle placings that
-  // award the Cup's prize packs), each with the main stat they chose (packArcanaMains, by entry id;
-  // null = their position's default). No settled bracket, no arcana cards. txn: a transaction
-  // (cupSettle may seed or settle the Cup, as the public /cup read does).
-  async arcanaFor(txn,account,ownerState) {
-    const mine=arcanaCards(await this.cupSettle(txn)).filter(c=>c.account===String(account));
+  // of each settled bracket, lib/arcana-cup.js arcanaCards), each with the main stat they chose
+  // (packArcanaMains, by entry id; null = their position's default). Never frozen per player: the
+  // podium can't change once awarded, and mains can't change after the close (pack-cards refuses).
+  // podiums: cupPodiums or storedPodiums. No settled bracket, no arcana cards.
+  arcanaFor(podiums,account,ownerState) {
+    const mine=arcanaCards(podiums).filter(c=>c.account===String(account));
     if(!mine.length)return [];
-    const mains=(ownerState??await txn.get(`user:${account}`))?.packArcanaMains??{};
+    const mains=ownerState?.packArcanaMains??{};
     return mine.map(c=>({...c,main:typeof mains[c.entry]==='string'?mains[c.entry]:null}));
   }
   // One player's pack card per rarity (lib/player-cards.js assignSlots). Before voting closes on
   // Thanksgiving it follows votes live: { common|rare|epic|legendary: slot | "default" | null }.
   // After the close it's frozen: worked out once, stored as packslots:<account>, and read from there
-  // ever after, so later edits and votes change nothing. The arcana cards freeze with them
-  // (frozen.arcana, a list: see arcanaFor). Pass a transaction's storage when writing.
+  // ever after, so later edits and votes change nothing. Only the four voted slots freeze; arcana
+  // cards are read from the Cup (arcanaFor). Pass a transaction's storage when writing.
   // A player with no pack cards (or no account) gets the default common and no stored freeze, unless
   // `keep` (an equip after the close): then the empty freeze is stored too, so a first design saved
   // after the close never becomes a pack card.
   async packSlots(storage,account,keep=false) {
     if(votingOpen(this.now()))return assignSlots(await this.packDesigns(storage,account));
     const k=`packslots:${account}`,stored=await storage.get(k);
-    if(stored)return {...stored,arcana:stored.arcana??[]};
-    const designs=await this.packDesigns(storage,account),arcana=await this.arcanaFor(storage,account);
-    if(!designs.length&&!arcana.length&&!keep)return {frozenAt:null,slots:{common:'default',rare:null,epic:null,legendary:null},arcana:[]};
+    if(stored)return stored;
+    const designs=await this.packDesigns(storage,account);
+    if(!designs.length&&!keep)return {frozenAt:null,slots:{common:'default',rare:null,epic:null,legendary:null}};
     const seats=assignSlots(designs),slots={};
     for(const [rarity,seat] of Object.entries(seats)) {
       const d=Number.isInteger(seat)&&designs.find(x=>x.slot===seat);
       slots[rarity]=d?{slot:d.slot,design:d.design,main:d.main,designKey:d.designKey}:seat;
     }
-    const frozen={frozenAt:this.now(),slots,arcana};
+    const frozen={frozenAt:this.now(),slots};
     await storage.put(k,frozen);
     return frozen;
   }
@@ -134,7 +165,7 @@ export class CosmeticsVault {
   // ownerState: the owner's user row, if already read.
   async nominatedKeys(storage,owner,ownerState) {
     const frozen=await storage.get(`packslots:${owner}`);
-    if(frozen)return new Set(Object.values(frozen.slots).filter(x=>x&&typeof x==='object'&&!Array.isArray(x)).map(x=>x.designKey));
+    if(frozen)return new Set(Object.entries(frozen.slots).filter(([r,x])=>r!=='arcana'&&x&&typeof x==='object'&&!Array.isArray(x)).map(([,x])=>x.designKey));
     const state=ownerState??await storage.get(`user:${owner}`);
     if(!state)return new Set();
     const designs=cardDesignState(state).cardDesigns;
@@ -194,7 +225,7 @@ export class CosmeticsVault {
       if(r.notice) {
         const notice={kind:'cup',step:null,closesAt:r.open?.until??null,from:ADMIN_ACCOUNT,fromName:'Fav',text:r.notice,at:now};
         for(const [k,state] of await txn.list({prefix:'user:',limit:5000}))
-          if(k!==`user:${ADMIN_ACCOUNT}`)await txn.put(k,pushNotice({...state,notices:(state.notices??[]).filter(n=>n.kind!=='cup')},notice));
+          if(k!==`user:${ADMIN_ACCOUNT}`){await txn.put(k,pushNotice({...state,notices:(state.notices??[]).filter(n=>n.kind!=='cup')},notice));cupTouched(txn,k);}
       }
       await txn.put(done,now);
     }
@@ -224,17 +255,23 @@ export class CosmeticsVault {
     }
     if(changed)await txn.put(`${p}results`,results);
     const order=placings(rounds,info);
+    // Settled: 1st to 3rd get their prize packs once, and the podium is stored with them (the Arcana
+    // player cards, storedPodiums): fixed from then on, even if Fav removes an entry later. A bracket
+    // awarded before the podium was stored gets it stored on its next settle.
+    let top=order&&await txn.get(`${p}podium`);
     if(order&&!await txn.get(`${p}awarded`)) {
-      const winners=podium(order,entries,PRIZES.length);
-      for(const [place,e] of winners.entries()){
+      top=podium(order,entries,PRIZES.length);
+      for(const [place,e] of top.entries()){
         const key=`user:${e.account}`,state=await txn.get(key);
-        if(state)await txn.put(key,giftPacks(state,{kind:'pack',tier:PRIZES[place],note:`${cup.name} ${CATEGORIES[category].name}: ${['1st','2nd','3rd'][place]} place`},now));
+        if(state){await txn.put(key,giftPacks(state,{kind:'pack',tier:PRIZES[place],note:`${cup.name} ${CATEGORIES[category].name}: ${['1st','2nd','3rd'][place]} place`},now));cupTouched(txn,key);}
       }
       await txn.put(`${p}awarded`,now);
+      await txn.put(`${p}podium`,top);
     }
+    else if(order&&!top){top=podium(order,entries,PRIZES.length);await txn.put(`${p}podium`,top);}
     // Last-minute entries: open while round 1 is voted, as long as a losers round-1 seat is empty.
     const seats=lateSeats(seeded.seeds).filter(s=>!cup.late[s]);
-    return {entries,rounds,phase:phaseAt(now,rounds,cup),order,seeds:seeded.seeds,late:{open:lateOpen(now,cup)&&seats.length>0,seats:seats.length,closesAt:cup.votingAt+roundLength(0,cup)}};
+    return {entries,rounds,phase:phaseAt(now,rounds,cup),order,podium:order?top:null,seeds:seeded.seeds,late:{open:lateOpen(now,cup)&&seats.length>0,seats:seats.length,closesAt:cup.votingAt+roundLength(0,cup)}};
   }
   // One matchup, settled as of now, with who may read and write its thread (lib/arcana-cup.js threadAccess).
   async cupMatch(txn,now,category,matchId,account) {
@@ -419,15 +456,17 @@ export class CosmeticsVault {
       return json({cards});
     }
     // One player's pack cards, stored or derived: vote counts only, never who voted what (like
-    // /ratings). designs: the four voted ones in order. arcana: their Arcana Cup podium cards (live
-    // before the close, frozen after), each { entry, key, design, main, category, place }; the
+    // /ratings). designs: the four voted ones in order. arcana: their Arcana Cup podium cards (always
+    // read from the Cup, never frozen per player), each { entry, key, design, main, category, place }; the
     // entry's design is already public on /cup. locks: the slots locked until packs open. The
     // owner's self-rating is public on purpose.
     if(req.method==='GET' && url.pathname==='/player-cards') {
       // After Thanksgiving: locked, with the frozen slots (designs are public, as in the Gallery).
       const state=await this.ctx.storage.get(`user:${account}`),designs=await this.packDesigns(this.ctx.storage,account,state),locked=!votingOpen(this.now());
       const frozen=locked&&await this.ctx.storage.transaction(txn=>this.packSlots(txn,account));
-      const arcana=locked?frozen.arcana:await this.ctx.storage.transaction(txn=>this.arcanaFor(txn,account,state));
+      // Once every bracket is awarded the podiums are stored: read them, no settle.
+      const podiums=await this.storedPodiums(this.ctx.storage)??await this.ctx.storage.transaction(txn=>this.cupPodiums(txn));
+      const arcana=this.arcanaFor(podiums,account,state);
       return json({locked,designs:designs.map(({votes,design,designKey,...d})=>({...d,...tally(votes)})),arcana:arcana.map(({entry,key,design,main,category,place})=>({entry,key,design,main,category,place})),locks:[...packLocksOf(state,this.now())].sort((a,b)=>a-b),...(locked?{slots:frozen.slots}:{})});
     }
     // Anyone's achievement progress, for their profile. Counting scans the whole vault, so each
@@ -502,7 +541,10 @@ export class CosmeticsVault {
     }
     try {
       const result=await this.ctx.storage.transaction(async txn=>{
+        // Settle the Cup before reading the caller's row, so a prize it sends them is in `saved`.
+        if(CUP_SETTLING.has(body.action))await this.cupSettle(txn);
         const key=`user:${account}`, saved=await txn.get(key);
+        CUP_TOUCHED.set(txn,new Set());
         if(body.action==='session') {
           let state=grantLogin(saved);
           if(state.screenPackRecovery!=='images-v1')state=restoreScreenPacks(state,await txn.list({prefix:`receipt:${account}:`}));
@@ -849,7 +891,7 @@ export class CosmeticsVault {
           }
           if(body.arcana!==undefined) {
             if(!Array.isArray(body.arcana))throw new Error('Choose your arcana cards.');
-            const mine=new Set((await this.arcanaFor(txn,account,saved)).map(c=>c.entry)),mains={...(saved.packArcanaMains??{})};
+            const mine=new Set(this.arcanaFor(await this.cupPodiums(txn),account,saved).map(c=>c.entry)),mains={...(saved.packArcanaMains??{})};
             for(const c of body.arcana) {
               const entry=String(c?.entry??'');
               if(!mine.has(entry))throw new Error('That arcana card is not yours.');
@@ -864,7 +906,9 @@ export class CosmeticsVault {
           // Locks one of the four pack cards until packs open (spec 1.1 "Lock."): its design, stat
           // and place in the four can't change, so its votes can't be reset by accident. Final: the
           // player can't unlock. The four are stored as they are now (packCards), so a later design
-          // in an earlier slot can't move a locked card out. Ignored from WINTER.opensAt on.
+          // in an earlier slot can't move a locked card out. Only while voting is open: the close
+          // freezes the four anyway, and locks are ignored from WINTER.opensAt on.
+          if(!votingOpen(this.now())||this.now()>=WINTER.opensAt)throw new Error('Pack cards were locked on Thanksgiving.');
           const designs=cardDesignState(saved).cardDesigns,voted=packCardList({...saved,cardDesigns:designs}).voted;
           if(!Number.isInteger(body.slot)||!voted.some(p=>p.slot===body.slot))throw new Error('Lock one of your four pack cards.');
           const packLocks=[...new Set([...(Array.isArray(saved.packLocks)?saved.packLocks:[]),body.slot])].sort((a,b)=>a-b);
@@ -1015,6 +1059,8 @@ export class CosmeticsVault {
           }
           if(JSON.stringify(result.state.packLocks??[])!==JSON.stringify(saved.packLocks??[]))throw new Error(LOCKED_CARD);
         }
+        // A Cup settle inside the action wrote this row after it was read: refuse rather than lose it.
+        if(CUP_TOUCHED.get(txn)?.has(key))throw new Error('The Arcana Cup just updated. Try again.');
         await txn.put(key,result.state);
         if(['equip','card-settings','nickname','buy-slot'].includes(body.action)) await txn.put(`appearance:${account}`,cardAppearance(result.state));
         const openedAt=Date.now();

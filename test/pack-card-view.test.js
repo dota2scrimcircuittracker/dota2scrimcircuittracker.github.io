@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { packCardView, chipText, stripText, withMain, withArcanaMain, swapIn, swapTargets, lockable, arcanaPlaceText } from "../public/lib/pack-card-view.js";
 import { designKey } from "../public/lib/card-ratings.js";
 import { DEFAULT_EQUIPMENT } from "../public/lib/cosmetics-catalog.js";
+import { WINTER } from "../public/lib/winter.js";
 
 const counts = (o) => ({ common: 0, rare: 0, epic: 0, legendary: 0, ...o });
 const live = { locked: false, designs: [
@@ -67,7 +68,7 @@ test("live view: a twin design is one of the four; arcana cards are the Cup podi
   assert.deepEqual(bare.arcana, []); assert.equal(bare.locks.size, 0);
 });
 
-test("locked view includes the frozen arcana cards", () => {
+test("locked view includes the arcana cards from the Cup", () => {
   const res = { locked: true, slots: { common: "default", rare: null, epic: null, legendary: { slot: 0, main: null, designKey: designKey(d(1)) } }, arcana: [cupCard("7-1", "artistic", 1, "kills")], locks: [] };
   const v = packCardView(res, [d(1), twin]);
   assert.deepEqual(v.arcana.map((a) => [a.entry, a.main, a.place]), [["7-1", "kills", 1]]);
@@ -92,4 +93,7 @@ test("locks: locked cards aren't swap targets and can't be locked again; nothing
   assert.equal(lockable(v, 1, 0, 10), true);
   assert.equal(lockable(v, 4, 0, 10), false); // sits out
   assert.equal(lockable(v, 1, 10, 10), false);
+  // Nothing locks once Winter voting closes on Thanksgiving, though packs haven't opened.
+  assert.equal(lockable(v, 1, WINTER.votesCloseAt - 1, WINTER.opensAt), true);
+  assert.equal(lockable(v, 1, WINTER.votesCloseAt, WINTER.opensAt), false);
 });

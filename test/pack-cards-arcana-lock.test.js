@@ -22,14 +22,15 @@ const twinOf=(hue,back)=>eq(hue,{twin:{turn:'flip',design:eq(back)}});
 // A Cup whose Artistic bracket is settled (seeds and every result stored, as cupSettle leaves them)
 // and whose Funny bracket is still in round 1. Artistic podium: 1001-1 (1st, 1001), 1002-1 (2nd,
 // 1002), 1001-2 (3rd, 1001 again); 1003-1 is 4th.
+const r=(winner,loser)=>({winner,loser,votes:{}});
+const CUP_RESULTS={'w0-0':r('1001-1','1002-1'),'w0-1':r('1001-2','1003-1'),'w1-0':r('1001-1','1001-2'),'l0-0':r('1002-1','1003-1'),'l1-0':r('1002-1','1001-2'),gf:r('1001-1','1002-1')};
 const settledCup=(rows,vault,{votingAt})=>{
   vault.cupConfig={id:1,name:'Arcana Cup',votingAt,roundMs:864e5*30,firstRoundMs:864e5*30,maxEntries:3,maxPerCategory:2};
   const entry=(id,account,category,hue)=>{const design=eq(hue);rows.set(`cup:1:entry:${id}`,{id,account:String(account),category,slot:0,name:null,design,key:designKey(design),at:votingAt-1000});};
   entry('1001-1',1001,'artistic',201);entry('1002-1',1002,'artistic',202);entry('1001-2',1001,'artistic',203);entry('1003-1',1003,'artistic',204);
   entry('1004-1',1004,'funny',211);entry('1005-1',1005,'funny',212);
-  const r=(winner,loser)=>({winner,loser,votes:{}});
   rows.set('cup:1:artistic:seeds',{seeds:['1001-1','1002-1','1001-2','1003-1'],at:votingAt});
-  rows.set('cup:1:artistic:results',{'w0-0':r('1001-1','1002-1'),'w0-1':r('1001-2','1003-1'),'w1-0':r('1001-1','1001-2'),'l0-0':r('1002-1','1003-1'),'l1-0':r('1002-1','1001-2'),gf:r('1001-1','1002-1')});
+  rows.set('cup:1:artistic:results',structuredClone(CUP_RESULTS));
   rows.set('cup:1:artistic:awarded',votingAt);
   rows.set('cup:1:funny:seeds',{seeds:['1004-1','1005-1'],at:votingAt});
 };
@@ -98,7 +99,7 @@ test('pack cards after the close: derived cards freeze; a first design after the
   await as(901,{action:'equip',equipment:eq(99),cardSlot:1});
   const frozen=rows.get('packslots:901');
   assert.equal(frozen.slots.legendary.slot,1);assert.equal(frozen.slots.legendary.design.hue,71);
-  assert.equal(frozen.slots.epic.slot,2);assert.deepEqual(frozen.arcana,[]);assert.equal(frozen.slots.arcana,undefined);
+  assert.equal(frozen.slots.epic.slot,2);assert.equal(frozen.arcana,undefined);assert.equal(frozen.slots.arcana,undefined);
   assert.ok(![...Object.values(frozen.slots)].some(x=>x&&x.slot===4));
   // More Card 5 edits after the freeze change nothing in packs.
   assert.ok((await as(901,{action:'equip',equipment:eq(95),cardSlot:4})).state);
@@ -112,7 +113,7 @@ test('pack cards after the close: derived cards freeze; a first design after the
   assert.deepEqual((await get(903)).slots,{common:'default',rare:null,epic:null,legendary:null});
 });
 
-test('arcana pack cards come only from the Arcana Cup podium: owners, mains, GET shape, freeze',async()=>{
+test('arcana pack cards come only from the Arcana Cup podium: owners, mains, GET shape, read from the Cup after the close',async()=>{
   let clock=WINTER.votesCloseAt-864e5;
   const {rows,vault,as,get,raw}=vaultRig('arc',()=>clock);
   settledCup(rows,vault,{votingAt:clock-3600e3});
@@ -141,19 +142,63 @@ test('arcana pack cards come only from the Arcana Cup podium: owners, mains, GET
   assert.deepEqual((await get(1001)).arcana.map(c=>c.main),['kills',null]);
   assert.ok((await as(1002,{action:'pack-cards',cards:[],arcana:[{entry:'1002-1',main:'gpm'}]})).state);
   assert.ok(!(await raw(1001)).includes('"votes"'));
-  // After the close the arcana cards freeze with the slots, mains included; a player with arcana
-  // but no saved design still gets a freeze.
+  // The podium was stored when the bracket was awarded (backfilled here, since the fixture had none).
+  assert.deepEqual(rows.get('cup:1:artistic:podium').map(e=>e.id),['1001-1','1002-1','1001-2']);
+  // After the close only the four voted slots freeze; arcana cards are still read from the Cup, with
+  // the owner's mains (which pack-cards no longer changes).
   clock=WINTER.votesCloseAt+36e5;
   pc=await get(1001);
   assert.equal(pc.locked,true);
-  assert.deepEqual(rows.get('packslots:1001').arcana.map(c=>[c.entry,c.main,c.place,c.design.hue]),[['1001-1','kills',0,201],['1001-2',null,2,203]]);
-  assert.deepEqual(pc.arcana.map(c=>[c.entry,c.main]),[['1001-1','kills'],['1001-2',null]]);
+  assert.equal(rows.get('packslots:1001').arcana,undefined);assert.equal(rows.get('packslots:1001').slots.arcana,undefined);
+  assert.deepEqual(pc.arcana.map(c=>[c.entry,c.main,c.place,c.design.hue]),[['1001-1','kills',0,201],['1001-2',null,2,203]]);
   pc=await get(1002);
   assert.deepEqual(pc.arcana.map(c=>[c.entry,c.main]),[['1002-1','gpm']]);
-  assert.deepEqual(rows.get('packslots:1002').slots,{common:'default',rare:null,epic:null,legendary:null});
+  assert.deepEqual(pc.slots,{common:'default',rare:null,epic:null,legendary:null});
+  assert.equal(rows.has('packslots:1002'),false); // arcana alone stores no freeze
   assert.equal((await as(1001,{action:'pack-cards',cards,arcana:[{entry:'1001-1',main:'gpm'}]})).error,'Pack cards were locked on Thanksgiving.');
+  // Saving a pack card after the close freezes the four and nothing else (equip does no Cup work).
+  assert.ok((await as(1001,{action:'equip',equipment:eq(32),cardSlot:0})).state);
+  assert.deepEqual(Object.keys(rows.get('packslots:1001')).sort(),['frozenAt','slots']);
+  // An awarded podium is fixed: Fav removing an entry afterwards doesn't move 4th up.
+  rows.set('cup:1:entry:1001-2',{...rows.get('cup:1:entry:1001-2'),removed:clock});
+  assert.deepEqual((await get(1001)).arcana.map(c=>c.entry),['1001-1','1001-2']);
+  assert.deepEqual((await get(1003)).arcana,[]);
   // Neither designs nor arcana: nothing stored.
   assert.deepEqual((await get(1006)).arcana,[]);assert.equal(rows.has('packslots:1006'),false);
+});
+
+test('arcana pack cards: a bracket settled after the close still adds its podium cards (never frozen per player)',async()=>{
+  const clock=WINTER.votesCloseAt+36e5;
+  const {rows,vault,get}=vaultRig('arcl',()=>clock);
+  settledCup(rows,vault,{votingAt:clock-3600e3});
+  rows.delete('cup:1:artistic:results');rows.delete('cup:1:artistic:awarded');
+  rows.set('user:1001',{packs:[]});
+  assert.deepEqual((await get(1001)).arcana,[]);
+  // The bracket's results come in later (as votes close): the podium cards appear.
+  rows.set('cup:1:artistic:results',structuredClone(CUP_RESULTS));
+  assert.deepEqual((await get(1001)).arcana.map(c=>[c.entry,c.place]),[['1001-1',0],['1001-2',2]]);
+});
+
+// Fix: a Cup settle inside a player's own action used to send them their prize pack, then the
+// action wrote back the row it read before settling, losing the pack (and `awarded` meant it was
+// never re-sent). Every action that can settle now settles before reading the caller's row.
+for(const [name,body] of [
+  ['pack-cards with arcana mains',{action:'pack-cards',cards:[],arcana:[{entry:'1001-1',main:'kills'}]}],
+  ['cup-vote in the other bracket',{action:'cup-vote',category:'funny',match:'w0-0',pick:'1004-1'}],
+]) test(`Cup prize packs: a podium winner whose own action (${name}) settles the bracket keeps them`,async()=>{
+  const clock=WINTER.votesCloseAt-864e5;
+  const {rows,vault,as}=vaultRig(`prize-${name.split(' ')[0]}`,()=>clock);
+  settledCup(rows,vault,{votingAt:clock-3600e3});
+  rows.delete('cup:1:artistic:awarded'); // results are in; nobody has settled yet
+  await as(1001,{action:'session'});
+  const before=rows.get('user:1001').packs.length;
+  const ok=await as(1001,body);
+  assert.ok(ok.state,ok.error);
+  assert.ok(rows.get('cup:1:artistic:awarded'));
+  const packs=rows.get('user:1001').packs;
+  assert.equal(packs.length,before+2); // 1st and 3rd in Artistic
+  assert.deepEqual(packs.slice(-2).sort(),['legendary','rare']);
+  assert.deepEqual(ok.state.packs,packs);
 });
 
 test('arcana pack cards: an unsettled Cup has none',async()=>{
@@ -218,8 +263,11 @@ test('pack card locks: final until packs open; refuse design, stat and swap chan
   // Still enforced after the Thanksgiving close...
   clock=WINTER.votesCloseAt+36e5;
   assert.equal((await as(1101,{action:'equip',equipment:eq(97),cardSlot:2})).error,lockedDesign);
+  // No new locks after the close (the four are frozen anyway), nor once packs open.
+  assert.equal((await as(1101,{action:'pack-lock',slot:3})).error,'Pack cards were locked on Thanksgiving.');
   // ...and ignored from opensAt on: the design saves again and GET shows no locks.
   clock=WINTER.opensAt;
   assert.deepEqual((await get(1101)).locks,[]);
   assert.ok((await as(1101,{action:'equip',equipment:eq(96),cardSlot:2})).state);
+  assert.equal((await as(1101,{action:'pack-lock',slot:2})).error,'Pack cards were locked on Thanksgiving.');
 });
