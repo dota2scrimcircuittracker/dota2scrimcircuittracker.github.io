@@ -688,23 +688,31 @@ html:has(dialog.collection-dialog[open]){overflow:hidden}.collection-dialog{over
 .claude-card figcaption{display:grid;gap:3px;max-width:260px;text-align:center}
 .claude-card figcaption strong{font-size:.95rem}
 .claude-card figcaption span{font-size:.78rem;color:var(--muted,#9aa3b2);line-height:1.4}
-/* Winter pack cards on a profile (parts/pack-cards.js): the owner's strip above the cards, a chip on each
-   pack card, and the owner's controls under each saved card, in the card-rating style. */
-.pc-strip{margin:0 0 10px;font-size:12px;color:#bfb7c4}.pc-strip p{margin:0}.pc-strip-line b{color:#eac47e;font-weight:600}.pc-strip-help{margin-top:2px!important;color:#8f8797;font-size:11px}
-.pc-chip,.pc-foot{--rc:#eac47e}.pc-chip [data-rarity=common],.pc-foot [data-rarity=common]{--rc:#a7a39b}.pc-chip [data-rarity=rare],.pc-foot [data-rarity=rare]{--rc:#5aa8ff}.pc-chip [data-rarity=epic],.pc-foot [data-rarity=epic]{--rc:#b77cff}.pc-chip [data-rarity=legendary],.pc-foot [data-rarity=legendary]{--rc:#f0b33c}.pc-chip [data-rarity=arcana],.pc-foot [data-rarity=arcana]{--rc:#ff5ab4}
-.pc-chip,.pc-rarity{margin:6px 0 0;text-align:center}.pc-chip b,.pc-rarity b{display:inline-block;max-width:100%;box-sizing:border-box;padding:2px 7px;border-radius:999px;border:1px solid color-mix(in srgb,var(--rc) 50%,transparent);color:var(--rc);font:600 10px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em;overflow-wrap:anywhere}
-.pc-foot{margin-top:8px;display:flex;flex-direction:column;gap:6px;font-size:11px;min-width:0}.pc-foot .pc-rarity{margin:0}
-.profile-card-designs figure.pc-picked{outline:1px solid color-mix(in srgb,#eac47e 55%,transparent);outline-offset:4px;border-radius:6px}.pc-picked .pc-foot{padding:7px;border-radius:6px;background:color-mix(in srgb,#eac47e 7%,#17141b)}
-.pc-swap{all:unset;box-sizing:border-box;cursor:pointer;align-self:center;max-width:100%;text-align:center;padding:4px 8px;border-radius:5px;border:1px dashed color-mix(in srgb,#eac47e 45%,transparent);color:#eac47e;font:600 10px/1.25 var(--mono);text-transform:uppercase;letter-spacing:.04em}.pc-swap:hover:not(:disabled){background:color-mix(in srgb,#eac47e 12%,transparent)}.pc-swap[hidden]{display:none}.pc-swap:disabled{cursor:default;opacity:.45}.pc-swap:focus-visible,.pc-swap-pick button:focus-visible{outline:2px solid #eac47e;outline-offset:2px}
-.pc-swap-pick{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;color:#8f8797}.pc-swap-pick[hidden]{display:none}.pc-swap-pick>span{flex-basis:100%;text-align:center}.pc-swap-pick button{all:unset;box-sizing:border-box;cursor:pointer;max-width:100%;overflow-wrap:anywhere;padding:3px 7px;border-radius:999px;border:1px solid color-mix(in srgb,#eac47e 40%,transparent);color:#ece6f0;font-size:11px}.pc-swap-pick button:hover:not(:disabled){background:color-mix(in srgb,#eac47e 14%,transparent)}.pc-swap-pick button:disabled{opacity:.5;cursor:default}.pc-swap-pick .pc-swap-cancel{border-color:transparent;color:#8f8797;text-decoration:underline}
-.pc-bonus{display:flex;flex-direction:column;gap:3px;margin:0;text-transform:none;letter-spacing:0;font-size:11px;color:#8f8797}.pc-bonus select{width:100%;min-width:0;max-width:100%;font-size:11px;padding:3px 4px}
-.pc-self-wrap{display:flex;flex-direction:column;gap:3px;color:#8f8797}.pc-self button{padding:3px 2px}
-.pc-strip .pc-error,.pc-foot .pc-error{margin:0;color:#ff8a7a;font-size:11px}.pc-error:empty{display:none}
-.pc-padlock{width:11px;height:11px;margin-right:4px;vertical-align:-1px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}.pc-lock{display:inline-flex;align-items:center;justify-content:center}.pc-locked{margin:0;display:flex;align-items:center;justify-content:center;color:#eac47e;font:600 10px/1.25 var(--mono);text-transform:uppercase;letter-spacing:.04em}
-/* Arcana pack cards (Arcana Cup podium): a row above the cards, not profile slots. */
-.pc-arcana{--rc:#ff5ab4;margin:0 0 12px;font-size:12px;color:#bfb7c4}.pc-arcana[hidden]{display:none}.pc-arcana-head{margin:0 0 6px}.pc-arcana-head b{color:var(--rc);font-weight:600}
-.pc-arcana-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}.pc-arcana-item{display:flex;align-items:center;gap:10px;min-width:0;max-width:100%;padding:7px 9px;border:1px solid color-mix(in srgb,var(--rc) 40%,transparent);border-radius:8px;background:color-mix(in srgb,var(--rc) 6%,#17141b)}
-.pc-arcana-thumb{flex:0 0 64px;width:64px}.pc-arcana-info{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11px}.pc-arcana-info .pc-rarity{margin:0;text-align:left}.pc-arcana-place,.pc-arcana-bonus{margin:0;color:#d8cfdb}.pc-arcana-info .pc-bonus select{min-width:150px}.pc-arcana .pc-error{margin:0;color:#ff8a7a;font-size:11px}
-@media(max-width:420px){.pc-arcana-item{flex:1 1 100%}.pc-arcana-info{flex:1}.pc-arcana-info .pc-bonus select{min-width:0}}
+/* Winter pack cards on a profile (parts/pack-cards.js): the owner's one line above the cards, and the
+   Manage pack cards dialog (style.css dialog.tier-modal) with a compact row per card. */
+.pc-line{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 0 10px;font-size:12px;color:#bfb7c4}.pc-line p{margin:0}
+button.pc-manage{padding:5px 10px;font-size:10px;letter-spacing:.06em;clip-path:none;border-radius:5px}
+.pc-line .pc-error{flex-basis:100%}
+dialog.pc-dialog{--tc:#eac47e;width:min(760px,94vw)}
+.pc-dialog [data-rarity]{--rc:#eac47e}.pc-dialog [data-rarity=common]{--rc:#a7a39b}.pc-dialog [data-rarity=rare]{--rc:#5aa8ff}.pc-dialog [data-rarity=epic]{--rc:#b77cff}.pc-dialog [data-rarity=legendary]{--rc:#f0b33c}.pc-dialog [data-rarity=arcana]{--rc:#ff5ab4}
+.pc-dialog .tm-body{padding:12px 16px 18px;font-size:12px;color:#bfb7c4}
+.pc-help{margin:0 0 12px;color:#8f8797}
+.pc-dialog h4{margin:14px 0 6px;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#d8cfdb}
+.pc-rows{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.pc-row{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1.6fr);gap:12px;align-items:center;padding:8px 10px;border:1px solid #3a3440;border-radius:6px;background:#17141b}
+.pc-thumb{width:52px}.pc-thumb .ft-card{pointer-events:none}.pc-thumb-empty{aspect-ratio:5/7;border:1px dashed #3a3440;border-radius:4px}
+.pc-info{display:flex;flex-direction:column;gap:3px;min-width:0}.pc-info strong{color:#ece6f0;font-size:13px;overflow-wrap:anywhere}.pc-info small{color:#8f8797}
+.pc-rarity{color:var(--rc);font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.04em}.pc-muted{color:#8f8797}
+.pc-controls{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pc-bonus{display:flex;align-items:center;gap:8px;margin:0;text-transform:none;letter-spacing:0;font-size:11px;color:#8f8797}.pc-bonus select{flex:1;min-width:0;font-size:12px;padding:4px 6px}.pc-bonus-text{margin:0;color:#d8cfdb}
+.pc-self-wrap{display:flex;align-items:center;gap:8px;color:#8f8797;font-size:11px}.pc-self{flex:1;grid-template-columns:repeat(4,minmax(0,1fr))}.pc-self button{padding:4px 2px}
+.pc-swap,.pc-lock,.pc-swap-pick button{all:unset;box-sizing:border-box;cursor:pointer;align-self:flex-start;max-width:100%;padding:4px 9px;border-radius:5px;border:1px solid color-mix(in srgb,#eac47e 45%,transparent);color:#eac47e;font:600 10px/1.25 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.pc-swap:hover:not(:disabled),.pc-lock:hover:not(:disabled),.pc-swap-pick button:hover:not(:disabled){background:color-mix(in srgb,#eac47e 12%,transparent)}
+.pc-swap:disabled,.pc-lock:disabled,.pc-swap-pick button:disabled{cursor:default;opacity:.45}.pc-swap[hidden]{display:none}
+.pc-swap:focus-visible,.pc-lock:focus-visible,.pc-swap-pick button:focus-visible{outline:2px solid #eac47e;outline-offset:2px}
+.pc-swap-pick{display:flex;flex-wrap:wrap;align-items:center;gap:4px;color:#8f8797}.pc-swap-pick[hidden]{display:none}.pc-swap-pick button{color:#ece6f0;text-transform:none;letter-spacing:0;font:11px var(--body,inherit)}.pc-swap-pick .pc-swap-cancel{border-color:transparent;color:#8f8797;text-decoration:underline}
+.pc-padlock{width:11px;height:11px;margin-right:4px;vertical-align:-1px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}.pc-lock{display:inline-flex;align-items:center}.pc-locked{display:flex;align-items:center;color:#eac47e;font:600 10px/1.25 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.pc-error{margin:0;color:#ff8a7a;font-size:11px}.pc-error:empty{display:none}
+@media(max-width:560px){.pc-row{grid-template-columns:44px minmax(0,1fr);gap:8px 10px}.pc-thumb{width:44px}.pc-controls{grid-column:1/-1}.pc-bonus,.pc-self-wrap{flex-direction:column;align-items:stretch;gap:3px}.pc-self button{letter-spacing:0}}
 /* Narrow cards (three to a row on a phone): one rating button per row, so no label spills out. */
-.pc-foot,.profile-card-designs .card-rating{container-type:inline-size}@container (max-width:150px){.pc-self.card-rating-votes,.card-rating-votes{grid-template-columns:1fr}.pc-chip b,.pc-rarity b{letter-spacing:0}}
+.profile-card-designs .card-rating{container-type:inline-size}@container (max-width:150px){.card-rating-votes{grid-template-columns:1fr}}

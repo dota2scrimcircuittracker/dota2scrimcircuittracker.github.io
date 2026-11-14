@@ -1039,7 +1039,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     section.querySelector('[data-profile-collection]').onclick=()=>openCollection({tab:'collection',viewAccount:account,cardHtml,name});
     fitDesignCards(section);
     wirePlayerCards(section.querySelector('.profile-collection-card'));
-    // Ratings first: Winter pack card chips sit above them and the owner's controls below (parts/pack-cards.js).
+    // Community ratings under each card; the owner also gets a Winter pack cards line and dialog (parts/pack-cards.js).
     if(showcase)Promise.all([mountRatings(section,account).catch(()=>{}),steamAccount().catch(()=>null)]).then(([,viewer])=>{
       const own=viewer!=null&&String(viewer)===String(account);
       return mountPackCards(section,{account,own,designs:preferences.cardDesigns,nameOf:slot=>cardSlotName(preferences,slot),cardHtml:design=>renderer.card(player,null,{own:true,equipmentOverride:design}),fit:fitDesignCards,fetchCards:playerCards,act:collectionAction});
@@ -1129,7 +1129,7 @@ function wireCardOrder(box) {
   box.addEventListener('contextmenu',e=>{if(drag)e.preventDefault();});
   box.addEventListener('pointerdown',e=>{
     const fig=e.target.closest('.cards-reorderable>figure');
-    if(drag||!fig||e.button!==0||e.target.closest('.card-rating, .pc-foot, input, select, textarea'))return;
+    if(drag||!fig||e.button!==0||e.target.closest('.card-rating, input, select, textarea'))return;
     const touch=e.pointerType!=='mouse';
     drag={fig,x:e.clientX,y:e.clientY,started:false,touch,before:order(),timer:touch?setTimeout(start,350):0};
     addEventListener('pointermove',move);addEventListener('pointerup',drop);addEventListener('pointercancel',drop);addEventListener('touchmove',holdTouch,{passive:false});
