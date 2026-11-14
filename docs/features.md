@@ -872,3 +872,26 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
   tiebreaker test has a separate leaderboard and does not add to division playoff totals.
 - Local preview only: `?fantasy_now=<unix seconds>` sets the clock, to see an open week out of
   season; `?fantasy_me=<account id>` shows the tab as that player (their own card), display only.
+
+## Winter player packs
+
+Winter Fantasy (one Fantasy across every division; `lib/winter.js`) is built on player packs.
+Each pack holds 5 player cards, one per position. A lineup can only use players you own a card
+of, and rarer cards give bigger bonuses: a main bonus stat chosen by the card's owner, plus a
+random sub bonus rolled per copy (`lib/card-bonus.js`). The pool of players comes from
+`scripts/gen/gen-player-pool.js`. Packs open Dec 1 2026: every player starts with 3 free packs
+and gets a free pack each day.
+
+What is live before then (`parts/pack-cards.js`, **Winter pack cards** in Gallery › Customize,
+`#/gallery/customize`):
+
+- **Pick pack cards** — up to 4 of your saved card designs (`PACK_CARDS_MAX`). Each gets a bonus
+  stat you choose. With no saved designs, your default card is your common.
+- **Rarity comes from votes** — the community's ratings in Gallery (`#/gallery`) set each pack
+  card's rarity (`lib/player-cards.js`); your own rating breaks ties. You can rate your own
+  designs here (Worker action `self-rate`). The panel shows each card's current rarity live.
+- **Changing the design starts its votes over.** A pack card is saved with the Worker action
+  `pack-cards`; another player's picks are read from `GET /cosmetics/player-cards/<account>`.
+- **Voting closes at the end of Thanksgiving**, Thu Nov 26 2026 US Eastern; pack cards then freeze.
+- A one-time notice (`lib/winter-notice.js`) points people to the panel, from Nov 14 until a
+  week after packs open.
