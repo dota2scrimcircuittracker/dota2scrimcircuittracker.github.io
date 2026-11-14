@@ -107,15 +107,16 @@ Every bonus at the same budget has the same ceiling in stat points, whichever st
 share (weight 14) at budget 1.4 = +10%. Pos 1 stuns (weight 3) at budget 1.4 ≈ +47%.
 
 Starting budgets (stat points; doubled on 2026-11-14 after a pool check showed a legendary main
-adding only ~2.6 points a game; still to be calibrated):
+adding only ~2.6 points a game, then legendary and arcana flattened to 5 and 6 so the top rarities
+don't jump; still to be calibrated):
 
 | Rarity | Main | Each sub (x2) |
 |---|---|---|
 | Common | 2 | 1 |
 | Rare | 3 | 1.5 |
 | Epic | 4 | 2 |
-| Legendary | 6 | 3 |
-| Arcana | 9 | 4.5 |
+| Legendary | 5 | 2.5 |
+| Arcana | 6 | 3 |
 
 Two subs, each half the main, so the subs together equal the main. Percentages round to one decimal (+2.5%, +15%), so every bonus keeps its ceiling to within 2%.
 

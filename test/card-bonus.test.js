@@ -26,7 +26,7 @@ test("pos 1 kill share at common is +14%, stuns +67%", () => {
 });
 test("sub budget is half the main at every rarity", () => {
   for (const r of ["common", "rare", "epic", "legendary", "arcana"]) assert.equal(BUDGETS[r].sub, BUDGETS[r].main / 2, r);
-  assert.deepEqual(["common", "rare", "epic", "legendary", "arcana"].map((r) => BUDGETS[r].sub), [1, 1.5, 2, 3, 4.5]);
+  assert.deepEqual(["common", "rare", "epic", "legendary", "arcana"].map((r) => BUDGETS[r].sub), [1, 1.5, 2, 2.5, 3]);
 });
 test("rollSubs: 2 distinct stats, never the main stat", () => {
   for (let i = 0; i < 50; i++) {

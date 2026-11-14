@@ -4,7 +4,7 @@
 import { WEIGHTS, METRICS } from "./tiers.js";
 
 // Each card has 1 main and 2 subs; a sub is worth half the main at every rarity.
-const MAINS = { common: 2, rare: 3, epic: 4, legendary: 6, arcana: 9 };
+const MAINS = { common: 2, rare: 3, epic: 4, legendary: 5, arcana: 6 };
 export const SUB_COUNT = 2;
 export const BUDGETS = Object.fromEntries(Object.entries(MAINS).map(([r, main]) => [r, { main, sub: main / 2 }]));
 export const statsFor = (pos) => Object.keys(WEIGHTS[pos]);
