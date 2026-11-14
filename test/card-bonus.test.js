@@ -18,15 +18,15 @@ test("every bonus (position x stat x rarity x main/sub) maxes out within 2% of i
   }
   console.log("worst equal-ceiling deviation:", (worst * 100).toFixed(2) + "%");
 });
-test("pos 1 kill share at common is +7%, stuns +33%", () => {
-  assert.equal(bonusPct(1, "kills", "common", "main"), 7.1);
-  assert.equal(bonusPct(1, "stuns", "common", "main"), 33.3);
-  assert.equal(bonusText(1, "kills", "common"), "+7.1% Kill share");
+test("pos 1 kill share at common is +14%, stuns +67%", () => {
+  assert.equal(bonusPct(1, "kills", "common", "main"), 14.3);
+  assert.equal(bonusPct(1, "stuns", "common", "main"), 66.7);
+  assert.equal(bonusText(1, "kills", "common"), "+14.3% Kill share");
   assert.equal(pctText(15), "15");
 });
 test("sub budget is half the main at every rarity", () => {
   for (const r of ["common", "rare", "epic", "legendary", "arcana"]) assert.equal(BUDGETS[r].sub, BUDGETS[r].main / 2, r);
-  assert.deepEqual(["common", "rare", "epic", "legendary", "arcana"].map((r) => BUDGETS[r].sub), [0.5, 0.75, 1, 1.5, 2.25]);
+  assert.deepEqual(["common", "rare", "epic", "legendary", "arcana"].map((r) => BUDGETS[r].sub), [1, 1.5, 2, 3, 4.5]);
 });
 test("rollSubs: 2 distinct stats, never the main stat", () => {
   for (let i = 0; i < 50; i++) {
