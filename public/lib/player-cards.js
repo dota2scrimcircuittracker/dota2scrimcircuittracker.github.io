@@ -1,7 +1,8 @@
 // Player cards: which of a player's nominated designs is their common, rare, epic and legendary
 // card (docs/superpowers/specs/2026-11-13-player-packs-design.md section 1.1).
 // Community votes set each design's wanted rarity. Designs whose wanted rarity is uncontested take
-// it. Each contest's extra designs then take the nearest open slot below, else above. Finally, inside
+// it. Each contest's extra designs then take the nearest open slot below, else above, placed lowest
+// wanted rarity first so the voted order holds even when two contests are tied. Finally, inside
 // each contest the slots it ended up with are handed out in the owner's order (their own rating,
 // then community score, then the older design), so the owner's favourite always sits highest.
 // Common left empty -> the player's default card.
@@ -17,21 +18,28 @@ const score = (votes) => {
 // designs: [{ slot, votes, self, savedAt }] -> { common, rare, epic, legendary }: a slot number,
 // "default" (common only) or null.
 export function assignSlots(designs) {
-  const rows = designs.map((x) => ({ ...x, want: idx(tally(x.votes).pick ?? x.self ?? "common"), selfIdx: x.self ? idx(x.self) : -1, score: score(x.votes) }));
+  const rows = designs.map((x) => {
+    const selfIdx = x.self ? idx(x.self) : -1; // an unknown rating counts as none
+    const self = selfIdx >= 0 ? x.self : null;
+    return { ...x, want: idx(tally(x.votes).pick ?? self ?? "common"), selfIdx, score: score(x.votes) };
+  });
   rows.sort((a, b) => b.want - a.want || b.selfIdx - a.selfIdx || b.score - a.score || a.savedAt - b.savedAt);
-  const seat = Array(RATINGS.length).fill(null), won = new Map(), losers = [];
+  const seat = Array(RATINGS.length).fill(null), contests = new Map(), losers = [];
   for (const r of rows) {
-    if (seat[r.want] == null) { seat[r.want] = r.slot; won.set(r.want, [r]); } else losers.push(r);
+    if (seat[r.want] == null) { seat[r.want] = r.slot; contests.set(r.want, [r]); } else losers.push(r);
   }
+  // Lowest wanted rarity first (stable, so the owner's order holds inside a contest): a higher
+  // contest's loser must not take a slot that a lower contest's loser needs to move up into.
+  losers.sort((a, b) => a.want - b.want);
   for (const r of losers) {
     let at = -1;
     for (let i = r.want - 1; i >= 0 && at < 0; i--) if (seat[i] == null) at = i;
     for (let i = r.want + 1; i < seat.length && at < 0; i++) if (seat[i] == null) at = i;
-    if (at >= 0) { seat[at] = r.slot; won.get(r.want).push(r); }
+    if (at >= 0) { seat[at] = r.slot; contests.get(r.want).push(r); }
   }
-  // Inside each contest: the owner's order gets the contest's slots highest first. `won` lists
-  // rows in the owner's order already (the sort above).
-  for (const group of won.values()) {
+  // Inside each contest: the owner's order gets the contest's slots highest first. `contests`
+  // lists rows in the owner's order already (the sort above).
+  for (const group of contests.values()) {
     if (group.length < 2) continue;
     const slots = group.map((r) => seat.indexOf(r.slot)).sort((a, b) => b - a);
     group.forEach((r, i) => { seat[slots[i]] = r.slot; });

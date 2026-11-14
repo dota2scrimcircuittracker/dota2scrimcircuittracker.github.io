@@ -40,8 +40,16 @@ test("equal owner ratings: higher community score, then the older design", () =>
   assert.equal(s.rare, 1);
 });
 test("four designs fill one of each", () => {
-  const r = assignSlots([d(0, v("legendary")), d(1, v("legendary")), d(2, v("legendary")), d(3, v("legendary"))]);
-  assert.deepEqual(Object.values(r).sort(), [0, 1, 2, 3]);
+  const r = assignSlots([d(0, v("legendary"), "common"), d(1, v("legendary"), "legendary"), d(2, v("legendary"), "rare"), d(3, v("legendary"), "epic")]);
+  assert.deepEqual(r, { common: 0, rare: 2, epic: 3, legendary: 1 });
+});
+test("a lower-voted design never ends above a higher-voted one, even with two ties", () => {
+  const all = { common: 3, rare: 2, epic: 1, legendary: 0 };
+  assert.deepEqual(assignSlots([d(0, v("epic"), "legendary"), d(1, v("epic"), "common"), d(2, v("common"), "legendary"), d(3, v("common"), "common")]), all);
+  assert.deepEqual(assignSlots([d(0, v("epic"), "legendary"), d(1, v("epic"), "common"), d(2, v("rare"), "legendary"), d(3, v("rare"), "common")]), all);
+});
+test("an unknown self rating counts as no self rating", () => {
+  assert.deepEqual(assignSlots([d(0, {}, "mythic")]), { common: 0, rare: null, epic: null, legendary: null });
 });
 
 test("main position: the position played most, stand-in rows skipped", () => {
