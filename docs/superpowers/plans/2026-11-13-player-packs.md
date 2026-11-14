@@ -237,7 +237,7 @@ git commit -m "Player cards: rarity slots from votes and the owner's rating [ski
 ```js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BUDGETS, bonusPct, statsFor, rollSub, defaultMain, bonusPoints } from "../public/lib/card-bonus.js";
+import { BUDGETS, bonusPct, statsFor, rollSubs, defaultMain, bonusPoints } from "../public/lib/card-bonus.js";
 import { WEIGHTS } from "../public/lib/tiers.js";
 
 test("equal ceiling: pct x weight is the budget for every stat", () => {
@@ -250,9 +250,9 @@ test("pos 1 kill share at common is +7%, stuns +33%", () => {
   assert.equal(bonusPct(1, "kills", "common", "main"), 7);
   assert.equal(bonusPct(1, "stuns", "common", "main"), 33);
 });
-test("sub is 40% of main and never the main stat", () => {
-  assert.equal(BUDGETS.epic.sub, BUDGETS.epic.main * 0.4);
-  for (let i = 0; i < 50; i++) assert.notEqual(rollSub(1, "kills", "rare", () => i / 50).stat, "kills");
+test("sub is half the main; rollSubs gives 3 distinct stats, none the main", () => {
+  assert.equal(BUDGETS.epic.sub, BUDGETS.epic.main / 2);
+  for (let i = 0; i < 50; i++) { const s = rollSubs(1, "kills", "rare", () => i / 50); assert.equal(new Set(s.map((x) => x.stat)).size, 3); assert.ok(s.every((x) => x.stat !== "kills")); }
 });
 test("default main: random among the 3 best stats", () => {
   const scores = { gpm: 90, dmg: 80, kills: 70, xpm: 10, lane: 5 };
@@ -261,7 +261,7 @@ test("default main: random among the 3 best stats", () => {
 });
 test("bonus points: stat points x pct x the game's multipliers; a stat missing at the slot adds 0", () => {
   const g = { stats: [{ metric: "kills", points: 10 }], mult: { survival: 1, consistency: 1, opponents: 1.1, winning: 1 } };
-  const card = { main: { stat: "kills", pct: 20 }, sub: { stat: "vispct", pct: 50 } };
+  const card = { main: { stat: "kills", pct: 20 }, sub: { stat: "vispct", pct: 50 } }; // legacy single sub; real cards use subs: [x3]
   assert.equal(bonusPoints(g, card), 2.2);
 });
 ```
@@ -280,16 +280,14 @@ Expected: FAIL, module not found
 import { WEIGHTS } from "./tiers.js";
 
 export const BUDGETS = {
-  common: { main: 1, sub: 0.4 }, rare: { main: 1.5, sub: 0.6 }, epic: { main: 2, sub: 0.8 },
-  legendary: { main: 3, sub: 1.2 }, arcana: { main: 4.5, sub: 1.8 },
+  // sub = main / 2 (derived: MAINS = common 1, rare 1.5, epic 2, legendary 3, arcana 4.5)
 };
 export const statsFor = (pos) => Object.keys(WEIGHTS[pos]);
-export const bonusPct = (pos, stat, rarity, kind) => Math.round((BUDGETS[rarity][kind] / WEIGHTS[pos][stat]) * 100);
+export const bonusPct = (pos, stat, rarity, kind) => Math.round((BUDGETS[rarity][kind] / WEIGHTS[pos][stat]) * 1000) / 10; // one decimal, so the ceiling holds within 2%
 const bonus = (pos, stat, rarity, kind) => ({ stat, pct: bonusPct(pos, stat, rarity, kind) });
 
-export function rollSub(pos, mainStat, rarity, random = Math.random) {
-  const pool = statsFor(pos).filter((s) => s !== mainStat);
-  return bonus(pos, pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))], rarity, "sub");
+export function rollSubs(pos, mainStat, rarity, random = Math.random, n = 3) {
+  // n distinct stats from statsFor(pos), none the main; fewer if the list is short.
 }
 // scores: { stat: season 0-100 at their main position }.
 export function defaultMain(pos, scores, rarity, random = Math.random) {
@@ -305,7 +303,7 @@ export function mainFor(pos, stat, rarity) {
 // game's multipliers, the same as base stat points. `g` is gamePointsAt's result.
 export function bonusPoints(g, card) {
   const m = g.mult ?? {}, k = (m.survival ?? 1) * (m.consistency ?? 1) * (m.opponents ?? 1) * (m.winning ?? 1);
-  const raw = [card.main, card.sub].filter(Boolean).reduce((t, b) => t + (g.stats.find((s) => s.metric === b.stat)?.points ?? 0) * (b.pct / 100), 0);
+  const raw = [card.main, ...(card.subs ?? []), card.sub].filter(Boolean).reduce((t, b) => t + (g.stats.find((s) => s.metric === b.stat)?.points ?? 0) * (b.pct / 100), 0);
   return Math.round(raw * k * 10) / 10;
 }
 ```
@@ -686,8 +684,8 @@ test("a rarity no one at the position has steps down", () => {
   const pulls = rollPlayerPack(pool, seq(0.999999, 0.83, 0, 0.5), { arcana: 0 }); // 0.83 -> epic, nobody has epic
   assert.ok(pulls.every((p) => ["common", "legendary"].includes(p.rarity)));
 });
-test("every copy has a sub that isn't its main", () => {
-  for (const p of rollPlayerPack(pool, Math.random)) { assert.ok(p.sub?.stat); assert.notEqual(p.sub.stat, p.main.stat); }
+test("every copy has 3 distinct subs, none its main", () => {
+  for (const p of rollPlayerPack(pool, Math.random)) { assert.equal(p.subs.length, 3); assert.ok(p.subs.every((s) => s.stat !== p.main.stat)); }
 });
 test("key and copies: duplicates kept apart with their own subs", () => {
   const pulls = rollPlayerPack(pool, Math.random);
@@ -707,7 +705,7 @@ test("key and copies: duplicates kept apart with their own subs", () => {
 // cosmetics packs' odds (and the arcana chance), then a player at that position who has a card at
 // that rarity; none -> the next rarity down. Every copy rolls its own sub bonus.
 import { TIERS, PACK_ODDS } from "./cosmetics-catalog.js";
-import { rollSub } from "./card-bonus.js";
+import { rollSubs } from "./card-bonus.js";
 
 const ORDER = [...TIERS, "arcana"];
 const pickOne = (xs, random) => xs[Math.min(xs.length - 1, Math.floor(random() * xs.length))];
@@ -728,7 +726,7 @@ export function rollPlayerPack(pool, random = Math.random, { arcana = 0.0025 } =
     let i = ORDER.indexOf(rollRarity(random, arcana)), who = [];
     for (; i >= 0; i--) { who = here.filter((p) => p.cards[ORDER[i]]); if (who.length) break; }
     const rarity = ORDER[Math.max(i, 0)], p = pickOne(who.length ? who : here, random), main = p.cards[rarity]?.main ?? p.cards.common.main;
-    return { key: `player:${p.account}:${rarity}`, account: p.account, pos, rarity, main, sub: rollSub(pos, main.stat, rarity, random) };
+    return { key: `player:${p.account}:${rarity}`, account: p.account, pos, rarity, main, subs: rollSubs(pos, main.stat, rarity, random) };
   });
 }
 
@@ -840,7 +838,7 @@ git commit -m "Collection: player packs, starter grant, daily pack [skip announc
 
 - [ ] **Step 1: Opening.** When the opened pack is `'player'`, render the 5 pulls with the existing
   pack reveal, each card face showing: player name (from the pool file + roster names), position,
-  rarity, `+X% <stat>` main, `+Y% <stat>` sub. Use the player's design for that rarity
+  rarity, `+X% <stat>` main, three `+Y% <stat>` subs. Use the player's design for that rarity
   (`/cosmetics/player-cards/<account>` + `cardAppearance`), or the default card.
 
 - [ ] **Step 2: Daily button.** In the packs area: "Claim today's pack" calling
@@ -848,7 +846,7 @@ git commit -m "Collection: player packs, starter grant, daily pack [skip announc
 
 - [ ] **Step 3: Players tab.** List `state.playerCards` grouped by position, filter chips for
   rarity and "live teams only" (team still in Winter: from the division data's bracket), each row
-  showing main and sub.
+  showing main and all three subs.
 
 - [ ] **Step 4: Verify** on localhost:3000 with `opensAt` set in the past locally: starter packs
   appear, open one (5 cards, one per position), claim daily, Players tab lists 5 copies.
@@ -878,7 +876,7 @@ import { bonusPoints } from "../public/lib/card-bonus.js";
 test("gated week: a pick scores only with a lineup card of that player, saved before the lock", () => {
   const week = { key: "w", lock: 1000, gated: true, eligible: null, series: [], teams: new Set() };
   const entry = { picks: [1, 2, 3, 4, 5], updatedAt: 500_000, captain: null };
-  const lineup = { at: 900, cards: [1, 2, 3, 4, 5].map((a) => ({ account: a, main: { stat: "kills", pct: 10 }, sub: { stat: "gpm", pct: 5 } })) };
+  const lineup = { at: 900, cards: [1, 2, 3, 4, 5].map((a) => ({ account: a, main: { stat: "kills", pct: 10 }, subs: [{ stat: "gpm", pct: 5 }] })) };
   const none = scoreEntry(entry, week, [], null);
   assert.ok(none.picks.every((p) => p.points === 0 && p.card === null));
   const late = scoreEntry(entry, week, [], { ...lineup, at: 1000 });
@@ -975,7 +973,7 @@ handle that (roll `defaultMain` from `statsFor(pos)`).
           const ids=Array.isArray(body.cards)?body.cards:[];if(ids.length!==5)throw new Error('Choose a card for every position.');
           if(new Set(ids).size!==5)throw new Error('Each card can be used once a week.');
           const mine=new Map((saved.playerCards??[]).map(c=>[c.id,c]));
-          const cards=ids.map(id=>{const c=mine.get(id);if(!c)throw new Error("You don't own that card.");return {id:c.id,account:c.account,rarity:c.rarity,main:c.main,sub:c.sub};});
+          const cards=ids.map(id=>{const c=mine.get(id);if(!c)throw new Error("You don't own that card.");return {id:c.id,account:c.account,rarity:c.rarity,main:c.main,subs:c.subs};});
           await txn.put(`lineup:${WINTER.league}:${week}:${account}`,{at:this.now(),cards});
           result={state:saved,lineup:{week,cards}};
         }
@@ -990,7 +988,7 @@ handle that (roll `defaultMain` from `statsFor(pos)`).
           if((saved.playerCards??[]).some(c=>c.pos===pos&&live.has(c.account)))throw new Error('You already have a card for that position.');
           const k=`${week}:${pos}`;if((saved.safetyCards??[]).includes(k))throw new Error("You've already had this week's free card for that position.");
           const p=pool[Math.floor(Math.random()*pool.length)],main=p.cards.common.main;
-          const pull={key:`player:${p.account}:common`,account:p.account,pos,rarity:'common',main,sub:rollSub(pos,main.stat,'common')};
+          const pull={key:`player:${p.account}:common`,account:p.account,pos,rarity:'common',main,subs:rollSubs(pos,main.stat,'common')};
           result={state:{...addCopies(saved,[pull],this.now(),()=>crypto.randomUUID()),safetyCards:[...(saved.safetyCards??[]),k]},pulls:[pull]};
         }
 ```
@@ -1025,7 +1023,7 @@ git commit -m "Collection: Fantasy lineups with owned cards, weekly safety card 
 
 - [ ] **Step 1:** On Winter weeks (`week.gated`), load the signed-in player's collection
   (`state.playerCards`) and filter each slot's choices to players they own a copy of. Each slot gets
-  a copy dropdown (rarity, main, sub; best rarity first). Show the warning when the main or sub stat
+  a copy dropdown (rarity, main, subs; best rarity first). Show the warning when the main or any sub stat
   isn't in `statsFor(slot)`: "This bonus adds nothing at position N."
 
 - [ ] **Step 2:** Saving writes the Firestore entry as now **and** calls `fantasy-equip` with the

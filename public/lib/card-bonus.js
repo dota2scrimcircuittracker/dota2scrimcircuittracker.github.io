@@ -3,23 +3,29 @@
 // until scripts/calibrate-card-bonus.js is reviewed.
 import { WEIGHTS, METRICS } from "./tiers.js";
 
-export const BUDGETS = {
-  common: { main: 1, sub: 0.4 }, rare: { main: 1.5, sub: 0.6 }, epic: { main: 2, sub: 0.8 },
-  legendary: { main: 3, sub: 1.2 }, arcana: { main: 4.5, sub: 1.8 },
-};
+// Each card has 1 main and 3 subs; a sub is worth half the main at every rarity.
+const MAINS = { common: 1, rare: 1.5, epic: 2, legendary: 3, arcana: 4.5 };
+export const SUB_COUNT = 3;
+export const BUDGETS = Object.fromEntries(Object.entries(MAINS).map(([r, main]) => [r, { main, sub: main / 2 }]));
 export const statsFor = (pos) => Object.keys(WEIGHTS[pos]);
-export const bonusPct = (pos, stat, rarity, kind) => Math.round((BUDGETS[rarity][kind] / WEIGHTS[pos][stat]) * 100);
+export const bonusPct = (pos, stat, rarity, kind) => Math.round((BUDGETS[rarity][kind] / WEIGHTS[pos][stat]) * 1000) / 10;
+// "7.1" or "15": one decimal only when needed.
+export const pctText = (pct) => String(Math.round(pct * 10) / 10);
 // Plain text for a main-stat bonus ("+11% GPM"); never NaN when the stat isn't on the position's list.
 // Callers escape it where it goes into innerHTML.
 export function bonusText(pos, stat, rarity) {
   const name = METRICS[stat]?.label ?? stat;
-  return statsFor(pos).includes(stat) ? `+${bonusPct(pos, stat, rarity, "main")}% ${name}` : `${name} (not on your position's list)`;
+  return statsFor(pos).includes(stat) ? `+${pctText(bonusPct(pos, stat, rarity, "main"))}% ${name}` : `${name} (not on your position's list)`;
 }
 const bonus = (pos, stat, rarity, kind) => ({ stat, pct: bonusPct(pos, stat, rarity, kind) });
 
-export function rollSub(pos, mainStat, rarity, random = Math.random) {
-  const pool = statsFor(pos).filter((s) => s !== mainStat);
-  return bonus(pos, pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))], rarity, "sub");
+// n distinct stats from the position's list, none the main stat (fewer if the list is short).
+export function rollSubs(pos, mainStat, rarity, random = Math.random, n = SUB_COUNT) {
+  const pool = statsFor(pos).filter((s) => s !== mainStat), out = [];
+  while (out.length < n && pool.length) {
+    out.push(bonus(pos, pool.splice(Math.min(pool.length - 1, Math.floor(random() * pool.length)), 1)[0], rarity, "sub"));
+  }
+  return out;
 }
 // scores: { stat: season 0-100 at their main position }.
 export function defaultMain(pos, scores, rarity, random = Math.random) {
@@ -35,6 +41,6 @@ export function mainFor(pos, stat, rarity) {
 // game's multipliers, the same as base stat points. `g` is gamePointsAt's result.
 export function bonusPoints(g, card) {
   const m = g.mult ?? {}, k = (m.survival ?? 1) * (m.consistency ?? 1) * (m.opponents ?? 1) * (m.winning ?? 1);
-  const raw = [card.main, card.sub].filter(Boolean).reduce((t, b) => t + (g.stats.find((s) => s.metric === b.stat)?.points ?? 0) * (b.pct / 100), 0);
+  const raw = [card.main, ...(card.subs ?? []), card.sub].filter(Boolean).reduce((t, b) => t + (g.stats.find((s) => s.metric === b.stat)?.points ?? 0) * (b.pct / 100), 0);
   return Math.round(raw * k * 10) / 10;
 }

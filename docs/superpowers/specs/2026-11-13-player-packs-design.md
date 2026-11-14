@@ -6,7 +6,7 @@ test week did).
 
 ## Summary
 
-Players open packs of league players' cards. Each card has a rarity, a main bonus and a sub bonus.
+Players open packs of league players' cards. Each card has a rarity, a main bonus and three sub bonuses.
 In Fantasy you can only pick players you own a card of, and the card you equip in a slot adds its
 bonuses to that pick's points. Rarity comes from community votes on the player's own card designs,
 with the owner's own rating breaking ties.
@@ -93,7 +93,7 @@ Before the close, rarity follows votes live (the editor shows "Now: …").
 
 ## 2. Bonuses
 
-Every card has a **main bonus** and a **sub bonus**. Each one is "+X% points from stat S", taken from
+Every card has one **main bonus** and three **sub bonuses**. Each one is "+X% points from stat S", taken from
 the card's position's stat list (`WEIGHTS` in `tiers.js`).
 
 ### 2.1 Sizing: equal ceilings
@@ -108,15 +108,15 @@ share (weight 14) at budget 1.4 = +10%. Pos 1 stuns (weight 3) at budget 1.4 ≈
 
 Starting budgets (stat points; placeholders, to be calibrated):
 
-| Rarity | Main | Sub |
+| Rarity | Main | Each sub (x3) |
 |---|---|---|
-| Common | 1 | 0.4 |
-| Rare | 1.5 | 0.6 |
-| Epic | 2 | 0.8 |
-| Legendary | 3 | 1.2 |
-| Arcana | 4.5 | 1.8 |
+| Common | 1 | 0.5 |
+| Rare | 1.5 | 0.75 |
+| Epic | 2 | 1 |
+| Legendary | 3 | 1.5 |
+| Arcana | 4.5 | 2.25 |
 
-Sub = 40% of main. Percentages round to the nearest whole %.
+Three subs, each half the main. Percentages round to one decimal (+2.5%, +15%), so every bonus keeps its ceiling to within 2%.
 
 **Calibration before launch:** compute each stat's average 0–100 score per position over the
 season's games and check expected gains per rarity. Equal ceilings are the rule; expected gains
@@ -134,8 +134,9 @@ games (best `GAMES_COUNTED`) matter, as today.
   they save or edit the design. Stored on the design.
 - **Main, on a default card:** random from the player's 3 best stats at their main position
   (highest season 0–100), rolled once when the default card is first needed, then fixed.
-- **Sub:** random for **each copy** when it's pulled, any stat on the position's list except the
-  card's main stat, rolled uniformly. Two copies of the same card can have different subs.
+- **Subs:** three per copy, random for **each copy** when it's pulled: 3 distinct stats from the
+  position's list, none equal to the card's main stat, rolled uniformly. Two copies of the same
+  card can have different subs.
 - **Arcana:** main picked by Fav when granting, plus a unique effect. The unique effects are out of
   scope here; the first arcanas launch with the arcana budget only.
 
@@ -148,10 +149,10 @@ games (best `GAMES_COUNTED`) matter, as today.
   legendary 4) and arcana with the existing arcana odds. Then pick uniformly among that position's
   players who have a card at that rarity. If none do, step down a rarity (legendary → epic → rare
   → common).
-- **Duplicates** are kept. Each copy has its own sub. Inventory holds copies, not counts:
-  `{ key: "player:<account>:<rarity>", sub: { stat, pct }, at }`.
+- **Duplicates** are kept. Each copy has its own three subs. Inventory holds copies, not counts:
+  `{ key: "player:<account>:<rarity>", subs: [{ stat, pct } x3], at }`.
 - **Recycling:** 3 copies of the same player at the same rarity trade in for 1 copy of that player
-  at the next rarity (common → rare → epic → legendary), with a fresh random sub. Legendary → arcana
+  at the next rarity (common → rare → epic → legendary), with three fresh random subs. Legendary → arcana
   only for a player who has an arcana card. Copies equipped in this week's Fantasy lineup can't be
   recycled. Phase 1.
 - **Replaces** the draft in `public/lib/player-packs.js` (3 cards, rarity from player tier). Nothing
@@ -169,7 +170,7 @@ games (best `GAMES_COUNTED`) matter, as today.
 - **Captain** doubles base points only. Card bonuses aren't doubled.
 - **Validation** runs at save time in the Worker (`checkPicks`): every pick has an owned copy, and
   ownership is checked against the inventory at save time.
-- **Scoring:** `scoreEntry` reads each pick's card from the entry and applies main + sub to
+- **Scoring:** `scoreEntry` reads each pick's card from the entry and applies main + the three subs to
   `pickPoints`. Entries without a card (from before this change) score as today.
 
 ## 5. Pack supply
@@ -194,7 +195,7 @@ Numbers are placeholders.
   slot's current rarity; rate your own designs.
 - **Gallery / profile:** each design shows its current rarity slot and its main bonus.
 - **Pack opening:** reuse the cosmetics pack animation; each card shows player, position, rarity,
-  main and sub.
+  main and all three subs.
 - **Collection:** a Players tab listing copies, filterable by position, rarity and live team.
 - **Fantasy lineup:** pick from owned players only; each slot shows the equipped copy's bonuses
   and the warning from section 4.
@@ -207,7 +208,7 @@ Trading, dusting or crafting duplicates, arcana unique effects, rarity for non-W
 
 - Unit tests (Node, `test/`): slot assignment (every table row above, plus no-vote and
   equal-rating cases), bonus sizing (equal ceiling per budget), pack roll (5 positions,
-  step-down when a rarity is empty, sub never equals main), gated `checkPicks`, scoring with
+  step-down when a rarity is empty, subs distinct and never equal to main), gated `checkPicks`, scoring with
   bonuses and captain.
 - Worker: self-rating stored apart from community votes; a pick without an owned copy is
   rejected.
