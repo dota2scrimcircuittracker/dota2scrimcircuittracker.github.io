@@ -2,7 +2,7 @@
 // One Fantasy across every Winter division, stored under the league key "all".
 export const WINTER = {
   league: "all",
-  divisions: ["champion", "heroic", "conqueror", "warrior", "challenger", "voyager", "explorer"], // Fav confirms
+  divisions: ["ad2l", "heroic", "conqueror", "warrior", "challenger", "voyager", "explorer"], // division keys (lib/divisions.js): Champion is "ad2l". Fav confirms
   prepAt: Date.parse("2026-11-17T00:00:00Z"),  // Fav confirms: notice + nominations go live
   opensAt: Date.parse("2026-12-01T00:00:00Z"), // Fav confirms: packs, starter grant, daily packs
 };
