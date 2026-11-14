@@ -61,15 +61,16 @@ higher voted rarity.
 Eastern). From then on:
 
 - Nominations and self-ratings are locked.
-- Community votes on nominated designs are locked (the `rate` action refuses them; ratings on other
-  designs carry on as normal).
+- Community votes on nominated designs are locked (`rate` and `cup-rate` refuse them). Votes are per
+  design, so a copy of a nominated design in another slot, or a cup entry of it, is locked too.
+  Ratings on other designs carry on as normal.
 - Each player's pack cards are frozen: the design, main stat and rarity of every filled slot, as
   assigned at the close, stored once (`packslots:<account>`). Packs and Fantasy read only the frozen
   cards. Editing or deleting a design afterwards changes nothing in packs.
 - The freeze is written the first time it's needed after the close (pool build, the public GET, or
   an `equip` that would change a nominated design). Since nothing that feeds `assignSlots` can change
   after the close, a late freeze gives the same result as one at the close.
-- Players with no frozen nominations get the default common only.
+- Players with no nominations get the default common only, and nothing is stored for them.
 
 Before the close, rarity follows votes live (the editor shows "Now: …").
 

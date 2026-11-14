@@ -6,7 +6,7 @@ import { WINTER, PACK_CARDS_MAX } from "../lib/winter.js";
 import { assignSlots, votesFromCounts } from "../lib/player-cards.js";
 import { statsFor, bonusPct } from "../lib/card-bonus.js";
 import { METRICS } from "../lib/tiers.js";
-import { RATINGS, isPlainDesign } from "../lib/card-ratings.js";
+import { RATINGS, isPlainDesign, designKey } from "../lib/card-ratings.js";
 
 const label = (r) => r[0].toUpperCase() + r.slice(1);
 const statLabel = (s) => METRICS[s]?.label ?? s;
@@ -30,14 +30,23 @@ export async function renderPackCards(el, ctx) {
   el.hidden = false;
   let fetched = [], loadError = "", res = {};
   try { res = await ctx.fetchCards(ctx.account); fetched = res.designs ?? []; } catch (e) { loadError = e.message; }
-  // After Thanksgiving the server sends locked + the frozen slots: read-only.
+  // After Thanksgiving the server sends locked + the frozen slots: read-only. If that fails after the
+  // close, still read-only: never the editable view.
+  if (loadError && Date.now() >= WINTER.votesCloseAt) {
+    el.innerHTML = `<h3>Winter pack cards</h3>
+      <p class="muted">Pack cards are locked for Winter.</p>
+      <p class="pc-error" role="alert">${esc(loadError)}</p>`;
+    return;
+  }
   if (res.locked) {
     const frozen = RATINGS.slice().reverse().map((r) => [r, res.slots?.[r]]).filter(([, x]) => x && typeof x === "object");
     const pos = ctx.pos;
+    // The frozen design is what counts; say so if the slot has been redesigned since.
+    const name = (x) => `${ctx.slotName(x.slot)}${(ctx.designs?.[x.slot] ? designKey(ctx.designs[x.slot]) : null) !== x.designKey ? " (design changed since)" : ""}`;
     el.innerHTML = `<h3>Winter pack cards</h3>
       <p class="muted">Pack cards are locked for Winter.</p>
       ${frozen.length ? `<ul class="pack-cards pack-cards-locked">${frozen.map(([r, x]) =>
-        `<li>${label(r)} · ${esc(ctx.slotName(x.slot))}${pos && x.main ? ` · +${bonusPct(pos, x.main, r, "main")}% ${esc(statLabel(x.main))}` : x.main ? ` · ${esc(statLabel(x.main))}` : ""}</li>`).join("")}</ul>` : ""}
+        `<li>${label(r)} · ${esc(name(x))}${pos && x.main ? ` · +${bonusPct(pos, x.main, r, "main")}% ${esc(statLabel(x.main))}` : x.main ? ` · ${esc(statLabel(x.main))}` : ""}</li>`).join("")}</ul>` : ""}
       ${res.slots?.common === "default" ? `<p class="pc-default muted">Your common is the default card.</p>` : ""}`;
     return;
   }
