@@ -59,7 +59,7 @@ jobs:
         run: node scripts/stratz/hero-levels.js || echo "::warning::Hero levels not refreshed (STRATZ)."
       # Rostered Winter players + main positions for player packs (public/data/player-pool.json).
       - name: Player pool
-        run: node scripts/gen/gen-player-pool.js
+        run: node scripts/gen/gen-player-pool.js || echo "::warning::Player pool not refreshed."
       - uses: actions/cache/save@v4
         if: always()
         with:

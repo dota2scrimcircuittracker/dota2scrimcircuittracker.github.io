@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BUDGETS, bonusPct, statsFor, rollSub, defaultMain, bonusPoints } from "../public/lib/card-bonus.js";
+import { BUDGETS, bonusPct, bonusText, statsFor, rollSub, defaultMain, bonusPoints } from "../public/lib/card-bonus.js";
 import { WEIGHTS } from "../public/lib/tiers.js";
 
 test("equal ceiling: pct x weight is the budget for every stat", () => {
@@ -26,4 +26,13 @@ test("bonus points: stat points x pct x the game's multipliers; a stat missing a
   const g = { stats: [{ metric: "kills", points: 10 }], mult: { survival: 1, consistency: 1, opponents: 1.1, winning: 1 } };
   const card = { main: { stat: "kills", pct: 20 }, sub: { stat: "vispct", pct: 50 } };
   assert.equal(bonusPoints(g, card), 2.2);
+});
+
+test("bonusText: percent for listed stats, no NaN for stats off the position's list", () => {
+  const on = statsFor(1)[0], off = [...new Set([2, 3, 4, 5].flatMap(statsFor))].find((s) => !statsFor(1).includes(s));
+  assert.match(bonusText(1, on, "rare"), /^\+\d+% /);
+  assert.ok(off, "need a stat outside pos 1's list");
+  const t = bonusText(1, off, "rare");
+  assert.match(t, /\(not on your position's list\)$/);
+  assert.doesNotMatch(t, /NaN|^[+]/);
 });

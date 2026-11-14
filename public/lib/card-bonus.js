@@ -1,7 +1,7 @@
 // Card bonuses (spec section 2). A bonus is "+X% points from stat S", sized so every stat has the
 // same ceiling at a rarity: X% = budget / WEIGHTS[pos][stat]. Budgets are stat points; placeholders
 // until scripts/calibrate-card-bonus.js is reviewed.
-import { WEIGHTS } from "./tiers.js";
+import { WEIGHTS, METRICS } from "./tiers.js";
 
 export const BUDGETS = {
   common: { main: 1, sub: 0.4 }, rare: { main: 1.5, sub: 0.6 }, epic: { main: 2, sub: 0.8 },
@@ -9,6 +9,12 @@ export const BUDGETS = {
 };
 export const statsFor = (pos) => Object.keys(WEIGHTS[pos]);
 export const bonusPct = (pos, stat, rarity, kind) => Math.round((BUDGETS[rarity][kind] / WEIGHTS[pos][stat]) * 100);
+// Plain text for a main-stat bonus ("+11% GPM"); never NaN when the stat isn't on the position's list.
+// Callers escape it where it goes into innerHTML.
+export function bonusText(pos, stat, rarity) {
+  const name = METRICS[stat]?.label ?? stat;
+  return statsFor(pos).includes(stat) ? `+${bonusPct(pos, stat, rarity, "main")}% ${name}` : `${name} (not on your position's list)`;
+}
 const bonus = (pos, stat, rarity, kind) => ({ stat, pct: bonusPct(pos, stat, rarity, kind) });
 
 export function rollSub(pos, mainStat, rarity, random = Math.random) {

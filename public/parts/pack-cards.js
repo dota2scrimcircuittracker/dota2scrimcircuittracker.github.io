@@ -4,7 +4,7 @@
 import { esc } from "../core.js";
 import { WINTER, PACK_CARDS_MAX } from "../lib/winter.js";
 import { assignSlots, votesFromCounts } from "../lib/player-cards.js";
-import { statsFor, bonusPct } from "../lib/card-bonus.js";
+import { statsFor, bonusText } from "../lib/card-bonus.js";
 import { METRICS } from "../lib/tiers.js";
 import { RATINGS, isPlainDesign, designKey } from "../lib/card-ratings.js";
 
@@ -21,7 +21,7 @@ export function poolPosition(account) {
 
 // One rendered row's "Now:" line from the preview seats.
 const nowText = (rarity, pos, main) =>
-  `Now: ${label(rarity)}${pos && main ? ` · +${bonusPct(pos, main, rarity, "main")}% ${esc(statLabel(main))}` : ""}`;
+  `Now: ${label(rarity)}${pos && main ? ` · ${esc(bonusText(pos, main, rarity))}` : ""}`;
 
 // el: container. ctx: { account, pos (1-5 or null), designs (slot -> design|null), slotName(slot),
 //   packCards [{slot, main}], fetchCards(account) -> { designs }, act(body) -> { state } | { error } }
@@ -46,7 +46,7 @@ export async function renderPackCards(el, ctx) {
     el.innerHTML = `<h3>Winter pack cards</h3>
       <p class="muted">Pack cards are locked for Winter.</p>
       ${frozen.length ? `<ul class="pack-cards pack-cards-locked">${frozen.map(([r, x]) =>
-        `<li>${label(r)} · ${esc(name(x))}${pos && x.main ? ` · +${bonusPct(pos, x.main, r, "main")}% ${esc(statLabel(x.main))}` : x.main ? ` · ${esc(statLabel(x.main))}` : ""}</li>`).join("")}</ul>` : ""}
+        `<li>${label(r)} · ${esc(name(x))}${pos && x.main ? ` · ${esc(bonusText(pos, x.main, r))}` : x.main ? ` · ${esc(statLabel(x.main))}` : ""}</li>`).join("")}</ul>` : ""}
       ${res.slots?.common === "default" ? `<p class="pc-default muted">Your common is the default card.</p>` : ""}`;
     return;
   }
