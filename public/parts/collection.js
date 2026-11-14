@@ -102,6 +102,10 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   const designs=()=>cardDesignState(state??publicDesigns??{equipment});
   const selectedEquipment=()=>({...DEFAULT_EQUIPMENT,...(designs().cardDesigns[selectedSlot]??state?.equipment??equipment)});
   let clockOffset=0, timerRetryAt=0;
+  // Winter pack cards (parts/pack-cards.js): the player's nominated designs, fetched once. Any successful
+  // action may have changed cardDesigns (a re-saved design has a new designKey, so its votes and
+  // self-rating start over), so every one clears it; a failed fetch stays until then or a reopen.
+  let packCardsFetch=null;
   const dialog=document.createElement(page?'section':'dialog');dialog.className=page?'collection-dialog collection-page':'collection-dialog';dialog.setAttribute('aria-labelledby','collection-title');
   const closeView=()=>{if(!page)dialog.close();}, tabsHost=tabBar??dialog;
   const shownName=()=>shownNickname(state)??name;
@@ -143,7 +147,7 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   const run=async(actionName,details,success)=>{
     if(busy)return;setBusy(true);say('Saving…');
     if(actionName==='equip')details={...details,cardSlot:selectedSlot};
-    try {const data=await action(actionName,details);if(data.serverNow)clockOffset=data.serverNow-Date.now();state=data.state??state;inventory=state.inventory;success?.(data);say('');return data;}
+    try {const data=await action(actionName,details);if(data.serverNow)clockOffset=data.serverNow-Date.now();state=data.state??state;packCardsFetch=null;inventory=state.inventory;success?.(data);say('');return data;}
     catch(e){say(e.message);return null;}finally{setBusy(false);}
   };
   dialog.querySelector('[data-close]')?.addEventListener('click',()=>dialog.close());
@@ -170,14 +174,13 @@ export async function openCollection({tab='packs',viewAccount=null,cardHtml=null
   }
   const signIn=()=>{closeView();startSteamSignIn();};
   // Winter pack cards (parts/pack-cards.js) under the slot list. The editor redraws often, so the
-  // player's pack cards are fetched once and again only after a pack-cards or self-rate change.
-  let packCardsFetch=null;
+  // player's pack cards come from packCardsFetch (cleared after every successful action).
   function mountPackCards(el) {
     if(!el)return;
     const prefs=designs();
     poolPosition(own).then(pos=>renderPackCards(el,{account:own,pos,designs:prefs.cardDesigns,slotName:i=>cardSlotName(prefs,i),packCards:state?.packCards??[],
-      fetchCards:account=>(packCardsFetch??=playerCards(account).catch(e=>{packCardsFetch=null;throw e;})),
-      act:async({action:name,...details})=>{try {const data=await action(name,details);state=data.state??state;return data;} catch(e){return {error:e.message};} finally{packCardsFetch=null;}}}));
+      fetchCards:account=>(packCardsFetch??=playerCards(account)),
+      act:async({action:name,...details})=>{try {const data=await action(name,details);state=data.state??state;packCardsFetch=null;return data;} catch(e){return {error:e.message};}}}));
   }
   function cardSlotsHtml() {
     const prefs=designs();

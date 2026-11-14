@@ -1,6 +1,6 @@
 // Winter player packs notice: once per visitor, from the prep launch until a week after packs open.
 // Same card and timing as the Arcana Cup notice (cup-notice.js), and it waits for that one to go.
-import { WINTER } from "./winter.js";
+import { WINTER, PACK_CARDS_MAX } from "./winter.js";
 
 const SEEN_KEY = "winter-packs-notice-1";
 
@@ -21,7 +21,7 @@ function show(go) {
   card.setAttribute("aria-label", "Winter player packs");
   card.innerHTML = `<b>${open ? "Player packs are here" : "Coming for Winter: player packs"}</b>
     <span>${open ? "Open your free packs and build your Winter Fantasy team."
-      : "Winter Fantasy uses player cards. Pick up to 4 of your card designs as your pack cards and choose each one's bonus. Votes set their rarity."}</span>
+      : "Winter Fantasy uses player cards. Pick up to ${PACK_CARDS_MAX} of your card designs as your pack cards and choose each one's bonus. Votes set their rarity."}</span>
     <div class="tour-btns"><button type="button" class="tour-btn winter-later">Later</button><button type="button" class="tour-btn tour-primary winter-go">${open ? "Open packs" : "Choose my pack cards"}</button></div>`;
   card.querySelector(".winter-later").onclick = close;
   card.querySelector(".winter-go").onclick = () => { close(); go(open ? "#/gallery/packs" : "#/gallery/customize"); };

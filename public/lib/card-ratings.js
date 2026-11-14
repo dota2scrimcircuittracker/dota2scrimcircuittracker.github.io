@@ -3,6 +3,8 @@
 // so changing a card starts it at no votes, and changing it back brings its old votes back.
 // The collection Worker (workers/steam-auth/src/cosmetics.js) stores them, one per voter.
 
+import { DEFAULT_EQUIPMENT } from './cosmetics-catalog.js';
+
 export const RATINGS = ['common', 'rare', 'epic', 'legendary'];
 
 // A stable text form (keys sorted) of a saved design, hashed. Not a security boundary: the Worker
@@ -20,6 +22,10 @@ export function designKey(design) {
   }
   return a.toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 }
+
+// The default card as saved (saving adds hue 0): never posted, shown in the Gallery or a pack card.
+const PLAIN_DESIGN = { ...DEFAULT_EQUIPMENT, hue: 0 }, PLAIN = designKey(PLAIN_DESIGN);
+export const isPlainDesign = (design) => !design || designKey({ ...PLAIN_DESIGN, ...design }) === PLAIN;
 
 // One vote per voter: a new rating replaces theirs, null takes it back.
 export function castVote(votes, voter, rating) {

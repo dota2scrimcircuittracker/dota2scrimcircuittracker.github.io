@@ -1,8 +1,8 @@
 import { grantLogin, applyPackGrants, rollPack, recycleCards, openArcanaUpgrade, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, slotCount, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
-import { designKey, castVote, tally, RATINGS } from '../../../public/lib/card-ratings.js';
+import { designKey, castVote, tally, RATINGS, isPlainDesign } from '../../../public/lib/card-ratings.js';
 import { statsFor } from '../../../public/lib/card-bonus.js';
 import { PACK_CARDS_MAX } from '../../../public/lib/winter.js';
-import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-catalog.js';
+import { itemByKey } from '../../../public/lib/cosmetics-catalog.js';
 import { isAdmin, ADMIN_ACCOUNT, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
 import { checkImages } from './image-check.js';
@@ -55,9 +55,6 @@ const pullRow=(account,openedAt,packType,rewards)=>{const items=(rewards??[]).ma
 // A pack opened now posts what the player's auto-post settings let through (lib/feed.js pullPost).
 const autoPullRow=(state,account,openedAt,packType,result)=>{const post=pullPost(result.rewards,result.screens,feedAutoOf(state),k=>itemByKey(k)?.rarity);return post&&{account,at:openedAt,packType,...post};};
 const pullKey=(at,account,requestId)=>`pull:${String(at).padStart(15,'0')}:${account}:${requestId}`;
-// The default card, as saved (saving adds hue 0): never posted or shown in the Gallery.
-const PLAIN_DESIGN={...DEFAULT_EQUIPMENT,hue:0},PLAIN=designKey(PLAIN_DESIGN);
-const isPlainDesign=design=>!design||designKey({...PLAIN_DESIGN,...design})===PLAIN;
 
 // One serialized vault for this league. Inventory, receipts, daily grants and appearance
 // writes commit together. Browser input never supplies drop odds, items or counts.
