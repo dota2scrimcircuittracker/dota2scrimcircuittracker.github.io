@@ -34,10 +34,13 @@ Only nominated designs enter the slot assignment below. The `rate` action's stal
 2. **The owner rates their own designs.** Today the Worker rejects self-votes ("Rate other players'
    cards, not your own"). Add a separate self-rating, stored apart from community votes
    (`selfrating:<account>:<designKey>`), that never counts as a community vote.
-3. **Assign slots.** Each design takes its voted rarity. When two designs want the same rarity, the
-   one the owner rated higher keeps it, and the other moves to the nearest open slot below, or
-   above if nothing below is open. A further tie (same owner rating) goes to the higher community
-   score, then the older design.
+3. **Assign slots.** Each design takes its voted rarity. When two or more designs want the same
+   rarity, the extras move to the nearest open slot below, or above if nothing below is open
+   (extras from the lowest contested rarity move first, so voted order holds across ties). Then
+   the slots each tie ended up with go to its designs in the owner's order: the one the owner rated
+   higher always sits higher. Example: A and B both voted epic, rare and common taken, owner rates
+   A legendary → A legendary, B epic. Same owner rating → higher community score, then the older
+   design.
 4. **A design with no community votes** uses the owner's rating as its voted rarity until votes
    come in. With neither, it is common.
 5. **Default card:** if no design ends up common, the player's default card fills common.
