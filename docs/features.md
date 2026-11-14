@@ -878,7 +878,7 @@ play the whole Heroic/Aegis game. Predict's "Your name" bar hides on this tab (F
 Winter Fantasy (one Fantasy across every division; `lib/winter.js`) is built on player packs.
 Each pack holds 5 player cards, one per position. A lineup can only use players you own a card
 of, and rarer cards give bigger bonuses: a main bonus stat chosen by the card's owner, plus a
-three random sub bonuses (each half the main) rolled per copy (`lib/card-bonus.js`). The pool of players comes from
+two random sub bonuses (each half the main) rolled per copy (`lib/card-bonus.js`). The pool of players comes from
 `scripts/gen/gen-player-pool.js`. Packs open Dec 1 2026: every player starts with 3 free packs
 and gets a free pack each day.
 

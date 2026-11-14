@@ -28,15 +28,16 @@ test("sub budget is half the main at every rarity", () => {
   for (const r of ["common", "rare", "epic", "legendary", "arcana"]) assert.equal(BUDGETS[r].sub, BUDGETS[r].main / 2, r);
   assert.deepEqual(["common", "rare", "epic", "legendary", "arcana"].map((r) => BUDGETS[r].sub), [0.5, 0.75, 1, 1.5, 2.25]);
 });
-test("rollSubs: 3 distinct stats, never the main stat", () => {
+test("rollSubs: 2 distinct stats, never the main stat", () => {
   for (let i = 0; i < 50; i++) {
     const subs = rollSubs(1, "kills", "rare", () => i / 50);
-    assert.equal(subs.length, 3);
-    assert.equal(new Set(subs.map((s) => s.stat)).size, 3);
+    assert.equal(subs.length, 2);
+    assert.equal(new Set(subs.map((s) => s.stat)).size, 2);
     assert.ok(subs.every((s) => s.stat !== "kills" && statsFor(1).includes(s.stat)));
   }
   const real = rollSubs(1, "kills", "rare");
-  assert.equal(new Set(real.map((s) => s.stat)).size, 3);
+  assert.equal(real.length, 2);
+  assert.equal(new Set(real.map((s) => s.stat)).size, 2);
 });
 test("rollSubs: with fewer than n+1 stats it returns as many as are available", () => {
   const pos = [1, 2, 3, 4, 5][0], stats = statsFor(pos);
@@ -53,7 +54,7 @@ test("bonus points: stat points x pct x the game's multipliers; a stat missing a
   const card = { main: { stat: "kills", pct: 20 }, sub: { stat: "vispct", pct: 50 } };
   assert.equal(bonusPoints(g, card), 2.2);
 });
-test("bonus points sum main and all three subs (legacy card.sub still counts)", () => {
+test("bonus points sum main and every sub (legacy card.sub still counts)", () => {
   const g = { stats: [{ metric: "kills", points: 10 }, { metric: "gpm", points: 8 }, { metric: "dmg", points: 5 }, { metric: "xpm", points: 4 }], mult: {} };
   const subs = [{ stat: "gpm", pct: 50 }, { stat: "dmg", pct: 20 }, { stat: "xpm", pct: 25 }];
   assert.equal(bonusPoints(g, { main: { stat: "kills", pct: 10 }, subs }), 7);

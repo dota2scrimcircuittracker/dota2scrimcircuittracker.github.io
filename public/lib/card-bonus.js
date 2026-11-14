@@ -3,9 +3,9 @@
 // until scripts/calibrate-card-bonus.js is reviewed.
 import { WEIGHTS, METRICS } from "./tiers.js";
 
-// Each card has 1 main and 3 subs; a sub is worth half the main at every rarity.
+// Each card has 1 main and 2 subs; a sub is worth half the main at every rarity.
 const MAINS = { common: 1, rare: 1.5, epic: 2, legendary: 3, arcana: 4.5 };
-export const SUB_COUNT = 3;
+export const SUB_COUNT = 2;
 export const BUDGETS = Object.fromEntries(Object.entries(MAINS).map(([r, main]) => [r, { main, sub: main / 2 }]));
 export const statsFor = (pos) => Object.keys(WEIGHTS[pos]);
 export const bonusPct = (pos, stat, rarity, kind) => Math.round((BUDGETS[rarity][kind] / WEIGHTS[pos][stat]) * 1000) / 10;
