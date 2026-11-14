@@ -111,8 +111,48 @@ test('pack cards: nominate up to 4 with a main stat, self-rate apart from votes,
   assert.match((await as(401,{action:'pack-cards',cards:[{slot:2,main:'kills'}]})).error,/no saved design/);
   await as(401,{action:'self-rate',cardSlot:3,rating:'legendary'});
   await as(402,{action:'rate',target:401,cardSlot:3,rating:'rare'}); // slot 3: past the old 0-2 limit
-  const cards=await (await vault.fetch(new Request('https://vault/player-cards?account=401'))).json();
+  const res=await vault.fetch(new Request('https://vault/player-cards?account=401')),text=await res.text(),cards=JSON.parse(text);
   const three=cards.designs.find(d=>d.slot===3);
-  assert.equal(three.self,'legendary');assert.deepEqual(Object.values(three.votes),['rare']); // self-rating isn't a vote
+  assert.equal(three.self,'legendary');assert.equal(three.counts.rare,1);assert.equal(three.total,1); // self-rating isn't a vote
   assert.equal(three.main,'stuns');
+  // Public: counts only, never who voted what.
+  assert.ok(cards.designs.every(d=>!('votes' in d)));assert.ok(!text.includes('402'));
+});
+test('pack cards: stricter nominations and self-ratings',async()=>{
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let n=0;
+  const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`pcs-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
+  const playerCards=async a=>(await (await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).json()).designs;
+  for(const a of [501,502,503])await as(a,{action:'session'});
+  // A fresh slot 0 is the plain default card: not a saved design.
+  assert.match((await as(503,{action:'pack-cards',cards:[{slot:0,main:'kills'}]})).error,/no saved design/);
+  const realNow=Date.now;let clock=1000;Date.now=()=>clock;
+  try {
+    await as(501,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:20},cardSlot:0});
+    clock=2000;await as(501,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:21},cardSlot:1});
+    assert.match((await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:0,main:'kills'}]})).error,/^Each card can be nominated once\.$/);
+    assert.match((await as(501,{action:'pack-cards',cards:[{slot:0,main:'nonsense'}]})).error,/bonus stat/);
+    for(const cards of [undefined,null,'0'])assert.equal((await as(501,{action:'pack-cards',cards})).error,'Choose your pack cards.');
+    clock=3000;let ok=await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'kills'}]});
+    assert.deepEqual(ok.state.packCards.map(c=>c.savedAt),[1000,2000]); // how old each design is
+    clock=4000;await as(501,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:40},cardSlot:0});
+    clock=5000;ok=await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'kills'}]});
+    assert.deepEqual(ok.state.packCards.map(c=>c.savedAt),[4000,2000]); // a re-saved design is newer
+    assert.deepEqual((await as(501,{action:'pack-cards',cards:[]})).state.packCards,[]);
+  } finally {Date.now=realNow;}
+  await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'}]});
+  assert.match((await as(501,{action:'self-rate',cardSlot:0,rating:'mythic'})).error,/common, rare, epic or legendary/);
+  assert.match((await as(501,{action:'self-rate',cardSlot:2,rating:'rare'})).error,/no saved design/);
+  await as(501,{action:'self-rate',cardSlot:0,rating:'legendary'});
+  assert.equal((await playerCards(501))[0].self,'legendary');
+  await as(501,{action:'self-rate',cardSlot:0,rating:null});
+  assert.equal((await playerCards(501))[0].self,null);
+  await as(501,{action:'self-rate',cardSlot:1,rating:'epic'});
+  assert.match((await as(502,{action:'rate',target:501,cardSlot:5,rating:'rare'})).error,/one of their cards/);
+  await as(502,{action:'rate',target:501,cardSlot:1,rating:'common'});
+  // A self-rating never counts in the Gallery or my-votes.
+  const card=(await (await vault.fetch(new Request('https://vault/gallery'))).json()).cards.find(c=>c.account==='501'&&c.slot===1);
+  assert.equal(card.total,1);assert.equal(card.counts.epic,0);
+  assert.deepEqual((await as(501,{action:'my-votes'})).votes,{});
+  assert.deepEqual(Object.values((await as(502,{action:'my-votes'})).votes),['common']);
 });

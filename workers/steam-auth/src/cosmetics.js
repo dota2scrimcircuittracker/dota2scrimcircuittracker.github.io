@@ -79,6 +79,18 @@ export class CosmeticsVault {
       return row;
     });
   }
+  // One player's nominated pack designs with raw votes, self-rating and main stat: what assignSlots
+  // needs. Internal: the public /player-cards route hides the votes.
+  async packDesigns(storage,account) {
+    const state=await storage.get(`user:${account}`);
+    if(!state)return [];
+    const designs=cardDesignState(state).cardDesigns,out=[];
+    for(const p of state.packCards??[]) {
+      const d=designs[p.slot];if(isPlainDesign(d))continue;const key=designKey(d);
+      out.push({slot:p.slot,main:p.main,savedAt:p.savedAt,votes:await storage.get(`votes:${account}:${key}`)??{},self:await storage.get(`selfrating:${account}:${key}`)??null});
+    }
+    return out;
+  }
   // A refund or chargeback on a paid checkout: the tokens it bought come back out, in proportion to the
   // money returned (rounded up). Stripe sends the running refunded total, so a repeat takes nothing
   // more. Tokens already spent can't come back; they're kept on the row as `owed`. A payment never
@@ -358,15 +370,11 @@ export class CosmeticsVault {
       }));
       return json({cards});
     }
-    // One player's nominated pack designs with votes, self-rating and main stat: what assignSlots needs.
+    // One player's nominated pack designs: vote counts only, never who voted what (like /ratings).
+    // The owner's self-rating is public on purpose.
     if(req.method==='GET' && url.pathname==='/player-cards') {
-      const state=await this.ctx.storage.get(`user:${account}`);
-      if(!state)return json({designs:[]});
-      const designs=cardDesignState(state).cardDesigns;
-      const out=[];
-      for(const p of state.packCards??[]){const d=designs[p.slot];if(!d)continue;const key=designKey(d);
-        out.push({slot:p.slot,main:p.main,savedAt:p.savedAt,votes:await this.ctx.storage.get(`votes:${account}:${key}`)??{},self:await this.ctx.storage.get(`selfrating:${account}:${key}`)??null});}
-      return json({designs:out});
+      const designs=await this.packDesigns(this.ctx.storage,account);
+      return json({designs:designs.map(({votes,...d})=>({...d,...tally(votes)}))});
     }
     // Anyone's achievement progress, for their profile. Counting scans the whole vault, so each
     // account's answer is kept for 5 minutes.
@@ -743,14 +751,18 @@ export class CosmeticsVault {
           // Up to 4 saved designs offered as this player's pack cards, each with its main bonus stat
           // (spec 1.1, 2.3). The stat is checked against every position: a card's position comes from
           // games, so it's re-checked when the pool is built.
-          const list=Array.isArray(body.cards)?body.cards:[];
-          if(list.length>PACK_CARDS_MAX)throw new Error('Choose up to 4 pack cards.');
+          // savedAt is how old the design is (the older-design tiebreak), so a re-saved slot is newer.
+          if(!Array.isArray(body.cards))throw new Error('Choose your pack cards.');
+          const list=body.cards;
+          if(list.length>PACK_CARDS_MAX)throw new Error(`Choose up to ${PACK_CARDS_MAX} pack cards.`);
           const designs=cardDesignState(saved).cardDesigns,seen=new Set(),all=new Set([1,2,3,4,5].flatMap(statsFor));
           const packCards=list.map((c)=>{
-            if(!Number.isInteger(c?.slot)||c.slot<0||c.slot>=slotCount(saved)||seen.has(c.slot))throw new Error('Choose one of your cards.');
-            if(!designs[c.slot])throw new Error('That card has no saved design.');
+            if(!Number.isInteger(c?.slot)||c.slot<0||c.slot>=slotCount(saved))throw new Error('Choose one of your cards.');
+            if(seen.has(c.slot))throw new Error('Each card can be nominated once.');
+            if(isPlainDesign(designs[c.slot]))throw new Error('That card has no saved design.');
             if(!all.has(c.main))throw new Error('Choose a bonus stat.');
-            seen.add(c.slot);return {slot:c.slot,main:c.main,savedAt:(saved.packCards??[]).find(p=>p.slot===c.slot)?.savedAt??Date.now()};
+            seen.add(c.slot);
+            return {slot:c.slot,main:c.main,savedAt:saved.cardSavedAt?.[c.slot]??(saved.packCards??[]).find(p=>p.slot===c.slot)?.savedAt??Date.now()};
           });
           result={state:{...saved,packCards}};
         }
