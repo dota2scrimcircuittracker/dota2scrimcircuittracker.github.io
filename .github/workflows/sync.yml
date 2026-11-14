@@ -57,6 +57,9 @@ jobs:
         env:
           STRATZ_API_KEY: ${{ secrets.STRATZ_API_KEY }}
         run: node scripts/stratz/hero-levels.js || echo "::warning::Hero levels not refreshed (STRATZ)."
+      # Rostered Winter players + main positions for player packs (public/data/player-pool.json).
+      - name: Player pool
+        run: node scripts/gen/gen-player-pool.js
       - uses: actions/cache/save@v4
         if: always()
         with:
