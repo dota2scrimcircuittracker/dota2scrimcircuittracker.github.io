@@ -763,3 +763,7 @@ import("./lib/cup-notice.js").then((m) => m.initCupNotice({
   here,
   go: (h) => { history.pushState(null, "", addressOf(h)); window.dispatchEvent(new HashChangeEvent("hashchange")); },
 })).catch((e) => console.warn("cup notice unavailable", e));
+// Winter player packs: a one-time "coming soon" / "packs are here" notice (waits for the Cup notice).
+import("./lib/winter-notice.js").then((m) => m.initWinterNotice({
+  go: (h) => { history.pushState(null, "", addressOf(h)); window.dispatchEvent(new HashChangeEvent("hashchange")); },
+})).catch((e) => console.warn("winter notice unavailable", e));
