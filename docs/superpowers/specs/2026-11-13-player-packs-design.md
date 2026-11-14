@@ -57,9 +57,21 @@ Only nominated designs enter the slot assignment below. The `rate` action's stal
 The owner's rating only orders designs inside a conflict. It never lifts a design over one with a
 higher voted rarity.
 
-**Rarity changes when votes change.** A card someone already owns follows the design's current
-slot: owned copies are stored by player + rarity, not by design. If a player deletes a design and a
-slot empties, owned copies of that rarity show the default art.
+**Voting closes on Thanksgiving** (`WINTER.votesCloseAt`: end of Thursday 26 November 2026, US
+Eastern). From then on:
+
+- Nominations and self-ratings are locked.
+- Community votes on nominated designs are locked (the `rate` action refuses them; ratings on other
+  designs carry on as normal).
+- Each player's pack cards are frozen: the design, main stat and rarity of every filled slot, as
+  assigned at the close, stored once (`packslots:<account>`). Packs and Fantasy read only the frozen
+  cards. Editing or deleting a design afterwards changes nothing in packs.
+- The freeze is written the first time it's needed after the close (pool build, the public GET, or
+  an `equip` that would change a nominated design). Since nothing that feeds `assignSlots` can change
+  after the close, a late freeze gives the same result as one at the close.
+- Players with no frozen nominations get the default common only.
+
+Before the close, rarity follows votes live (the editor shows "Now: …").
 
 ## 2. Bonuses
 

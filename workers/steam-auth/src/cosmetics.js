@@ -1,7 +1,8 @@
 import { grantLogin, applyPackGrants, rollPack, recycleCards, openArcanaUpgrade, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, slotCount, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
 import { designKey, castVote, tally, RATINGS, isPlainDesign } from '../../../public/lib/card-ratings.js';
 import { statsFor } from '../../../public/lib/card-bonus.js';
-import { PACK_CARDS_MAX } from '../../../public/lib/winter.js';
+import { PACK_CARDS_MAX, votingOpen } from '../../../public/lib/winter.js';
+import { assignSlots } from '../../../public/lib/player-cards.js';
 import { itemByKey } from '../../../public/lib/cosmetics-catalog.js';
 import { isAdmin, ADMIN_ACCOUNT, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
@@ -84,9 +85,26 @@ export class CosmeticsVault {
     const designs=cardDesignState(state).cardDesigns,out=[];
     for(const p of state.packCards??[]) {
       const d=designs[p.slot];if(isPlainDesign(d))continue;const key=designKey(d);
-      out.push({slot:p.slot,main:p.main,savedAt:p.savedAt,votes:await storage.get(`votes:${account}:${key}`)??{},self:await storage.get(`selfrating:${account}:${key}`)??null});
+      out.push({slot:p.slot,main:p.main,savedAt:p.savedAt,design:d,designKey:key,votes:await storage.get(`votes:${account}:${key}`)??{},self:await storage.get(`selfrating:${account}:${key}`)??null});
     }
     return out;
+  }
+  // One player's pack card per rarity (lib/player-cards.js assignSlots). Before voting closes on
+  // Thanksgiving it follows votes live: { common|rare|epic|legendary: slot | "default" | null }.
+  // After the close it's frozen: worked out once, stored as packslots:<account>, and read from there
+  // ever after, so later edits and votes change nothing. Pass a transaction's storage when writing.
+  async packSlots(storage,account) {
+    if(votingOpen(this.now()))return assignSlots(await this.packDesigns(storage,account));
+    const k=`packslots:${account}`,stored=await storage.get(k);
+    if(stored)return stored;
+    const designs=await this.packDesigns(storage,account),seats=assignSlots(designs),slots={};
+    for(const [rarity,seat] of Object.entries(seats)) {
+      const d=Number.isInteger(seat)&&designs.find(x=>x.slot===seat);
+      slots[rarity]=d?{slot:d.slot,design:d.design,main:d.main,designKey:d.designKey}:seat;
+    }
+    const frozen={frozenAt:this.now(),slots};
+    await storage.put(k,frozen);
+    return frozen;
   }
   // A refund or chargeback on a paid checkout: the tokens it bought come back out, in proportion to the
   // money returned (rounded up). Stripe sends the running refunded total, so a repeat takes nothing
@@ -370,8 +388,10 @@ export class CosmeticsVault {
     // One player's nominated pack designs: vote counts only, never who voted what (like /ratings).
     // The owner's self-rating is public on purpose.
     if(req.method==='GET' && url.pathname==='/player-cards') {
-      const designs=await this.packDesigns(this.ctx.storage,account);
-      return json({designs:designs.map(({votes,...d})=>({...d,...tally(votes)}))});
+      // After Thanksgiving: locked, with the frozen slots (designs are public, as in the Gallery).
+      const designs=await this.packDesigns(this.ctx.storage,account),locked=!votingOpen(this.now());
+      const frozen=locked&&await this.ctx.storage.transaction(txn=>this.packSlots(txn,account));
+      return json({locked,designs:designs.map(({votes,design,designKey,...d})=>({...d,...tally(votes)})),...(locked?{slots:frozen.slots}:{})});
     }
     // Anyone's achievement progress, for their profile. Counting scans the whole vault, so each
     // account's answer is kept for 5 minutes.
@@ -562,6 +582,8 @@ export class CosmeticsVault {
         // cardSavedAt: when each card's design last changed (the Gallery's Newest sort).
         else if(body.action==='equip') {
           const slot=body.cardSlot??saved.primaryCard??0,before=cardDesignState(saved).cardDesigns[slot];
+          // After the close, freeze before a nominated design changes, so the freeze keeps it.
+          if(!votingOpen(this.now())&&(saved.packCards??[]).some(p=>p.slot===slot))await this.packSlots(txn,account);
           const next=saveCardDesign(saved,body.equipment,body.cardSlot),savedAt=Array.from({length:slotCount(saved)},(_,i)=>saved.cardSavedAt?.[i]??null);
           const design=next.cardDesigns[slot],changed=!before||designKey(before)!==designKey(design);
           let posts=Array.from({length:slotCount(saved)},(_,i)=>saved.lastPosts?.[i]??null);
@@ -740,6 +762,13 @@ export class CosmeticsVault {
           const design=cardDesignState(owner).cardDesigns[body.cardSlot];
           if(!design)throw new Error('That card has no saved design.');
           const key=designKey(design),votesKey=`votes:${target}:${key}`;
+          // After the close, votes on nominated designs are locked: the frozen ones once frozen,
+          // else the designs now in the owner's nominated slots.
+          if(!votingOpen(this.now())) {
+            const frozen=await txn.get(`packslots:${target}`);
+            const nominated=frozen?Object.values(frozen.slots).some(x=>x?.designKey===key):(owner.packCards??[]).some(p=>p.slot===body.cardSlot)&&!isPlainDesign(design);
+            if(nominated)throw new Error('Voting on Winter pack cards closed on Thanksgiving.');
+          }
           const votes=castVote(await txn.get(votesKey),account,body.rating??null);
           await txn.put(votesKey,votes);
           result={state:saved,rating:{slot:body.cardSlot,key,mine:votes[account]??null,...tally(votes)}};
@@ -749,6 +778,7 @@ export class CosmeticsVault {
           // (spec 1.1, 2.3). The stat is checked against every position: a card's position comes from
           // games, so it's re-checked when the pool is built.
           // savedAt is how old the design is (the older-design tiebreak), so a re-saved slot is newer.
+          if(!votingOpen(this.now()))throw new Error('Pack cards locked on Thanksgiving.');
           if(!Array.isArray(body.cards))throw new Error('Choose your pack cards.');
           const list=body.cards;
           if(list.length>PACK_CARDS_MAX)throw new Error(`Choose up to ${PACK_CARDS_MAX} pack cards.`);
@@ -766,6 +796,7 @@ export class CosmeticsVault {
         else if(body.action==='self-rate') {
           // The owner's own rating of one of their designs: only breaks ties in the rarity slots.
           // Kept apart from votes:, so it's never counted as a community vote.
+          if(!votingOpen(this.now()))throw new Error('Pack cards locked on Thanksgiving.');
           if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=slotCount(saved))throw new Error('Choose one of your cards.');
           const design=cardDesignState(saved).cardDesigns[body.cardSlot];
           if(!design)throw new Error('That card has no saved design.');

@@ -28,8 +28,19 @@ const nowText = (rarity, pos, main) =>
 export async function renderPackCards(el, ctx) {
   if (Date.now() < WINTER.prepAt) { el.hidden = true; return; }
   el.hidden = false;
-  let fetched = [], loadError = "";
-  try { fetched = (await ctx.fetchCards(ctx.account)).designs ?? []; } catch (e) { loadError = e.message; }
+  let fetched = [], loadError = "", res = {};
+  try { res = await ctx.fetchCards(ctx.account); fetched = res.designs ?? []; } catch (e) { loadError = e.message; }
+  // After Thanksgiving the server sends locked + the frozen slots: read-only.
+  if (res.locked) {
+    const frozen = RATINGS.slice().reverse().map((r) => [r, res.slots?.[r]]).filter(([, x]) => x && typeof x === "object");
+    const pos = ctx.pos;
+    el.innerHTML = `<h3>Winter pack cards</h3>
+      <p class="muted">Pack cards are locked for Winter.</p>
+      ${frozen.length ? `<ul class="pack-cards pack-cards-locked">${frozen.map(([r, x]) =>
+        `<li>${label(r)} · ${esc(ctx.slotName(x.slot))}${pos && x.main ? ` · +${bonusPct(pos, x.main, r, "main")}% ${esc(statLabel(x.main))}` : x.main ? ` · ${esc(statLabel(x.main))}` : ""}</li>`).join("")}</ul>` : ""}
+      ${res.slots?.common === "default" ? `<p class="pc-default muted">Your common is the default card.</p>` : ""}`;
+    return;
+  }
   const chosen = new Map((ctx.packCards ?? []).map((c) => [c.slot, c.main]));
   // Only designs still nominated count toward the preview.
   const live = fetched.filter((x) => chosen.has(x.slot));
@@ -49,6 +60,7 @@ export async function renderPackCards(el, ctx) {
   }).join("");
   el.innerHTML = `<h3>Winter pack cards</h3>
     <p class="muted">Pick up to ${PACK_CARDS_MAX} of your saved designs for Winter player packs and choose each one's bonus stat. Votes decide each card's rarity; your own rating breaks ties.${pos ? "" : " Every stat is listed for now: you'll get a position once you've played league games."}</p>
+    <p class="muted">Voting closes on Thanksgiving, Nov 26.</p>
     ${rows ? `<ul class="pack-cards">${rows}</ul>` : `<p class="muted">Save a card design first.</p>`}
     ${chosen.size ? `<p class="pc-note muted">Changing a pack card's design starts its votes over.</p>` : ""}
     <p class="pc-default muted">${!loadError && seats.common === "default" ? "Your common is the default card." : ""}</p>

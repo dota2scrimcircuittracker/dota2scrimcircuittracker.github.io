@@ -156,3 +156,50 @@ test('pack cards: stricter nominations and self-ratings',async()=>{
   assert.deepEqual((await as(501,{action:'my-votes'})).votes,{});
   assert.deepEqual(Object.values((await as(502,{action:'my-votes'})).votes),['common']);
 });
+test('pack cards: voting closes on Thanksgiving and pack cards freeze once',async()=>{
+  const {WINTER}=await import('../public/lib/winter.js');
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let n=0,clock=WINTER.votesCloseAt-864e5;vault.clock=()=>clock;
+  const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`tg-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
+  const get=async a=>{const t=await (await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).text();return {text:t,...JSON.parse(t)};};
+  for(const a of [601,602,603])await as(a,{action:'session'});
+  for(const slot of [0,1,2])await as(601,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:50+slot},cardSlot:slot});
+  // Before the close: everything works and nothing is frozen.
+  assert.ok((await as(601,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'stuns'}]})).state);
+  assert.ok((await as(601,{action:'self-rate',cardSlot:0,rating:'epic'})).selfRating);
+  assert.ok((await as(602,{action:'rate',target:601,cardSlot:1,rating:'legendary'})).rating);
+  let pc=await get(601);
+  assert.equal(pc.locked,false);assert.equal(pc.slots,undefined);
+  assert.equal(rows.has('packslots:601'),false);
+  // After the close.
+  clock=WINTER.votesCloseAt;
+  assert.equal((await as(601,{action:'pack-cards',cards:[{slot:2,main:'kills'}]})).error,'Pack cards locked on Thanksgiving.');
+  assert.equal((await as(601,{action:'self-rate',cardSlot:1,rating:'common'})).error,'Pack cards locked on Thanksgiving.');
+  assert.equal((await as(603,{action:'rate',target:601,cardSlot:0,rating:'common'})).error,'Voting on Winter pack cards closed on Thanksgiving.');
+  assert.ok((await as(603,{action:'rate',target:601,cardSlot:2,rating:'rare'})).rating); // not nominated
+  assert.equal(rows.has('packslots:601'),false); // nothing has needed the freeze yet
+  // Editing a nominated slot freezes first, so the freeze has the design from before the edit.
+  const before=structuredClone(rows.get('user:601').cardDesigns?.[1]??null);
+  assert.ok((await as(601,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:99},cardSlot:1})).state);
+  const frozen=rows.get('packslots:601');
+  assert.equal(frozen.frozenAt,WINTER.votesCloseAt);
+  assert.equal(frozen.slots.legendary.slot,1);assert.equal(frozen.slots.legendary.main,'stuns');assert.equal(frozen.slots.legendary.design.hue,51);
+  if(before)assert.equal(frozen.slots.legendary.design.hue,before.hue);
+  assert.equal(frozen.slots.epic.slot,0);assert.equal(frozen.slots.epic.main,'kills');
+  assert.equal(frozen.slots.common,'default');assert.equal(frozen.slots.rare,null);
+  assert.match(frozen.slots.epic.designKey,/^[0-9a-f]{16}$/);
+  // Later edits and votes elsewhere change nothing.
+  clock+=864e5;
+  await as(601,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:77},cardSlot:0});
+  await as(602,{action:'rate',target:601,cardSlot:2,rating:'legendary'});
+  await as(603,{action:'rate',target:601,cardSlot:1,rating:'common'}); // the new design in slot 1 isn't the frozen one
+  assert.deepEqual(rows.get('packslots:601'),frozen);
+  // The public GET: locked, the frozen slots, never raw votes.
+  pc=await get(601);
+  assert.equal(pc.locked,true);assert.deepEqual(pc.slots,frozen.slots);
+  assert.ok(!pc.text.includes('602')&&!pc.text.includes('603'));assert.ok(!pc.text.includes('"votes"'));
+  // A player with nothing nominated freezes to the default common on first look.
+  pc=await get(603);
+  assert.deepEqual(pc.slots,{common:'default',rare:null,epic:null,legendary:null});
+  assert.ok(rows.has('packslots:603'));
+});
