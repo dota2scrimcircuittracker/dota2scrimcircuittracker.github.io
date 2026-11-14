@@ -98,3 +98,21 @@ test('pull log: epic and legendary pulls only, newest first, filled once from ol
   assert.deepEqual(log[0].items,opened.rewards.filter(r=>r.arcana||!r.duplicate).map(r=>r.key));
   assert.ok(log[0].items.every(k=>['epic','legendary'].includes(CATALOG.find(i=>i.key===k).rarity)||CATALOG.find(i=>i.key===k).rarity==='arcana'));
 });
+test('pack cards: nominate up to 4 with a main stat, self-rate apart from votes, rate any slot',async()=>{
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let n=0;
+  const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`pc-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
+  for(const a of [401,402])await as(a,{action:'session'});
+  for(const slot of [0,1,3])await as(401,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:10+slot},cardSlot:slot});
+  const bad=await as(401,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'kills'},{slot:3,main:'kills'},{slot:4,main:'kills'},{slot:2,main:'kills'}]});
+  assert.match(bad.error,/up to 4/);
+  const ok=await as(401,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:3,main:'stuns'}]});
+  assert.deepEqual(ok.state.packCards.map(c=>[c.slot,c.main]),[[0,'kills'],[3,'stuns']]);
+  assert.match((await as(401,{action:'pack-cards',cards:[{slot:2,main:'kills'}]})).error,/no saved design/);
+  await as(401,{action:'self-rate',cardSlot:3,rating:'legendary'});
+  await as(402,{action:'rate',target:401,cardSlot:3,rating:'rare'}); // slot 3: past the old 0-2 limit
+  const cards=await (await vault.fetch(new Request('https://vault/player-cards?account=401'))).json();
+  const three=cards.designs.find(d=>d.slot===3);
+  assert.equal(three.self,'legendary');assert.deepEqual(Object.values(three.votes),['rare']); // self-rating isn't a vote
+  assert.equal(three.main,'stuns');
+});

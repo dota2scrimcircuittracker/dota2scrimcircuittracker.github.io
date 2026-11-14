@@ -1,5 +1,7 @@
 import { grantLogin, applyPackGrants, rollPack, recycleCards, openArcanaUpgrade, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, slotCount, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
-import { designKey, castVote, tally } from '../../../public/lib/card-ratings.js';
+import { designKey, castVote, tally, RATINGS } from '../../../public/lib/card-ratings.js';
+import { statsFor } from '../../../public/lib/card-bonus.js';
+import { PACK_CARDS_MAX } from '../../../public/lib/winter.js';
 import { DEFAULT_EQUIPMENT, itemByKey } from '../../../public/lib/cosmetics-catalog.js';
 import { isAdmin, ADMIN_ACCOUNT, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
@@ -355,6 +357,16 @@ export class CosmeticsVault {
         return {slot,key,...tally(await this.ctx.storage.get(`votes:${account}:${key}`))};
       }));
       return json({cards});
+    }
+    // One player's nominated pack designs with votes, self-rating and main stat: what assignSlots needs.
+    if(req.method==='GET' && url.pathname==='/player-cards') {
+      const state=await this.ctx.storage.get(`user:${account}`);
+      if(!state)return json({designs:[]});
+      const designs=cardDesignState(state).cardDesigns;
+      const out=[];
+      for(const p of state.packCards??[]){const d=designs[p.slot];if(!d)continue;const key=designKey(d);
+        out.push({slot:p.slot,main:p.main,savedAt:p.savedAt,votes:await this.ctx.storage.get(`votes:${account}:${key}`)??{},self:await this.ctx.storage.get(`selfrating:${account}:${key}`)??null});}
+      return json({designs:out});
     }
     // Anyone's achievement progress, for their profile. Counting scans the whole vault, so each
     // account's answer is kept for 5 minutes.
@@ -718,13 +730,41 @@ export class CosmeticsVault {
           const target=String(body.target??'');
           if(!/^\d{1,10}$/.test(target))throw new Error('Choose a player card.');
           if(target===account)throw new Error("Rate other players' cards, not your own.");
-          if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>2)throw new Error('Choose one of their cards.');
-          const owner=await txn.get(`user:${target}`),design=owner&&cardDesignState(owner).cardDesigns[body.cardSlot];
+          const owner=await txn.get(`user:${target}`);
+          if(!owner||!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=slotCount(owner))throw new Error('Choose one of their cards.');
+          const design=cardDesignState(owner).cardDesigns[body.cardSlot];
           if(!design)throw new Error('That card has no saved design.');
           const key=designKey(design),votesKey=`votes:${target}:${key}`;
           const votes=castVote(await txn.get(votesKey),account,body.rating??null);
           await txn.put(votesKey,votes);
           result={state:saved,rating:{slot:body.cardSlot,key,mine:votes[account]??null,...tally(votes)}};
+        }
+        else if(body.action==='pack-cards') {
+          // Up to 4 saved designs offered as this player's pack cards, each with its main bonus stat
+          // (spec 1.1, 2.3). The stat is checked against every position: a card's position comes from
+          // games, so it's re-checked when the pool is built.
+          const list=Array.isArray(body.cards)?body.cards:[];
+          if(list.length>PACK_CARDS_MAX)throw new Error('Choose up to 4 pack cards.');
+          const designs=cardDesignState(saved).cardDesigns,seen=new Set(),all=new Set([1,2,3,4,5].flatMap(statsFor));
+          const packCards=list.map((c)=>{
+            if(!Number.isInteger(c?.slot)||c.slot<0||c.slot>=slotCount(saved)||seen.has(c.slot))throw new Error('Choose one of your cards.');
+            if(!designs[c.slot])throw new Error('That card has no saved design.');
+            if(!all.has(c.main))throw new Error('Choose a bonus stat.');
+            seen.add(c.slot);return {slot:c.slot,main:c.main,savedAt:(saved.packCards??[]).find(p=>p.slot===c.slot)?.savedAt??Date.now()};
+          });
+          result={state:{...saved,packCards}};
+        }
+        else if(body.action==='self-rate') {
+          // The owner's own rating of one of their designs: only breaks ties in the rarity slots.
+          // Kept apart from votes:, so it's never counted as a community vote.
+          if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=slotCount(saved))throw new Error('Choose one of your cards.');
+          const design=cardDesignState(saved).cardDesigns[body.cardSlot];
+          if(!design)throw new Error('That card has no saved design.');
+          const rating=body.rating??null;
+          if(rating!=null&&!RATINGS.includes(rating))throw new Error('Choose common, rare, epic or legendary.');
+          const k=`selfrating:${account}:${designKey(design)}`;
+          if(rating==null)await txn.delete(k);else await txn.put(k,rating);
+          result={state:saved,selfRating:{slot:body.cardSlot,rating}};
         }
         else if(body.action==='cup-enter') {
           // One of your saved cards, copied as it is now, into Artistic or Funny. Up to three in all, two at most
@@ -923,6 +963,8 @@ export async function cosmeticsRequest(req,env,allowedOrigins) {
   if(req.method==='GET' && achAccount) return respond(await vault.fetch(`https://vault/achievements?account=${achAccount}`));
   const ratedAccount=/^\/cosmetics\/ratings\/(\d{1,10})$/.exec(url.pathname)?.[1];
   if(req.method==='GET' && ratedAccount) return respond(await vault.fetch(`https://vault/ratings?account=${ratedAccount}`));
+  const pcAccount=/^\/cosmetics\/player-cards\/(\d{1,10})$/.exec(url.pathname)?.[1];
+  if(req.method==='GET' && pcAccount) return respond(await vault.fetch(`https://vault/player-cards?account=${pcAccount}`));
   // Feed posts carry images, so they go to their own path with a larger size limit.
   const limit=url.pathname==='/cosmetics/post'?Math.ceil(MAX_IMAGES*MAX_IMAGE_BYTES*4/3)+16000:12000;
   if(req.method!=='POST' || !['/cosmetics','/cosmetics/post'].includes(url.pathname)) return respond(json({error:'Not found.'},404));
