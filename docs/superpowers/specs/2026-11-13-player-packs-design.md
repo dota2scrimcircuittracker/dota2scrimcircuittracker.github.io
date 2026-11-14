@@ -19,15 +19,23 @@ A card is one league player at one rarity: `player:<account>:<rarity>`.
 - **Each player has up to 4 rarity slots:** at most one card per rarity.
 - **Position:** a card's position is the player's main position, the one they played most in the
   league's games (`rosterOf` in `fantasy.js`). A player with no games has no card yet.
-- **Arcana:** granted by hand to some players only. One arcana card per such player. Not voted.
+- **Arcana:** a player who has an arcana design gets an arcana card as a **5th pack card**, on top
+  of the four voted ones. An arcana design is a saved design that uses an arcana-rarity item (a
+  Twin Card, stacked finishes from Double finish, or any later arcana item). It's entered
+  automatically and isn't voted. With several arcana designs, the lowest slot is the arcana card
+  unless the owner swaps another in. Arcana designs never take one of the four voted places.
 
 ### 1.1 Where each rarity's card comes from
 
 Card designs are the saved designs players already make (`cardDesigns` in the collection Worker).
-Players already have `CARD_SLOTS` (5) design slots plus any bought in the shop, so **a player
-nominates up to 4 of their saved designs as pack cards** (`packCards` on their collection state).
-Only nominated designs enter the slot assignment below. The `rate` action's stale limit
-(`cardSlot` 0–2) moves to `slotCount(owner)`.
+Players already have `CARD_SLOTS` (5) design slots plus any bought in the shop. **Pack cards are
+entered automatically:** a player's first four saved non-arcana designs, by slot (Card 1, Card 2…),
+are their four voted pack cards, each with a default main stat (the top-weighted stat for their
+position) that the owner can change. Designs in Card 5 and above sit out, with a **Swap in** option
+that replaces one of the four. Once the owner changes anything, the choice is stored
+(`packCards` on their collection state); until then it's derived from their slots. Only pack
+cards enter the slot assignment below. The `rate` action's stale limit (`cardSlot` 0–2) moves to
+`slotCount(owner)`.
 
 1. **Community votes** give each design a score: the average of its votes, with common 1, rare 2,
    epic 3, legendary 4. The design's voted rarity is `tally(votes).pick` (`card-ratings.js`).
@@ -133,6 +141,10 @@ games (best `GAMES_COUNTED`) matter, as today.
   → common).
 - **Duplicates** are kept. Each copy has its own sub. Inventory holds copies, not counts:
   `{ key: "player:<account>:<rarity>", sub: { stat, pct }, at }`.
+- **Recycling:** 3 copies of the same player at the same rarity trade in for 1 copy of that player
+  at the next rarity (common → rare → epic → legendary), with a fresh random sub. Legendary → arcana
+  only for a player who has an arcana card. Copies equipped in this week's Fantasy lineup can't be
+  recycled. Phase 1.
 - **Replaces** the draft in `public/lib/player-packs.js` (3 cards, rarity from player tier). Nothing
   uses it yet.
 

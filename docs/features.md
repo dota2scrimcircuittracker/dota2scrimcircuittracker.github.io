@@ -882,16 +882,24 @@ random sub bonus rolled per copy (`lib/card-bonus.js`). The pool of players come
 `scripts/gen/gen-player-pool.js`. Packs open Dec 1 2026: every player starts with 3 free packs
 and gets a free pack each day.
 
-What is live before then (`parts/pack-cards.js`, **Winter pack cards** in Gallery › Customize,
-`#/gallery/customize`):
+What is live before then (`parts/pack-cards.js`, on your own profile beside each saved card):
 
-- **Pick pack cards** — up to 4 of your saved card designs (`PACK_CARDS_MAX`). Each gets a bonus
-  stat you choose. With no saved designs, your default card is your common.
+- **Pack cards are automatic** — your first 4 saved card designs by slot (Card 1, Card 2…; plain
+  default designs skipped) are your 4 voted pack cards, with no opt-in (`lib/pack-card-list.js`
+  `packCardList`). Each starts with the top bonus stat for your position; choose another on your
+  profile. With no saved designs, your default card is your common.
+- **Swap in** — a design in Card 5 or later can take the place of one of the four. Once you change a
+  stat or swap, your choice is saved (Worker action `pack-cards`); until then it follows your slots.
+  A saved pack card that goes back to plain is replaced by your next design.
+- **Arcana is a 5th card** — a design that uses an arcana item (a Twin Card, or finishes stacked with
+  Double finish) never takes one of the four. Your lowest-slot arcana design is an extra arcana pack
+  card with its own bonus stat; another arcana design can **Swap in as arcana**. It isn't voted.
 - **Rarity comes from votes** — the community's ratings in Gallery (`#/gallery`) set each pack
-  card's rarity (`lib/player-cards.js`); your own rating breaks ties. You can rate your own
-  designs here (Worker action `self-rate`). The panel shows each card's current rarity live.
-- **Changing the design starts its votes over.** A pack card is saved with the Worker action
-  `pack-cards`; another player's picks are read from `GET /cosmetics/player-cards/<account>`.
-- **Voting closes at the end of Thanksgiving**, Thu Nov 26 2026 US Eastern; pack cards then freeze.
-- A one-time notice (`lib/winter-notice.js`) points people to the panel, from Nov 14 until a
-  week after packs open.
+  card's rarity (`lib/player-cards.js`); your own rating breaks ties. You rate your own pack cards
+  beside them (Worker action `self-rate`). Each card shows its current rarity live.
+- **Changing the design starts its votes over.** Anyone's pack cards are read from
+  `GET /cosmetics/player-cards/<account>` (vote counts only); visitors see a chip on each one.
+- **Voting closes at the end of Thanksgiving**, Thu Nov 26 2026 US Eastern; pack cards, including
+  the arcana card and ones entered automatically, then freeze.
+- A one-time notice (`lib/winter-notice.js`) points people to their profile, from Nov 14 until
+  voting closes.

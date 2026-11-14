@@ -19,10 +19,10 @@ function show(go) {
   card.setAttribute("role", "dialog");
   card.setAttribute("aria-label", "Winter player packs");
   card.innerHTML = `<b>Coming for Winter: player packs</b>
-    <span>Winter Fantasy uses player cards. Pick up to ${PACK_CARDS_MAX} of your card designs as your pack cards and choose each one's bonus. Votes set their rarity. Voting closes on Thanksgiving.</span>
-    <div class="tour-btns"><button type="button" class="tour-btn winter-later">Later</button><button type="button" class="tour-btn tour-primary winter-go">Choose my pack cards</button></div>`;
+    <span>Winter Fantasy uses player cards. Your first ${PACK_CARDS_MAX} card designs are your Winter pack cards. Choose each one's bonus on your profile. Votes set their rarity. Voting closes on Thanksgiving.</span>
+    <div class="tour-btns"><button type="button" class="tour-btn winter-later">Later</button><button type="button" class="tour-btn tour-primary winter-go">See my pack cards</button></div>`;
   card.querySelector(".winter-later").onclick = close;
-  // Pack cards are chosen on your own profile, beside each card. Signed out: the Gallery asks you to sign in.
+  // Pack cards show on your own profile, beside each card. Signed out: the Gallery asks you to sign in.
   card.querySelector(".winter-go").onclick = async () => { close(); go(await import("../parts/me.js").then((m) => m.myProfileHref()).catch(() => null) ?? "#/gallery/customize"); };
   document.body.append(card);
 }

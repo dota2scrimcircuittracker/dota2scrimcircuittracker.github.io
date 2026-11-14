@@ -130,14 +130,14 @@ test('pack cards: stricter nominations and self-ratings',async()=>{
   try {
     await as(501,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:20},cardSlot:0});
     clock=2000;await as(501,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:21},cardSlot:1});
-    assert.match((await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:0,main:'kills'}]})).error,/^Each card can be nominated once\.$/);
+    assert.match((await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:0,main:'kills'}]})).error,/^Each card can be a pack card once\.$/);
     assert.match((await as(501,{action:'pack-cards',cards:[{slot:0,main:'nonsense'}]})).error,/bonus stat/);
     for(const cards of [undefined,null,'0'])assert.equal((await as(501,{action:'pack-cards',cards})).error,'Choose your pack cards.');
-    clock=3000;let ok=await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'kills'}]});
-    assert.deepEqual(ok.state.packCards.map(c=>c.savedAt),[1000,2000]); // how old each design is
+    clock=3000;let ok=await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:null}]});
+    assert.deepEqual(ok.state.packCards,[{slot:0,main:'kills'},{slot:1,main:null}]); // null: the position's default
+    assert.deepEqual((await playerCards(501)).map(c=>c.savedAt),[1000,2000]); // how old each design is
     clock=4000;await as(501,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:40},cardSlot:0});
-    clock=5000;ok=await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'kills'}]});
-    assert.deepEqual(ok.state.packCards.map(c=>c.savedAt),[4000,2000]); // a re-saved design is newer
+    assert.deepEqual((await playerCards(501)).map(c=>c.savedAt),[4000,2000]); // a re-saved design is newer
     assert.deepEqual((await as(501,{action:'pack-cards',cards:[]})).state.packCards,[]);
   } finally {Date.now=realNow;}
   await as(501,{action:'pack-cards',cards:[{slot:0,main:'kills'}]});
@@ -163,7 +163,8 @@ test('pack cards: voting closes on Thanksgiving and pack cards freeze once',asyn
   const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`tg-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
   const get=async a=>{const t=await (await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).text();return {text:t,...JSON.parse(t)};};
   for(const a of [601,602,603])await as(a,{action:'session'});
-  for(const slot of [0,1,2])await as(601,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:50+slot},cardSlot:slot});
+  // Five designs: the first four are pack cards (two with a stat chosen), Card 5 sits out.
+  for(const slot of [0,1,2,3,4])await as(601,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:50+slot},cardSlot:slot});
   // Before the close: everything works and nothing is frozen.
   assert.ok((await as(601,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'stuns'}]})).state);
   assert.ok((await as(601,{action:'self-rate',cardSlot:0,rating:'epic'})).selfRating);
@@ -176,7 +177,8 @@ test('pack cards: voting closes on Thanksgiving and pack cards freeze once',asyn
   assert.equal((await as(601,{action:'pack-cards',cards:[{slot:2,main:'kills'}]})).error,'Pack cards were locked on Thanksgiving.');
   assert.equal((await as(601,{action:'self-rate',cardSlot:1,rating:'common'})).error,'Pack cards were locked on Thanksgiving.');
   assert.equal((await as(603,{action:'rate',target:601,cardSlot:0,rating:'common'})).error,'Voting on Winter pack cards closed on Thanksgiving.');
-  assert.ok((await as(603,{action:'rate',target:601,cardSlot:2,rating:'rare'})).rating); // not nominated
+  assert.equal((await as(603,{action:'rate',target:601,cardSlot:2,rating:'rare'})).error,'Voting on Winter pack cards closed on Thanksgiving.'); // entered automatically
+  assert.ok((await as(603,{action:'rate',target:601,cardSlot:4,rating:'rare'})).rating); // Card 5: not a pack card
   assert.equal(rows.has('packslots:601'),false); // nothing has needed the freeze yet
   // Editing a nominated slot freezes first, so the freeze has the design from before the edit.
   const before=structuredClone(rows.get('user:601').cardDesigns?.[1]??null);
@@ -186,12 +188,14 @@ test('pack cards: voting closes on Thanksgiving and pack cards freeze once',asyn
   assert.equal(frozen.slots.legendary.slot,1);assert.equal(frozen.slots.legendary.main,'stuns');assert.equal(frozen.slots.legendary.design.hue,51);
   if(before)assert.equal(frozen.slots.legendary.design.hue,before.hue);
   assert.equal(frozen.slots.epic.slot,0);assert.equal(frozen.slots.epic.main,'kills');
-  assert.equal(frozen.slots.common,'default');assert.equal(frozen.slots.rare,null);
+  // The two untouched designs were entered automatically, with the default stat (null).
+  assert.deepEqual([frozen.slots.common.slot,frozen.slots.rare.slot].sort(),[2,3]);
+  assert.equal(frozen.slots.common.main,null);assert.equal(frozen.slots.arcana,undefined);
   assert.match(frozen.slots.epic.designKey,/^[0-9a-f]{16}$/);
   // Later edits and votes elsewhere change nothing.
   clock+=864e5;
   await as(601,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:77},cardSlot:0});
-  await as(602,{action:'rate',target:601,cardSlot:2,rating:'legendary'});
+  await as(602,{action:'rate',target:601,cardSlot:4,rating:'legendary'});
   await as(603,{action:'rate',target:601,cardSlot:1,rating:'common'}); // the new design in slot 1 isn't the frozen one
   assert.deepEqual(rows.get('packslots:601'),frozen);
   // The public GET: locked, the frozen slots, never raw votes.
@@ -212,11 +216,13 @@ test('pack cards after the close: cup votes, duplicate designs and lookups can\'
   const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`tg2-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
   const get=async a=>(await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).json();
   for(const a of [701,702,703,704])await as(a,{action:'session'});
-  // 701: slot 0 and slot 1 nominated; slot 2 is a copy of slot 1's design; slot 3 is unrelated.
-  for(const [slot,hue] of [[0,60],[1,61],[2,61],[3,62]])await as(701,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue},cardSlot:slot});
+  // 701 (six slots): slots 0-3 are pack cards (0 and 1 with a stat); slot 4 is a copy of slot 1's
+  // design; slot 5 is unrelated and sits out.
+  rows.set('user:701',{...rows.get('user:701'),extraSlots:1});
+  for(const [slot,hue] of [[0,60],[1,61],[2,62],[3,63],[4,61],[5,65]])await as(701,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue},cardSlot:slot});
   assert.ok((await as(701,{action:'pack-cards',cards:[{slot:0,main:'kills'},{slot:1,main:'stuns'}]})).state);
   assert.ok((await as(701,{action:'cup-enter',cardSlot:0,category:'artistic'})).entry);
-  assert.ok((await as(701,{action:'cup-enter',cardSlot:3,category:'funny'})).entry);
+  assert.ok((await as(701,{action:'cup-enter',cardSlot:5,category:'funny'})).entry);
   await as(702,{action:'rate',target:701,cardSlot:1,rating:'legendary'});
   await as(703,{action:'rate',target:701,cardSlot:0,rating:'epic'});
   clock=WINTER.votesCloseAt+36e5; // strictly after the close
@@ -226,7 +232,7 @@ test('pack cards after the close: cup votes, duplicate designs and lookups can\'
   assert.equal((await as(704,{action:'cup-rate',entry:'701-1',rating:'common'})).error,closed);
   assert.ok((await as(704,{action:'cup-rate',entry:'701-2',rating:'rare'})).rating); // not nominated
   // A copy of a nominated design in another slot shares its votes: refused.
-  assert.equal((await as(704,{action:'rate',target:701,cardSlot:2,rating:'common'})).error,closed);
+  assert.equal((await as(704,{action:'rate',target:701,cardSlot:4,rating:'common'})).error,closed);
   for(const [k,v] of votesBefore)assert.deepEqual(rows.get(k),v);
   assert.equal(rows.has('packslots:701'),false);
   // Card order and settings change nothing assignSlots reads: the late freeze equals a close-time one.
@@ -247,4 +253,73 @@ test('pack cards after the close: cup votes, duplicate designs and lookups can\'
   assert.deepEqual((await get(702)).slots,{common:'default',rare:null,epic:null,legendary:null});
   assert.deepEqual(keys(),before);
   assert.equal(rows.has('packslots:799'),false);assert.equal(rows.has('packslots:702'),false);
+});
+test('pack cards are automatic: the first four designs, Card 5 swaps in, plain slots skipped, arcana is a 5th card',async()=>{
+  const {isPlainDesign}=await import('../public/lib/card-ratings.js');
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let n=0;
+  const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`auto-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
+  const get=async a=>(await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).json();
+  const order=async a=>(await get(a)).designs.map(d=>[d.slot,d.main]);
+  for(const a of [801,802])await as(a,{action:'session'});
+  rows.set('user:801',{...rows.get('user:801'),extraSlots:2,inventory:{...rows.get('user:801').inventory,'tool:twin-flip':1}});
+  // Slot 1 is plain (skipped); slots 0, 2, 3, 4, 5 have designs: the first four by slot are entered.
+  for(const slot of [0,2,3,4,5])await as(801,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:10+slot},cardSlot:slot});
+  assert.equal(rows.get('user:801').packCards,undefined); // never touched: nothing stored
+  assert.deepEqual(await order(801),[[0,null],[2,null],[3,null],[4,null]]);
+  assert.equal((await get(801)).arcana,null);
+  // Swap Card 6 (slot 5) in for slot 2.
+  assert.ok((await as(801,{action:'pack-cards',cards:[{slot:0,main:null},{slot:5,main:'kills'},{slot:3,main:null},{slot:4,main:null}]})).state);
+  assert.deepEqual(await order(801),[[0,null],[5,'kills'],[3,null],[4,null]]);
+  // A stored slot that goes plain is dropped and the next unused design fills in (slot 2).
+  await as(801,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:0},cardSlot:5});
+  assert.ok(isPlainDesign(rows.get('user:801').cardDesigns[5]));
+  assert.deepEqual(await order(801),[[0,null],[3,null],[4,null],[2,null]]);
+  // An arcana design (a Twin Card) never takes one of the four: it's the arcana card, and slot 6 fills its place.
+  await as(801,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:66},cardSlot:6});
+  await as(801,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:13,twin:{turn:'flip',design:{...DEFAULT_EQUIPMENT,hue:200}}},cardSlot:3});
+  assert.deepEqual(await order(801),[[0,null],[4,null],[2,null],[6,null]]);
+  assert.deepEqual((await get(801)).arcana,{slot:3,main:null});
+  // Validation: no arcana design in the four, the arcana slot must be arcana.
+  assert.match((await as(801,{action:'pack-cards',cards:[{slot:3,main:null}]})).error,/arcana card, not a voted one/);
+  assert.match((await as(801,{action:'pack-cards',cards:[],arcana:{slot:0,main:null}})).error,/no arcana item/);
+  assert.match((await as(801,{action:'pack-cards',cards:[],arcana:{slot:3,main:'nonsense'}})).error,/bonus stat/);
+  const ok=await as(801,{action:'pack-cards',cards:[{slot:0,main:null},{slot:4,main:null},{slot:2,main:null},{slot:6,main:null}],arcana:{slot:3,main:'stuns'}});
+  assert.deepEqual(ok.state.packArcana,{slot:3,main:'stuns'});
+  assert.deepEqual((await get(801)).arcana,{slot:3,main:'stuns'});
+  // Public: counts only.
+  const text=await (await vault.fetch(new Request('https://vault/player-cards?account=801'))).text();
+  assert.ok(!text.includes('"votes"'));
+});
+test('pack cards after the close: derived cards and the arcana card freeze; a first design after the close stays out',async()=>{
+  const {WINTER}=await import('../public/lib/winter.js');
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let n=0,clock=WINTER.votesCloseAt-864e5;vault.clock=()=>clock;
+  const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`tg3-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
+  const get=async a=>(await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).json();
+  for(const a of [901,902,903])await as(a,{action:'session'});
+  rows.set('user:901',{...rows.get('user:901'),inventory:{...rows.get('user:901').inventory,'tool:twin-flip':1}});
+  // 901 never touches pack cards: slots 0 and 2 are voted, slot 1 is arcana.
+  await as(901,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:70},cardSlot:0});
+  await as(901,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:71,twin:{turn:'flip',design:{...DEFAULT_EQUIPMENT,hue:171}}},cardSlot:1});
+  await as(901,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:72},cardSlot:2});
+  await as(902,{action:'rate',target:901,cardSlot:2,rating:'epic'});
+  clock=WINTER.votesCloseAt+36e5;
+  const closed='Voting on Winter pack cards closed on Thanksgiving.';
+  // Votes on an auto-entered design lock; the arcana card isn't voted, so its votes stay open.
+  assert.equal((await as(903,{action:'rate',target:901,cardSlot:0,rating:'rare'})).error,closed);
+  assert.ok((await as(903,{action:'rate',target:901,cardSlot:1,rating:'rare'})).rating);
+  assert.equal(rows.has('packslots:901'),false);
+  // Editing the arcana card freezes first, with the arcana design from before the edit.
+  await as(901,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:99},cardSlot:1});
+  const frozen=rows.get('packslots:901');
+  assert.equal(frozen.slots.arcana.slot,1);assert.equal(frozen.slots.arcana.design.hue,71);assert.equal(frozen.slots.arcana.main,null);
+  assert.equal(frozen.slots.epic.slot,2);assert.equal(frozen.slots.common.slot,0);assert.equal(frozen.slots.common.main,null);
+  const pc=await get(901);
+  assert.equal(pc.locked,true);assert.deepEqual(pc.slots,frozen.slots);
+  // 903 had no design at the close: a first design saved after it stores an empty freeze and stays out.
+  await as(903,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:80},cardSlot:0});
+  assert.deepEqual(rows.get('packslots:903').slots,{common:'default',rare:null,epic:null,legendary:null});
+  assert.ok((await as(902,{action:'rate',target:903,cardSlot:0,rating:'rare'})).rating);
+  assert.deepEqual((await get(903)).slots,{common:'default',rare:null,epic:null,legendary:null});
 });

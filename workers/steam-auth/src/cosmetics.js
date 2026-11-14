@@ -3,6 +3,7 @@ import { designKey, castVote, tally, RATINGS, isPlainDesign } from '../../../pub
 import { statsFor } from '../../../public/lib/card-bonus.js';
 import { PACK_CARDS_MAX, votingOpen } from '../../../public/lib/winter.js';
 import { assignSlots } from '../../../public/lib/player-cards.js';
+import { packCardList, isArcanaDesign } from '../../../public/lib/pack-card-list.js';
 import { itemByKey } from '../../../public/lib/cosmetics-catalog.js';
 import { isAdmin, ADMIN_ACCOUNT, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
 import { claimAchievement, fantasyFacts } from '../../../public/lib/achievements.js';
@@ -77,48 +78,57 @@ export class CosmeticsVault {
       return row;
     });
   }
-  // One player's nominated pack designs with raw votes, self-rating and main stat: what assignSlots
-  // needs. Internal: the public /player-cards route hides the votes.
-  async packDesigns(storage,account) {
-    const state=await storage.get(`user:${account}`);
-    if(!state)return [];
-    const designs=cardDesignState(state).cardDesigns,out=[];
-    for(const p of state.packCards??[]) {
-      const d=designs[p.slot];if(isPlainDesign(d))continue;const key=designKey(d);
-      out.push({slot:p.slot,main:p.main,savedAt:p.savedAt,design:d,designKey:key,votes:await storage.get(`votes:${account}:${key}`)??{},self:await storage.get(`selfrating:${account}:${key}`)??null});
+  // One player's pack cards (lib/pack-card-list.js packCardList): stored once the owner changed
+  // anything, else derived from their slots, so a player who never touched them is still entered.
+  // designs: the four voted ones, with raw votes, self-rating and main stat (main null = the default
+  // for their position): what assignSlots needs. arcana: the 5th card, never voted. Internal: the
+  // public /player-cards route hides the votes.
+  async packDesigns(storage,account,ownerState) {
+    const state=ownerState??await storage.get(`user:${account}`);
+    if(!state)return {designs:[],arcana:null};
+    const cardDesigns=cardDesignState(state).cardDesigns,list=packCardList({...state,cardDesigns}),designs=[];
+    for(const p of list.voted) {
+      const d=cardDesigns[p.slot],key=designKey(d);
+      designs.push({slot:p.slot,main:p.main,savedAt:state.cardSavedAt?.[p.slot]??0,design:d,designKey:key,votes:await storage.get(`votes:${account}:${key}`)??{},self:await storage.get(`selfrating:${account}:${key}`)??null});
     }
-    return out;
+    const a=list.arcana,arcana=a&&{slot:a.slot,main:a.main,design:cardDesigns[a.slot],designKey:designKey(cardDesigns[a.slot])};
+    return {designs,arcana};
   }
   // One player's pack card per rarity (lib/player-cards.js assignSlots). Before voting closes on
   // Thanksgiving it follows votes live: { common|rare|epic|legendary: slot | "default" | null }.
   // After the close it's frozen: worked out once, stored as packslots:<account>, and read from there
-  // ever after, so later edits and votes change nothing. Pass a transaction's storage when writing.
-  // A player with nothing nominated (or no account) gets the default common and no stored freeze:
-  // nominations can't start after the close, so there's nothing to keep.
-  async packSlots(storage,account) {
-    if(votingOpen(this.now()))return assignSlots(await this.packDesigns(storage,account));
+  // ever after, so later edits and votes change nothing. The arcana card freezes with them
+  // (slots.arcana). Pass a transaction's storage when writing.
+  // A player with no pack cards (or no account) gets the default common and no stored freeze, unless
+  // `keep` (an equip after the close): then the empty freeze is stored too, so a first design saved
+  // after the close never becomes a pack card.
+  async packSlots(storage,account,keep=false) {
+    if(votingOpen(this.now()))return assignSlots((await this.packDesigns(storage,account)).designs);
     const k=`packslots:${account}`,stored=await storage.get(k);
     if(stored)return stored;
-    if(!(await storage.get(`user:${account}`))?.packCards?.length)return {frozenAt:null,slots:{common:'default',rare:null,epic:null,legendary:null}};
-    const designs=await this.packDesigns(storage,account),seats=assignSlots(designs),slots={};
+    const {designs,arcana}=await this.packDesigns(storage,account);
+    if(!designs.length&&!arcana&&!keep)return {frozenAt:null,slots:{common:'default',rare:null,epic:null,legendary:null}};
+    const seats=assignSlots(designs),slots={};
     for(const [rarity,seat] of Object.entries(seats)) {
       const d=Number.isInteger(seat)&&designs.find(x=>x.slot===seat);
       slots[rarity]=d?{slot:d.slot,design:d.design,main:d.main,designKey:d.designKey}:seat;
     }
+    if(arcana)slots.arcana=arcana;
     const frozen={frozenAt:this.now(),slots};
     await storage.put(k,frozen);
     return frozen;
   }
   // The design keys whose votes decide one player's pack cards: the frozen ones once frozen, else the
-  // saved designs in their nominated slots. Votes are per design, so a copy of one of these in another
-  // slot (or a cup entry of it) shares its votes. ownerState: the owner's user row, if already read.
+  // four voted designs (stored or derived). Votes are per design, so a copy of one of these in another
+  // slot (or a cup entry of it) shares its votes. The arcana card isn't voted, so its votes stay open.
+  // ownerState: the owner's user row, if already read.
   async nominatedKeys(storage,owner,ownerState) {
     const frozen=await storage.get(`packslots:${owner}`);
-    if(frozen)return new Set(Object.values(frozen.slots).filter(x=>x&&typeof x==='object').map(x=>x.designKey));
+    if(frozen)return new Set(Object.entries(frozen.slots).filter(([r,x])=>r!=='arcana'&&x&&typeof x==='object').map(([,x])=>x.designKey));
     const state=ownerState??await storage.get(`user:${owner}`);
     if(!state)return new Set();
     const designs=cardDesignState(state).cardDesigns;
-    return new Set((state.packCards??[]).map(p=>designs[p.slot]).filter(d=>!isPlainDesign(d)).map(designKey));
+    return new Set(packCardList({...state,cardDesigns:designs}).voted.map(p=>designKey(designs[p.slot])));
   }
   // A refund or chargeback on a paid checkout: the tokens it bought come back out, in proportion to the
   // money returned (rounded up). Stripe sends the running refunded total, so a repeat takes nothing
@@ -399,13 +409,14 @@ export class CosmeticsVault {
       }));
       return json({cards});
     }
-    // One player's nominated pack designs: vote counts only, never who voted what (like /ratings).
-    // The owner's self-rating is public on purpose.
+    // One player's pack cards, stored or derived: vote counts only, never who voted what (like
+    // /ratings). designs: the four voted ones in order; arcana: the 5th card or null. The owner's
+    // self-rating is public on purpose.
     if(req.method==='GET' && url.pathname==='/player-cards') {
       // After Thanksgiving: locked, with the frozen slots (designs are public, as in the Gallery).
-      const designs=await this.packDesigns(this.ctx.storage,account),locked=!votingOpen(this.now());
+      const {designs,arcana}=await this.packDesigns(this.ctx.storage,account),locked=!votingOpen(this.now());
       const frozen=locked&&await this.ctx.storage.transaction(txn=>this.packSlots(txn,account));
-      return json({locked,designs:designs.map(({votes,design,designKey,...d})=>({...d,...tally(votes)})),...(locked?{slots:frozen.slots}:{})});
+      return json({locked,designs:designs.map(({votes,design,designKey,...d})=>({...d,...tally(votes)})),arcana:arcana&&{slot:arcana.slot,main:arcana.main},...(locked?{slots:frozen.slots}:{})});
     }
     // Anyone's achievement progress, for their profile. Counting scans the whole vault, so each
     // account's answer is kept for 5 minutes.
@@ -596,12 +607,16 @@ export class CosmeticsVault {
         // cardSavedAt: when each card's design last changed (the Gallery's Newest sort).
         else if(body.action==='equip') {
           const slot=body.cardSlot??saved.primaryCard??0,before=cardDesignState(saved).cardDesigns[slot];
-          // After the close, freeze before a nominated design changes, so the freeze keeps it.
-          // (A nominated slot, or a design whose votes count: the one replaced or the one saved.)
+          // After the close, freeze before a pack card's design changes, so the freeze keeps it. Pack
+          // cards are derived from slots (lib/pack-card-list.js), so any save can change which designs
+          // they are (a new design in an earlier slot moves the four): freeze first whenever the list
+          // or one of its designs would change. A late freeze equals one at the close.
           const next=saveCardDesign(saved,body.equipment,body.cardSlot);
           if(!votingOpen(this.now())) {
+            const was=packCardList({...saved,cardDesigns:cardDesignState(saved).cardDesigns}),will=packCardList({...next,cardDesigns:cardDesignState(next).cardDesigns});
+            const inList=[...was.voted,...(was.arcana?[was.arcana]:[])].some(p=>p.slot===slot);
             const keys=await this.nominatedKeys(txn,account,saved),after=next.cardDesigns[slot];
-            if((saved.packCards??[]).some(p=>p.slot===slot)||(before&&keys.has(designKey(before)))||(after&&keys.has(designKey(after))))await this.packSlots(txn,account);
+            if(inList||JSON.stringify(was)!==JSON.stringify(will)||(before&&keys.has(designKey(before)))||(after&&keys.has(designKey(after))))await this.packSlots(txn,account,true);
           }
           const savedAt=Array.from({length:slotCount(saved)},(_,i)=>saved.cardSavedAt?.[i]??null);
           const design=next.cardDesigns[slot],changed=!before||designKey(before)!==designKey(design);
@@ -788,24 +803,40 @@ export class CosmeticsVault {
           result={state:saved,rating:{slot:body.cardSlot,key,mine:votes[account]??null,...tally(votes)}};
         }
         else if(body.action==='pack-cards') {
-          // Up to 4 saved designs offered as this player's pack cards, each with its main bonus stat
-          // (spec 1.1, 2.3). The stat is checked against every position: a card's position comes from
-          // games, so it's re-checked when the pool is built.
-          // savedAt is how old the design is (the older-design tiebreak), so a re-saved slot is newer.
+          // The owner's own choice of pack cards (spec 1, 1.1, 2.3): up to 4 voted designs, each with
+          // its main bonus stat (null = the default for their position), and optionally the arcana
+          // card ({slot, main}; null goes back to the lowest-slot arcana design). Until this is sent,
+          // pack cards are derived from slots (lib/pack-card-list.js). Voted slots can't be arcana
+          // designs and the arcana slot must be one. The stat is checked against every position: a
+          // card's position comes from games, so it's re-checked when the pool is built.
           if(!votingOpen(this.now()))throw new Error('Pack cards were locked on Thanksgiving.');
           if(!Array.isArray(body.cards))throw new Error('Choose your pack cards.');
           const list=body.cards;
           if(list.length>PACK_CARDS_MAX)throw new Error(`Choose up to ${PACK_CARDS_MAX} pack cards.`);
           const designs=cardDesignState(saved).cardDesigns,seen=new Set(),all=new Set([1,2,3,4,5].flatMap(statsFor));
-          const packCards=list.map((c)=>{
+          const checkCard=(c)=>{
             if(!Number.isInteger(c?.slot)||c.slot<0||c.slot>=slotCount(saved))throw new Error('Choose one of your cards.');
-            if(seen.has(c.slot))throw new Error('Each card can be nominated once.');
             if(isPlainDesign(designs[c.slot]))throw new Error('That card has no saved design.');
-            if(!all.has(c.main))throw new Error('Choose a bonus stat.');
-            seen.add(c.slot);
-            return {slot:c.slot,main:c.main,savedAt:saved.cardSavedAt?.[c.slot]??(saved.packCards??[]).find(p=>p.slot===c.slot)?.savedAt??Date.now()};
+            if(c.main!=null&&!all.has(c.main))throw new Error('Choose a bonus stat.');
+            return {slot:c.slot,main:c.main??null};
+          };
+          const packCards=list.map((c)=>{
+            const card=checkCard(c);
+            if(seen.has(card.slot))throw new Error('Each card can be a pack card once.');
+            if(isArcanaDesign(designs[card.slot]))throw new Error('An arcana design is your arcana card, not a voted one.');
+            seen.add(card.slot);
+            return card;
           });
-          result={state:{...saved,packCards}};
+          let next={...saved,packCards};
+          if(body.arcana!==undefined) {
+            if(body.arcana===null){const {packArcana,...rest}=next;next=rest;}
+            else {
+              const arcana=checkCard(body.arcana);
+              if(!isArcanaDesign(designs[arcana.slot]))throw new Error('That card has no arcana item.');
+              next={...next,packArcana:arcana};
+            }
+          }
+          result={state:next};
         }
         else if(body.action==='self-rate') {
           // The owner's own rating of one of their designs: only breaks ties in the rarity slots.

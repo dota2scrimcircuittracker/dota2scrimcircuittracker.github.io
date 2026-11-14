@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { packCardView, chipText, stripText, nextPackCards } from "../public/lib/pack-card-view.js";
+import { packCardView, chipText, stripText, withMain, swapIn, swapArcana } from "../public/lib/pack-card-view.js";
 import { designKey } from "../public/lib/card-ratings.js";
+import { DEFAULT_EQUIPMENT } from "../public/lib/cosmetics-catalog.js";
 
 const counts = (o) => ({ common: 0, rare: 0, epic: 0, legendary: 0, ...o });
 const live = { locked: false, designs: [
@@ -41,13 +42,37 @@ test("chip text for the owner, visitors and after the lock", () => {
 });
 
 test("strip text", () => {
-  assert.equal(stripText({ locked: false, count: 2 }, { max: 4, closesText: "Thanksgiving, Nov 26" }), "Winter pack cards · 2 of 4 chosen · Voting closes Thanksgiving, Nov 26");
-  assert.equal(stripText({ locked: true, count: 2 }, { max: 4, closesText: "x" }), "Winter pack cards are locked.");
+  assert.equal(stripText({ locked: false, count: 2 }, { closesText: "Thanksgiving, Nov 26" }), "Winter pack cards · Voting closes Thanksgiving, Nov 26");
+  assert.equal(stripText({ locked: true, count: 2 }, { closesText: "x" }), "Winter pack cards are locked.");
 });
 
-test("nextPackCards sends the full list after one change", () => {
-  const cards = packCardView(live).cards;
-  assert.deepEqual(nextPackCards(cards, { slot: 3, main: "stuns" }), [{ slot: 0, main: "kills" }, { slot: 2, main: "gpm" }, { slot: 3, main: "stuns" }]);
-  assert.deepEqual(nextPackCards(cards, { slot: 2, main: "kills" }), [{ slot: 0, main: "kills" }, { slot: 2, main: "kills" }]);
-  assert.deepEqual(nextPackCards(cards, { slot: 0, remove: true }), [{ slot: 2, main: "gpm" }]);
+const d = (hue, extra = {}) => ({ ...DEFAULT_EQUIPMENT, hue, ...extra });
+const twin = d(9, { twin: { turn: "flip", design: d(10) } });
+
+test("live view re-checks the list against the page's designs: order, arcana card, arcana chip", () => {
+  const designs = [d(1), twin, d(2), d(3), d(4), d(5)];
+  const res = { locked: false, designs: [0, 2, 3, 4].map((slot, i) => ({ slot, main: null, savedAt: i, self: null, counts: counts({}) })), arcana: { slot: 1, main: null } };
+  const v = packCardView(res, designs);
+  assert.deepEqual(v.order, [0, 2, 3, 4]);
+  assert.deepEqual(v.arcana, { slot: 1, main: null, rarity: "arcana", changed: false });
+  assert.equal(v.cards.has(1), false);
+  assert.equal(chipText(v.arcana, { locked: false, own: true }), "Winter · Arcana");
+  assert.equal(chipText(v.arcana, { locked: false, own: false }), "Winter · Arcana");
+});
+
+test("locked view includes the frozen arcana card", () => {
+  const res = { locked: true, slots: { common: "default", rare: null, epic: null, legendary: { slot: 0, main: null, designKey: designKey(d(1)) }, arcana: { slot: 1, main: "gpm", designKey: designKey(twin) } } };
+  const v = packCardView(res, [d(1), twin]);
+  assert.deepEqual(v.arcana, { slot: 1, main: "gpm", rarity: "arcana", changed: false });
+  assert.deepEqual(v.order, [0]);
+});
+
+test("payloads: a stat change, a swap and an arcana swap all send the full list of four", () => {
+  const designs = [d(1), twin, d(2), d(3), d(4), d(5), d(6, { finishStack: ["paper"] })];
+  const res = { locked: false, designs: [0, 2, 3, 4].map((slot) => ({ slot, main: slot === 2 ? "gpm" : null, counts: counts({}) })), arcana: null };
+  const v = packCardView(res, designs);
+  assert.deepEqual(withMain(v, 3, "kills"), { cards: [{ slot: 0, main: null }, { slot: 2, main: "gpm" }, { slot: 3, main: "kills" }, { slot: 4, main: null }] });
+  assert.deepEqual(withMain(v, 1, "stuns"), { cards: [{ slot: 0, main: null }, { slot: 2, main: "gpm" }, { slot: 3, main: null }, { slot: 4, main: null }], arcana: { slot: 1, main: "stuns" } });
+  assert.deepEqual(swapIn(v, 5, 2), { cards: [{ slot: 0, main: null }, { slot: 5, main: null }, { slot: 3, main: null }, { slot: 4, main: null }] });
+  assert.deepEqual(swapArcana(v, 6).arcana, { slot: 6, main: null });
 });

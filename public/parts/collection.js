@@ -1042,7 +1042,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     // Ratings first: Winter pack card chips sit above them and the owner's controls below (parts/pack-cards.js).
     if(showcase)Promise.all([mountRatings(section,account).catch(()=>{}),steamAccount().catch(()=>null)]).then(([,viewer])=>{
       const own=viewer!=null&&String(viewer)===String(account);
-      return mountPackCards(section,{account,own,designs:preferences.cardDesigns,fetchCards:playerCards,act:collectionAction});
+      return mountPackCards(section,{account,own,designs:preferences.cardDesigns,nameOf:slot=>cardSlotName(preferences,slot),fetchCards:playerCards,act:collectionAction});
     }).catch(()=>{});
     // An Arcana Cup winner's reward video takes the achievements column's place, left of the cards (lib/cup-rewards.js).
     const reward=cupRewardHtml(account,esc);
