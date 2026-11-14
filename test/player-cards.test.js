@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assignSlots, mainPositions } from "../public/lib/player-cards.js";
+import { assignSlots, mainPositions, votesFromCounts } from "../public/lib/player-cards.js";
+import { tally } from "../public/lib/card-ratings.js";
 
 const v = (...ratings) => Object.fromEntries(ratings.map((r, i) => [`voter${i}`, r]));
 const d = (slot, votes, self = null, savedAt = slot) => ({ slot, votes, self, savedAt });
@@ -55,4 +56,17 @@ test("an unknown self rating counts as no self rating", () => {
 test("main position: the position played most, stand-in rows skipped", () => {
   const games = [1, 1, 3].map((pos, i) => ({ id: i, players: [{ account_id: 7, position: pos, standin: false }, { account_id: 8, position: 5, standin: true }] }));
   assert.deepEqual(Object.fromEntries(mainPositions(games)), { 7: 1 });
+});
+
+test("votesFromCounts: stand-in votes tally to the same counts and pick", () => {
+  const counts = { common: 1, rare: 2, epic: 2, legendary: 0 };
+  const votes = votesFromCounts(counts);
+  assert.equal(Object.keys(votes).length, 5);
+  assert.deepEqual(tally(votes), { counts, total: 5, pick: "epic" });
+  assert.deepEqual(votesFromCounts(undefined), {});
+});
+test("votesFromCounts: assignSlots gives the same seats as raw votes", () => {
+  const raw = [d(0, v("rare", "rare", "epic")), d(1, v("rare")), d(2, v("legendary", "common"))];
+  const fromCounts = raw.map((x) => ({ ...x, votes: votesFromCounts(tally(x.votes).counts) }));
+  assert.deepEqual(assignSlots(fromCounts), assignSlots(raw));
 });

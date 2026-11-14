@@ -58,3 +58,11 @@ export function mainPositions(games) {
   }
   return new Map([...counts].map(([a, c]) => [a, +Object.entries(c).sort((x, y) => y[1] - x[1] || x[0] - y[0])[0][0]]));
 }
+
+// The public /player-cards GET gives vote counts, not who voted what. Rebuild a stand-in votes
+// object (one made-up voter per vote) so assignSlots can preview the same rarities.
+export function votesFromCounts(counts) {
+  const votes = {};
+  for (const [r, n] of Object.entries(counts ?? {})) for (let i = 0; i < n; i++) votes[`${r}${i}`] = r;
+  return votes;
+}

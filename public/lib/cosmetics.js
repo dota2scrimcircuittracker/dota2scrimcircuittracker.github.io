@@ -90,6 +90,10 @@ export async function publicAchievements(account) {
 export async function cardRatings(account) {
   const r=await fetch(`${COLLECTION_API}/ratings/${account}`);if(!r.ok)throw new Error('Ratings unavailable.');return (await r.json()).cards;
 }
+// One player's nominated pack designs: main stat, self-rating and vote counts (lib/player-cards.js).
+export async function playerCards(account) {
+  const r=await fetch(`${COLLECTION_API}/player-cards/${account}`);if(!r.ok)throw new Error('Pack cards unavailable.');return r.json();
+}
 // Every changed saved design in the league, with its ratings (the Gallery).
 export async function galleryCards() {
   const r=await fetch(`${COLLECTION_API}/gallery`);if(!r.ok)throw new Error('Cards unavailable.');return (await r.json()).cards;
