@@ -43,7 +43,8 @@ leagueMenu.querySelector('a[data-league="all"]').before(...DIVISION_LIST.map((d)
 }));
 document.head.append(Object.assign(document.createElement("style"), { id: "division-colors", textContent: divisionCss() }));
 const setMenu = (open) => { leagueMenu.hidden = !open; leagueBtn.setAttribute("aria-expanded", String(open)); };
-leagueBtn.onclick = (e) => { e.stopPropagation(); setMenu(leagueMenu.hidden); };
+// No stopPropagation: the document listeners below close the cog and the More menu when this opens.
+leagueBtn.onclick = () => setMenu(leagueMenu.hidden);
 document.addEventListener("click", (e) => { if (!e.target.closest(".switcher")) setMenu(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
 
@@ -63,7 +64,7 @@ const setSettings = (open) => {
   settingsPop.hidden = !open; settingsBtn.setAttribute("aria-expanded", String(open));
   if (open) placeSettings(); else setTM(false);
 };
-settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(settingsPop.hidden); };
+settingsBtn.onclick = () => setSettings(settingsPop.hidden);
 document.addEventListener("click", (e) => { if (!e.target.closest(".settings")) setSettings(false); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSettings(false); });
 // My team (core.js myTeam): the list loads the first time the menu opens.
@@ -339,6 +340,16 @@ async function weekMenu(src) {
 // Phones: the tabs after the first four (Tools, Gallery) fold under "More ▾". Predict's
 // own tabs follow it there, indented, so the Leaderboard is named one tap from the nav.
 const NAV_SHOWN = 4;
+// Phones fold the tabs past NAV_SHOWN under More ▾. When every tab fits on the line (a wide
+// phone, or a league with few tabs), nav-fits shows them all and hides More.
+const fitNav = () => {
+  const n = document.getElementById("nav");
+  if (!n?.querySelector(".nav-more")) return;
+  n.classList.add("nav-fits");
+  if (n.scrollWidth > n.clientWidth + 1) n.classList.remove("nav-fits");
+};
+addEventListener("resize", () => requestAnimationFrame(fitNav));
+document.fonts?.ready.then(fitNav); // the mono font is wider than its fallback
 const moreMenu = async (src) => ({ items: (await Promise.all(src.nav.slice(NAV_SHOWN).map(async ([href, key, label]) => [
   { name: label, href },
   ...(key === "predict" && hasMenu(key, src) ? (await NAV_MENUS.predict(src)).items.map((x) => ({ ...x, child: true })) : []),
@@ -593,6 +604,7 @@ export function route() {
     const a = `<a href="${href}" data-nav="${key}" class="${cls ?? ""}${key === navKey ? " active" : ""}${hasMenu(key, src) ? "" : x}"${key === navKey ? ' aria-current="page"' : ""}${hasMenu(key, src) ? ' aria-haspopup="true" aria-expanded="false"' : ""}>${label}</a>`;
     return hasMenu(key, src) ? `<div class="nav-item${x}" data-menu="${key}">${a}<div class="nav-drop" hidden></div></div>` : a;
   }).join("") + (extra ? `<div class="nav-item nav-more" data-menu="more"><button type="button" class="${src.nav.slice(NAV_SHOWN).some(([, key]) => key === navKey) ? "active" : ""}" aria-haspopup="true" aria-expanded="false">More<span class="caret" aria-hidden="true"></span></button><div class="nav-drop more-drop" hidden></div></div>` : "");
+  fitNav();
   // Phones scroll the tabs sideways: bring the current one into view.
   const navEl = document.getElementById("nav"), cur = navEl.querySelector("a.active");
   if (cur && navEl.scrollWidth > navEl.clientWidth) {

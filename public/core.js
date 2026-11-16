@@ -1,6 +1,7 @@
 // Shared by every page: escaping and formatting helpers, page headers and breadcrumbs, the
 // AD2L divisions and their data (loading, caches, the time machine), the scrim list, the
 // upload/edit lock and the review form's pieces other pages reuse, page tabs, sortable tables.
+import { teamTags, tagOf } from "./lib/team-tags.js";
 import { playerKey, heroSlug, withDerived, isRemake, hasDetails } from "./lib/stats.js";
 import { MIN_GAMES } from "./lib/tiers.js";
 import { heroImg } from "./lib/hero-meta.js";
@@ -68,13 +69,18 @@ function teamHref(src, name, id = null) {
   }
   return `${src.root}/teams/${teamSlug(name)}`;
 }
+// A team's name with its short tag in data-tag: phones swap the tag in where the name won't fit
+// (mobile.css). Plain text, no link.
+export function teamName(src, name, id = null) {
+  return `<span data-tag="${esc(tagOf(name, id, src?.cache?.()?.teams))}">${esc(name ?? "")}</span>`;
+}
 export function teamLink(src, name, id = null, nested = false) {
   const href = teamHref(src, name, id);
-  if (!href) return esc(name ?? "");
+  if (!href) return teamName(src, name, id);
   const mark = teamLogoHtml({ id, name }, "inline-team-logo");
   return nested
-    ? `<span class="team-link" role="link" tabindex="0" data-href="${href}">${mark}<span>${esc(name)}</span></span>`
-    : `<a class="team-link" href="${href}">${mark}<span>${esc(name)}</span></a>`;
+    ? `<span class="team-link" role="link" tabindex="0" data-href="${href}">${mark}${teamName(src, name, id)}</span>`
+    : `<a class="team-link" href="${href}">${mark}${teamName(src, name, id)}</a>`;
 }
 // A player's pages elsewhere: the same /players/<account ID> path on Stratz, OpenDota and
 // Dotabuff, and their PlayOn page when the roster gave its id. "" without a numeric account ID.
@@ -218,7 +224,7 @@ async function loadDivision(file) {
 // so callers that ask at the same time share one fetch.
 export const divCache = {}, divReady = {};
 export function divData(key) {
-  return divReady[key] ??= loadDivision(DIVISIONS[key].file).then((d) => (divCache[key] = d))
+  return divReady[key] ??= loadDivision(DIVISIONS[key].file).then((d) => (teamTags(d.teams), divCache[key] = d))
     .catch((e) => { delete divReady[key]; throw e; });
 }
 // Another division's games for the overall ranks and search: the deploy's trimmed copy
@@ -841,6 +847,16 @@ export function wirePlayerTabs() {
   const withTab = (id) => { const u = new URL(location.href); u.searchParams.set("tab", id); return u.pathname + u.search + u.hash; };
   // The tab this history entry shows, so Back to it (or a reload) opens it again.
   history.replaceState({ ...history.state, tab: btns.find((x) => x.getAttribute("aria-selected") === "true")?.dataset.tab }, "");
+  // Phones scroll the bar sideways (mobile.css): keep the open tab in view, centred.
+  const reveal = (b) => {
+    if (!b || bar.scrollWidth <= bar.clientWidth) return;
+    const r = b.getBoundingClientRect(), box = bar.getBoundingClientRect();
+    bar.scrollLeft += r.left - box.left - (bar.clientWidth - r.width) / 2;
+  };
+  // The right-edge fade (more tabs this way) drops once the bar is scrolled to its end.
+  const edge = () => bar.classList.toggle("at-end", bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 2);
+  bar.addEventListener("scroll", edge, { passive: true });
+  requestAnimationFrame(() => { reveal(btns.find((x) => x.getAttribute("aria-selected") === "true")); edge(); });
   const pick = (b, focus = false, push = true) => {
     for (const x of btns) {
       const on = x === b;
@@ -848,6 +864,7 @@ export function wirePlayerTabs() {
       x.tabIndex = on ? 0 : -1;
       document.getElementById(x.getAttribute("aria-controls")).hidden = !on;
     }
+    reveal(b);
     if (focus) b.focus();
     try { localStorage.setItem(bar.dataset.store, b.dataset.tab); } catch {}
     if (push && history.state?.tab !== b.dataset.tab) {

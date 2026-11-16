@@ -1,4 +1,5 @@
 // AD2L Teams tab: standings, Matches (series by week) and Crosstable.
+import { teamTags, teamInitials } from "../lib/team-tags.js";
 import { lineChart, wireCharts } from "../lib/charts.js";
 import { isPlayed, matchOdds, matchPostOdds, tune, fitRatings } from "../lib/predict.js";
 import { withDraft, draftDataFor, draftAt } from "../parts/cmdraft.js";
@@ -31,7 +32,6 @@ function seriesContext(src, d) {
 const dayTime = (t) => new Date(t * 1000).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const dayOnly = (t) => new Date(t * 1000).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 const soon = (s) => !isPlayed(s) && s.time * 1000 > Date.now() - 6 * 3600e3;
-const teamInitials = (n) => { const w = n.split(/[\s-]+/).filter(Boolean); return (w.length > 1 ? w.map((x) => x[0]).join("") : n).slice(0, 3).toUpperCase(); };
 
 // Matches: every series, played and upcoming, one box per week (per division in Combined
 // Heroic), laid out like a Liquipedia group stage. PlayOn only publishes the next week's
@@ -118,9 +118,10 @@ function crossTableHtml(src, d, order) {
       return g ? `<a class="ct-m ${res}" href="${src.link(g)}" title="${tip}">${inner}</a>` : `<span class="ct-m ${res}" title="${tip}">${inner}</span>`;
     }).join("")}</td>`;
   };
+  const tag = teamTags(d.teams);
   const table = (ids, div) => `<div class="ct-wrap reveal">${div ? `<h3 class="ct-div">${src.all ? "" : "Division "}${esc(div)}</h3>` : ""}<table class="ct">
-    <thead><tr><th scope="col" class="ct-corner"></th>${ids.map((id) => `<th scope="col" class="ct-col" title="${esc(team[id].name)}"><a href="${src.root}/teams/${id}">${esc(teamInitials(team[id].name))}</a></th>`).join("")}</tr></thead>
-    <tbody>${ids.map((id, i) => `<tr><th scope="row" class="ct-row"><span class="ct-rank">${i + 1}</span>${teamLink(src, team[id].name, id)}<span class="ct-ab">${esc(teamInitials(team[id].name))}</span></th>${ids.map((o) => cell(id, o)).join("")}</tr>`).join("")}</tbody>
+    <thead><tr><th scope="col" class="ct-corner"></th>${ids.map((id) => `<th scope="col" class="ct-col" title="${esc(team[id].name)}"><a href="${src.root}/teams/${id}">${esc(tag.get(id) ?? teamInitials(team[id].name))}</a></th>`).join("")}</tr></thead>
+    <tbody>${ids.map((id, i) => `<tr><th scope="row" class="ct-row"><span class="ct-rank">${i + 1}</span>${teamLink(src, team[id].name, id)}<span class="ct-ab">${esc(tag.get(id) ?? teamInitials(team[id].name))}</span></th>${ids.map((o) => cell(id, o)).join("")}</tr>`).join("")}</tbody>
   </table></div>`;
   const ids = order.filter((id) => team[id] && !bye(id));
   const groups = split
@@ -243,8 +244,10 @@ export async function renderStandings(src) {
   // text; the height grows with the team count so every end label gets its own row.
   const raceChart = (width) => {
     const gap = race.length > 12 ? 16 : 23;
-    return lineChart(race.map((r, i) => ({ label: r.t.name, values: r.values, cls: `s-c${(i % 10) + 1}`, end: `${r.values.at(-1)} · ${r.t.name}` })),
-      { endLabels: true, width, gap, height: Math.max(280, 16 + 28 + 18 + (race.length - 1) * gap), xLabels: nights.map((_, i) => `Wk ${i + 1}`), step: top > 12 ? 4 : 2,
+    // Narrow (a phone): the end labels use the team tags, so the lines get the width.
+    const narrow = width < 640, tags = teamTags(d.teams);
+    return lineChart(race.map((r, i) => ({ label: r.t.name, values: r.values, cls: `s-c${(i % 10) + 1}`, end: `${r.values.at(-1)} · ${narrow ? tags.get(r.t.id) : r.t.name}` })),
+      { endLabels: true, width, gap, ...(narrow ? { endW: 118 } : {}), height: Math.max(280, 16 + 28 + 18 + (race.length - 1) * gap), xLabels: nights.map((_, i) => (narrow ? `W${i + 1}` : `Wk ${i + 1}`)), step: top > 12 ? 4 : 2,
         caption: "Game wins after each league night. Hover for every team's total that week; hover a name to pick out one team." });
   };
   // Not in All: sixty lines on one chart is noise. Before the second league night there's no
@@ -277,7 +280,7 @@ export async function renderStandings(src) {
   const squares = (fs) => fs.map((f) => bye.has(f.opp)
     ? `<span class="sos-sq ${f.result} bye" title="Bye week: ${f.us}–${f.them} forfeit, no games played">BYE</span>`
     : `<a class="sos-sq ${f.result}" href="${src.root}/teams/${f.opp}"
-      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${bye.has(f.opp) ? "" : ` (${oppWins.get(f.opp) ?? 0} wins)`}">${esc(teamInitials(name[f.opp] ?? "?"))}</a>`).join("");
+      title="${f.result === "w" ? "Won" : f.result === "l" ? "Lost" : "Tied"} ${f.us}–${f.them} vs ${esc(name[f.opp])}${bye.has(f.opp) ? "" : ` (${oppWins.get(f.opp) ?? 0} wins)`}">${esc(teamTags(d.teams).get(f.opp) ?? teamInitials(name[f.opp] ?? "?"))}</a>`).join("");
   // Form: five slots, empty ones first, so the newest series always sits in the last column.
   const form = (fs) => `<span class="sos-faced st-form">${'<span class="sos-sq e"></span>'.repeat(5 - fs.length)}${squares(fs)}</span>`;
   const rmax = Math.max(0.01, ...rows.map((r) => Math.abs(r.model_rating ?? 0)));

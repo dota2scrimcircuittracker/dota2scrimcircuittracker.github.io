@@ -135,11 +135,12 @@ const tag = (s, i, x0, cy, text, cls = "end-label") => `<g class="${cls} ${s.cls
 // this many units wide (the box's real pixel width, so text isn't scaled up); a wide chart gets
 // longer end labels. gap: rows between end labels, when many lines share the right edge.
 // dp / unit: the hover readout's decimals and suffix (small percentages: 3.4%, not 3).
-export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H, xLabels = null, step = null, width = W, gap = GAP, dp = 0, unit = "" } = {}) {
+export function lineChart(series, { caption = "Hover for values at any minute.", id = "lines", max: fixed = null, endLabels = false, height = H, xLabels = null, step = null, width = W, gap = GAP, dp = 0, unit = "", endW = null } = {}) {
   const n = Math.max(...series.map((s) => s.values.length));
   const top = Math.max(...series.flatMap((s) => s.values));
   const max = fixed ?? (step ? Math.max(step, Math.ceil(top / step) * step) : niceMax(top));
-  const r = endLabels ? (width >= 1000 ? 230 : 168) : R, h = height, W = width;
+  // endW: a narrower label column, for short end labels (team tags on a phone).
+  const r = endLabels ? (endW ?? (width >= 1000 ? 230 : 168)) : R, h = height, W = width;
   const x = (i) => L + (n > 1 ? i / (n - 1) : 0) * (W - L - r), y = (v) => T + (1 - v / max) * (h - T - B);
   let grid = "";
   const levels = step ? Array.from({ length: max / step }, (_, j) => max - j * step) : [max, max * 0.75, max / 2, max / 4];

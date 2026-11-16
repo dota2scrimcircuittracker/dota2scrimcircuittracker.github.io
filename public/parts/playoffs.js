@@ -7,7 +7,7 @@
 //    as each team's chance of each place; click a cell or team for what it takes.
 import { playoffPicture, possibilities, pathsTo, pathsToEvent, TBD, HEROIC_DEFAULT, bracketsOf, seedsSettled, playoffScore, ROUND_POINTS, withFix } from "../lib/playoffs.js";
 import { info } from "../lib/glossary.js";
-import { esc, pct, teamLink, DIVISIONS, SOURCES } from "../core.js";
+import { esc, pct, teamLink, teamName, DIVISIONS, SOURCES } from "../core.js";
 import { tune, fitRatings } from "../lib/predict.js";
 import { groupStage, REMOVED, SEASON, playedPostseason } from "../lib/divisions.js";
 import { ordinal as ord } from "../lib/ranks.js";
@@ -258,7 +258,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         if (id == null) return `<div class="po-slot bye"><span class="po-seed"></span><span>bye</span></div>`;
         if (status && unresolved.has(id)) return `<div class="po-slot tbd" title="Decided by a week 8 tiebreaker"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span>TBD</span></div>`;
         const win = m.winner === id && !m.bye && (!status || m.real);
-        if (live && !m.bye && !m.pending && !m.real && !sentKey(m.key)) return `<button type="button" class="po-slot po-pick${win ? " win on" : ""}${m.mine ? " me" : ""}" data-k="${esc(m.key)}" data-w="${id}" aria-pressed="${win}"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span class="po-nm">${esc(name[id])}</span></button>`;
+        if (live && !m.bye && !m.pending && !m.real && !sentKey(m.key)) return `<button type="button" class="po-slot po-pick${win ? " win on" : ""}${m.mine ? " me" : ""}" data-k="${esc(m.key)}" data-w="${id}" aria-pressed="${win}"><span class="po-seed">${seedOf.get(id) ?? ""}</span><span class="po-nm">${teamName(src, name[id], id)}</span></button>`;
         return `<div class="po-slot${win ? " win" : ""}" title="${esc(name[id] ?? "")}"><span class="po-seed">${seedOf.get(id) ?? ""}</span>${link(id)}${m.bye || m.pending || m.open || (live && !m.real) || (status && !m.real) || (fin && !m.real) ? "" : `<span class="po-gw">${m.score[m.winner === id ? 0 : 1]}</span>`}</div>`;
       };
       // Your picks: an open match says "pick", a picked one "your pick"; a match still waiting
@@ -274,8 +274,8 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const box = (m) => { const why = maybeWhy(m); return `<div class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}${why ? " is-maybe" : ""}">
           <div class="po-mh">${esc(m.label)} · ${m.side === "final" ? "Bo3 or Bo5" : bo(m.bestOf)}${!m.bye && (live || frozen || m.real) ? tag(m) : ""}</div>
           ${slot(m, m.a)}${slot(m, m.b)}
-          ${m.bye || m.pending ? "" : finPicks ? finLine(m) : m.real ? `<div class="po-mp">${esc(name[m.winner])} won ${sc(m)}</div>` : fin === "closed" ? `<div class="po-mp">Yet to play</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? ""
-            : `<div class="po-mp">${esc(name[m.winner])} ${sc(m)} · ${pct(m.p)} to win${m.side === "final" ? " (as Bo5)" : ""}</div>
+          ${m.bye || m.pending ? "" : finPicks ? finLine(m) : m.real ? `<div class="po-mp">${teamName(src, name[m.winner], m.winner)} won ${sc(m)}</div>` : fin === "closed" ? `<div class="po-mp">Yet to play</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? ""
+            : `<div class="po-mp">${teamName(src, name[m.winner], m.winner)} ${sc(m)} · ${pct(m.p)} to win${m.side === "final" ? " (as Bo5)" : ""}</div>
           <div class="po-odds">${scoreOdds(m)}</div>`}
           ${why ? `<div class="po-maybe">${why}</div>` : ""}
         </div>`; };
@@ -551,7 +551,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
       const table = `<div class="table-wrap"><table class="po-poss">
         <thead><tr><th scope="col" class="l">Team</th>${Array.from({ length: N }, (_, i) => `<th scope="col"${lines.some((l) => l.after === i + 1) ? ' class="po-line"' : ""} title="Seed ${i + 1}">${i ? i + 1 : "Seed 1"}</th>`).join("")}
           ${cols.map((l) => `<th scope="col" class="po-sum">${esc(l.col)}</th>`).join("")}</tr></thead>
-        <tbody>${rows.map((id) => `<tr class="${state.sel?.team === id ? "sel" : ""}"><th scope="row" class="l"><button type="button" class="linkish po-team" data-team="${id}" aria-expanded="${state.sel?.team === id && !state.sel.place}" title="Every place ${esc(name[id])} can reach"><span class="po-caret" aria-hidden="true"></span><span class="po-tname">${esc(name[id])}</span></button></th>
+        <tbody>${rows.map((id) => `<tr class="${state.sel?.team === id ? "sel" : ""}"><th scope="row" class="l"><button type="button" class="linkish po-team" data-team="${id}" aria-expanded="${state.sel?.team === id && !state.sel.place}" title="Every place ${esc(name[id])} can reach"><span class="po-caret" aria-hidden="true"></span><span class="po-tname">${teamName(src, name[id], id)}</span></button></th>
           ${Array.from({ length: N }, (_, i) => cell(id, i)).join("")}
           ${cols.map((l) => `<td class="po-sum num">${pctFine(sum(id, l.after) - (l.band ? sum(id, lines[lines.indexOf(l) - 1]?.after ?? 0) : 0))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
       const pick = state.sel && dv.ids.includes(state.sel.team) ? detailHtml(P, dv, state.sel) : "";

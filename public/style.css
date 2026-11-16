@@ -2973,7 +2973,7 @@ button.tm-close:hover:not(:disabled) { border-color: var(--tc); color: var(--tc)
 .gm-series { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 10px 0 0; }
 .gm-series-k { align-self: center; margin-right: 8px; font: 600 12px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
 .gm-series-k b { color: var(--bone); font-weight: 600; letter-spacing: .04em; margin-left: 6px; }
-.gm-chip { display: flex; flex-direction: column; gap: 3px; padding: 6px 12px; min-width: 110px; background: var(--stone); border: 1px solid var(--seam); border-left: 3px solid var(--c); color: var(--bone); font: 600 12px/1.2 var(--body); }
+.gm-chip { display: flex; flex-direction: column; gap: 3px; padding: 6px 12px; min-width: 110px; background: var(--stone); border: 1px solid var(--seam); border-left: 3px solid var(--c); color: var(--bone); font: 600 12px/1.2 var(--body); text-transform: none; letter-spacing: normal; } /* a link chip, inside nav.gm-series, would take "nav a" caps */
 .gm-chip small { font: 500 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
 .gm-chip.s-a { --c: var(--jade); }
 .gm-chip.s-b { --c: var(--ember); }

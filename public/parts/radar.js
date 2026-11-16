@@ -17,8 +17,11 @@ export function radarSvg(shapes, metrics, label = "Tier stats, 0 to 100") {
   const labels = metrics.map((m, i) => {
     const [x, y] = pt(i, 116), anchor = Math.abs(x) < 8 ? "middle" : x > 0 ? "start" : "end";
     const label = METRICS[m].label;
-    const text = m === "tower"
-      ? `<tspan x="${x.toFixed(1)}" dy="-4">Building</tspan><tspan x="${x.toFixed(1)}" dy="10">share</tspan>`
+    // Long labels ("Damage taken share") break before their last word, so the side spokes
+    // stay inside the card on a phone.
+    const cut = label.length > 12 ? label.lastIndexOf(" ") : -1;
+    const text = cut > 0
+      ? `<tspan x="${x.toFixed(1)}" dy="-4">${esc(label.slice(0, cut))}</tspan><tspan x="${x.toFixed(1)}" dy="10">${esc(label.slice(cut + 1))}</tspan>`
       : esc(label);
     return `<text class="radar-label" x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="${anchor}" aria-label="${esc(label)}">${text}</text>`;
   }).join("");

@@ -3,7 +3,8 @@
 // (lib/store.js, parts/me.js). Loaded when the tab is first shown.
 import { SLOTS, GAMES_COUNTED, weekKey, TEST_WEEK, playoffWeeks, testWeek, openWeek, pickable, checkPicks, scoreEntry, weekGames, pickPoints, leaderboard, weekBoard } from "../lib/fantasy.js";
 import { VERSIONS, LIVE, METRICS, survivalRange } from "../lib/tiers.js";
-import { createPlayerCards, mainPositions, PAINT_FILTER, flipPlayerCard, showBigCard } from "../parts/player-card.js";
+import { createPlayerCards, mainPositions, PAINT_FILTER, flipPlayerCard, showBigCard, fitDesignCards } from "../parts/player-card.js";
+const phoneLineup = matchMedia("(max-width: 760px)");
 import { divisionTiers, METRIC_FMT, RAW_FMT } from "../parts/tiers.js";
 
 // A stat's real number from one game: "27%" with "18.4k dmg a game" under it, "612" for XPM.
@@ -255,7 +256,11 @@ export async function mountFantasy(host, viewSrc, scope = null) {
       tab.setAttribute("aria-label", `Pos ${s}, ${POS_SHORT[s]}: ${c ? nameOf(a) : "empty"}`);
       if (b.dataset.acc !== String(c ? a : "")) {
         b.dataset.acc = c ? a : "";
-        b.querySelector(".ft-stage").innerHTML = c ? mini(c) : `<span class="ft-empty" aria-hidden="true"><b>${s}</b>Open</span>`;
+        const stage = b.querySelector(".ft-stage");
+        stage.innerHTML = c ? mini(c) : `<span class="ft-empty" aria-hidden="true"><b>${s}</b>Open</span>`;
+        // Phones show the five slots as ~60px thumbnails (mobile.css): zoom the card down from
+        // its design width instead of laying it out that narrow.
+        if (c && phoneLineup.matches) fitDesignCards(stage);
       }
     }
     for (const dk of host.querySelectorAll(".ft-deck")) {

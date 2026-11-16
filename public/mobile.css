@@ -1,0 +1,295 @@
+/* Phone layout (≤760px). Loaded after style.css and collection.css, so these win on equal
+   specificity. Keep phone fixes here instead of scattering more blocks through style.css.
+
+   1. Header: one row (brand, gift, search, sign-in, league, cog) over the nav strip.
+   2. Tab rows and button rows: one line that scrolls sideways instead of wrapping into stacks.
+   3. Page fixes: game banner, Drafter, Content, profile collection, tour invite. */
+
+@media (max-width: 760px) {
+  /* ---------- 1. header ---------- */
+  .top {
+    grid-template-columns: minmax(0, 1fr) repeat(5, auto);
+    grid-template-areas: "brand gift search me league cog" "nav nav nav nav nav nav";
+    column-gap: 4px;
+  }
+  .collection-gift { grid-area: gift; width: 36px; height: 36px; }
+  .collection-gift.has-offer::after { display: none; } /* the BONUS tag hung below the row */
+  .me { grid-area: me; }
+  .search input, .league-btn, .settings-btn { width: 36px; min-width: 36px; }
+  /* Signed out: a 36px Steam-person button. The words stay for screen readers. */
+  .me-in {
+    width: 36px; height: 36px; padding: 0; font-size: 0; clip-path: none;
+    background: var(--stone) no-repeat center / 18px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e8c27a' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c1.5-4.5 4.5-6.5 8-6.5s6.5 2 8 6.5'/%3E%3C/svg%3E");
+    border: 1px solid var(--accent);
+  }
+  .me-av { width: 34px; height: 34px; }
+
+  /* ---------- type scale ----------
+     Smaller, tighter type on phones so labels and numbers stop colliding. The uppercase mono
+     labels carry .1em+ tracking all over style.css; #app keeps this one override above them. */
+  body { font-size: 13px; }
+  h1 { font-size: 32px; }
+  h2 { font-size: 17px; margin: 28px 0 12px; gap: 10px; }
+  .kicker { font-size: 10px; letter-spacing: .12em; }
+  /* Tables: smaller type, but the cells keep their room (cramped columns read as one blob). */
+  table { font-size: 11px; }
+  th { font-size: 9.5px; }
+  th, td { padding: 9px 8px; }
+  #app :is(button, summary, label, th, .k, .seg, .menu-label, .chip-caret, .sr-label, .gp-label,
+    .draft-tag, .lg-chip, .gm-ext a, [class*="-label"], [class*="-tag"]) { letter-spacing: .04em; }
+  #app .pp-tabs button { font-size: 10px; letter-spacing: .06em; padding: 12px 10px; }
+  #app .pp-tabs button[aria-selected="true"]::after { left: 10px; right: 10px; }
+  #app button.seg { padding: 8px 11px; font-size: 10px; }
+  nav a, .nav-more > button { font-size: 10px; letter-spacing: .06em; }
+  /* Common small text, one step down. */
+  .sh-name { font-size: 13px; }
+  .sh-sub, .pp-sub, .card .s, .gm-stand .s { font-size: 11px; }
+
+  /* ---------- 2. sideways rows ---------- */
+  /* Page tabs (core.js playerTabs): Players, profile, Gallery, Fantasy, game page. */
+  .pp-tabs {
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+    overscroll-behavior-x: contain; scroll-padding-inline: 24px;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+  .pp-tabs.at-end { -webkit-mask-image: none; mask-image: none; }
+  .pp-tabs::-webkit-scrollbar { display: none; }
+  .pp-tabs button { flex: none; white-space: nowrap; }
+  .pp-tabs button[aria-selected="true"]::after { bottom: 0; }
+  .pp-row .pp-tabs { flex: 1 1 100%; min-width: 0; }
+  /* Gallery's eight tabs: collection.css wrapped them into two rows under 420px. */
+  main:has(> .collection-host) .pp-tabs { flex-wrap: nowrap; }
+  main:has(> .collection-host) .pp-tabs button { padding: 12px 9px; }
+  .side .pp-tabs { overflow: visible; -webkit-mask-image: none; mask-image: none; flex-wrap: wrap; }
+
+  /* Segmented buttons and the table's column pager. */
+  .segs, .col-pager {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%;
+    overscroll-behavior-x: contain; padding-bottom: 2px;
+  }
+  .segs::-webkit-scrollbar, .col-pager::-webkit-scrollbar { display: none; }
+  .segs > *, .col-pager > * { flex: none; white-space: nowrap; }
+
+  /* ---------- 3. page fixes ---------- */
+  /* Game page banner: the score line (nowrap) sized the single grid column past the screen. */
+  .banner { grid-template-columns: minmax(0, 1fr); }
+  .banner-meta { white-space: normal; line-height: 1.5; letter-spacing: .06em; font-size: 11px; }
+  .banner.compact .plate { padding: 14px 16px 16px; gap: 6px; }
+  .banner.compact .plate .team { font-size: 18px; }
+  .banner.compact .plate .n { font-size: 42px; }
+  /* Game page kicker: the banner below already names both teams, so the crumb drops the long
+     "A vs B" step and the decorative rule. */
+  .gm-back { flex-wrap: wrap; row-gap: 6px; }
+  .gm-back::before { display: none; }
+  .gm-back .crumbs li[aria-current] { display: none; }
+  .crumbs [aria-current] { max-width: 100%; }
+
+  /* Drafter: the series list's longest option set the select's width. */
+  .dx-mode { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .dx-mode label { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+  .dx-mode select { flex: 1 1 auto; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+  .dx-setup { min-width: 0; max-width: 100%; }
+  /* Drafter win meter: a long team name (nowrap) pushed the bar past the screen. */
+  .dx-score { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dx-score > span:not(.dx-meter) { min-width: 0; white-space: normal; line-height: 1.25; overflow-wrap: anywhere; }
+  .dx-score b { flex: none; }
+  /* Drafter slots are ~56px wide here: the corner number sat on top of "Pick"/"Ban". Empty
+     slots show just their number, centred (the row already says picks or bans); the next slot
+     shows just "Next". */
+  .dx-bslot:not(.now):has(.dx-bempty) .dx-bempty { display: none; }
+  .dx-bslot:not(.now):has(.dx-bempty) .dx-bn { position: static; color: var(--dim); text-shadow: none; }
+  .dx-bslot.now:has(.dx-bempty) .dx-bn { display: none; }
+  .dx-bempty { letter-spacing: .04em; }
+
+  /* Content: series headline team names in display type wrapped to five lines. */
+  .series-head { font-size: 22px; line-height: 1.1; }
+  .week-pick { padding-left: 16px; }
+
+  /* Profile collection: two cards a row, so the four rating buttons fit their labels. */
+  .profile-collection .profile-card-designs figure { flex: 0 0 calc((100% - 8px) / 2); }
+  .card-rating-votes button { letter-spacing: 0; }
+
+  /* Radar labels a touch smaller so the side spokes stay inside the card. */
+  .radar-card .radar-label { font-size: 11px; }
+
+  /* The tour invite (and cup notice) sits over the page bottom: leave room to scroll past it. */
+  body:has(.tour-invite) { padding-bottom: 72px; }
+
+  /* Hero tier list: a band holds up to ~20 heroes, so the side letter (centred in an 800px
+     band) was off screen. The letter becomes a tag on top and the heroes take the full width. */
+  .tier-band:has(.hchip) { grid-template-columns: minmax(0, 1fr); }
+  .tier-band:has(.hchip) .tier-letter {
+    justify-self: start; place-items: center start; font-size: 26px; padding: 5px 26px 5px 14px;
+  }
+  .tier-band:has(.hchip) .tier-chips { padding: 10px 12px 12px; }
+  .chip.hchip { width: 100%; }
+
+  /* Fantasy "Your picks": five 170px pedestals scrolled sideways with three off screen. On a
+     phone all five sit in one row as thumbnails: card or numbered placeholder, a slim plinth
+     with the position, and a "C" captain toggle (its aria-label, set in fantasy.js, still
+     says "Make captain: <name>"). */
+  .ft-case { padding: 10px 8px 0; }
+  .ft-case-title { font-size: 10px; gap: 6px; flex-wrap: wrap; }
+  .ft-lineup { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+  .ft-slot { padding-top: 8px; }
+  .ft-slot::before { display: none; }
+  .ft-stage { width: 100%; margin-bottom: -4px; }
+  .ft-stage .ft-card :is(.ft-turn, .ft-expand) { display: none; }
+  .ft-empty { border-radius: 8px; gap: 2px; font-size: 8px; letter-spacing: .08em; }
+  .ft-empty b { font-size: 28px; }
+  .ft-plinth { padding: 10px 2px 7px; gap: 2px; }
+  .ft-slot-pos { font-size: 8px; letter-spacing: .08em; }
+  .ft-slot-role { font-size: 11px; letter-spacing: .02em; }
+  .ft-slot .ft-captain { margin-top: 6px; padding: 7px 0; font-size: 0; border-radius: 6px; }
+  .ft-slot .ft-captain::before { content: "C"; font: 700 11px/1 var(--mono); }
+  .ft-slot .ft-captain[aria-pressed="true"]::before { content: "C · 2×"; }
+
+  /* Game page series list: chips of three widths wrapped into a ragged stack. Two equal
+     columns; the other series (a different round) takes its own full row. */
+  /* Both are <nav>s, so style.css's phone header rules (sideways scroll, -16px margins, edge
+     fade, 13px link padding) hit them too. Undo those here. */
+  :is(.gm-series, .crumbs) {
+    grid-area: auto; overflow: visible; margin-inline: 0; padding: 0;
+    -webkit-mask-image: none; mask-image: none;
+  }
+  .crumbs a { padding: 0; }
+  .gm-series { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  .gm-series > .gm-series-k { grid-column: 1 / -1; line-height: 1.5; margin: 0; }
+  .gm-series > .gm-chip { min-width: 0; margin: 0; padding: 8px 10px; white-space: normal; font-size: 11px; }
+  .gm-series > .gm-chip small { font-size: 9px; letter-spacing: .06em; }
+  #app .gm-series > .gm-chip-other { grid-column: 1 / -1; margin-left: 0; }
+
+  /* Fantasy: two player cards a row, so each position's pool is half as long to scroll. */
+  .ft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 8px; }
+  /* Lineup cards are ~80px wide: their flip and full-size buttons covered the name. */
+  .ft-view-lineup .ft-card :is(.ft-turn, .ft-expand) { display: none; }
+
+  /* Content drafts: "Ban 12" wrapped to two lines in the 44px ban tiles. */
+  .draft-seq .draft-tag { white-space: nowrap; font-size: 9px; letter-spacing: 0; }
+
+  /* Stat cards (profile Stats and Combat, hero page): two a row instead of one screen-wide
+     card each. The radar and any wide card keep the full row. */
+  .cards.player-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cards.player-cards > .card { padding: 12px; min-width: 0; }
+  .cards.player-cards > :is(.radar-card, .wide) { grid-column: 1 / -1; }
+  .cards.player-cards .card .k { font-size: 10px; letter-spacing: .06em; }
+  .cards.player-cards .card .v { font-size: 28px; margin: 8px 0 6px; overflow-wrap: anywhere; }
+  .cards.player-cards .card .v.pair { font-size: 21px; white-space: normal; }
+  .cards.player-cards .card .v.small { font-size: 19px; }
+  .cards.player-cards .card .s { font-size: 11px; overflow-wrap: anywhere; }
+
+  /* Game page: the five standouts two a row, and the section tabs stick to the top while
+     you scroll a long section (the header scrolls away on phones). */
+  .gm-standouts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .gm-stand { padding: 8px; gap: 8px; align-items: flex-start; }
+  .gm-stand .hero-img.fact-img { width: 36px; height: 20px; }
+  .gm-stand .v { font-size: 18px; }
+  .pp-tabs.gm-tabs { position: sticky; top: 0; z-index: 15; background: var(--ink); }
+
+  /* Search results: the kind ("Player") sat in a 44px column and ran into the name. It becomes
+     a small label over the name; long league chips cut off with an ellipsis. */
+  .search-hit { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind chip" "main chip"; row-gap: 2px; }
+  .search-hit .sh-kind { grid-area: kind; font-size: 9px; }
+  .search-hit .sh-main { grid-area: main; min-width: 0; }
+  .search-hit .lg-chip { grid-area: chip; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Profile Items: the hero filter scrolls sideways instead of stacking six rows. */
+  .ih-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; padding-bottom: 2px; }
+  .ih-chips::-webkit-scrollbar { display: none; }
+  .ih-chips > * { flex: none; }
+
+  /* ---------- tap targets ---------- */
+  /* Card flip and full-size buttons are 14–28px: a bigger invisible hit area around each. */
+  .ft-card :is(.ft-turn, .ft-expand)::before { content: ""; position: absolute; inset: -7px; }
+  .mx-g { display: inline-block; min-width: 32px; padding: 7px 6px; text-align: center; }
+  .gm-ext a { display: inline-block; padding: 8px 4px; }
+  :is(.ft-rest, .ft-saved-week, .how) > summary { padding-block: 10px; }
+  /* iOS zooms the page into any field under 16px when it takes focus. */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea { font-size: 16px; }
+  select { min-height: 36px; }
+}
+
+/* All tabs fit on the line (app.js fitNav): show them and drop More ▾. */
+@media (max-width: 760px) {
+  nav.nav-fits { overflow-x: hidden; }
+  nav.nav-fits .nav-extra { display: flex; }
+  nav.nav-fits .nav-more { display: none; }
+  /* a touch tighter so six tabs fit a 390px iPhone; space-between spreads them on wider ones */
+  nav.nav-fits a { padding-left: 6px; padding-right: 6px; }
+  nav.nav-fits a.active::after { left: 6px; right: 6px; }
+  nav.nav-fits a.nav-cta { margin-left: 4px; margin-right: 0; padding: 8px 9px; }
+}
+
+/* Highlight cards: a compact two-column grid instead of a sideways carousel of big cards.
+   Column pager: "‹ current page ›" on one line; the arrows step through the pages. */
+@media (max-width: 760px) {
+  .cards:not(.player-cards) {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+    overflow: visible; margin: 0 0 20px; padding: 0; scroll-snap-type: none;
+  }
+  .cards:not(.player-cards) > .card { flex: none; min-width: 0; padding: 8px 9px 9px; border-radius: 6px; }
+  .cards:not(.player-cards) > .card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .cards:not(.player-cards) .card .k { font-size: 8.5px; letter-spacing: .06em; gap: 3px; line-height: 1.2; }
+  .cards:not(.player-cards) .card .k .info { transform: scale(.8); margin: -3px 0; }
+  /* value and name on one line; the sub-line clamps to two */
+  .cards:not(.player-cards) .card .v { font-size: 18px; margin: 4px 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #app .cards:not(.player-cards) .card .v.small { font-size: 13px; line-height: 1.2; }
+  .cards:not(.player-cards) .card .v a { display: flex; align-items: center; max-width: 100%; }
+  .cards:not(.player-cards) .card .v :is(a, span) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .cards:not(.player-cards) .card .v .inline-team-logo { width: 14px; height: 14px; flex: none; }
+  .cards:not(.player-cards) .card .s {
+    font-size: 10px; line-height: 1.3; overflow: hidden;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  }
+
+  .col-pager { overflow: visible; }
+  .col-pager .cp-page:not(.on) { display: none; }
+  #app .col-pager button { min-height: 32px; padding-block: 6px; font-size: 10px; }
+  .col-pager .cp-page.on { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* Crosstable rows: rank, logo and the unique tag on one line. The full name wrapped one
+   letter per line once the table squeezed the column. */
+@media (max-width: 760px) {
+  .ct-row { padding: 0 4px; white-space: nowrap; height: 40px; }
+  .ct-row .team-link > span { display: none; }
+  .ct-row .team-link { display: inline-flex; vertical-align: middle; }
+  .ct-row .inline-team-logo { margin: 0; }
+  .ct-rank { width: 14px; font-size: 9px; }
+  .ct-ab { margin-left: 4px; font-size: 10px; font-weight: 700; color: var(--dust); }
+  /* score only in the cells (the week stays in the tooltip), so ten columns fit a phone */
+  .ct { width: 100%; table-layout: fixed; }
+  .ct-corner, .ct-row { width: 66px; }
+  .ct-row .inline-team-logo { width: 12px; height: 12px; } /* the logo is the row's link to the team */
+  .ct-col { min-width: 0; font-size: 9px; padding: 6px 0; letter-spacing: 0; }
+  .ct-m { min-height: 32px; padding: 2px 0; font-size: 10.5px; letter-spacing: -.02em; }
+  .ct-m small { display: none; }
+  .ct-m.up { font-size: 9px; letter-spacing: 0; }
+}
+
+/* Team tags (lib/team-tags.js) in place of full names where a name won't fit on a phone:
+   bracket slots, the seeding table, game facts, Ratings, the draft bar and fantasy cards.
+   The full name stays in the markup (and the title or link), only the tag is drawn. */
+@media (max-width: 760px) {
+  :is(.po-br, .po-tname, .gm-fact .s, .rt-who small, .gm-series) [data-tag],
+  :is(.ft-team-name, .td-nm)[data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  :is(.po-br, .po-tname, .gm-fact .s, .rt-who small, .gm-series) [data-tag]::after,
+  :is(.ft-team-name, .td-nm)[data-tag]::after {
+    content: attr(data-tag); font: 700 var(--tag-fs, 11px)/1.2 var(--mono); letter-spacing: .04em;
+  }
+  .ft-team-name[data-tag] { --tag-fs: 12px; }
+}
+
+/* Playoff bracket: narrow boxes now that slots show tags, so far less sideways scrolling. */
+@media (max-width: 760px) {
+  .po-br, :is(.wkb-box, .po-final) .po-br { --cw: 104px; --g: 14px; grid-template-columns: 18px repeat(var(--cols), var(--cw)); }
+  .po-wk { font-size: 9px; letter-spacing: .04em; }
+  .po-lbl { font-size: 9px; }
+  .po-mh { padding: 4px 6px; font-size: 8.5px; letter-spacing: .04em; }
+  .po-slot, button.po-slot { gap: 5px; padding: 4px 6px; font-size: 11px; }
+  .po-slot .inline-team-logo { width: 13px; height: 13px; margin: 0; }
+  .po-seed { min-width: 9px; font-size: 9px; }
+  .po-gw { font-size: 11px; }
+  .po-mp, .po-m .po-odds { padding: 3px 6px 5px; font-size: 9.5px; }
+}

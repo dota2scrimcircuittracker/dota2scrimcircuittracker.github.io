@@ -1,6 +1,7 @@
 // The draft model on the page (lib/cmdraft.js, Project Sybil's model): loading each division's
 // draft file, reading a game's ten players, and the game page's Draft tab.
 import { DIVISIONS, esc, pct, portrait, playerLink, divLite } from "../core.js";
+import { tagOf } from "../lib/team-tags.js";
 import { gameContext, readDraft, buildDraft, draftProbability, scoreHeroes, openRoleFor, CM_STEPS, FIT, teamFive, preDraft, draftTable, draftAt } from "../lib/cmdraft.js";
 export { teamFive, draftTable, draftAt };
 import { heroImg } from "../lib/hero-meta.js";
@@ -234,9 +235,9 @@ const resultChip = (won, post) => {
 // Two odds bars, before and after the draft, each one team's share against the other's.
 export const oddsBars = (us, them, pre, post) => `<div class="td-odds">
   ${[["Before the draft", pre], ["After the draft", post]].map(([label, p]) => `<div class="td-orow"><small>${label}</small>
-    <span class="td-us td-fit"><span class="td-nm">${esc(us)}</span> <b>${pct(p)}</b></span>
+    <span class="td-us td-fit"><span class="td-nm" data-tag="${esc(tagOf(us))}">${esc(us)}</span> <b>${pct(p)}</b></span>
     <span class="td-track"><i style="width:${(p * 100).toFixed(1)}%"></i><em></em></span>
-    <span class="td-them td-fit"><b>${pct(1 - p)}</b> <span class="td-nm">${esc(them)}</span></span></div>`).join("")}
+    <span class="td-them td-fit"><b>${pct(1 - p)}</b> <span class="td-nm" data-tag="${esc(tagOf(them))}">${esc(them)}</span></span></div>`).join("")}
   <div class="td-delta">Draft: <b class="${post - pre >= 0.005 ? "cm-up" : post - pre <= -0.005 ? "cm-down" : ""}">${pts(post - pre)}</b> for ${esc(us)}</div>
 </div>`;
 

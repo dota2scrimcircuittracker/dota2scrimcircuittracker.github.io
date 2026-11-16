@@ -1,5 +1,6 @@
 // Shared Fantasy player cards, used by the picker, saved lineups, and tier list.
 import { esc } from "../core.js";
+import { tagOf } from "../lib/team-tags.js";
 import { playerKey, mainAccount } from "../lib/stats.js";
 import { heroById, heroImg, heroVert, HERO_META } from "../lib/hero-meta.js";
 import { cardArtwork } from "../lib/card-art.js";
@@ -157,7 +158,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
     const plateParts = [
       ["name", part("name", "ft-name", nameShown, "span", ` title="${esc(cardName)}"`)],
       ["record", part("record", "ft-record", recordHtml, "span", ' aria-label="Win-loss record"')],
-      ["team", part("team", "ft-tm", `${teamMark}<span class="ft-team-name">${esc(p.team)}</span>`)],
+      ["team", part("team", "ft-tm", `${teamMark}<span class="ft-team-name" data-tag="${esc(tagOf(p.team))}">${esc(p.team)}</span>`)],
       ["hero", face ? part("hero", "ft-sig", `${esc(face)}${faceRec ? ` · ${faceRec.games} game${faceRec.games === 1 ? "" : "s"}` : ""}`) : ""],
     ];
     const onPlate = plateParts.filter(([k]) => !partState(layout, k).placed).map(([, h]) => h).join("");
@@ -181,7 +182,7 @@ export function createPlayerCards(matches, { cards = new Map(), teams = [], tier
         ${livingBorderHtml(equipment)}
         ${cosmeticEmblems(equipment)}
         <div class="ft-face ft-back" aria-hidden="true">
-          <span class="ft-bhead">${tierChip}<span class="ft-bname"><span class="ft-name" title="${esc(cardName)}">${nameShown}</span><span class="ft-tm">${teamMark}<span class="ft-team-name">${esc(p.team)}</span></span>${st?.rank ? `<span class="ft-medal">${esc(medal(st.rank))}${role ? ` · ${role >= 4 ? "Support" : "Core"}` : ""}</span>` : ""}</span></span>
+          <span class="ft-bhead">${tierChip}<span class="ft-bname"><span class="ft-name" title="${esc(cardName)}">${nameShown}</span><span class="ft-tm">${teamMark}<span class="ft-team-name" data-tag="${esc(tagOf(p.team))}">${esc(p.team)}</span></span>${st?.rank ? `<span class="ft-medal">${esc(medal(st.rank))}${role ? ` · ${role >= 4 ? "Support" : "Core"}` : ""}</span>` : ""}</span></span>
           <span class="ft-stats">${statsHtml}</span>
           <span class="ft-label">Positions played</span>
           <span class="ft-posbars">${[1, 2, 3, 4, 5].map((n) => { const c = st?.pos[n - 1] ?? 0; return `<span class="${n === slot ? "here" : ""}" title="Pos ${n}: ${c} game${c === 1 ? "" : "s"}"><i style="height:${Math.round((100 * c) / posMax)}%"></i><b>${n}</b></span>`; }).join("")}</span>

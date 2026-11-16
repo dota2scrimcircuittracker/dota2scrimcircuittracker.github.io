@@ -21,7 +21,7 @@ import { firstBloodOf } from "../lib/combat.js";
 import { tagContext, gameTags, tagsHtml } from "../lib/gametags.js";
 import { plusSlot } from "../lib/hero-levels.js";
 import { wireStreakCharts, buildOrderHtml } from "../lib/combat-charts.js";
-import { app, pageHead, teamLink, dur, when, sortableTable, pct, scrimNames, divData, editUnlocked, missingGames, seriesOptions, unlockEdit, divUploaded, lockEdit, allMatches, esc, crumbs, floorOf, gameMvp, shortDate, portrait, playerLink, kg, fmt, heroLink, mapCard, playerTabs, draftStrip, wirePlayerTabs, wireMapCards } from "../core.js";
+import { app, pageHead, teamLink, teamName, dur, when, sortableTable, pct, scrimNames, divData, editUnlocked, missingGames, seriesOptions, unlockEdit, divUploaded, lockEdit, allMatches, esc, crumbs, floorOf, gameMvp, shortDate, portrait, playerLink, kg, fmt, heroLink, mapCard, playerTabs, draftStrip, wirePlayerTabs, wireMapCards } from "../core.js";
 import { gameCombatHtml, detailsFor } from "../parts/combat.js";
 import { rateOf } from "../parts/draft.js";
 import { gameItemsHtml } from "../parts/items.js";
@@ -183,6 +183,7 @@ export async function renderMatch(id, src) {
   const plusAt = (p) => plusSlot(p.account_id, p.hero, m.start_time); // Dota Plus level then (lib/hero-levels.js)
   const teamOf = (t) => m.players.filter((p) => p.team === t);
   const nameOf = (t) => (t === "a" ? m.team_a : m.team_b);
+  const tn = (t) => teamName(src, nameOf(t));
   const linkOf = (t) => (t === "a" ? teamLink(src, m.team_a, m.team_a_id) : teamLink(src, m.team_b, m.team_b_id));
 
   const plate = (t) => {
@@ -218,7 +219,7 @@ export async function renderMatch(id, src) {
     const lead = (wa ?? 0) >= (wb ?? 0) ? "a" : "b";
     const stage = (s ? isPostseason(s) : playoffGame(first)) ? "Playoffs" : "Group stage";
     const date = shortDate(new Date(first.start_time * 1000));
-    return `<a class="gm-chip gm-chip-other s-${lead}" href="${src.link(first)}"><small>${stage} series · ${date}</small>${wa === wb ? `${wa ?? "?"}–${wb ?? "?"}` : `${esc(lead === "a" ? m.team_a : m.team_b)} ${Math.max(wa, wb)}–${Math.min(wa, wb)}`}</a>`;
+    return `<a class="gm-chip gm-chip-other s-${lead}" href="${src.link(first)}"><small>${stage} series · ${date}</small>${wa === wb ? `${wa ?? "?"}–${wb ?? "?"}` : `<span>${teamName(src, lead === "a" ? m.team_a : m.team_b)} ${Math.max(wa, wb)}–${Math.min(wa, wb)}</span>`}</a>`;
   }).join("");
   let seriesHtml = "";
   if (others.length > 1 || otherHtml) {
@@ -228,13 +229,13 @@ export async function renderMatch(id, src) {
     const [wa, wb] = s ? (s.home === m.team_a_id ? [s.home_score, s.away_score] : [s.away_score, s.home_score]) : [wins[m.team_a.toLowerCase()], wins[m.team_b.toLowerCase()]];
     const shown = inSeries ? others : others.slice(-8);
     seriesHtml = `<nav class="gm-series" aria-label="${inSeries ? "Games in this series" : "Meetings between these teams"}">
-      <span class="gm-series-k">${inSeries ? "Series" : "Head to head"} <b>${esc(m.team_a)} ${wa ?? "?"}–${wb ?? "?"} ${esc(m.team_b)}</b></span>
+      <span class="gm-series-k">${inSeries ? "Series" : "Head to head"} <b>${teamName(src, m.team_a)} ${wa ?? "?"}–${wb ?? "?"} ${teamName(src, m.team_b)}</b></span>
       ${shown.map((g) => {
         const n = others.indexOf(g) + 1, win = g.winner === "a" ? g.team_a : g.team_b;
         const side = win.toLowerCase() === m.team_a.toLowerCase() ? "a" : "b";
         return g === m
-          ? `<span class="gm-chip on s-${side}" aria-current="page"><small>Game ${n} · won by</small>${esc(win)}</span>`
-          : `<a class="gm-chip s-${side}" href="${src.link(g)}"><small>Game ${n}${inSeries ? "" : ` · ${shortDate(g.createdAt)}`} · won by</small>${esc(win)}</a>`;
+          ? `<span class="gm-chip on s-${side}" aria-current="page"><small>Game ${n} · won by</small>${teamName(src, win)}</span>`
+          : `<a class="gm-chip s-${side}" href="${src.link(g)}"><small>Game ${n}${inSeries ? "" : ` · ${shortDate(g.createdAt)}`} · won by</small>${teamName(src, win)}</a>`;
       }).join("")}${otherHtml}</nav>`;
   }
 
@@ -246,12 +247,12 @@ export async function renderMatch(id, src) {
   const facts = [
     ["MVP", `${portrait(mvp.hero, "fact-img")}${plusAt(mvp)}${playerLink(src, mvp)}`, `${esc(mvp.hero)} · ${mvp.kills}/${mvp.deaths}/${mvp.assists}${mvpRate ? ` · rating ${mvpRate.rating}` : ""}`, "mvp"],
     s && ["Biggest lead", `<span class="s-${s.lead.a.max >= s.lead.b.max ? "a" : "b"}">+${kg(Math.max(s.lead.a.max, s.lead.b.max))}</span>`,
-      `${esc(nameOf(s.lead.a.max >= s.lead.b.max ? "a" : "b"))} at ${s.lead[s.lead.a.max >= s.lead.b.max ? "a" : "b"].minute}'`],
+      `${tn((s.lead.a.max >= s.lead.b.max ? "a" : "b"))} at ${s.lead[s.lead.a.max >= s.lead.b.max ? "a" : "b"].minute}'`],
     s && [s.thrown >= BIG_LEAD ? "Comeback" : "Loser's best lead", s.thrown >= 1000 ? `<span class="s-${s.loser}">+${kg(s.thrown)}</span>` : "None",
-      s.thrown >= 1000 ? `${esc(nameOf(s.loser))} at ${s.thrown_minute}', then lost` : `${esc(nameOf(m.winner))} led wire to wire`],
-    s && ["Lead changes", String(s.lead_changes), s.at10 != null ? `${esc(nameOf(s.at10 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at10))} at 10'` : ""],
+      s.thrown >= 1000 ? `${tn((s.loser))} at ${s.thrown_minute}', then lost` : `${tn((m.winner))} led wire to wire`],
+    s && ["Lead changes", String(s.lead_changes), s.at10 != null ? `${tn((s.at10 >= 0 ? "a" : "b"))} +${kg(Math.abs(s.at10))} at 10'` : ""],
     fb && ["First blood", `<span class="s-${fb.team}">${clock(fb.t)}</span>`, `${playerLink(src, fbP)} · ${esc(fbP.hero)}${fb.victim != null ? ` on ${esc(m.players[fb.victim].hero)}` : ""}`, "first_blood"],
-    firstRosh && ["First Roshan", `<span class="s-${firstRosh.side}">${clock(firstRosh.time)}</span>`, esc(nameOf(firstRosh.side))],
+    firstRosh && ["First Roshan", `<span class="s-${firstRosh.side}">${clock(firstRosh.time)}</span>`, tn((firstRosh.side))],
     !s && ["Kills", `<span class="s-a">${m.score_a}</span>–<span class="s-b">${m.score_b}</span>`, `${fmt(m.score_a + m.score_b)} in ${dur(m.duration_sec)}`],
   ].filter(Boolean);
   const factsHtml = `<div class="gm-facts reveal">${facts.map(([k, v, sub, tip], i) => `<div class="gm-fact" style="--i:${i}">
@@ -346,7 +347,7 @@ export async function renderMatch(id, src) {
       const tier = season.get(r.key), diff = tier ? r.rating - tier.rating : null;
       return `<li class="s-${p.team}${p === mvp ? " mvp" : ""}" style="--i:${k}">
         <span class="rt-n">${k + 1}</span>${portrait(p.hero)}
-        <span class="rt-who"><b>${plusAt(p)}${playerLink(src, p)}</b><small>${esc(p.hero)} · ${esc(nameOf(p.team))}${p.position ? ` · pos ${p.position}` : ""}</small></span>
+        <span class="rt-who"><b>${plusAt(p)}${playerLink(src, p)}</b><small>${esc(p.hero)} · ${tn(p.team)}${p.position ? ` · pos ${p.position}` : ""}</small></span>
         <span class="rt-why">${up.map((x) => `<em class="up">${label(x)}</em>`).join("")}${down.map((x) => `<em class="down">${label(x)}</em>`).join("")}</span>
         <span class="rt-season">${tier ? `<span class="rt-tier t-${tier.tier}">${tier.tier}</span> ${tier.rating}<small>${diff >= 0 ? "+" : "−"}${Math.abs(diff)} vs season</small>` : `<small>no season rating</small>`}</span>
         <span class="rt-r t-${r.tier}"><b>${r.rating}</b><small>${r.tier}</small></span>
