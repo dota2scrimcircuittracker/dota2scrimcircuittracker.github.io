@@ -213,6 +213,26 @@ export function flipPlayerCard(c, on) {
 // different shape (FB-26XITV). The size is measured with the zoom off, then the card goes to
 // CARD_DESIGN_WIDTH (CSS .ft-fit) zoomed to it; a resize of the card's box measures again.
 export const CARD_DESIGN_WIDTH = 280;
+// One-line text that would be cut off (a long name, team, hero line) gets smaller until it fits,
+// down to `floor` of its own size; past that the ellipsis takes over. `measure` is the element that
+// overflows when it differs from the one whose size changes (the team name inside .ft-tm).
+export function shrinkToFit(el, { measure = el, floor = 0.55 } = {}) {
+  el.style.removeProperty("font-size");
+  if (!measure.clientWidth) return;
+  const base = parseFloat(getComputedStyle(el).fontSize);
+  let size = base;
+  while (measure.scrollWidth > measure.clientWidth + 1 && size > base * floor) {
+    size -= Math.max(0.25, base * 0.03);
+    el.style.fontSize = `${size}px`;
+  }
+}
+const FIT_TEXT = [".ft-name", ".ft-sig", ".ft-hname", ".ft-tm"];
+function fitCardText(card) {
+  for (const el of card.querySelectorAll(FIT_TEXT.join(","))) {
+    const inner = el.classList.contains("ft-tm") ? el.querySelector(".ft-team-name") : null;
+    shrinkToFit(el, { measure: inner ?? el, floor: el.classList.contains("ft-name") ? 0.4 : 0.55 });
+  }
+}
 function fitCard(card) {
   card.classList.remove("ft-fit");
   card.style.removeProperty("zoom");
@@ -222,6 +242,7 @@ function fitCard(card) {
   card.classList.add("ft-fit");
   card.style.zoom = (w / CARD_DESIGN_WIDTH).toFixed(4);
   card.style.setProperty("--fit", card.style.zoom); // collection.css undoes it on SVG layers in Firefox
+  fitCardText(card);
 }
 const fitBoxes = new ResizeObserver((entries) => {
   for (const { target } of entries) {

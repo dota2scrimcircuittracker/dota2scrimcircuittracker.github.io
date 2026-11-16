@@ -716,3 +716,4 @@ dialog.pc-dialog{--tc:#eac47e;width:min(760px,94vw)}
 @media(max-width:560px){.pc-row{grid-template-columns:44px minmax(0,1fr);gap:8px 10px}.pc-thumb{width:44px}.pc-controls{grid-column:1/-1}.pc-bonus,.pc-self-wrap{flex-direction:column;align-items:stretch;gap:3px}.pc-self button{letter-spacing:0}}
 /* Narrow cards (three to a row on a phone): one rating button per row, so no label spills out. */
 .profile-card-designs .card-rating{container-type:inline-size}@container (max-width:150px){.card-rating-votes{grid-template-columns:1fr}}
+.pc-tied{display:inline-block;width:max-content;padding:0 6px;border-radius:999px;border:1px solid #c9a24a;color:#eac47e;font:600 10px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.04em}

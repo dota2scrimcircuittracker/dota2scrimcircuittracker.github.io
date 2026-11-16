@@ -48,6 +48,20 @@ export function assignSlots(designs) {
   return Object.fromEntries(RATINGS.map((r, i) => [r, seat[i]]));
 }
 
+// Whether a design is tied: the owner's own ratings (on it or on any of their other designs) can
+// change the rarity it ends up with. Both cards of a contested pair count. Tied cards are the ones
+// the owner settles in the Winter tiebreak window.
+export function selfDecides(designs, slot) {
+  if (!designs.some((d) => d.slot === slot)) return false;
+  const seen = new Set();
+  for (const target of designs) for (const self of [null, ...RATINGS]) {
+    const seats = assignSlots(designs.map((d) => (d.slot === target.slot ? { ...d, self } : d)));
+    seen.add(RATINGS.find((r) => seats[r] === slot) ?? "none");
+    if (seen.size > 1) return true;
+  }
+  return false;
+}
+
 // Map of account -> the position (1-5) they played most in these games, stand-ins skipped.
 export function mainPositions(games) {
   const counts = new Map();

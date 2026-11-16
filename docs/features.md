@@ -879,8 +879,9 @@ Winter Fantasy (one Fantasy across every division; `lib/winter.js`) is built on 
 Each pack holds 5 player cards, one per position. A lineup can only use players you own a card
 of, and rarer cards give bigger bonuses: a main bonus stat chosen by the card's owner, plus a
 two random sub bonuses (each half the main) rolled per copy (`lib/card-bonus.js`). The pool of players comes from
-`scripts/gen/gen-player-pool.js`. Packs open Dec 1 2026: every player starts with 3 free packs
-and gets a free pack each day.
+`scripts/gen/gen-player-pool.js`. The first Winter mini starts Thu Dec 3 2026. Packs open
+Thu Nov 26 (midnight US Eastern), a week before: every player starts with 3 free packs and gets a
+free pack each day.
 
 What is live before then (`parts/pack-cards.js`, on your own profile beside each saved card):
 
@@ -892,7 +893,7 @@ What is live before then (`parts/pack-cards.js`, on your own profile beside each
   stat or swap, your choice is saved (Worker action `pack-cards`); until then it follows your slots.
   A saved pack card that goes back to plain is replaced by your next design.
 - **Lock** — each of the four has a Lock button (asks to confirm). A locked card's design can't be
-  re-saved or cleared, it can't be swapped out and its bonus is fixed until packs open on Dec 1
+  re-saved or cleared, it can't be swapped out and its bonus is fixed until packs open on Nov 26
   (Worker action `pack-lock`, stored as `packLocks`). Votes and your own rating carry on. You can't
   unlock it.
 - **Arcana cards come only from the Arcana Cup** — the top 3 of each Cup bracket (6 in all,
@@ -906,9 +907,17 @@ What is live before then (`parts/pack-cards.js`, on your own profile beside each
   beside them (Worker action `self-rate`). Each card shows its current rarity live.
 - **Changing the design starts its votes over.** Anyone's pack cards are read from
   `GET /cosmetics/player-cards/<account>` (vote counts only); visitors see a chip on each one.
-- **Voting closes at the end of Thanksgiving**, Thu Nov 26 2026 US Eastern; the four pack cards,
-  including ones entered automatically, then freeze, and arcana bonus stats and locks can't change.
-  Arcana cards aren't frozen per player: they're always read from the Cup podium, which is stored
-  (`cup:<id>:<category>:podium`) and fixed once the bracket's prizes go out.
+- **Cards lock for the first mini at the end of Mon Nov 23** (US Eastern, `WINTER.lockAt`). The four
+  pack cards, including ones entered automatically, freeze with their votes as they stood, and
+  arcana bonus stats and locks can't change. **Votes never close**: ratings keep counting for later
+  minis, but any vote, cup vote or design save that could touch a player's pack cards freezes them
+  first (`packSlots`), so a late freeze equals one at the lock. Arcana cards aren't frozen per
+  player: they're always read from the Cup podium, which is stored (`cup:<id>:<category>:podium`)
+  and fixed once the bracket's prizes go out.
+- **Tue Nov 24** is for Fav to sort out problems.
+- **Tiebreak picks, all of Wed Nov 25** (`WINTER.tiebreakAt` until `opensAt`) — a frozen card is
+  tied when its owner's own rating decides its rarity (`lib/player-cards.js` `selfDecides`). Its
+  profile row shows "Tied", and that day the owner can set their rating on it (Worker `self-rate`
+  writes into the freeze and works the slots out again). Untied cards can't be re-rated.
 - A one-time notice (`lib/winter-notice.js`) points people to their profile, from Nov 14 until
-  voting closes.
+  cards lock.

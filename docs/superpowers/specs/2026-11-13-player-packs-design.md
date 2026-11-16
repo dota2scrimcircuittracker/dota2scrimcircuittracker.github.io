@@ -74,6 +74,13 @@ normal until the Thanksgiving close. Locking is final until packs ship (the butt
 confirm). It exists so a player can't reset a card's votes by accident. Stored as `packLocks`
 (slots) on the collection state; ignored from `opensAt` on.
 
+> **Changed 2026-11-16:** the first Winter mini starts Thu Dec 3. Pack cards lock at the end of
+> Mon Nov 23 (`WINTER.lockAt`), Tue Nov 24 is for sorting out problems, owners pick tied cards'
+> rarity on Wed Nov 25 (`WINTER.tiebreakAt`), and packs open Thu Nov 26 (`WINTER.opensAt`). Votes
+> never close: after the lock they keep counting for later minis, and each one freezes the owner's
+> pack cards first so it can't move them. See docs/features.md "Winter player packs" for the
+> current rules; the text below is the original design.
+
 **Voting closes on Thanksgiving** (`WINTER.votesCloseAt`: end of Thursday 26 November 2026, US
 Eastern). From then on:
 

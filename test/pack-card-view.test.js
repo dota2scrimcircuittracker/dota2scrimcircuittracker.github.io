@@ -29,7 +29,7 @@ test("locked view reads the frozen slots and spots a redesigned slot", () => {
   const v = packCardView(res, [d0, d1]);
   assert.equal(v.locked, true);
   assert.equal(v.count, 2);
-  assert.deepEqual(v.cards.get(0), { main: "kills", rarity: "legendary", self: null, changed: true });
+  assert.deepEqual(v.cards.get(0), { main: "kills", rarity: "legendary", self: null, changed: true, tied: false });
   assert.equal(v.cards.get(1).changed, false);
   assert.equal(v.defaultCommon, true);
 });
@@ -43,8 +43,10 @@ test("chip text for the owner, visitors and after the lock", () => {
 });
 
 test("strip text", () => {
-  assert.equal(stripText({ locked: false, count: 2 }, { closesText: "Thanksgiving, Nov 26" }), "Winter pack cards · Voting closes Thanksgiving, Nov 26");
+  assert.equal(stripText({ locked: false, count: 2 }, { closesText: "Mon Nov 23" }), "Winter pack cards · Cards lock Mon Nov 23");
   assert.equal(stripText({ locked: true, count: 2 }, { closesText: "x" }), "Winter pack cards are locked.");
+  assert.equal(stripText({ locked: true, count: 2, tiedCount: 1, tiebreak: false }, { closesText: "x" }), "Winter pack cards are locked · Tied cards pick a rarity Wed Nov 25");
+  assert.equal(stripText({ locked: true, count: 2, tiedCount: 1, tiebreak: true }, { closesText: "x" }), "Winter pack cards are locked · Tied cards: pick a rarity today");
 });
 
 const d = (hue, extra = {}) => ({ ...DEFAULT_EQUIPMENT, hue, ...extra });
@@ -93,7 +95,7 @@ test("locks: locked cards aren't swap targets and can't be locked again; nothing
   assert.equal(lockable(v, 1, 0, 10), true);
   assert.equal(lockable(v, 4, 0, 10), false); // sits out
   assert.equal(lockable(v, 1, 10, 10), false);
-  // Nothing locks once Winter voting closes on Thanksgiving, though packs haven't opened.
-  assert.equal(lockable(v, 1, WINTER.votesCloseAt - 1, WINTER.opensAt), true);
-  assert.equal(lockable(v, 1, WINTER.votesCloseAt, WINTER.opensAt), false);
+  // Nothing locks once Winter pack cards lock (Mon Nov 23), though packs haven't opened.
+  assert.equal(lockable(v, 1, WINTER.lockAt - 1, WINTER.opensAt), true);
+  assert.equal(lockable(v, 1, WINTER.lockAt, WINTER.opensAt), false);
 });

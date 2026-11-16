@@ -1,8 +1,8 @@
 import { grantLogin, applyPackGrants, rollPack, recycleCards, openArcanaUpgrade, saveCardDesign, setCardPreferences, setCardName, setCardOrder, CARD_SLOTS, slotCount, cardAppearance, cardDesignState, setNickname, shownNickname, setProfileBackground } from '../../../public/lib/cosmetics-engine.js';
 import { designKey, castVote, tally, RATINGS, isPlainDesign } from '../../../public/lib/card-ratings.js';
 import { statsFor } from '../../../public/lib/card-bonus.js';
-import { PACK_CARDS_MAX, votingOpen, WINTER } from '../../../public/lib/winter.js';
-import { assignSlots } from '../../../public/lib/player-cards.js';
+import { PACK_CARDS_MAX, beforeLock, tiebreakOpen, WINTER } from '../../../public/lib/winter.js';
+import { assignSlots, selfDecides } from '../../../public/lib/player-cards.js';
 import { packCardList, packLocksOf } from '../../../public/lib/pack-card-list.js';
 import { itemByKey } from '../../../public/lib/cosmetics-catalog.js';
 import { isAdmin, ADMIN_ACCOUNT, giftPacks, clearGifts, sendPack } from '../../../public/lib/pack-gifts.js';
@@ -61,7 +61,18 @@ const pullKey=(at,account,requestId)=>`pull:${String(at).padStart(15,'0')}:${acc
 // One serialized vault for this league. Inventory, receipts, daily grants and appearance
 // writes commit together. Browser input never supplies drop odds, items or counts.
 // Refusals while a Winter pack card is locked (pack-lock), until packs open.
-const LOCKED_DESIGN='This card is locked for Winter packs until Dec 1.',LOCKED_CARD='That card is locked.';
+const LOCKED_DESIGN='This card is locked for Winter packs until Nov 26.',LOCKED_CARD='That card is locked.';
+// Refusal once pack cards lock for the first Winter mini (WINTER.lockAt).
+const PACKS_LOCKED='Pack cards locked on Mon Nov 23.';
+// A freeze's rarity slots from its designs (packSlots): each seat holds the design as it was.
+function frozenSlots(designs) {
+  const slots={};
+  for(const [rarity,seat] of Object.entries(assignSlots(designs))) {
+    const d=Number.isInteger(seat)&&designs.find(x=>x.slot===seat);
+    slots[rarity]=d?{slot:d.slot,design:d.design,main:d.main,designKey:d.designKey}:seat;
+  }
+  return slots;
+}
 // Collection actions that can settle the Arcana Cup (cupSettle, cupSettleCategory, cupMatch, and
 // cupPodiums before the Cup is awarded). Settling can write user rows (prize packs, cup notices),
 // the caller's own included, so these settle once at the start of the transaction, before the
@@ -136,26 +147,26 @@ export class CosmeticsVault {
     const mains=ownerState?.packArcanaMains??{};
     return mine.map(c=>({...c,main:typeof mains[c.entry]==='string'?mains[c.entry]:null}));
   }
-  // One player's pack card per rarity (lib/player-cards.js assignSlots). Before voting closes on
-  // Thanksgiving it follows votes live: { common|rare|epic|legendary: slot | "default" | null }.
-  // After the close it's frozen: worked out once, stored as packslots:<account>, and read from there
-  // ever after, so later edits and votes change nothing. Only the four voted slots freeze; arcana
-  // cards are read from the Cup (arcanaFor). Pass a transaction's storage when writing.
+  // One player's pack card per rarity (lib/player-cards.js assignSlots). Before the lock (end of Mon
+  // Nov 23) it follows votes live: { common|rare|epic|legendary: slot | "default" | null }.
+  // After the lock it's frozen: worked out once, stored as packslots:<account>, and read from there
+  // ever after, so later edits and votes change nothing. Votes keep counting after the lock, but every
+  // vote, edit or self-rating that could touch a player's pack cards freezes them first, so a late
+  // freeze equals one at the lock. The freeze keeps each design's votes and self-rating as they were
+  // (designs), so a tiebreak pick (self-rate on Wed Nov 25) can work the slots out again. Only the
+  // four voted slots freeze; arcana cards are read from the Cup (arcanaFor). Pass a transaction's
+  // storage when writing.
   // A player with no pack cards (or no account) gets the default common and no stored freeze, unless
   // `keep` (an equip after the close): then the empty freeze is stored too, so a first design saved
   // after the close never becomes a pack card.
   async packSlots(storage,account,keep=false) {
-    if(votingOpen(this.now()))return assignSlots(await this.packDesigns(storage,account));
+    if(beforeLock(this.now()))return assignSlots(await this.packDesigns(storage,account));
     const k=`packslots:${account}`,stored=await storage.get(k);
     if(stored)return stored;
     const designs=await this.packDesigns(storage,account);
     if(!designs.length&&!keep)return {frozenAt:null,slots:{common:'default',rare:null,epic:null,legendary:null}};
-    const seats=assignSlots(designs),slots={};
-    for(const [rarity,seat] of Object.entries(seats)) {
-      const d=Number.isInteger(seat)&&designs.find(x=>x.slot===seat);
-      slots[rarity]=d?{slot:d.slot,design:d.design,main:d.main,designKey:d.designKey}:seat;
-    }
-    const frozen={frozenAt:this.now(),slots};
+    const kept=designs.map(({slot,main,savedAt,design,designKey,votes,self})=>({slot,main,savedAt,design,designKey,votes,self}));
+    const frozen={frozenAt:this.now(),slots:frozenSlots(kept),designs:kept};
     await storage.put(k,frozen);
     return frozen;
   }
@@ -461,13 +472,17 @@ export class CosmeticsVault {
     // entry's design is already public on /cup. locks: the slots locked until packs open. The
     // owner's self-rating is public on purpose.
     if(req.method==='GET' && url.pathname==='/player-cards') {
-      // After Thanksgiving: locked, with the frozen slots (designs are public, as in the Gallery).
-      const state=await this.ctx.storage.get(`user:${account}`),designs=await this.packDesigns(this.ctx.storage,account,state),locked=!votingOpen(this.now());
+      // After the lock: locked, with the frozen slots (designs are public, as in the Gallery), the
+      // frozen designs' vote counts and self-ratings, and which are tied (the owner's rating decides).
+      // tiebreak: the tiebreak window is open, so tied cards can pick now.
+      const state=await this.ctx.storage.get(`user:${account}`),locked=!beforeLock(this.now());
       const frozen=locked&&await this.ctx.storage.transaction(txn=>this.packSlots(txn,account));
+      const designs=locked?(frozen.designs??[]):await this.packDesigns(this.ctx.storage,account,state);
+      const lockedInfo=locked?{slots:frozen.slots,tiebreak:tiebreakOpen(this.now()),tied:designs.filter(d=>selfDecides(designs,d.slot)).map(d=>d.slot)}:{};
       // Once every bracket is awarded the podiums are stored: read them, no settle.
       const podiums=await this.storedPodiums(this.ctx.storage)??await this.ctx.storage.transaction(txn=>this.cupPodiums(txn));
       const arcana=this.arcanaFor(podiums,account,state);
-      return json({locked,designs:designs.map(({votes,design,designKey,...d})=>({...d,...tally(votes)})),arcana:arcana.map(({entry,key,design,main,category,place})=>({entry,key,design,main,category,place})),locks:[...packLocksOf(state,this.now())].sort((a,b)=>a-b),...(locked?{slots:frozen.slots}:{})});
+      return json({locked,designs:designs.map(({votes,design,designKey,...d})=>({...d,...tally(votes)})),arcana:arcana.map(({entry,key,design,main,category,place})=>({entry,key,design,main,category,place})),locks:[...packLocksOf(state,this.now())].sort((a,b)=>a-b),...lockedInfo});
     }
     // Anyone's achievement progress, for their profile. Counting scans the whole vault, so each
     // account's answer is kept for 5 minutes.
@@ -668,7 +683,7 @@ export class CosmeticsVault {
           // they are (a new design in an earlier slot moves the four): freeze first whenever the list
           // or one of its designs would change. A late freeze equals one at the close.
           const next=saveCardDesign(saved,body.equipment,body.cardSlot);
-          if(!votingOpen(this.now())) {
+          if(!beforeLock(this.now())) {
             const was=packCardList({...saved,cardDesigns:cardDesignState(saved).cardDesigns}),will=packCardList({...next,cardDesigns:cardDesignState(next).cardDesigns});
             const inList=was.voted.some(p=>p.slot===slot);
             const keys=await this.nominatedKeys(txn,account,saved),after=next.cardDesigns[slot];
@@ -852,8 +867,9 @@ export class CosmeticsVault {
           const design=cardDesignState(owner).cardDesigns[body.cardSlot];
           if(!design)throw new Error('That card has no saved design.');
           const key=designKey(design),votesKey=`votes:${target}:${key}`;
-          // After the close, votes on nominated designs are locked (by design, whichever slot it's in).
-          if(!votingOpen(this.now())&&(await this.nominatedKeys(txn,target,owner)).has(key))throw new Error('Voting on Winter pack cards closed on Thanksgiving.');
+          // After the lock votes still count, but the owner's pack cards freeze first, so this vote
+          // doesn't move them.
+          if(!beforeLock(this.now()))await this.packSlots(txn,target);
           const votes=castVote(await txn.get(votesKey),account,body.rating??null);
           await txn.put(votesKey,votes);
           result={state:saved,rating:{slot:body.cardSlot,key,mine:votes[account]??null,...tally(votes)}};
@@ -866,7 +882,7 @@ export class CosmeticsVault {
           // cards are derived from slots (lib/pack-card-list.js). A locked card (pack-lock) must stay
           // in the four with its stat. The stat is checked against every position: a card's position
           // comes from games, so it's re-checked when the pool is built.
-          if(!votingOpen(this.now()))throw new Error('Pack cards were locked on Thanksgiving.');
+          if(!beforeLock(this.now()))throw new Error(PACKS_LOCKED);
           if(!Array.isArray(body.cards))throw new Error('Choose your pack cards.');
           const list=body.cards;
           if(list.length>PACK_CARDS_MAX)throw new Error(`Choose up to ${PACK_CARDS_MAX} pack cards.`);
@@ -906,9 +922,9 @@ export class CosmeticsVault {
           // Locks one of the four pack cards until packs open (spec 1.1 "Lock."): its design, stat
           // and place in the four can't change, so its votes can't be reset by accident. Final: the
           // player can't unlock. The four are stored as they are now (packCards), so a later design
-          // in an earlier slot can't move a locked card out. Only while voting is open: the close
-          // freezes the four anyway, and locks are ignored from WINTER.opensAt on.
-          if(!votingOpen(this.now())||this.now()>=WINTER.opensAt)throw new Error('Pack cards were locked on Thanksgiving.');
+          // in an earlier slot can't move a locked card out. Only before the lock: the lock freezes
+          // the four anyway, and locks are ignored from WINTER.opensAt on.
+          if(!beforeLock(this.now())||this.now()>=WINTER.opensAt)throw new Error(PACKS_LOCKED);
           const designs=cardDesignState(saved).cardDesigns,voted=packCardList({...saved,cardDesigns:designs}).voted;
           if(!Number.isInteger(body.slot)||!voted.some(p=>p.slot===body.slot))throw new Error('Lock one of your four pack cards.');
           const packLocks=[...new Set([...(Array.isArray(saved.packLocks)?saved.packLocks:[]),body.slot])].sort((a,b)=>a-b);
@@ -916,15 +932,26 @@ export class CosmeticsVault {
         }
         else if(body.action==='self-rate') {
           // The owner's own rating of one of their designs: only breaks ties in the rarity slots.
-          // Kept apart from votes:, so it's never counted as a community vote.
-          if(!votingOpen(this.now()))throw new Error('Pack cards were locked on Thanksgiving.');
+          // Kept apart from votes:, so it's never counted as a community vote. Before the lock it
+          // changes the live slots. After it, only in the tiebreak window (Wed Nov 25) and only on a
+          // tied card (selfDecides): the pick goes into the freeze and the slots are worked out again.
+          const now=this.now();
+          if(!beforeLock(now)&&!tiebreakOpen(now))throw new Error(now<WINTER.tiebreakAt?'Tied cards pick their rarity on Wed Nov 25.':'Pack cards are set: packs are open.');
           if(!Number.isInteger(body.cardSlot)||body.cardSlot<0||body.cardSlot>=slotCount(saved))throw new Error('Choose one of your cards.');
-          const design=cardDesignState(saved).cardDesigns[body.cardSlot];
-          if(!design)throw new Error('That card has no saved design.');
           const rating=body.rating??null;
           if(rating!=null&&!RATINGS.includes(rating))throw new Error('Choose common, rare, epic or legendary.');
-          const k=`selfrating:${account}:${designKey(design)}`;
-          if(rating==null)await txn.delete(k);else await txn.put(k,rating);
+          if(beforeLock(now)) {
+            const design=cardDesignState(saved).cardDesigns[body.cardSlot];
+            if(!design)throw new Error('That card has no saved design.');
+            const k=`selfrating:${account}:${designKey(design)}`;
+            if(rating==null)await txn.delete(k);else await txn.put(k,rating);
+          } else {
+            const frozen=await this.packSlots(txn,account),designs=frozen.designs??[];
+            if(!designs.some(d=>d.slot===body.cardSlot))throw new Error('That card is not one of your pack cards.');
+            if(!selfDecides(designs,body.cardSlot))throw new Error("That card isn't tied: votes decide its rarity.");
+            const next=designs.map(d=>d.slot===body.cardSlot?{...d,self:rating}:d);
+            await txn.put(`packslots:${account}`,{...frozen,designs:next,slots:frozenSlots(next)});
+          }
           result={state:saved,selfRating:{slot:body.cardSlot,rating}};
         }
         else if(body.action==='cup-enter') {
@@ -1038,8 +1065,8 @@ export class CosmeticsVault {
           const entry=await txn.get(`cup:${this.cup.id}:entry:${String(body.entry??'')}`);
           if(!entry)throw new Error('Choose a card in the cup.');
           if(entry.account===account)throw new Error("Rate other players' cards, not your own.");
-          // The same votes as the owner's pack cards: locked after the close if the design is nominated.
-          if(!votingOpen(this.now())&&(await this.nominatedKeys(txn,entry.account)).has(entry.key))throw new Error('Voting on Winter pack cards closed on Thanksgiving.');
+          // The same votes as the owner's pack cards: after the lock they freeze first (as 'rate').
+          if(!beforeLock(this.now()))await this.packSlots(txn,entry.account);
           const votesKey=`votes:${entry.account}:${entry.key}`,votes=castVote(await txn.get(votesKey),account,body.rating??null);
           await txn.put(votesKey,votes);
           result={state:saved,rating:{slot:entry.slot,key:entry.key,mine:votes[account]??null,...tally(votes)}};

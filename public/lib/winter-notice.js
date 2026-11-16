@@ -1,10 +1,10 @@
-// Winter player packs notice: once per visitor, from the prep launch until voting closes. It never claims packs are open; Phase 1 adds that back.
+// Winter player packs notice: once per visitor, from the prep launch until pack cards lock. It never claims packs are open; Phase 1 adds that back.
 // Same card and timing as the Arcana Cup notice (cup-notice.js), and it waits for that one to go.
 import { WINTER, PACK_CARDS_MAX } from "./winter.js";
 
 const SEEN_KEY = "winter-packs-notice-1";
 
-export const shouldShowWinterNotice = (now, seen, w = WINTER) => !seen && now >= w.prepAt && now < w.votesCloseAt;
+export const shouldShowWinterNotice = (now, seen, w = WINTER) => !seen && now >= w.prepAt && now < w.lockAt;
 
 function seen() { try { return !!localStorage.getItem(SEEN_KEY); } catch { return false; } }
 function markSeen() { try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* not remembered */ } }
@@ -18,9 +18,9 @@ function show(go) {
   card.className = "tour-invite cup-notice winter-notice";
   card.setAttribute("role", "dialog");
   card.setAttribute("aria-label", "Winter player packs");
-  card.innerHTML = `<b>Coming for Winter: player packs</b>
-    <span>Winter Fantasy uses player cards. Your first ${PACK_CARDS_MAX} card designs are your Winter pack cards. Choose each one's bonus on your profile. Votes set their rarity. Voting closes on Thanksgiving.</span>
-    <div class="tour-btns"><button type="button" class="tour-btn winter-later">Later</button><button type="button" class="tour-btn tour-primary winter-go">See my pack cards</button></div>`;
+  card.innerHTML = `<b>Get your cards ready for the Winter mini</b>
+    <span>Fantasy for the Winter mini (starts Dec 3) is played with player packs. Your first ${PACK_CARDS_MAX} card designs are your pack cards: pick each one's bonus on your profile, and rate cards in the Gallery, since votes set rarity. Cards lock Mon Nov 23. Packs open Nov 26.</span>
+    <div class="tour-btns"><button type="button" class="tour-btn winter-later">Later</button><button type="button" class="tour-btn tour-primary winter-go">Set up my cards</button></div>`;
   card.querySelector(".winter-later").onclick = close;
   // Pack cards are managed from your own profile (Manage pack cards, above your cards). Signed out: the Gallery asks you to sign in.
   card.querySelector(".winter-go").onclick = async () => { close(); go(await import("../parts/me.js").then((m) => m.myProfileHref()).catch(() => null) ?? "#/gallery/customize"); };

@@ -70,3 +70,19 @@ test("votesFromCounts: assignSlots gives the same seats as raw votes", () => {
   const fromCounts = raw.map((x) => ({ ...x, votes: votesFromCounts(tally(x.votes).counts) }));
   assert.deepEqual(assignSlots(fromCounts), assignSlots(raw));
 });
+
+test("selfDecides: tied when the owner's rating can change the slots", async () => {
+  const { selfDecides } = await import("../public/lib/player-cards.js");
+  const v = (r, n = 1) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`${r}${i}`, r]));
+  const designs = [
+    { slot: 0, votes: v("legendary"), self: null, savedAt: 1 },
+    { slot: 1, votes: v("epic"), self: null, savedAt: 2 },
+    { slot: 2, votes: v("epic"), self: null, savedAt: 3 },
+  ];
+  assert.equal(selfDecides(designs, 0), false); // alone at legendary: votes decide
+  assert.equal(selfDecides(designs, 1), true);  // shares epic with slot 2
+  assert.equal(selfDecides(designs, 2), true);
+  assert.equal(selfDecides(designs, 9), false); // not one of the designs
+  // A design with no votes takes its owner's rating: tied.
+  assert.equal(selfDecides([{ slot: 0, votes: {}, self: null, savedAt: 1 }], 0), true);
+});

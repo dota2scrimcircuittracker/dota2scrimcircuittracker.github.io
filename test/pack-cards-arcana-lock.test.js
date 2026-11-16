@@ -76,7 +76,7 @@ test('pack cards: an old opt-in packCards row (savedAt, fewer than four) still p
 });
 
 test('pack cards after the close: derived cards freeze; a first design after the close stays out; Card 5 edits change nothing',async()=>{
-  let clock=WINTER.votesCloseAt-864e5;
+  let clock=WINTER.lockAt-864e5;
   const {rows,as,get}=vaultRig('tg3',()=>clock);
   for(const a of [901,902,903])await as(a,{action:'session'});
   rows.set('user:901',{...rows.get('user:901'),inventory:{...rows.get('user:901').inventory,'tool:twin-flip':1}});
@@ -86,13 +86,12 @@ test('pack cards after the close: derived cards freeze; a first design after the
   for(const slot of [2,3,4])await as(901,{action:'equip',equipment:eq(70+slot),cardSlot:slot});
   await as(902,{action:'rate',target:901,cardSlot:2,rating:'epic'});
   await as(902,{action:'rate',target:901,cardSlot:1,rating:'legendary'});
-  clock=WINTER.votesCloseAt+36e5;
-  const closed='Voting on Winter pack cards closed on Thanksgiving.';
-  // Votes on auto-entered designs lock, the twin one too; Card 5 isn't a pack card, so it stays open.
-  assert.equal((await as(903,{action:'rate',target:901,cardSlot:0,rating:'rare'})).error,closed);
-  assert.equal((await as(903,{action:'rate',target:901,cardSlot:1,rating:'rare'})).error,closed);
+  clock=WINTER.lockAt+36e5;
+  // Votes on auto-entered designs still count, the twin one too, but the first one freezes the four.
+  assert.ok((await as(903,{action:'rate',target:901,cardSlot:0,rating:'rare'})).rating);
+  assert.ok((await as(903,{action:'rate',target:901,cardSlot:1,rating:'rare'})).rating);
   assert.ok((await as(903,{action:'rate',target:901,cardSlot:4,rating:'rare'})).rating);
-  assert.equal(rows.has('packslots:901'),false);
+  assert.equal(rows.get('packslots:901').frozenAt,WINTER.lockAt+36e5);
   // Saving a new design in Card 5 after the close is allowed and can't move the four.
   assert.ok((await as(901,{action:'equip',equipment:eq(94),cardSlot:4})).state);
   // Editing a pack card freezes first, with the twin design from before the edit.
@@ -114,7 +113,7 @@ test('pack cards after the close: derived cards freeze; a first design after the
 });
 
 test('arcana pack cards come only from the Arcana Cup podium: owners, mains, GET shape, read from the Cup after the close',async()=>{
-  let clock=WINTER.votesCloseAt-864e5;
+  let clock=WINTER.lockAt-864e5;
   const {rows,vault,as,get,raw}=vaultRig('arc',()=>clock);
   settledCup(rows,vault,{votingAt:clock-3600e3});
   for(const a of [1001,1002,1003,1004,1006])await as(a,{action:'session'});
@@ -146,7 +145,7 @@ test('arcana pack cards come only from the Arcana Cup podium: owners, mains, GET
   assert.deepEqual(rows.get('cup:1:artistic:podium').map(e=>e.id),['1001-1','1002-1','1001-2']);
   // After the close only the four voted slots freeze; arcana cards are still read from the Cup, with
   // the owner's mains (which pack-cards no longer changes).
-  clock=WINTER.votesCloseAt+36e5;
+  clock=WINTER.lockAt+36e5;
   pc=await get(1001);
   assert.equal(pc.locked,true);
   assert.equal(rows.get('packslots:1001').arcana,undefined);assert.equal(rows.get('packslots:1001').slots.arcana,undefined);
@@ -155,10 +154,10 @@ test('arcana pack cards come only from the Arcana Cup podium: owners, mains, GET
   assert.deepEqual(pc.arcana.map(c=>[c.entry,c.main]),[['1002-1','gpm']]);
   assert.deepEqual(pc.slots,{common:'default',rare:null,epic:null,legendary:null});
   assert.equal(rows.has('packslots:1002'),false); // arcana alone stores no freeze
-  assert.equal((await as(1001,{action:'pack-cards',cards,arcana:[{entry:'1001-1',main:'gpm'}]})).error,'Pack cards were locked on Thanksgiving.');
+  assert.equal((await as(1001,{action:'pack-cards',cards,arcana:[{entry:'1001-1',main:'gpm'}]})).error,'Pack cards locked on Mon Nov 23.');
   // Saving a pack card after the close freezes the four and nothing else (equip does no Cup work).
   assert.ok((await as(1001,{action:'equip',equipment:eq(32),cardSlot:0})).state);
-  assert.deepEqual(Object.keys(rows.get('packslots:1001')).sort(),['frozenAt','slots']);
+  assert.deepEqual(Object.keys(rows.get('packslots:1001')).sort(),['designs','frozenAt','slots']);
   // An awarded podium is fixed: Fav removing an entry afterwards doesn't move 4th up.
   rows.set('cup:1:entry:1001-2',{...rows.get('cup:1:entry:1001-2'),removed:clock});
   assert.deepEqual((await get(1001)).arcana.map(c=>c.entry),['1001-1','1001-2']);
@@ -168,7 +167,7 @@ test('arcana pack cards come only from the Arcana Cup podium: owners, mains, GET
 });
 
 test('arcana pack cards: a bracket settled after the close still adds its podium cards (never frozen per player)',async()=>{
-  const clock=WINTER.votesCloseAt+36e5;
+  const clock=WINTER.lockAt+36e5;
   const {rows,vault,get}=vaultRig('arcl',()=>clock);
   settledCup(rows,vault,{votingAt:clock-3600e3});
   rows.delete('cup:1:artistic:results');rows.delete('cup:1:artistic:awarded');
@@ -186,7 +185,7 @@ for(const [name,body] of [
   ['pack-cards with arcana mains',{action:'pack-cards',cards:[],arcana:[{entry:'1001-1',main:'kills'}]}],
   ['cup-vote in the other bracket',{action:'cup-vote',category:'funny',match:'w0-0',pick:'1004-1'}],
 ]) test(`Cup prize packs: a podium winner whose own action (${name}) settles the bracket keeps them`,async()=>{
-  const clock=WINTER.votesCloseAt-864e5;
+  const clock=WINTER.lockAt-864e5;
   const {rows,vault,as}=vaultRig(`prize-${name.split(' ')[0]}`,()=>clock);
   settledCup(rows,vault,{votingAt:clock-3600e3});
   rows.delete('cup:1:artistic:awarded'); // results are in; nobody has settled yet
@@ -202,7 +201,7 @@ for(const [name,body] of [
 });
 
 test('arcana pack cards: an unsettled Cup has none',async()=>{
-  const clock=WINTER.votesCloseAt-864e5;
+  const clock=WINTER.lockAt-864e5;
   const {rows,vault,as,get}=vaultRig('arc0',()=>clock);
   settledCup(rows,vault,{votingAt:clock-3600e3});
   rows.delete('cup:1:artistic:results');rows.delete('cup:1:artistic:awarded');
@@ -212,7 +211,7 @@ test('arcana pack cards: an unsettled Cup has none',async()=>{
 });
 
 test('pack card locks: final until packs open; refuse design, stat and swap changes; votes and self-rating carry on',async()=>{
-  let clock=WINTER.votesCloseAt-5*864e5;
+  let clock=WINTER.lockAt-5*864e5;
   const {rows,as,get}=vaultRig('lock',()=>clock);
   for(const a of [1101,1102])await as(a,{action:'session'});
   rows.set('user:1101',{...rows.get('user:1101'),extraSlots:1});
@@ -229,7 +228,7 @@ test('pack card locks: final until packs open; refuse design, stat and swap chan
   ok=await as(1101,{action:'pack-lock',slot:2}); // idempotent
   assert.deepEqual(ok.state.packLocks,[2]);
   assert.deepEqual((await get(1101)).locks,[2]);
-  const lockedDesign='This card is locked for Winter packs until Dec 1.',lockedCard='That card is locked.';
+  const lockedDesign='This card is locked for Winter packs until Nov 26.',lockedCard='That card is locked.';
   // The design can't be re-saved, made plain or given a twin.
   assert.equal((await as(1101,{action:'equip',equipment:eq(99),cardSlot:2})).error,lockedDesign);
   assert.equal((await as(1101,{action:'equip',equipment:eq(0),cardSlot:2})).error,lockedDesign);
@@ -260,14 +259,14 @@ test('pack card locks: final until packs open; refuse design, stat and swap chan
   assert.deepEqual(ok.state.packCards,[{slot:1,main:null},{slot:2,main:null}]);
   assert.ok((await as(1102,{action:'equip',equipment:eq(70),cardSlot:0})).state);
   assert.deepEqual((await get(1102)).designs.map(d=>d.slot),[1,2,0]);
-  // Still enforced after the Thanksgiving close...
-  clock=WINTER.votesCloseAt+36e5;
+  // Still enforced after pack cards lock (Mon Nov 23)...
+  clock=WINTER.lockAt+36e5;
   assert.equal((await as(1101,{action:'equip',equipment:eq(97),cardSlot:2})).error,lockedDesign);
   // No new locks after the close (the four are frozen anyway), nor once packs open.
-  assert.equal((await as(1101,{action:'pack-lock',slot:3})).error,'Pack cards were locked on Thanksgiving.');
+  assert.equal((await as(1101,{action:'pack-lock',slot:3})).error,'Pack cards locked on Mon Nov 23.');
   // ...and ignored from opensAt on: the design saves again and GET shows no locks.
   clock=WINTER.opensAt;
   assert.deepEqual((await get(1101)).locks,[]);
   assert.ok((await as(1101,{action:'equip',equipment:eq(96),cardSlot:2})).state);
-  assert.equal((await as(1101,{action:'pack-lock',slot:2})).error,'Pack cards were locked on Thanksgiving.');
+  assert.equal((await as(1101,{action:'pack-lock',slot:2})).error,'Pack cards locked on Mon Nov 23.');
 });

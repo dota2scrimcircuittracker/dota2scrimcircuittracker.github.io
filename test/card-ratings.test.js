@@ -156,10 +156,10 @@ test('pack cards: stricter nominations and self-ratings',async()=>{
   assert.deepEqual((await as(501,{action:'my-votes'})).votes,{});
   assert.deepEqual(Object.values((await as(502,{action:'my-votes'})).votes),['common']);
 });
-test('pack cards: voting closes on Thanksgiving and pack cards freeze once',async()=>{
+test('pack cards: lock for the mini and freeze once; votes keep counting',async()=>{
   const {WINTER}=await import('../public/lib/winter.js');
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
-  const vault=new CosmeticsVault({storage});let n=0,clock=WINTER.votesCloseAt-864e5;vault.clock=()=>clock;
+  const vault=new CosmeticsVault({storage});let n=0,clock=WINTER.lockAt-864e5;vault.clock=()=>clock;
   const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`tg-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
   const get=async a=>{const t=await (await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).text();return {text:t,...JSON.parse(t)};};
   for(const a of [601,602,603])await as(a,{action:'session'});
@@ -173,18 +173,21 @@ test('pack cards: voting closes on Thanksgiving and pack cards freeze once',asyn
   assert.equal(pc.locked,false);assert.equal(pc.slots,undefined);
   assert.equal(rows.has('packslots:601'),false);
   // After the close.
-  clock=WINTER.votesCloseAt;
-  assert.equal((await as(601,{action:'pack-cards',cards:[{slot:2,main:'kills'}]})).error,'Pack cards were locked on Thanksgiving.');
-  assert.equal((await as(601,{action:'self-rate',cardSlot:1,rating:'common'})).error,'Pack cards were locked on Thanksgiving.');
-  assert.equal((await as(603,{action:'rate',target:601,cardSlot:0,rating:'common'})).error,'Voting on Winter pack cards closed on Thanksgiving.');
-  assert.equal((await as(603,{action:'rate',target:601,cardSlot:2,rating:'rare'})).error,'Voting on Winter pack cards closed on Thanksgiving.'); // entered automatically
+  clock=WINTER.lockAt;
+  assert.equal((await as(601,{action:'pack-cards',cards:[{slot:2,main:'kills'}]})).error,'Pack cards locked on Mon Nov 23.');
+  assert.equal((await as(601,{action:'self-rate',cardSlot:1,rating:'common'})).error,'Tied cards pick their rarity on Wed Nov 25.');
+  // Votes keep counting (for later minis), but the first one freezes the pack cards as they stood.
+  assert.ok((await as(603,{action:'rate',target:601,cardSlot:0,rating:'common'})).rating);
+  assert.ok((await as(603,{action:'rate',target:601,cardSlot:2,rating:'rare'})).rating); // entered automatically
   assert.ok((await as(603,{action:'rate',target:601,cardSlot:4,rating:'rare'})).rating); // Card 5: not a pack card
-  assert.equal(rows.has('packslots:601'),false); // nothing has needed the freeze yet
+  assert.equal(rows.get('packslots:601').frozenAt,WINTER.lockAt);
+  assert.deepEqual(rows.get('packslots:601').designs.find(d=>d.slot===0).votes,{}); // 603's later vote isn't in it
+  assert.equal(Object.keys(rows.get('votes:601:'+rows.get('packslots:601').designs.find(d=>d.slot===0).designKey)).length,1); // ...but it counts
   // Editing a nominated slot freezes first, so the freeze has the design from before the edit.
   const before=structuredClone(rows.get('user:601').cardDesigns?.[1]??null);
   assert.ok((await as(601,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:99},cardSlot:1})).state);
   const frozen=rows.get('packslots:601');
-  assert.equal(frozen.frozenAt,WINTER.votesCloseAt);
+  assert.equal(frozen.frozenAt,WINTER.lockAt);
   assert.equal(frozen.slots.legendary.slot,1);assert.equal(frozen.slots.legendary.main,'stuns');assert.equal(frozen.slots.legendary.design.hue,51);
   if(before)assert.equal(frozen.slots.legendary.design.hue,before.hue);
   assert.equal(frozen.slots.epic.slot,0);assert.equal(frozen.slots.epic.main,'kills');
@@ -210,9 +213,9 @@ test('pack cards: voting closes on Thanksgiving and pack cards freeze once',asyn
 test('pack cards after the close: cup votes, duplicate designs and lookups can\'t move the freeze',async()=>{
   const {WINTER}=await import('../public/lib/winter.js');
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
-  const vault=new CosmeticsVault({storage});let n=0,clock=WINTER.votesCloseAt-864e5;vault.clock=()=>clock;
+  const vault=new CosmeticsVault({storage});let n=0,clock=WINTER.lockAt-864e5;vault.clock=()=>clock;
   // The cup's voting started before the close, so cup ratings are allowed by the cup itself.
-  vault.cupConfig={id:1,name:'Arcana Cup',votingAt:WINTER.votesCloseAt-2*36e5,roundMs:864e5,maxEntries:3,maxPerCategory:2};
+  vault.cupConfig={id:1,name:'Arcana Cup',votingAt:WINTER.lockAt-2*36e5,roundMs:864e5,maxEntries:3,maxPerCategory:2};
   const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`tg2-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
   const get=async a=>(await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).json();
   for(const a of [701,702,703,704])await as(a,{action:'session'});
@@ -225,27 +228,26 @@ test('pack cards after the close: cup votes, duplicate designs and lookups can\'
   assert.ok((await as(701,{action:'cup-enter',cardSlot:5,category:'funny'})).entry);
   await as(702,{action:'rate',target:701,cardSlot:1,rating:'legendary'});
   await as(703,{action:'rate',target:701,cardSlot:0,rating:'epic'});
-  clock=WINTER.votesCloseAt+36e5; // strictly after the close
-  const closed='Voting on Winter pack cards closed on Thanksgiving.';
-  const votesBefore=structuredClone([...rows].filter(([k])=>k.startsWith('votes:701:')));
-  // A cup vote on a nominated design is a vote on that design: refused.
-  assert.equal((await as(704,{action:'cup-rate',entry:'701-1',rating:'common'})).error,closed);
+  clock=WINTER.lockAt+36e5; // strictly after the close
+  // A cup vote on a nominated design is a vote on that design: it counts, after freezing 701's cards.
+  assert.ok((await as(704,{action:'cup-rate',entry:'701-1',rating:'common'})).rating);
+  const frozen=structuredClone(rows.get('packslots:701'));
+  assert.equal(frozen.slots.legendary.slot,1);assert.equal(frozen.slots.epic.slot,0);
   assert.ok((await as(704,{action:'cup-rate',entry:'701-2',rating:'rare'})).rating); // not nominated
-  // A copy of a nominated design in another slot shares its votes: refused.
-  assert.equal((await as(704,{action:'rate',target:701,cardSlot:4,rating:'common'})).error,closed);
-  for(const [k,v] of votesBefore)assert.deepEqual(rows.get(k),v);
-  assert.equal(rows.has('packslots:701'),false);
+  // A copy of a nominated design in another slot shares its votes: counts, freeze unmoved.
+  assert.ok((await as(704,{action:'rate',target:701,cardSlot:4,rating:'common'})).rating);
+  assert.deepEqual(rows.get('packslots:701'),frozen);
   // Card order and settings change nothing assignSlots reads: the late freeze equals a close-time one.
   const twin=new Map([...rows].map(([k,v])=>[k,structuredClone(v)]));
   assert.ok((await as(701,{action:'card-order',order:rows.get('user:701').cardDesigns.map((_,i,a)=>a.length-1-i)})).state);
   assert.ok((await as(701,{action:'card-settings',primaryCard:2,shuffleCards:true})).state);
   clock+=864e5;
   const late=(await get(701)).slots;
-  rows.clear();for(const [k,v] of twin)rows.set(k,v);clock=WINTER.votesCloseAt+36e5;
+  rows.clear();for(const [k,v] of twin)rows.set(k,v);clock=WINTER.lockAt+36e5;
   const early=(await get(701)).slots;
   assert.deepEqual(late,early);
   assert.equal(early.legendary.slot,1);assert.equal(early.epic.slot,0);
-  assert.equal(rows.get('packslots:701').frozenAt,WINTER.votesCloseAt+36e5);
+  assert.equal(rows.get('packslots:701').frozenAt,WINTER.lockAt+36e5);
   // Looking up an account that doesn't exist, or one with nothing nominated, writes nothing.
   const keys=()=>[...rows.keys()].sort();
   let before=keys();
@@ -253,4 +255,40 @@ test('pack cards after the close: cup votes, duplicate designs and lookups can\'
   assert.deepEqual((await get(702)).slots,{common:'default',rare:null,epic:null,legendary:null});
   assert.deepEqual(keys(),before);
   assert.equal(rows.has('packslots:799'),false);assert.equal(rows.has('packslots:702'),false);
+});
+
+test('pack cards tiebreak: tied cards pick their rarity on Wed Nov 25 only',async()=>{
+  const {WINTER}=await import('../public/lib/winter.js');
+  const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
+  const vault=new CosmeticsVault({storage});let n=0,clock=WINTER.lockAt-864e5;vault.clock=()=>clock;
+  const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`tb-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
+  const get=async a=>(await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).json();
+  for(const a of [1201,1202,1203])await as(a,{action:'session'});
+  for(const slot of [0,1,2])await as(1201,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:120+slot},cardSlot:slot});
+  // Slot 0: voted legendary on its own. Slots 1 and 2: both voted epic, so 1201's own rating decides.
+  await as(1202,{action:'rate',target:1201,cardSlot:0,rating:'legendary'});
+  await as(1202,{action:'rate',target:1201,cardSlot:1,rating:'epic'});
+  await as(1202,{action:'rate',target:1201,cardSlot:2,rating:'epic'});
+  // Locked: Tue Nov 24 is not for picks yet.
+  clock=WINTER.lockAt+36e5;
+  let pc=await get(1201);
+  assert.equal(pc.locked,true);assert.equal(pc.tiebreak,false);assert.deepEqual(pc.tied,[1,2]);
+  assert.equal(pc.slots.legendary.slot,0);assert.equal(pc.slots.epic.slot,1);assert.equal(pc.slots.rare.slot,2);
+  assert.equal((await as(1201,{action:'self-rate',cardSlot:2,rating:'epic'})).error,'Tied cards pick their rarity on Wed Nov 25.');
+  // Wed Nov 25: only tied cards, and the pick moves the frozen slots.
+  clock=WINTER.tiebreakAt+36e5;
+  pc=await get(1201);
+  assert.equal(pc.tiebreak,true);
+  assert.equal((await as(1201,{action:'self-rate',cardSlot:0,rating:'common'})).error,"That card isn't tied: votes decide its rarity.");
+  assert.ok((await as(1201,{action:'self-rate',cardSlot:2,rating:'epic'})).selfRating);
+  pc=await get(1201);
+  assert.equal(pc.slots.epic.slot,2);assert.equal(pc.slots.rare.slot,1);assert.equal(pc.slots.legendary.slot,0);
+  assert.equal(pc.designs.find(d=>d.slot===2).self,'epic');
+  // A vote cast now still counts but leaves the freeze's votes alone.
+  assert.ok((await as(1203,{action:'rate',target:1201,cardSlot:1,rating:'legendary'})).rating);
+  assert.equal((await get(1201)).slots.epic.slot,2);
+  assert.equal(rows.get('packslots:1201').designs.find(d=>d.slot===1).votes['1203'],undefined);
+  // Packs open: picks are over.
+  clock=WINTER.opensAt;
+  assert.equal((await as(1201,{action:'self-rate',cardSlot:1,rating:'epic'})).error,'Pack cards are set: packs are open.');
 });

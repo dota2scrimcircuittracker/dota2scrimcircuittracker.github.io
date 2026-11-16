@@ -3,8 +3,8 @@
 // (lib/pack-card-list.js). The profile's cards stay clean: only the owner sees one line above them
 // and a "Manage pack cards" button, which opens a dialog listing the four (rarity now, bonus stat,
 // their own rating, lock), the designs sitting out (Card 5+, swap in) and any arcana pack cards from
-// the Arcana Cup podium (lib/arcana-cup.js arcanaCards). After the Thanksgiving close the dialog is
-// read-only. Visitors see nothing. Lives under parts/collection.js mountProfileCollection's cards.
+// the Arcana Cup podium (lib/arcana-cup.js arcanaCards). After the lock (end of Mon Nov 23) the
+// dialog is read-only, except that on Wed Nov 25 tied cards can pick their rarity. Visitors see nothing. Lives under parts/collection.js mountProfileCollection's cards.
 import { esc } from "../core.js";
 import { WINTER } from "../lib/winter.js";
 import { statsFor, bonusText } from "../lib/card-bonus.js";
@@ -15,9 +15,9 @@ import { packCardView, stripText, withMain, withArcanaMain, swapIn, swapTargets,
 
 const statLabel = (s) => METRICS[s]?.label ?? s;
 const ALL_STATS = [...new Set([1, 2, 3, 4, 5].flatMap(statsFor))];
-const CLOSES = "Thanksgiving, Nov 26";
+const CLOSES = "Mon Nov 23";
 const HELP = "Votes set each card's rarity. Your rating breaks ties. Changing a pack card's design starts its votes over.";
-const LOCK_CONFIRM = "Lock this card? You can't change its design, bonus or swap it out until packs open on Dec 1.";
+const LOCK_CONFIRM = "Lock this card? You can't change its design, bonus or swap it out until packs open on Nov 26.";
 const PADLOCK = `<svg class="pc-padlock" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>`;
 
 // The player's main position from the Winter player pool, or null if they aren't in it.
@@ -49,7 +49,7 @@ export async function mountPackCards(section, { account, own, designs, nameOf = 
   line.className = "pc-line";
   section.querySelector(".profile-card-designs")?.before(line);
 
-  const isLocked = () => view?.locked || (!view && Date.now() >= WINTER.votesCloseAt);
+  const isLocked = () => view?.locked || (!view && Date.now() >= WINTER.lockAt);
   const drawLine = () => {
     const locked = isLocked();
     const text = view ? stripText(view, { closesText: CLOSES }) : locked ? "Winter pack cards are locked." : "Winter pack cards";
@@ -72,20 +72,24 @@ export async function mountPackCards(section, { account, own, designs, nameOf = 
   const drawBody = () => {
     const body = dialog.querySelector(".tm-body");
     const locked = isLocked(), stats = pos ? statsFor(pos) : ALL_STATS;
-    dialog.querySelector(".tm-title small").textContent = locked ? "Locked" : `Voting closes ${CLOSES}`;
+    const picking = locked && view.tiebreak;
+    dialog.querySelector(".tm-title small").textContent = picking && view.tiedCount ? "Tiebreak picks today" : locked ? "Locked" : `Cards lock ${CLOSES}`;
     const now = Date.now(), targets = locked ? [] : swapTargets(view);
+    const tieHelp = !view.tiedCount ? "" : picking
+      ? " Cards marked Tied are yours to settle: pick the rarity with your rating by the end of today (Wed Nov 25)."
+      : " Cards marked Tied pick their rarity on Wed Nov 25.";
     const help = locked
-      ? `<p class="pc-help">Winter pack cards are locked. These are the cards and bonuses going into packs.</p>`
+      ? `<p class="pc-help">Winter pack cards are locked for the first mini. These are the cards and bonuses going into packs. Votes still count for later minis.${tieHelp}</p>`
       : `<p class="pc-help">${esc(HELP)}${pos ? "" : " Every stat is listed for now: you'll get a position once you've played league games."}${view.defaultCommon ? " Your common is the default card." : ""}</p>`;
     const packRows = view.order.map((slot) => {
       const card = view.cards.get(slot), cardLocked = view.locks.has(slot);
       const canLock = !locked && lockable(view, slot, now, WINTER.opensAt);
       return `<li class="pc-row" data-slot="${slot}">
         ${thumb(designs[slot])}
-        <div class="pc-info"><strong>${esc(nameOf(slot))}</strong><span class="pc-rarity" data-rarity="${card.rarity ?? ""}">${esc(rarityText(card.rarity, locked))}</span>${locked && card.changed ? `<small>Design changed since</small>` : ""}${cardLocked && !locked ? `<span class="pc-locked">${PADLOCK}Locked</span>` : ""}</div>
+        <div class="pc-info"><strong>${esc(nameOf(slot))}</strong><span class="pc-rarity" data-rarity="${card.rarity ?? ""}">${esc(rarityText(card.rarity, locked))}</span>${card.tied ? `<span class="pc-tied">Tied</span>` : ""}${locked && card.changed ? `<small>Design changed since</small>` : ""}${cardLocked && !locked ? `<span class="pc-locked">${PADLOCK}Locked</span>` : ""}</div>
         <div class="pc-controls">
           ${bonus(card, stats, !locked, cardLocked)}
-          ${locked ? "" : `<div class="pc-self-wrap"><span>Your rating</span><div class="card-rating-votes pc-self" role="group" aria-label="Your rating for ${esc(nameOf(slot))}">${RATINGS.map((r) => `<button type="button" data-self="${r}" data-rarity="${r}" aria-pressed="${card.self === r}" title="${card.self === r ? "Clear your rating" : `Rate it ${rarityLabel(r)}`}">${rarityLabel(r)}</button>`).join("")}</div></div>`}
+          ${locked && !(picking && card.tied) ? "" : `<div class="pc-self-wrap"><span>Your rating</span><div class="card-rating-votes pc-self" role="group" aria-label="Your rating for ${esc(nameOf(slot))}">${RATINGS.map((r) => `<button type="button" data-self="${r}" data-rarity="${r}" aria-pressed="${card.self === r}" title="${card.self === r ? "Clear your rating" : `Rate it ${rarityLabel(r)}`}">${rarityLabel(r)}</button>`).join("")}</div></div>`}
           ${canLock ? `<button type="button" class="pc-lock">${PADLOCK}Lock</button>` : ""}
           <p class="pc-error" role="alert"></p>
         </div></li>`;
@@ -107,13 +111,17 @@ export async function mountPackCards(section, { account, own, designs, nameOf = 
       ${outRows ? `<h4>Not in packs</h4><ul class="pc-rows">${outRows}</ul>` : ""}
       ${arcanaRows ? `<h4>Arcana pack cards</h4><ul class="pc-rows">${arcanaRows}</ul>` : ""}`;
     body.querySelectorAll(".pc-thumb").forEach((t) => { t.querySelectorAll("button").forEach((b) => b.remove()); fit(t); });
-    if (locked) return;
+    const selfRating = (row, slot) => row.querySelectorAll("[data-self]").forEach((b) => b.onclick = () =>
+      send(row, "self-rate", { cardSlot: slot, rating: b.getAttribute("aria-pressed") === "true" ? null : b.dataset.self }));
+    if (locked) {
+      if (picking) body.querySelectorAll(".pc-row[data-slot]").forEach((row) => selfRating(row, Number(row.dataset.slot)));
+      return;
+    }
     body.querySelectorAll(".pc-row[data-slot]").forEach((row) => {
       const slot = Number(row.dataset.slot);
       const select = row.querySelector("select");
       if (select && !select.disabled) select.onchange = (e) => e.target.value && send(row, "pack-cards", withMain(view, slot, e.target.value));
-      row.querySelectorAll("[data-self]").forEach((b) => b.onclick = () =>
-        send(row, "self-rate", { cardSlot: slot, rating: b.getAttribute("aria-pressed") === "true" ? null : b.dataset.self }));
+      selfRating(row, slot);
       const lock = row.querySelector(".pc-lock");
       if (lock) lock.onclick = () => { if (confirm(LOCK_CONFIRM)) send(row, "pack-lock", { slot }); };
       const toggle = row.querySelector(".pc-swap"), pick = row.querySelector(".pc-swap-pick");
