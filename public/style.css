@@ -5525,12 +5525,27 @@ html.stream-card .ft-big-close, html.stream-card .fb-dialog-btn, html.stream-car
 .sk-team-pick summary { cursor: pointer; font-size: 12px; opacity: .7; }
 .sk-players { display: grid; gap: 2px; padding: 4px 0 6px; }
 .sk-filter { min-width: 0; width: 220px; max-width: 100%; }
-.sk-card { flex: none; max-width: 170px; }
+.sk-view { flex: none; }
+.sk-choice { flex: none; width: 150px; font-size: 13px; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-cards-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.sk-cards-head h3 { margin: 0 !important; }
+.sk-dlg { width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 10px; background: var(--panel, #171513); color: inherit; }
+.sk-dlg::backdrop { background: rgba(0,0,0,.65); }
+.sk-dlg > header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); position: sticky; top: 0; background: inherit; z-index: 1; }
+.sk-dlg > header h3 { margin: 0; }
+.sk-dlg-close { background: none; border: 0; color: inherit; font-size: 26px; line-height: 1; cursor: pointer; }
+.sk-dlg-body { padding: 16px 18px 20px; }
+.sk-dlg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+.sk-pick { display: grid; gap: 4px; padding: 8px; border: 2px solid transparent; border-radius: 10px; cursor: pointer; text-align: left; }
+.sk-pick:hover, .sk-pick:focus-visible { border-color: color-mix(in srgb, var(--accent) 50%, transparent); outline: none; }
+.sk-pick.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.sk-pick .muted { font-size: 12px; }
+.sk-pick-card { width: 100%; pointer-events: none; }
 .sk-steps { margin: 0 0 10px; padding-left: 20px; } .sk-steps li { margin: 6px 0; }
 .sk-team { margin-top: 12px; } .sk-team h4 { margin: 0 0 4px; }
 .sk-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); }
 .sk-name { width: 140px; flex: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sk-row code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; opacity: .75; }
 .sk-empty { margin-top: 14px; }
-@media (max-width: 560px) { .sk-row { flex-wrap: wrap; } .sk-name { width: auto; flex: 1; } .sk-row code { flex-basis: 100%; order: 3; } .sk-card { max-width: 140px; } }
+@media (max-width: 560px) { .sk-row { flex-wrap: wrap; } .sk-name { width: auto; flex: 1; } .sk-row code { flex-basis: 100%; order: 3; } .sk-choice { width: auto; flex: 1; } }
 

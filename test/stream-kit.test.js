@@ -57,3 +57,21 @@ test('a chosen card slot rides in the link and the OBS source name', () => {
   assert.equal(src.name, 'Card - Spiroar · Chen');
   assert.equal(src.settings.url, 'https://example.test/heroic/player/7?stream=card&card=1'); // the team's own league
 });
+
+test('card filters: main, highest rated, most recent', async () => {
+  const { pickSlot } = await import('../public/lib/stream-kit.js');
+  const designs = [
+    { slot: 0, primary: true, pick: 'rare', total: 1, savedAt: 100 },
+    { slot: 1, primary: false, pick: 'epic', total: 2, savedAt: 300 },
+    { slot: 2, primary: false, pick: 'epic', total: 5, savedAt: 200 },
+    { slot: 3, primary: false, pick: null, total: 0, savedAt: 0 },
+  ];
+  assert.equal(pickSlot('main', designs), null);
+  assert.equal(pickSlot('top', designs), 2); // epic beats rare; more votes breaks the epic tie
+  assert.equal(pickSlot('recent', designs), 1);
+  // The main card winning means "main card" (null), so it follows the player's later changes.
+  assert.equal(pickSlot('top', [{ slot: 0, primary: true, pick: 'legendary', total: 1 }, { slot: 1, pick: 'epic', total: 9 }]), null);
+  // Nothing rated or dated: the main card.
+  assert.equal(pickSlot('top', [{ slot: 1, pick: null }, { slot: 2, pick: null }]), null);
+  assert.equal(pickSlot('recent', []), null);
+});

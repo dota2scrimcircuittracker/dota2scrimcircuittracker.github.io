@@ -57,3 +57,19 @@ export function obsCollection(teams, rootUrl, { name = "DSL Stream Kit", uuid = 
     quick_transitions: [], saved_projectors: [], resolution: { x: CANVAS_W, y: CANVAS_H },
   };
 }
+
+// Which card a filter picks for a player. designs: [{ slot, primary, pick, total, savedAt }] (pick: the
+// community's rating, lib/card-ratings.js tally; savedAt: when the design last changed). Returns a slot,
+// or null for the player's main card, which is also what a player with nothing to choose from gets.
+// main: their main card. top: the best community pick, then the most votes, then the main card first.
+// recent: the most recently saved design.
+const RANK = { common: 0, rare: 1, epic: 2, legendary: 3 };
+export const CARD_MODES = [["main", "Main card"], ["top", "Highest rated"], ["recent", "Most recent"]];
+export function pickSlot(mode, designs) {
+  // The design with the highest score, compared value by value; a null score never wins.
+  const ahead = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] > b[i]; return false; };
+  const best = (score) => designs.reduce((top, x) => { const s = score(x); return s && (!top || ahead(s, top.s)) ? { d: x, s } : top; }, null)?.d ?? null;
+  const d = mode === "top" ? best((x) => (x.pick ? [RANK[x.pick] ?? -1, x.total ?? 0, x.primary ? 1 : 0] : null))
+    : mode === "recent" ? best((x) => (x.savedAt ? [x.savedAt, x.primary ? 1 : 0] : null)) : null;
+  return d && !d.primary ? d.slot : null;
+}

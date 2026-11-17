@@ -499,7 +499,7 @@ export class CosmeticsVault {
       // Followers: other players whose following list has this account (as in achievementFacts).
       let followers=0;
       for(const [k,u] of await this.ctx.storage.list({prefix:'user:',limit:20000}))if(k!==`user:${account}`&&(u?.following??[]).includes(String(account)))followers++;
-      return json({followers,following:(state?.following??[]).length,inventory:state?.inventory??{},screens:state?.screens??[],achievements:state?.achievementClaims??{},equipment:state?.equipment??null,nickname:shownNickname(state),background:state?.profileBackground??null,...(state?cardDesignState(state):{})});
+      return json({followers,following:(state?.following??[]).length,inventory:state?.inventory??{},screens:state?.screens??[],achievements:state?.achievementClaims??{},equipment:state?.equipment??null,nickname:shownNickname(state),background:state?.profileBackground??null,cardSavedAt:state?.cardSavedAt??[],...(state?cardDesignState(state):{})});
     }
     let body;try {body=await req.json();} catch {return json({error:'Invalid request.'},400);}
     // Which designs this player has rated, and how: "<owner>:<design key>" → rating. A read, so
