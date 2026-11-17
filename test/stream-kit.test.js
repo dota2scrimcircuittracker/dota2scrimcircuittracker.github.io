@@ -75,3 +75,18 @@ test('card filters: main, highest rated, most recent', async () => {
   assert.equal(pickSlot('top', [{ slot: 1, pick: null }, { slot: 2, pick: null }]), null);
   assert.equal(pickSlot('recent', []), null);
 });
+
+test('the VS scene: its link carries both teams\' picks, and the OBS import opens on it', async () => {
+  const { vsSceneUrl } = await import('../public/lib/stream-kit.js');
+  const url = vsSceneUrl(root, [['15012:7', 1], ['15012:8', null], ['14995:9', null]], 'top');
+  assert.equal(url, 'https://example.test/champion/stream-kit?stream=vs&picks=15012:7:1,15012:8,14995:9&cards=top');
+  assert.equal(vsSceneUrl(root, [['1:2', null]]), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2');
+  const c = obsCollection(teams, root, { vs: { name: 'o-b-j vs Kaleb', url } });
+  assert.equal(c.current_scene, 'Scene - o-b-j vs Kaleb');
+  const src = c.sources.find((s) => s.name === 'VS - o-b-j vs Kaleb');
+  assert.equal(src.settings.url, url);
+  assert.equal(src.settings.width, 1920);
+  assert.equal(src.settings.height, 1080);
+  assert.equal(src.settings.restart_when_active, true); // the intro replays each time the scene comes on
+  assert.equal(c.sources.find((s) => s.name === 'Scene - o-b-j vs Kaleb').settings.items[0].source_uuid, src.uuid);
+});

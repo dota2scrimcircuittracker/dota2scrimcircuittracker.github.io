@@ -7,7 +7,7 @@
 // The picks ride in the address (?picks=<team>:<account>[:<slot>],…&cards=<mode>) so a set can be
 // shared as a link; the older ?teams=<id>,… still opens with those teams' whole rosters.
 import { app, pageHead, esc, SOURCES } from "../core.js";
-import { obsCollection, streamCardUrl, pickSlot, CARD_MODES, CARD_W, CARD_H } from "../lib/stream-kit.js";
+import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H } from "../lib/stream-kit.js";
 import { publicCollection, cardRatings } from "../lib/cosmetics.js";
 import { cardDesignState, cardSlotName } from "../lib/cosmetics-engine.js";
 import { createPlayerCards, PAINT_FILTER, fitDesignCards } from "../parts/player-card.js";
@@ -58,6 +58,7 @@ export async function renderStreamKit(src) {
   const picks = new Map();
   const q = new URLSearchParams(location.search);
   let mode = CARD_MODES.some(([m]) => m === q.get("cards")) ? q.get("cards") : "main";
+  let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
   for (const part of (q.get("picks") ?? "").split(",").filter(Boolean)) {
     const [team, account, slot] = part.split(":");
     if (byId.get(team)?.players.some((p) => p.account === account)) picks.set(`${team}:${account}`, /^\d+$/.test(slot ?? "") ? Number(slot) : null);
@@ -68,6 +69,7 @@ export async function renderStreamKit(src) {
     url.searchParams.delete("teams");
     if (picks.size) url.searchParams.set("picks", [...picks].map(([k, s]) => (s == null ? k : `${k}:${s}`)).join(",")); else url.searchParams.delete("picks");
     if (mode !== "main") url.searchParams.set("cards", mode); else url.searchParams.delete("cards");
+    if (swap) url.searchParams.set("sides", "swap"); else url.searchParams.delete("sides");
     history.replaceState(history.state, "", url);
   };
   // A new pick takes the filter's card once that player's cards arrive.
@@ -76,6 +78,12 @@ export async function renderStreamKit(src) {
     if (mode === "main") return;
     playerDesigns(k.split(":")[1]).then(({ designs }) => { if (picks.has(k)) { picks.set(k, pickSlot(mode, designs)); refreshRow(k); save(); } });
   };
+  // The VS scene: this page with ?stream=vs draws only the first two teams' cards, animated (parts/stream-vs.js).
+  if (q.get("stream") === "vs") {
+    const keys = [...picks.keys(), ...fromTeams], ids = [...new Set(keys.map((k) => k.split(":")[0]))].slice(0, 2);
+    const sides = ids.map((id) => { const t = byId.get(id); return { team: t, players: keys.filter((k) => k.startsWith(`${id}:`)).map((k) => t.players.find((p) => p.account === k.split(":")[1])) }; });
+    return (await import("../parts/stream-vs.js")).mountVsScene(sides, { picks, mode, playerDesigns, getRenderer });
+  }
   fromTeams.forEach(addPick);
 
   const teamRow = (t) => `<div class="sk-team-pick" data-team="${esc(t.id)}" data-search="${esc([t.name, ...t.players.map((p) => p.name)].join(" ").toLowerCase())}">
@@ -109,6 +117,9 @@ export async function renderStreamKit(src) {
   };
   // The picks grouped by team, in the list's order: [{ team, players: [{ ...player, slot }] }].
   const picked = () => teams.map((t) => ({ team: t, players: t.players.filter((p) => picks.has(`${t.id}:${p.account}`)).map((p) => ({ ...p, slot: picks.get(`${t.id}:${p.account}`) })) })).filter((g) => g.players.length);
+  // The VS scene's link: the first two picked teams, with their card picks.
+  const vsTeams = (list) => (swap ? [list[1], list[0]] : list.slice(0, 2));
+  const vsLink = (list, extra = "") => vsSceneUrl(absolute(src.root), vsTeams(list).flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode) + extra;
   const rowUrl = (k) => { const [team, account] = k.split(":"); return streamCardUrl(byId.get(team).rootUrl, account, picks.get(k)); };
   // A row's link and card name, after its pick changes.
   function refreshRow(k) {
@@ -143,10 +154,15 @@ export async function renderStreamKit(src) {
         <ol class="sk-steps">
           <li><button type="button" data-download>Download OBS scenes</button> <span class="muted">${list.length} team${list.length > 1 ? "s" : ""}, ${cards} card${cards > 1 ? "s" : ""}</span></li>
           <li>In OBS: <b>Scene Collection → Import</b>, pick the file, then switch to it under <b>Scene Collection</b>.</li>
-          <li>You get a scene per team (its picked cards in a row) and a scene per player (one big card). Copy any card source into your own scenes.</li>
+          <li>You get ${list.length > 1 ? `a VS scene (${esc(vsTeams(list)[0].team.name)} vs ${esc(vsTeams(list)[1].team.name)}), ` : ""}a scene per team (its picked cards in a row) and a scene per player (one big card). Copy any card source into your own scenes.</li>
         </ol>
         <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>
+      ${list.length > 1 ? `<section class="panel sk-vs">
+        <header class="sk-cards-head"><h3>VS scene</h3><button type="button" data-swap>Swap sides</button></header>
+        <p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right: the cards jump in, a VS slams down, then they keep moving: hops, flips to their stats, taunts, clashes. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
+        <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>
+      </section>` : ""}
       <section class="panel">
         <header class="sk-cards-head"><div><h3>Cards</h3><span class="sk-choices muted"></span></div><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label></header>
         <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>. One at a time in OBS: add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}; right-click it and choose <b>Refresh</b> to pick up card changes.</p>
@@ -239,7 +255,8 @@ export async function renderStreamKit(src) {
     const v = e.target.closest(".sk-view");
     if (v) return viewCards(v.closest(".sk-row").dataset.key);
     const c = e.target.closest(".sk-copy");
-    if (c) return copy(rowUrl(c.closest(".sk-row").dataset.key), c);
+    if (c) return copy(c.hasAttribute("data-vs") ? vsLink(picked()) : rowUrl(c.closest(".sk-row").dataset.key), c);
+    if (e.target.closest("[data-swap]")) { swap = !swap; return draw(); }
     const s = e.target.closest("[data-share]");
     if (s) return copy(location.href, s);
     if (!e.target.closest("[data-download]")) return;
@@ -249,7 +266,8 @@ export async function renderStreamKit(src) {
       players: await Promise.all(players.map(async (p) => ({ name: p.name, account: p.account, slot: p.slot,
         card: p.slot == null ? null : choiceName((await playerDesigns(p.account)).designs, p.slot) }))) })));
     const one = list.length === 1 ? list[0].team.name : null;
-    const json = obsCollection(named, list[0].team.rootUrl, { name: one ? `DSL - ${one}` : `DSL Stream Kit - ${src.division ?? "Scrims"}` });
+    const vs = list.length > 1 ? { name: vsTeams(list).map((g) => g.team.name).join(" vs "), url: vsLink(list) } : null;
+    const json = obsCollection(named, list[0].team.rootUrl, { name: one ? `DSL - ${one}` : `DSL Stream Kit - ${src.division ?? "Scrims"}`, vs });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(json, null, 1)], { type: "application/json" }));
     a.download = `dsl-stream-kit-${slug(one ?? src.division ?? "scrims")}.json`;

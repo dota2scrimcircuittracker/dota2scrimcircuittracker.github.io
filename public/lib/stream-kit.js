@@ -7,6 +7,10 @@ const CANVAS_W = 1920, CANVAS_H = 1080, GAP = 24;
 // rootUrl: the league's address up to its route, e.g. "https://…/champion". slot: one of the player's
 // saved card designs (null: their main card).
 export const streamCardUrl = (rootUrl, account, slot = null) => `${rootUrl}/player/${account}?stream=card${Number.isInteger(slot) ? `&card=${slot}` : ""}`;
+// The VS scene (parts/stream-vs.js): the kit page with ?stream=vs and the two teams' picks.
+// picks: [["<team>:<account>", slot|null], …]; mode: the "Card for everyone" filter.
+export const VS_W = 1920, VS_H = 1080;
+export const vsSceneUrl = (rootUrl, picks, mode = "main") => `${rootUrl}/stream-kit?stream=vs&picks=${picks.map(([k, s]) => (Number.isInteger(s) ? `${k}:${s}` : k)).join(",")}${mode !== "main" ? `&cards=${mode}` : ""}`;
 
 // Up to five cards at 60% in a row; a longer roster shrinks to fit the canvas.
 export function rowLayout(n) {
@@ -34,9 +38,20 @@ const scene = (name, items, uuid) => ({
 // teams: [{ name, rootUrl?, players: [{ name, account, slot?, card? }] }] (card: the design's name, for
 // the source name; a team's rootUrl overrides the shared one, for All divisions). One Browser Source per player, a scene per team
 // (its cards in a row) and a scene per player (their card centred). Names are made unique, as OBS needs.
-export function obsCollection(teams, rootUrl, { name = "DSL Stream Kit", uuid = () => crypto.randomUUID() } = {}) {
+// vs: { name, url } adds the VS scene first: one full-canvas Browser Source that restarts its intro
+// each time the scene comes on.
+export function obsCollection(teams, rootUrl, { name = "DSL Stream Kit", uuid = () => crypto.randomUUID(), vs = null } = {}) {
   const used = new Set(), unique = (n) => { let out = n, k = 2; while (used.has(out)) out = `${n} (${k++})`; used.add(out); return out; };
   const sources = [], teamScenes = [], playerScenes = [];
+  if (vs) {
+    const source = {
+      name: unique(`VS - ${vs.name}`), uuid: uuid(), id: "browser_source", versioned_id: "browser_source", enabled: true, muted: false, volume: 1,
+      settings: { url: vs.url, width: VS_W, height: VS_H, fps: 60, fps_custom: true, reroute_audio: false, shutdown: true, restart_when_active: true, css: "" },
+      flags: 0, mixers: 0, sync: 0, monitoring_type: 0, private_settings: {}, hotkeys: {},
+    };
+    sources.push(source);
+    teamScenes.push(scene(unique(`Scene - ${vs.name}`), [item(source, 1, { x: 0, y: 0, scale: 1 })], uuid));
+  }
   for (const team of teams) {
     const cards = team.players.map((p) => {
       const source = {

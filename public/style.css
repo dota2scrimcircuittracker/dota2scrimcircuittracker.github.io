@@ -5508,6 +5508,37 @@ html.stream-card dialog.ft-big { background: transparent !important; border: 0 !
 html.stream-card dialog.ft-big::backdrop { background: transparent !important; backdrop-filter: none !important; }
 html.stream-card .ft-big-close, html.stream-card .fb-dialog-btn, html.stream-card .ft-turn, html.stream-card .ft-expand, html.stream-card .ft-pickbtn { display: none !important; }
 
+/* VS scene (parts/stream-vs.js, stream kit ?stream=vs): two teams' cards on a transparent 1920x1080 stage for OBS. */
+html.stream-vs, html.stream-vs body { background: transparent !important; overflow: hidden !important; }
+html.stream-vs body > *:not(.vs-root) { visibility: hidden !important; }
+html.stream-vs-preview, html.stream-vs-preview body { background: radial-gradient(ellipse at 50% 40%, #2a2f3a, #0b0c10 70%) !important; }
+.vs-root { position: fixed; inset: 0; z-index: 2147483000; overflow: hidden; pointer-events: none; }
+.vs-root .ft-defs { position: absolute; width: 0; height: 0; }
+.vs-stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--s, 1)); }
+.vs-note { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font: 700 48px/1.2 var(--display); color: #fff; text-shadow: 0 3px 12px #000; text-transform: uppercase; }
+.vs-side { position: absolute; top: 110px; width: 800px; display: flex; flex-direction: column; align-items: center; }
+.vs-a { left: 30px; --side-glow: rgba(232, 182, 76, .7); }
+.vs-b { right: 30px; --side-glow: rgba(224, 82, 62, .7); }
+.vs-team { width: 100%; margin: 0 0 26px; text-align: center; font: 900 76px/1.15 var(--display); text-transform: uppercase; letter-spacing: .02em; color: #fff; white-space: nowrap; overflow: hidden;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, .55); paint-order: stroke fill; text-shadow: 0 4px 0 rgba(0, 0, 0, .55), 0 0 30px var(--side-glow); }
+.vs-team span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; vertical-align: top; }
+.vs-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px 26px; width: 802px; }
+.vs-slot { position: relative; width: 250px; transform-origin: 50% 100%; }
+.vs-hop, .vs-act { transform-origin: 50% 100%; }
+.vs-hop.idle { animation: vs-bob 3.2s ease-in-out var(--d, 0s) infinite; }
+@keyframes vs-bob { 0%, 100% { transform: translateY(0) rotate(-.6deg); } 50% { transform: translateY(-12px) rotate(.6deg); } }
+.vs-root .ft-card { width: 100%; }
+.vs-root .ft-turn, .vs-root .ft-expand, .vs-root .ft-pickbtn { display: none !important; }
+.vs-ring { position: absolute; left: 50%; bottom: -14px; width: 300px; height: 44px; border-radius: 50%; pointer-events: none;
+  border: 4px solid rgba(255, 255, 255, .8); box-shadow: 0 0 22px rgba(255, 255, 255, .6); }
+.vs-mid { position: absolute; left: 50%; top: 560px; width: 0; height: 0; }
+.vs-word { opacity: 0; position: absolute; left: 0; top: 0; translate: -50% -50%; transform-origin: 50% 50%; font: 900 170px/1 var(--display); letter-spacing: -.02em; white-space: nowrap;
+  background: linear-gradient(160deg, #fff6d8 10%, #e8b64c 45%, #e0523e 80%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, .6)) drop-shadow(0 0 26px rgba(232, 140, 60, .7)); }
+.vs-word.idle { animation: vs-throb 1.6s ease-in-out infinite; }
+@keyframes vs-throb { 0%, 100% { filter: drop-shadow(0 6px 0 rgba(0, 0, 0, .6)) drop-shadow(0 0 22px rgba(232, 140, 60, .6)); } 50% { filter: drop-shadow(0 6px 0 rgba(0, 0, 0, .6)) drop-shadow(0 0 44px rgba(255, 170, 70, .95)); } }
+.vs-flash { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 52%, rgba(255, 240, 200, .9), rgba(255, 170, 70, .35) 30%, transparent 60%); }
+
 /* Stream kit tool (pages/stream-kit.js). */
 .stream-kit > .muted { max-width: 70ch; }
 .stream-kit .panel { margin-top: 14px; }

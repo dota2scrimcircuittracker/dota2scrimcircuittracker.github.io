@@ -25,6 +25,7 @@ import { startCardMotion } from "./lib/card-motion.js";
 // Upload (and editing an upload) and Predictions load on first visit.
 // Stream card (parts/stream-card.js): hide the site from the first frame; the card opens once the profile loads.
 if (new URLSearchParams(location.search).get("stream") === "card") document.documentElement.classList.add("stream-card");
+if (new URLSearchParams(location.search).get("stream") === "vs") document.documentElement.classList.add("stream-vs"); // parts/stream-vs.js
 const uploadPage = () => import("./pages/upload.js");
 const predictPage = () => import("./pages/predict.js");
 const drafterPage = () => import("./pages/drafter.js");
