@@ -69,13 +69,15 @@ function matchesHtml(src, d, ratings) {
   const all = [...boxes.values()];
   const next = all.find((b) => b.list.some(soon));
   const left = series.filter(soon).length;
-  const html = all.sort((x, y) => y.n - x.n).map((b, i) => {
+  const html = all.sort((x, y) => y.n - x.n).map((b, i, list) => {
     // The week's league night: the time most of its series share.
     const counts = new Map();
     for (const s of b.list) counts.set(s.time, (counts.get(s.time) ?? 0) + 1);
     const night = [...counts].sort((x, y) => y[1] - x[1] || x[0] - y[0])[0][0];
     const played = b.list.filter(isPlayed).length, state = played === b.list.length ? "done" : played ? "live" : "up";
-    return `<section class="mx-box ${state}${b === next ? " next" : ""}" style="--i:${Math.min(i, 12)}">
+    // wk-first: All Divisions starts each week on a fresh row (style.css).
+    const first = i > 0 && list[i - 1].n !== b.n ? " wk-first" : "";
+    return `<section class="mx-box ${state}${b === next ? " next" : ""}${first}" style="--i:${Math.min(i, 12)}">
       <header class="mx-head"><span class="mx-wk">Week ${b.n}${b.div ? ` · ${src.all ? "" : "Division "}${esc(b.div)}` : ""}</span>
         <span class="mx-date">${state === "done" ? dayOnly(night) : dayTime(night)}</span>
         ${state !== "done" ? `<span class="mx-tag">${state === "live" ? `${played}/${b.list.length} played` : "Upcoming"}</span>` : ""}</header>
@@ -84,7 +86,7 @@ function matchesHtml(src, d, ratings) {
   }).join("");
   return `<p class="table-note keep mx-lead">${series.filter(isPlayed).length} series played${left ? ` · ${left} to come` : ""}. Green won, red lost, gold tied.
       PlayOn posts pairings about a week ahead.</p>
-    <div class="mx-grid${split ? " mx-split" : ""} reveal">${html}</div>`;
+    <div class="mx-grid${split ? " mx-split" : ""}${src.all ? " mx-all" : ""} reveal">${html}</div>`;
 }
 
 // Crosstable: every team against every other, like a Liquipedia group table. Teams run in

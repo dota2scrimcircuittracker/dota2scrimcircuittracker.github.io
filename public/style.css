@@ -1069,6 +1069,14 @@ h2 .h-note { font: 400 12px/1 var(--mono); letter-spacing: .12em; color: var(--d
 .td-series { margin: 34px 0 0; }
 .td-shead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 12px; padding: 0 0 8px; border-bottom: 1px solid var(--seam); font: 400 15px/1.2 var(--body); color: var(--dust); }
 .td-shead b { font: 700 20px/1.1 var(--display); color: var(--bone); letter-spacing: .02em; }
+/* Each series is a <details> (parts/cmdraft.js): the newest opens, the rest fold to their heading. */
+details.td-series { margin-top: 14px; }
+details.td-series > summary.td-shead { cursor: pointer; list-style: none; margin: 0; padding: 12px 0; }
+details.td-series > summary::-webkit-details-marker { display: none; }
+details.td-series > summary.td-shead::before { content: "▸"; color: var(--accent); font: 600 12px/1 var(--mono); }
+details.td-series[open] > summary.td-shead::before { content: "▾"; }
+details.td-series[open] > summary.td-shead { margin-bottom: 12px; }
+details.td-series > summary.td-shead:hover b { color: var(--accent); }
 .td-sdate { font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
 .td-sscore { margin-left: auto; font: 800 20px/1 var(--display); color: var(--bone); }
 .td-sscore.w { color: var(--jade); }
@@ -2232,6 +2240,13 @@ td .ov-badge { margin-left: 8px; }
 .sr-ov { margin-top: 6px; font: 600 12px var(--mono); color: var(--dust); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .sr-tile .ld-meter i { background: var(--tc); box-shadow: 0 0 8px rgba(var(--tc-rgb), .5); }
 .sr-tile:not(.sr-top):not(.sr-bottom):not(.sr-t10):not(.sr-t25) .ld-meter i { background: var(--dust); box-shadow: none; }
+/* Wide screens: short groups share a row. Each group asks for room for all its tiles
+   (--n tiles of 210px + 8px gap, plus the 44px tag and padding) and grows in proportion,
+   so two short groups that fit side by side share a row; a long one wraps inside its own. */
+@media (min-width: 1001px) {
+  .ld-lists:has(> .sr-band) { display: flex; flex-wrap: wrap; }
+  .ld-lists > .sr-band { flex: var(--n, 4) 1 calc(var(--n, 4) * 218px + 66px); min-width: 0; }
+}
 @media (max-width: 1000px) {
   .sr-band { grid-template-columns: 32px minmax(0, 1fr); }
   .sr-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 8px; }
@@ -3445,6 +3460,16 @@ button.tour-next:hover:not(:disabled), button.tour-primary:hover:not(:disabled) 
 /* Combined Heroic: Division A left, Division B right, one week per row. */
 .mx-grid.mx-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 1000px) { .mx-grid.mx-split { grid-template-columns: minmax(0, 1fr); } }
+/* All Divisions: eight boxes a week, so wide screens take 3 or 4 a row (4 = a week in two rows),
+   and each week starts a fresh row so a week never shares a row with the next. */
+@media (min-width: 1440px) { .mx-grid.mx-all { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1800px) { .mx-grid.mx-all { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.mx-grid.mx-all .mx-box.wk-first { grid-column-start: 1; }
+/* Narrower boxes: the week and division stay on one line, the date drops below when it won't fit. */
+@media (min-width: 1440px) {
+  .mx-grid.mx-all .mx-head { flex-wrap: wrap; row-gap: 4px; }
+  .mx-grid.mx-all .mx-wk { white-space: nowrap; }
+}
 
 /* ---------- AD2L Crosstable: every team against every other, like a Liquipedia group table ---------- */
 .ct-wrap { overflow-x: auto; margin-bottom: 18px; }

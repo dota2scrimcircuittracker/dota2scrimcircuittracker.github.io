@@ -190,7 +190,8 @@ export function draftChart({ values, steps, order = steps, nameX, nameY, current
 // { label, games: [{ m, side }] } where side is the team's "a" or "b".
 export function teamDraftsHtml(team, series, src, data, width = 1000) {
   const tally = { n: 0, preRight: 0, postRight: 0, up: 0, swing: 0 };
-  const blocks = series.map(({ label, games }) => {
+  const phone = matchMedia("(max-width: 760px)").matches;
+  const blocks = series.map(({ label, games }, i) => {
     const gamesHtml = games.map(({ m, side }, j) => {
       const { read } = readGame(m, data, { alternatives: 0 });
       const ours = (p) => (side === "a" ? p : 1 - p);
@@ -209,10 +210,10 @@ export function teamDraftsHtml(team, series, src, data, width = 1000) {
         ${oddsBars(team.name, opp, pre, post)}
         ${chart}</div>`;
     }).join("");
-    // A phone folds each series (a season of draft charts ran ~14,000px); the heading opens it.
-    return matchMedia("(max-width: 760px)").matches
-      ? `<details class="td-series"><summary class="td-shead">${label}</summary>${gamesHtml}</details>`
-      : `<section class="td-series"><h3 class="td-shead">${label}</h3>${gamesHtml}</section>`;
+    // Each series folds (a season of draft charts ran ~11,000px on desktop, ~14,000px on a
+    // phone); the heading opens it. Desktop opens the newest series, a phone opens none.
+    const open = !phone && i === 0 ? " open" : "";
+    return `<details class="td-series"${open}><summary class="td-shead">${label}</summary>${gamesHtml}</details>`;
   }).join("");
   if (!tally.n) return `<p class="muted">No drafted games yet.</p>`;
   const t = tally;

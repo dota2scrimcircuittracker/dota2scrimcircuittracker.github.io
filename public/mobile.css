@@ -598,12 +598,9 @@ details.hist-drafts > summary { display: none; }
 }
 
 @media (max-width: 760px) {
-  /* Team Draft tab: each series is a <details> on a phone (parts/cmdraft.js), folded. */
+  /* Team Draft tab: the folded series (style.css) sit closer on a phone. */
   details.td-series { margin-top: 10px; }
-  details.td-series > summary.td-shead { cursor: pointer; list-style: none; margin: 0; padding: 10px 0; }
-  details.td-series > summary::-webkit-details-marker { display: none; }
-  details.td-series > summary.td-shead::before { content: "▸"; color: var(--accent); font: 600 12px/1 var(--mono); }
-  details.td-series[open] > summary.td-shead::before { content: "▾"; }
+  details.td-series > summary.td-shead { padding: 10px 0; }
   details.td-series[open] > summary.td-shead { margin-bottom: 10px; }
 }
 

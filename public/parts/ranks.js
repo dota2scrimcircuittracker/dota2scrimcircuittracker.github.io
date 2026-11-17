@@ -124,7 +124,7 @@ export function statRanksHtml(src, key, rows, overall, opt = PLAYER_RANKS) {
   const ovTops = places.filter((x) => x.opl?.end === "top").length;
   const bands = opt.groups.map(([g, label]) => {
     const xs = places.filter((x) => x.stat.group === g);
-    return xs.length ? `<div class="ld-band sr-band sr-g-${g}"><div class="ld-tag"><span>${label}</span></div>
+    return xs.length ? `<div class="ld-band sr-band sr-g-${g}" style="--n:${xs.length}"><div class="ld-tag"><span>${label}</span></div>
       <div class="sr-tiles reveal">${xs.map(tile).join("")}</div></div>` : "";
   }).join("");
   return `<h2 id="${opt.id}">${opt.title}${info(opt.tip)}</h2>
