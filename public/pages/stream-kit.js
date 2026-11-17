@@ -29,6 +29,7 @@ async function kitTeams(src) {
 }
 
 // Each player's saved cards, fetched once: { data, designs: [{ slot, name, primary, design, pick, total, savedAt }] }.
+// A failed lookup comes back { failed: true } and isn't kept, so the next look tries again.
 const cardsOf = new Map();
 function playerDesigns(account) {
   if (!cardsOf.has(account)) cardsOf.set(account, Promise.all([publicCollection(account), cardRatings(account).catch(() => [])]).then(([data, ratings]) => {
@@ -38,7 +39,7 @@ function playerDesigns(account) {
       pick: ratings?.[i]?.pick ?? null, total: ratings?.[i]?.total ?? 0, savedAt: data.cardSavedAt?.[i] ?? 0,
     }));
     return { data, designs };
-  }).catch(() => ({ data: null, designs: [] })));
+  }).catch(() => { cardsOf.delete(account); return { data: null, designs: [], failed: true }; }));
   return cardsOf.get(account);
 }
 const choiceName = (designs, slot) => (slot == null ? `Main card${(n => (n ? ` (${n})` : ""))(designs.find((d) => d.primary)?.name)}` : designs.find((d) => d.slot === slot)?.name ?? `Card ${slot + 1}`);
@@ -79,7 +80,7 @@ export async function renderStreamKit(src) {
 
   const teamRow = (t) => `<div class="sk-team-pick" data-team="${esc(t.id)}" data-search="${esc([t.name, ...t.players.map((p) => p.name)].join(" ").toLowerCase())}">
       <label class="sk-team-box"><input type="checkbox" data-team-box> <span>${esc(t.name)}</span></label>
-      <details><summary><span data-count></span></summary><div class="sk-players">${t.players.map((p) => `<label><input type="checkbox" data-player="${esc(p.account)}"> ${esc(p.name)}</label>`).join("")}</div></details>
+      <details><summary><span data-count></span></summary><div class="sk-players">${t.players.map((p) => `<label><input type="checkbox" data-player="${esc(p.account)}"> ${esc(p.name)} <span class="sk-pcount" data-cards-of="${esc(p.account)}"></span></label>`).join("")}</div></details>
     </div>`;
   let lastGroup;
   const groups = teams.map((t) => { const head = t.group && t.group !== lastGroup ? `<h4 class="sk-group">${esc(t.group)}</h4>` : ""; lastGroup = t.group; return head + teamRow(t); }).join("");
@@ -114,12 +115,21 @@ export async function renderStreamKit(src) {
     const row = out.querySelector(`.sk-row[data-key="${CSS.escape(k)}"]`); if (!row) return;
     const url = rowUrl(k);
     row.querySelector("code").textContent = url; row.querySelector("a").href = url;
-    playerDesigns(k.split(":")[1]).then(({ designs }) => {
-      const label = row.querySelector(".sk-choice");
-      label.textContent = designs.length ? choiceName(designs, picks.get(k)) : "Default card";
-      row.querySelector(".sk-view").disabled = !designs.length;
-      row.querySelector(".sk-view").title = designs.length ? "" : "No saved cards: shows the site's default card";
+    playerDesigns(k.split(":")[1]).then(({ designs, failed }) => {
+      if (!row.isConnected) return;
+      const label = row.querySelector(".sk-choice"), view = row.querySelector(".sk-view");
+      label.textContent = failed ? "Couldn't load cards" : designs.length ? choiceName(designs, picks.get(k)) : "Default card";
+      view.textContent = designs.length > 1 ? `View ${designs.length} cards` : "View card";
+      view.classList.toggle("many", designs.length > 1);
+      view.title = failed ? "Their cards didn't load: open to try again" : designs.length ? "" : "No saved cards: the stream shows the site's default card";
+      countChoices();
     });
+  }
+  // The Cards header: how many picked players have more than one card to choose from.
+  function countChoices() {
+    const el = out.querySelector(".sk-choices"); if (!el) return;
+    const rows = [...out.querySelectorAll(".sk-row")], many = rows.filter((r) => r.querySelector(".sk-view.many")).length;
+    el.textContent = `${many} of ${rows.length} player${rows.length > 1 ? "s" : ""} ${many === 1 ? "has" : "have"} more than one card to choose from.`;
   }
 
   const draw = () => {
@@ -138,12 +148,12 @@ export async function renderStreamKit(src) {
         <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>
       <section class="panel">
-        <header class="sk-cards-head"><h3>Cards</h3><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label></header>
+        <header class="sk-cards-head"><div><h3>Cards</h3><span class="sk-choices muted"></span></div><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label></header>
         <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>. One at a time in OBS: add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}; right-click it and choose <b>Refresh</b> to pick up card changes.</p>
         ${list.map(({ team, players }) => `<div class="sk-team"><h4>${esc(team.name)}</h4>${players.map((p) => {
           const k = `${team.id}:${p.account}`, url = rowUrl(k);
           return `<div class="sk-row" data-key="${esc(k)}"><span class="sk-name">${esc(p.name)}</span>
-            <button type="button" class="sk-view">View cards</button><span class="sk-choice">…</span>
+            <button type="button" class="sk-view">View card</button><span class="sk-choice">…</span>
             <code>${esc(url)}</code><button type="button" class="sk-copy">Copy</button><a href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>`;
         }).join("")}</div>`).join("")}
       </section>`;
@@ -160,14 +170,23 @@ export async function renderStreamKit(src) {
     dlg.addEventListener("close", () => dlg.remove());
     dlg.addEventListener("click", (e) => { if (e.target === dlg || e.target.closest(".sk-dlg-close")) dlg.close(); });
     dlg.showModal();
-    const [{ data, designs }, { matches, tiers }] = await Promise.all([playerDesigns(account), getRenderer()]);
+    const [{ data, designs, failed }, { matches, tiers }] = await Promise.all([playerDesigns(account), getRenderer()]);
     if (!dlg.open) return;
     const body = dlg.querySelector(".sk-dlg-body");
-    if (!designs.length) { body.innerHTML = `<p class="muted">${esc(player.name)} hasn't saved a card yet; the stream shows the site's default card.</p>`; return; }
-    const cards = new Map([[Number(account), { cosmetics: { ...(data?.equipment ?? {}), nickname: data?.nickname ?? null } }]]);
+    if (failed) { body.innerHTML = `<p class="muted">${esc(player.name)}'s cards didn't load. Close this and try again.</p>`; refreshRow(k); return; }
+    const cards = new Map(data?.equipment ? [[Number(account), { cosmetics: { ...data.equipment, nickname: data?.nickname ?? null } }]] : []);
     const draw = createPlayerCards(matches, { cards, tiers });
     const who = { account: Number(account), name: player.name, team: team.name };
     const current = picks.get(k);
+    // No saved cards: the one card the stream will show, the site's default.
+    if (!designs.length) {
+      body.innerHTML = PAINT_FILTER + `<p class="muted">${esc(player.name)} hasn't saved a card yet, so the stream shows the site's default card.</p><div class="sk-dlg-grid"><div class="sk-pick on" role="button" tabindex="0" aria-pressed="true" data-slot="">
+        <div class="sk-pick-card">${draw.card(who, null, { own: true })}</div><strong>Default card</strong><span class="muted">The site's card for every player</span></div></div>`;
+      body.querySelectorAll(".ft-turn, .ft-expand, .ft-pickbtn").forEach((b) => b.remove());
+      fitDesignCards(body);
+      body.addEventListener("click", (e) => { if (e.target.closest(".sk-pick")) dlg.close(); });
+      return;
+    }
     body.innerHTML = PAINT_FILTER + `<div class="sk-dlg-grid">${designs.map((d) => {
       const on = d.primary ? current == null || current === d.slot : current === d.slot;
       const facts = [d.primary && "Main", d.pick && `Rated ${RATING_NAME[d.pick]} (${d.total})`, d.savedAt && `Saved ${new Date(d.savedAt).toLocaleDateString()}`].filter(Boolean).join(" · ");
@@ -198,6 +217,14 @@ export async function renderStreamKit(src) {
     grid.querySelectorAll(".sk-group").forEach((h) => { let n = h.nextElementSibling, any = false; while (n && !n.matches(".sk-group")) { any ||= !n.hidden; n = n.nextElementSibling; } h.hidden = !any; });
   });
   app.querySelector("[data-none]").onclick = () => { picks.clear(); draw(); };
+  // Opening a team shows each player's card count, so you can see who has a choice without opening each.
+  grid.addEventListener("toggle", (e) => {
+    if (!e.target.open) return;
+    e.target.querySelectorAll("[data-cards-of]:empty").forEach((el) => playerDesigns(el.dataset.cardsOf).then(({ designs, failed }) => {
+      el.textContent = failed ? "" : designs.length > 1 ? `${designs.length} cards` : designs.length ? "1 card" : "default";
+      el.classList.toggle("many", designs.length > 1);
+    }));
+  }, true);
 
   out.addEventListener("change", async (e) => {
     const sel = e.target.closest("[data-mode]"); if (!sel) return;
