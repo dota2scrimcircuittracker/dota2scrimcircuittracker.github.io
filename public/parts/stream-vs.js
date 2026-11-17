@@ -8,6 +8,20 @@
 //   warp      the VS spins in and the cards burst out of it in 3D; the teams sway like holograms
 //   spotlight each team slides in together, then a spotlight steps through every player
 //   glitch    cards glitch into existence, the VS flickers on like neon; a card glitches now and then
+//   rise      cards rise through the floor; they breathe in a slow wave
+//   domino    cards tip up like dominoes from the outside in; a domino wave now and then
+//   thunder   lightning strikes each card in; lightning keeps hitting random cards
+//   inferno   cards burn in behind a line of fire; embers drift up
+//   camera    a film shot: close on one team, pan to the other, pull back; the shot drifts
+//   orbit     cards circle the VS and spiral out; each keeps drifting in a small circle
+//   blade     slashes reveal each team; a slash crosses the stage now and then
+//   retro     names type in, cards drop in 8-bit steps; 8-bit hops after
+//   curtain   curtains part on the teams, who bow; gold sparkles
+//   beat      everything lands on a 120 bpm beat and keeps pulsing to it
+//   draft     Dota-style frames hold a socket per card; the teams pick in captain's-mode order
+//   teleport  the same frames; a teleport circle channels in each socket and the cards blink in
+//   ancient   Radiant (green) and Dire (red) frames slam in; the cards rise out of their sockets
+// Each has its own VS colours (style.css, .vs-<id>).
 // OBS replays the intro each time the scene comes on (the kit's import sets "Refresh browser when
 // scene becomes active"). &preview=1 puts a dark backdrop behind it, for checking it in a browser.
 import { esc } from "../core.js";
@@ -16,7 +30,7 @@ import { pickSlot, VS_ANIMS } from "../lib/stream-kit.js";
 
 const W = 1920, H = 1080;
 const MID = { x: 960, y: 560 }; // the VS, in stage pixels
-const GLOW = { a: "#e8b64c", b: "#e0523e" };
+const GLOW = { a: "#e8b64c", b: "#e0523e", beat: "#ff4fb8" };
 // One transform shape for every keyframe, so the browser blends them step by step.
 const tf = (y = 0, r = 0, sx = 1, sy = sx, x = 0) => `translateX(${x}px) translateY(${y}px) rotate(${r}deg) scale(${sx}, ${sy})`;
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
@@ -60,7 +74,7 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
   const draw = createPlayerCards(matches, { cards, tiers });
   const card = (p, team) => draw.card({ account: Number(p.account), name: p.name, team: team.name }, null, { own: true, equipmentOverride: p.design });
 
-  root.innerHTML = PAINT_FILTER + `<div class="vs-stage vs-${anim}" aria-label="${esc(teams[0].name)} versus ${esc(teams[1].name)}">
+  const markup = PAINT_FILTER + `<div class="vs-stage vs-${anim}" aria-label="${esc(teams[0].name)} versus ${esc(teams[1].name)}">
     <div class="vs-flash"></div>
     ${teams.map((t) => `<div class="vs-side vs-${t.side}">
       <h2 class="vs-team"><span>${esc(t.name)}</span></h2>
@@ -68,14 +82,22 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
     </div>`).join("")}
     <div class="vs-mid"><span class="vs-word">VS</span></div>
   </div>`;
-  const stage = root.querySelector(".vs-stage");
-  fitDesignCards(stage);
-  await document.fonts?.ready;
-  stage.querySelectorAll(".vs-team").forEach((h) => shrinkToFit(h, { measure: h.firstElementChild, floor: 0.45 }));
-  const ctx = context(stage);
-  const { intro, idle } = ANIMS[anim];
-  const end = intro(ctx);
-  if (idle) setTimeout(() => idle(ctx), end);
+  // &loop=<seconds>: start over that long after the intro ends (the kit's animation gallery).
+  const loop = Number(q.get("loop")) || 0;
+  const run = async () => {
+    clearTimers();
+    root.innerHTML = markup;
+    const stage = root.querySelector(".vs-stage");
+    fitDesignCards(stage);
+    await document.fonts?.ready;
+    stage.querySelectorAll(".vs-team").forEach((h) => shrinkToFit(h, { measure: h.firstElementChild, floor: 0.45 }));
+    const ctx = context(stage);
+    const { intro, idle } = ANIMS[anim];
+    const end = intro(ctx);
+    later(() => { ctx.word.classList.add("idle"); idle?.(ctx); }, end);
+    if (loop > 0) later(run, end + loop * 1000);
+  };
+  run();
 }
 
 // What every animation works with: the slots in arrival order (a1, b1, a2, b2, …), each slot's centre
@@ -138,7 +160,11 @@ function flipNow(ctx, el, on) {
   c.offsetWidth; // apply it before the motion comes back
   requestAnimationFrame(() => requestAnimationFrame(() => c.classList.remove("vs-instant")));
 }
-const every = (ms, fn) => { fn(); return setInterval(fn, ms); };
+// Every timer goes through these, so a loop can stop the last round's before starting again.
+const timers = new Set();
+function later(fn, ms) { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; }
+function every(ms, fn) { fn(); const id = setInterval(fn, ms); timers.add(id); return id; }
+function clearTimers() { for (const id of timers) { clearTimeout(id); clearInterval(id); } timers.clear(); }
 
 // Jump in: cards spin up from below, land, squash and settle; the VS slams down and everything flinches.
 function jumpIntro(ctx) {
@@ -153,7 +179,7 @@ function jumpIntro(ctx) {
       { transform: tf(-26, -2 * d, 0.97, 1.04), offset: 0.84 },
       { transform: tf(0, 0, 1), opacity: 1 },
     ], { duration: DUR, delay, easing: "cubic-bezier(.3,.7,.4,1)", fill: "backwards" });
-    setTimeout(() => ring(el), delay + DUR * 0.7);
+    later(() => ring(el), delay + DUR * 0.7);
   });
   const slamAt = T0 + (ctx.order.length - 1) * STEP + DUR + 120;
   showWord(ctx, [
@@ -162,7 +188,7 @@ function jumpIntro(ctx) {
     { transform: "scale(1.12) rotate(-1deg)", opacity: 1, offset: 0.78 },
     { transform: "scale(1) rotate(0deg)", opacity: 1 },
   ], { duration: 620, delay: slamAt, easing: "cubic-bezier(.5,0,.4,1)" });
-  setTimeout(() => {
+  later(() => {
     shake(ctx.stage, 14);
     flash(ctx);
     ctx.order.forEach((el) => { const d = ctx.dirOf(el); ctx.act(el).animate([{ transform: tf() }, { transform: tf(-10, -6 * d, 1, 1, -22 * d), offset: 0.3 }, { transform: tf() }], { duration: 600, easing: "ease-out" }); });
@@ -175,7 +201,7 @@ function brawlIdle(ctx) {
   const { order, word, dirOf, act, busy } = ctx;
   order.forEach((el) => { const hop = el.querySelector(".vs-hop"); hop.style.setProperty("--d", `${(-Math.random() * 3.2).toFixed(2)}s`); hop.classList.add("idle"); });
   const free = (list = order) => list.filter((el) => !busy.has(el));
-  const hold = (els, ms) => { els.forEach((el) => busy.add(el)); setTimeout(() => els.forEach((el) => busy.delete(el)), ms); };
+  const hold = (els, ms) => { els.forEach((el) => busy.add(el)); later(() => els.forEach((el) => busy.delete(el)), ms); };
   const moves = {
     hop(el) { // a jump with a full spin and a squashed landing
       const d = dirOf(el);
@@ -184,7 +210,7 @@ function brawlIdle(ctx) {
         { transform: tf() }, { transform: tf(10, 0, 1.06, 0.9), offset: 0.12 },
         { transform: tf(-130, 180 * d, 1.04), offset: 0.5 }, { transform: tf(0, 360 * d, 1.08, 0.9), offset: 0.82 }, { transform: tf(0, 360 * d) },
       ], { duration: 900, easing: "cubic-bezier(.35,.6,.4,1)" });
-      setTimeout(() => ring(el), 740);
+      later(() => ring(el), 740);
     },
     async flip(el) { // turns over to its stats, then back
       const c = ctx.card(el);
@@ -231,7 +257,7 @@ function brawlIdle(ctx) {
           { transform: tf(-24, 8 * d, 1.08, 1.08, 90 * d), offset: 0.45 }, { transform: tf(-6, -5 * d, 1, 1, -14 * d), offset: 0.65 }, { transform: tf() },
         ], { duration: 1000, easing: "ease-in-out" });
       }
-      setTimeout(() => { shake(word, 10); word.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 380, easing: "ease-out", composite: "add" }); }, 450);
+      later(() => { shake(word, 10); word.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 380, easing: "ease-out", composite: "add" }); }, 450);
     },
   };
   const bag = [["hop", 3], ["flip", 2], ["taunt", 2], ["glow", 2], ["wave", 1], ["clash", 1]].flatMap(([m, n]) => Array(n).fill(m));
@@ -257,14 +283,14 @@ function dealIntro(ctx) {
     ], { duration: DUR, delay: T0 + n * STEP, easing: "cubic-bezier(.2,.75,.3,1)", fill: "backwards" });
   });
   const reveal = T0 + (ctx.order.length - 1) * STEP + DUR + 300, RIPPLE = 120;
-  ctx.byX.forEach((el, j) => setTimeout(() => {
+  ctx.byX.forEach((el, j) => later(() => {
     const c = ctx.card(el);
     if (c && !isTwin(c)) flipPlayerCard(c, false);
     ctx.act(el).animate([{ transform: tf() }, { transform: tf(-22, 0, 1.08) }, { transform: tf() }], { duration: 600, easing: "cubic-bezier(.3,.7,.4,1)" });
   }, reveal + j * RIPPLE));
   const vsAt = reveal + ctx.byX.length * RIPPLE + 350;
   showWord(ctx, [{ opacity: 0, transform: "scale(.3) rotate(0deg)" }, { opacity: 1, transform: "scale(1.15) rotate(0deg)", offset: 0.6 }, { opacity: 1, transform: "scale(1) rotate(0deg)" }], { duration: 520, delay: vsAt, easing: "cubic-bezier(.3,.7,.4,1)" });
-  setTimeout(() => flash(ctx, 0.45, 600), vsAt + 250);
+  later(() => flash(ctx, 0.45, 600), vsAt + 250);
   return vsAt + 1400;
 }
 // A shine sweeps across every card, left to right.
@@ -288,7 +314,7 @@ function meteorIntro(ctx) {
       { transform: "translateY(-16px) scale(.98, 1.03)", filter: "blur(0px) brightness(1.15)", offset: 0.86 },
       { transform: "translateY(0px) scale(1, 1)", filter: "blur(0px) brightness(1)" },
     ], { duration: DUR, delay, fill: "backwards" });
-    setTimeout(() => { ring(el, { size: 2.1, ms: 750 }); shake(ctx.stage, 7, 300); }, delay + DUR * HIT);
+    later(() => { ring(el, { size: 2.1, ms: 750 }); shake(ctx.stage, 7, 300); }, delay + DUR * HIT);
   });
   const vsAt = T0 + (ctx.order.length - 1) * STEP + DUR + 200;
   showWord(ctx, [
@@ -296,7 +322,7 @@ function meteorIntro(ctx) {
     { opacity: 1, transform: "scale(.9) rotate(0deg)", offset: 0.5 },
     { opacity: 1, transform: "scale(1) rotate(0deg)" },
   ], { duration: 520, delay: vsAt, easing: "cubic-bezier(.6,0,.4,1)" });
-  setTimeout(() => {
+  later(() => {
     const rays = atMid(ctx, "vs-rays");
     rays.animate([{ opacity: 0, transform: "translate(-50%, -50%) scale(.3) rotate(0deg)" }, { opacity: 1, offset: 0.25 }, { opacity: 0, transform: "translate(-50%, -50%) scale(1.5) rotate(50deg)" }], { duration: 1100, easing: "ease-out" }).onfinish = () => rays.remove();
     flash(ctx, 0.9, 800);
@@ -329,7 +355,7 @@ function warpIntro(ctx) {
     { opacity: 1, transform: "scale(1.3) rotate(12deg)", offset: 0.75 },
     { opacity: 1, transform: "scale(1) rotate(0deg)" },
   ], { duration: 850, delay: 200, easing: "cubic-bezier(.3,.6,.3,1)" });
-  setTimeout(() => {
+  later(() => {
     const portal = atMid(ctx, "vs-portal");
     portal.animate([{ opacity: 0, transform: "translate(-50%, -50%) scale(.2)" }, { opacity: 1, transform: "translate(-50%, -50%) scale(1)", offset: 0.3 }, { opacity: 0, transform: "translate(-50%, -50%) scale(1.6)" }], { duration: 2200, easing: "ease-out" }).onfinish = () => portal.remove();
   }, 800);
@@ -363,12 +389,12 @@ function spotlightIntro(ctx) {
       { transform: "translateX(0px) skewX(0deg)", opacity: 1 },
     ], { duration: 950, delay: 200 + i * 180, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" });
   });
-  setTimeout(() => [1, -1].forEach((s, i) => {
+  later(() => [1, -1].forEach((s, i) => {
     const streak = atMid(ctx, "vs-streak");
     streak.animate([{ transform: `translate(-50%, -50%) rotate(${22 * s}deg) translateX(${-1500 * s}px)`, opacity: 1 }, { transform: `translate(-50%, -50%) rotate(${22 * s}deg) translateX(${1500 * s}px)`, opacity: 1 }], { duration: 650, delay: i * 90, easing: "cubic-bezier(.5,0,.5,1)" }).onfinish = () => streak.remove();
   }), 1150);
   showWord(ctx, [{ opacity: 0, transform: "scale(3, .15)" }, { opacity: 1, transform: "scale(.9, 1.12)", offset: 0.6 }, { opacity: 1, transform: "scale(1, 1)" }], { duration: 480, delay: 1500, easing: "cubic-bezier(.3,.7,.4,1)" });
-  setTimeout(() => flash(ctx, 0.5, 600), 1650);
+  later(() => flash(ctx, 0.5, 600), 1650);
   return 2600;
 }
 // The spotlight steps through every player in turn; after a round everyone is lit for a beat.
@@ -405,7 +431,7 @@ function glitchIntro(ctx) {
   ctx.order.forEach((el, n) => el.animate(glitchFrames(8), { duration: DUR, delay: T0 + n * STEP, fill: "backwards" }));
   const vsAt = T0 + (ctx.order.length - 1) * STEP + DUR + 200;
   showWord(ctx, NEON.map((o) => ({ opacity: o, transform: "scale(1)", easing: "steps(1, end)" })), { duration: 1000, delay: vsAt });
-  setTimeout(() => { flash(ctx, 0.35, 300); shake(ctx.stage, 6, 250); }, vsAt + 600);
+  later(() => { flash(ctx, 0.35, 300); shake(ctx.stage, 6, 250); }, vsAt + 600);
   return vsAt + 1500;
 }
 // A random card glitches for a moment; now and then the VS buzzes.
@@ -418,6 +444,597 @@ function glitchIdle(ctx) {
   });
 }
 
+// Rise: the cards come up through the floor under each row, left to right; the VS gathers out of a blur.
+function riseIntro(ctx) {
+  ctx.names.forEach((h, i) => h.animate([{ opacity: 0, transform: "translateY(30px)" }, { opacity: 1, transform: "translateY(0px)" }], { duration: 900, delay: 200 + i * 150, easing: "ease-out", fill: "backwards" }));
+  const T0 = 400, STEP = 150, DUR = 1100, Y = 360;
+  ctx.byX.forEach((el, n) => {
+    el.animate([
+      { transform: `translateY(${Y}px)`, clipPath: `inset(0px 0px ${Y}px 0px)`, filter: "brightness(1.8)" },
+      { transform: "translateY(-10px)", clipPath: "inset(0px 0px 0px 0px)", filter: "brightness(1.15)", offset: 0.8 },
+      { transform: "translateY(0px)", clipPath: "inset(0px 0px 0px 0px)", filter: "brightness(1)" },
+    ], { duration: DUR, delay: T0 + n * STEP, easing: "cubic-bezier(.2,.7,.2,1)", fill: "backwards" });
+  });
+  const vsAt = T0 + (ctx.byX.length - 1) * STEP + DUR - 200;
+  showWord(ctx, [{ opacity: 0, letterSpacing: ".6em", transform: "scale(1.3)" }, { opacity: 1, letterSpacing: "-.02em", transform: "scale(1)" }], { duration: 1000, delay: vsAt, easing: "cubic-bezier(.2,.7,.2,1)" });
+  later(() => flash(ctx, 0.35, 900), vsAt + 700);
+  return vsAt + 1400;
+}
+// The cards breathe, a slow swell that rolls left to right.
+function riseIdle(ctx) {
+  ctx.stage.classList.add("vs-breathing");
+  ctx.order.forEach((el) => el.querySelector(".vs-hop").style.setProperty("--d", `${(-(ctx.pos.get(el).x / W) * 4).toFixed(2)}s`));
+}
+
+// Dominoes: the cards lie flat and tip up one after another, from the outside in.
+const tip = (deg) => `perspective(900px) rotateX(${deg}deg)`;
+function dominoIntro(ctx) {
+  ctx.names.forEach((h, i) => h.animate([{ transform: tip(90), opacity: 0, transformOrigin: "50% 0%" }, { transform: tip(-10), opacity: 1, offset: 0.7, transformOrigin: "50% 0%" }, { transform: tip(0), opacity: 1, transformOrigin: "50% 0%" }], { duration: 700, delay: 150 + i * 150, easing: "ease-out", fill: "backwards" }));
+  const outsideIn = [...ctx.order].sort((x, y) => Math.abs(ctx.pos.get(y).x - MID.x) - Math.abs(ctx.pos.get(x).x - MID.x));
+  const T0 = 500, STEP = 120, DUR = 750;
+  outsideIn.forEach((el, n) => {
+    el.animate([
+      { transform: tip(-88), opacity: 0 }, { opacity: 1, offset: 0.1 },
+      { transform: tip(14), offset: 0.65 }, { transform: tip(-5), offset: 0.84 }, { transform: tip(0), opacity: 1 },
+    ], { duration: DUR, delay: T0 + n * STEP, easing: "cubic-bezier(.4,0,.3,1)", fill: "backwards" });
+    later(() => ring(el, { size: 1.4, ms: 500 }), T0 + n * STEP + DUR * 0.62);
+  });
+  const vsAt = T0 + (outsideIn.length - 1) * STEP + DUR;
+  showWord(ctx, [{ transform: tip(-88), opacity: 0, transformOrigin: "50% 80%" }, { transform: tip(16), opacity: 1, offset: 0.65, transformOrigin: "50% 80%" }, { transform: tip(0), opacity: 1, transformOrigin: "50% 80%" }], { duration: 700, delay: vsAt, easing: "cubic-bezier(.4,0,.3,1)" });
+  later(() => shake(ctx.stage, 8, 300), vsAt + 450);
+  return vsAt + 1300;
+}
+// A domino wave: the cards tip back and up across the whole stage.
+function dominoIdle(ctx) {
+  every(5500, () => ctx.byX.forEach((el, i) => ctx.act(el).animate([{ transform: tip(0) }, { transform: tip(-38), offset: 0.4 }, { transform: tip(7), offset: 0.75 }, { transform: tip(0) }], { duration: 700, delay: i * 90, easing: "ease-in-out" })));
+}
+
+// Thunder: lightning strikes where each card lands, and a big bolt brings the VS.
+function bolt(ctx, x, y, { width = 5, branches = 1 } = {}) {
+  const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "vs-bolt");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const path = (x1, y1, x2, y2, n) => {
+    const pts = [[x1, y1]];
+    for (let i = 1; i < n; i++) { const t = i / n; pts.push([x1 + (x2 - x1) * t + rand(-45, 45), y1 + (y2 - y1) * t]); }
+    pts.push([x2, y2]);
+    return pts;
+  };
+  const main = path(x + rand(-160, 160), -40, x, y, 11);
+  const lines = [main];
+  for (let b = 0; b < branches; b++) { const [bx, by] = main[3 + Math.floor(Math.random() * 5)]; lines.push(path(bx, by, bx + rand(-180, 180), by + rand(80, 200), 5)); }
+  lines.forEach((pts, i) => {
+    const pl = document.createElementNS(NS, "polyline");
+    pl.setAttribute("points", pts.map((p) => p.join(",")).join(" "));
+    pl.setAttribute("stroke-width", String(i ? width * 0.5 : width));
+    svg.append(pl);
+  });
+  ctx.stage.append(svg);
+  svg.animate([1, 0.2, 1, 0.6, 0].map((o) => ({ opacity: o })), { duration: 320, easing: "linear" }).onfinish = () => svg.remove();
+}
+function zap(el, delay = 0) {
+  return el.animate([
+    { opacity: 0, filter: "brightness(5) saturate(0)", transform: "scale(1.08)" },
+    { opacity: 1, filter: "brightness(2.6) saturate(.4)", transform: "scale(1.04)", offset: 0.2 },
+    { opacity: 1, filter: "brightness(1) saturate(1)", transform: "scale(1)" },
+  ], { duration: 650, delay, easing: "ease-out", fill: "backwards" });
+}
+function thunderIntro(ctx) {
+  ctx.names.forEach((h, i) => h.animate([0, 1, 0, 1, 0.3, 1].map((o) => ({ opacity: o, easing: "steps(1, end)" })), { duration: 500, delay: 200 + i * 250, fill: "backwards" }));
+  const T0 = 600, STEP = 230;
+  ctx.order.forEach((el, n) => {
+    const at = T0 + n * STEP, p = ctx.pos.get(el);
+    zap(el, at);
+    later(() => { bolt(ctx, p.x, p.y - 150); shake(ctx.stage, 5, 220); }, at);
+  });
+  const vsAt = T0 + ctx.order.length * STEP + 300;
+  later(() => { bolt(ctx, MID.x, MID.y - 40, { width: 9, branches: 3 }); flash(ctx, 0.95, 500); shake(ctx.stage, 14, 450); }, vsAt);
+  showWord(ctx, [{ opacity: 0, filter: "brightness(5)" }, { opacity: 1, filter: "brightness(3)", offset: 0.15 }, { opacity: 1, filter: "brightness(1)" }], { duration: 700, delay: vsAt });
+  return vsAt + 1200;
+}
+// Lightning strikes a random card now and then.
+function thunderIdle(ctx) {
+  every(3200, () => {
+    const el = pick(ctx.order), p = ctx.pos.get(el);
+    bolt(ctx, p.x, p.y - 150);
+    ctx.act(el).animate([{ transform: tf(), filter: "brightness(2.4)" }, { transform: tf(0, 0, 1, 1, 6), offset: 0.2 }, { transform: tf(0, 0, 1, 1, -6), offset: 0.4 }, { transform: tf(), filter: "brightness(1)" }], { duration: 450, easing: "ease-out" });
+  });
+}
+
+// Inferno: each card burns into view from the bottom up behind a line of fire; embers rise after.
+function infernoIntro(ctx) {
+  ctx.names.forEach((h, i) => h.animate([{ opacity: 0, filter: "brightness(3) sepia(1) saturate(5)" }, { opacity: 1, filter: "brightness(1) sepia(0) saturate(1)" }], { duration: 1000, delay: 200 + i * 200, easing: "ease-out", fill: "backwards" }));
+  const T0 = 400, STEP = 170, DUR = 1150;
+  ctx.byX.forEach((el, n) => {
+    const delay = T0 + n * STEP;
+    el.querySelector(".vs-hop").animate([
+      { clipPath: "inset(100% 0% 0% 0%)", filter: "brightness(2) sepia(1) saturate(4) hue-rotate(-25deg)" },
+      { clipPath: "inset(0% 0% 0% 0%)", filter: "brightness(1.5) sepia(.6) saturate(3) hue-rotate(-25deg)", offset: 0.7 },
+      { clipPath: "inset(0% 0% 0% 0%)", filter: "brightness(1) sepia(0) saturate(1) hue-rotate(0deg)" },
+    ], { duration: DUR, delay, easing: "ease-in-out", fill: "backwards" });
+    const fire = document.createElement("i");
+    fire.className = "vs-flame";
+    el.append(fire);
+    fire.animate([{ transform: "translateY(0px)", opacity: 0 }, { transform: "translateY(-25px)", opacity: 1, offset: 0.06 }, { transform: "translateY(-350px)", opacity: 1, offset: 0.7 }, { transform: "translateY(-370px)", opacity: 0 }], { duration: DUR, delay, easing: "ease-in-out", fill: "both" }).onfinish = () => fire.remove();
+  });
+  const vsAt = T0 + (ctx.byX.length - 1) * STEP + DUR - 100;
+  showWord(ctx, [0, 0.7, 0.2, 1, 0.6, 1].map((o, i, a) => ({ opacity: o, transform: `scale(${0.8 + (0.2 * i) / (a.length - 1)})` })), { duration: 900, delay: vsAt, easing: "ease-out" });
+  return vsAt + 1300;
+}
+// Embers drift up off the cards.
+function infernoIdle(ctx) {
+  every(240, () => {
+    const p = ctx.pos.get(pick(ctx.order)), e = document.createElement("i");
+    e.className = "vs-ember";
+    e.style.left = `${p.x + rand(-115, 115)}px`;
+    e.style.top = `${p.y + rand(-120, 170)}px`;
+    ctx.stage.append(e);
+    const rise = rand(160, 280), drift = rand(-50, 50);
+    e.animate([{ transform: "translate(0px, 0px) scale(1)", opacity: 0 }, { opacity: 1, offset: 0.15 }, { transform: `translate(${drift}px, ${-rise}px) scale(.3)`, opacity: 0 }], { duration: rand(1500, 2400), easing: "ease-out" }).onfinish = () => e.remove();
+  });
+}
+
+// Camera: a film move. Close on the first team, a pan across to the second, then a pull back to show it
+// all, with letterbox bars that slide away.
+function camera(ctx, k, x, y) { return `scale(${k}) translate(${960 - x}px, ${540 - y}px)`; }
+function cameraIntro(ctx) {
+  const centre = (els) => ({ x: els.reduce((s, el) => s + ctx.pos.get(el).x, 0) / els.length, y: els.reduce((s, el) => s + ctx.pos.get(el).y, 0) / els.length - 40 });
+  const A = centre(ctx.a), B = centre(ctx.b), DUR = 4200;
+  ctx.stage.animate([
+    { transform: camera(ctx, 2.3, A.x, A.y) },
+    { transform: camera(ctx, 2.1, A.x, A.y), offset: 0.1 },
+    { transform: camera(ctx, 2.0, A.x + 40, A.y), offset: 0.32 },
+    { transform: camera(ctx, 2.0, B.x - 40, B.y), offset: 0.6 },
+    { transform: camera(ctx, 1.9, B.x, B.y), offset: 0.72 },
+    { transform: camera(ctx, 1, 960, 540) },
+  ], { duration: DUR, delay: 150, easing: "ease-in-out", composite: "add", fill: "backwards" });
+  const root = ctx.stage.parentElement;
+  for (const side of ["top", "bottom"]) {
+    const bar = document.createElement("i");
+    bar.className = `vs-bar vs-bar-${side}`;
+    root.append(bar);
+    bar.animate([{ transform: "translateY(0%)" }, { transform: "translateY(0%)", offset: 0.82 }, { transform: `translateY(${side === "top" ? -100 : 100}%)` }], { duration: DUR + 300, easing: "ease-in", fill: "forwards" }).onfinish = () => bar.remove();
+  }
+  const vsAt = DUR - 150;
+  showWord(ctx, [{ opacity: 0, transform: "scale(1.6)" }, { opacity: 1, transform: "scale(1)" }], { duration: 450, delay: vsAt, easing: "cubic-bezier(.3,.7,.4,1)" });
+  later(() => flash(ctx, 0.9, 500), vsAt);
+  return vsAt + 1000;
+}
+// A slow drift, as if the camera were handheld.
+function cameraIdle(ctx) {
+  ctx.stage.animate([{ transform: "scale(1) translate(0px, 0px)" }, { transform: "scale(1.035) translate(-14px, -6px)" }, { transform: "scale(1.02) translate(12px, 4px)" }], { duration: 14000, direction: "alternate", iterations: Infinity, easing: "ease-in-out", composite: "add" });
+}
+
+// Orbit: the VS appears and the cards circle it, then spiral out to their places.
+function orbitIntro(ctx) {
+  showWord(ctx, [{ opacity: 0, transform: "scale(.4) rotate(0deg)" }, { opacity: 1, transform: "scale(1.1) rotate(0deg)", offset: 0.7 }, { opacity: 1, transform: "scale(1) rotate(0deg)" }], { duration: 700, delay: 200, easing: "ease-out" });
+  const N = ctx.order.length, DUR = 2900, T0 = 500, RX = 430, RY = 250, STEPS = 22;
+  ctx.order.forEach((el, i) => {
+    const p = ctx.pos.get(el), a0 = (i / N) * Math.PI * 2, frames = [];
+    for (let s = 0; s <= STEPS; s++) {
+      const t = s / STEPS;
+      let x, y, k;
+      if (t <= 0.55) { const a = a0 + (t / 0.55) * Math.PI * 1.3; x = MID.x + RX * Math.cos(a); y = MID.y + RY * Math.sin(a); k = 0.45; }
+      else {
+        const a = a0 + Math.PI * 1.3, u = 1 - (1 - (t - 0.55) / 0.45) ** 3;
+        const ox = MID.x + RX * Math.cos(a), oy = MID.y + RY * Math.sin(a);
+        x = ox + (p.x - ox) * u; y = oy + (p.y - oy) * u; k = 0.45 + 0.55 * u;
+      }
+      frames.push({ transform: `translate(${(x - p.x).toFixed(1)}px, ${(y - p.y).toFixed(1)}px) scale(${k.toFixed(3)})`, opacity: s === 0 ? 0 : 1, offset: t });
+    }
+    el.animate(frames, { duration: DUR, delay: T0, easing: "linear", fill: "backwards" });
+  });
+  ctx.names.forEach((h, i) => h.animate([{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "scale(1)" }], { duration: 600, delay: T0 + DUR - 300 + i * 100, easing: "cubic-bezier(.3,.7,.4,1)", fill: "backwards" }));
+  later(() => { flash(ctx, 0.4, 600); ctx.word.animate([{ transform: "scale(1)" }, { transform: "scale(1.2)" }, { transform: "scale(1)" }], { duration: 450, composite: "add" }); }, T0 + DUR);
+  return T0 + DUR + 900;
+}
+// Each card drifts round a small circle of its own.
+function orbitIdle(ctx) {
+  ctx.stage.classList.add("vs-orbiting");
+  ctx.order.forEach((el) => el.querySelector(".vs-hop").style.setProperty("--d", `${(-Math.random() * 6).toFixed(2)}s`));
+}
+
+// Blade: a slash cuts across each half and the team is behind it; the VS is cut in on a diagonal.
+function slash(ctx, x, y, angle, { len = 1200, ms = 380, delay = 0 } = {}) {
+  const s = document.createElement("i");
+  s.className = "vs-slash";
+  s.style.left = `${x}px`;
+  s.style.top = `${y}px`;
+  s.style.width = `${len}px`;
+  ctx.stage.append(s);
+  const at = (k) => `translateY(-50%) rotate(${angle}deg) scaleX(${k})`;
+  s.animate([
+    { transform: at(0), opacity: 0 }, { transform: at(0.08), opacity: 1, offset: 0.04 }, { transform: at(1), opacity: 1, offset: 0.5 }, { transform: at(1), opacity: 0 },
+  ], { duration: ms, delay, easing: "cubic-bezier(.6,0,.3,1)", fill: "backwards" }).onfinish = () => s.remove();
+}
+function bladeIntro(ctx) {
+  const wipe = (i) => (i
+    ? [{ clipPath: "polygon(100% 0%, 100% 0%, 125% 100%, 100% 100%)" }, { clipPath: "polygon(100% 0%, -25% 0%, 0% 100%, 100% 100%)" }]
+    : [{ clipPath: "polygon(0% 0%, 0% 0%, -25% 100%, 0% 100%)" }, { clipPath: "polygon(0% 0%, 125% 0%, 100% 100%, 0% 100%)" }]);
+  ctx.sides.forEach((side, i) => {
+    const at = 300 + i * 450;
+    side.animate(wipe(i), { duration: 420, delay: at, easing: "cubic-bezier(.6,0,.3,1)", fill: "backwards" });
+    slash(ctx, i ? 1920 : 0, 960, i ? -146 : -34, { len: 1150, delay: at - 60, ms: 520 });
+    later(() => shake(ctx.stage, 6, 250), at + 200);
+  });
+  const settle = 1300;
+  ctx.byX.forEach((el, n) => ctx.act(el).animate([{ transform: "skewX(-16deg) scale(1.04)", filter: "brightness(1.8)" }, { transform: "skewX(5deg) scale(1)", filter: "brightness(1.2)", offset: 0.5 }, { transform: "skewX(0deg) scale(1)", filter: "brightness(1)" }], { duration: 450, delay: settle + n * 50, easing: "ease-out" }));
+  const vsAt = settle + 700;
+  slash(ctx, MID.x - 300, MID.y + 110, -20, { len: 640, delay: vsAt - 80, ms: 420 });
+  showWord(ctx, [{ opacity: 1, clipPath: "polygon(0% 0%, 0% 0%, -30% 100%, -30% 100%)", transform: "scale(1.1)" }, { opacity: 1, clipPath: "polygon(0% 0%, 130% 0%, 100% 100%, -30% 100%)", transform: "scale(1)" }], { duration: 300, delay: vsAt, easing: "cubic-bezier(.6,0,.3,1)" });
+  later(() => { flash(ctx, 0.6, 400); shake(ctx.stage, 10, 300); }, vsAt + 150);
+  return vsAt + 1000;
+}
+// A slash crosses the stage and the cards flinch as it passes.
+function bladeIdle(ctx) {
+  every(4800, () => {
+    const angle = rand(-30, -12), y = rand(380, 740);
+    slash(ctx, -60, y, angle, { len: 2300, ms: 500 });
+    ctx.byX.forEach((el) => ctx.act(el).animate([{ transform: "skewX(0deg)" }, { transform: "skewX(-10deg) translateX(10px)" }, { transform: "skewX(0deg)" }], { duration: 300, delay: (ctx.pos.get(el).x / W) * 250, easing: "ease-out" }));
+  });
+}
+
+// Retro: the names type in, the cards drop in choppy 8-bit steps, the VS blinks on like an arcade screen.
+function retroIntro(ctx) {
+  ctx.names.forEach((h, i) => {
+    const span = h.firstElementChild, text = span.textContent;
+    span.textContent = "";
+    [...text].forEach((_, n) => later(() => { span.textContent = text.slice(0, n + 1); }, 200 + i * 400 + n * 45));
+  });
+  const T0 = 700, STEP = 160;
+  ctx.order.forEach((el, n) => el.animate([
+    { transform: "translateY(-760px)", opacity: 1, easing: "steps(7, end)" },
+    { transform: "translateY(0px)", offset: 0.6, easing: "steps(2, end)" },
+    { transform: "translateY(-40px)", offset: 0.8, easing: "steps(2, end)" },
+    { transform: "translateY(0px)", opacity: 1 },
+  ], { duration: 780, delay: T0 + n * STEP, fill: "backwards" }));
+  const vsAt = T0 + (ctx.order.length - 1) * STEP + 900;
+  showWord(ctx, [0, 1, 0, 1, 0, 1].map((o) => ({ opacity: o, transform: "scale(1)", easing: "steps(1, end)" })), { duration: 700, delay: vsAt });
+  return vsAt + 1200;
+}
+// A random card does an 8-bit hop; the VS blinks now and then.
+function retroIdle(ctx) {
+  let n = 0;
+  every(1600, () => {
+    ctx.act(pick(ctx.order)).animate([{ transform: "translateY(0px)", easing: "steps(3, end)" }, { transform: "translateY(-48px)", easing: "steps(3, end)" }, { transform: "translateY(0px)" }], { duration: 480 });
+    if (++n % 4 === 0) ctx.word.animate([1, 0, 1, 0, 1].map((o) => ({ opacity: o, easing: "steps(1, end)" })), { duration: 500 });
+  });
+}
+
+// Curtain: red curtains hide the stage with the VS on them, then part to show the teams, who bow.
+function curtainIntro(ctx) {
+  const mid = ctx.stage.querySelector(".vs-mid");
+  const curtains = ["l", "r"].map((s) => { const c = document.createElement("i"); c.className = `vs-drape vs-drape-${s}`; ctx.stage.insertBefore(c, mid); return c; });
+  showWord(ctx, [{ opacity: 0, transform: "scale(.7)" }, { opacity: 1, transform: "scale(1)" }], { duration: 700, delay: 200, easing: "ease-out" });
+  const OPEN = 1300, DUR = 1700;
+  curtains.forEach((c, i) => c.animate([
+    { transform: "translateX(0%) skewX(0deg)" },
+    { transform: `translateX(${i ? 4 : -4}%) skewX(${i ? -2 : 2}deg)`, offset: 0.15 },
+    { transform: `translateX(${i ? 105 : -105}%) skewX(0deg)` },
+  ], { duration: DUR, delay: OPEN, easing: "cubic-bezier(.6,0,.3,1)", fill: "both" }).onfinish = () => c.remove());
+  ctx.names.forEach((h, i) => h.animate([{ opacity: 0, transform: "translateY(-20px)" }, { opacity: 1, transform: "translateY(0px)" }], { duration: 600, delay: OPEN + DUR - 200 + i * 120, easing: "ease-out", fill: "backwards" }));
+  const bow = OPEN + DUR - 100;
+  ctx.byX.forEach((el, n) => ctx.act(el).animate([{ transform: tip(0) }, { transform: tip(-24), offset: 0.45 }, { transform: tip(0) }], { duration: 800, delay: bow + n * 90, easing: "ease-in-out" }));
+  return bow + ctx.byX.length * 90 + 900;
+}
+// Gold sparkles glint on the cards.
+function curtainIdle(ctx) {
+  every(650, () => {
+    const el = pick(ctx.order), s = document.createElement("i");
+    s.className = "vs-sparkle";
+    s.style.left = `${rand(10, 90)}%`;
+    s.style.top = `${rand(8, 92)}%`;
+    el.append(s);
+    s.animate([{ transform: "translate(-50%, -50%) scale(0) rotate(0deg)", opacity: 0 }, { transform: "translate(-50%, -50%) scale(1) rotate(45deg)", opacity: 1, offset: 0.4 }, { transform: "translate(-50%, -50%) scale(0) rotate(90deg)", opacity: 0 }], { duration: 900, easing: "ease-in-out" }).onfinish = () => s.remove();
+  });
+}
+
+// Beat: everything lands on a 120 bpm beat. A card from each side pops in per beat, then the VS on the
+// drop; after that the cards and the VS keep pulsing to the beat.
+const BEAT = 500;
+function pop(el, delay = 0) {
+  return el.animate([
+    { transform: "scale(0)", opacity: 0 }, { transform: "scale(1.28)", opacity: 1, offset: 0.4 },
+    { transform: "scale(.9)", offset: 0.65 }, { transform: "scale(1.04)", offset: 0.85 }, { transform: "scale(1)", opacity: 1 },
+  ], { duration: 460, delay, easing: "ease-out", fill: "backwards" });
+}
+function beatIntro(ctx) {
+  ctx.names.forEach((h) => pop(h, BEAT));
+  const rows = Math.max(ctx.a.length, ctx.b.length);
+  for (let i = 0; i < rows; i++) {
+    const at = BEAT * (i + 2);
+    [ctx.a[i], ctx.b[i]].filter(Boolean).forEach((el) => pop(el, at));
+    later(() => ctx.stage.animate([{ transform: "scale(1)" }, { transform: "scale(1.012)" }, { transform: "scale(1)" }], { duration: 260, composite: "add" }), at);
+  }
+  const vsAt = BEAT * (rows + 2);
+  showWord(ctx, [{ opacity: 0, transform: "scale(0)" }, { opacity: 1, transform: "scale(1.5)", offset: 0.4 }, { opacity: 1, transform: "scale(.9)", offset: 0.7 }, { opacity: 1, transform: "scale(1)" }], { duration: 480, delay: vsAt, easing: "ease-out" });
+  later(() => { flash(ctx, 0.6, 400); shake(ctx.stage, 8, 250); }, vsAt);
+  return vsAt + BEAT * 2;
+}
+// The pulse: every beat a small thump, every bar a glow.
+function beatIdle(ctx) {
+  let n = 0;
+  every(BEAT, () => {
+    const bar = n++ % 4 === 0;
+    ctx.word.animate([{ transform: "scale(1)" }, { transform: `scale(${bar ? 1.18 : 1.07})` }, { transform: "scale(1)" }], { duration: 300, easing: "ease-out", composite: "add" });
+    const side = n % 2 ? ctx.a : ctx.b;
+    for (const el of bar ? ctx.order : side) {
+      ctx.act(el).animate(bar
+        ? [{ transform: "scale(1)", filter: "drop-shadow(0 0 0 transparent)" }, { transform: "scale(1.05)", filter: `drop-shadow(0 0 24px ${GLOW.beat})` }, { transform: "scale(1)", filter: "drop-shadow(0 0 0 transparent)" }]
+        : [{ transform: "scale(1)" }, { transform: "scale(1.03)" }, { transform: "scale(1)" }], { duration: 320, easing: "ease-out" });
+    }
+  });
+}
+
+// Slotted scenes (draft, teleport, ancient): a Dota-style frame behind each team, shaped around its
+// rows of cards, with a socket for every card. The cards land in their sockets and light them up.
+const SVGNS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs = {}, cls = "") {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, typeof v === "number" ? v.toFixed(1) : v);
+  if (cls) e.setAttribute("class", cls);
+  return e;
+}
+function stageRect(ctx, el) {
+  const st = ctx.stage.getBoundingClientRect(), s = st.width / W, r = el.getBoundingClientRect();
+  return { x: (r.left - st.left) / s, y: (r.top - st.top) / s, w: r.width / s, h: r.height / s };
+}
+// The outline around rows of cards: straight sides, cut corners, stepping in or out between rows.
+function framePath(rows, pad, cut) {
+  const n = rows.length, c2 = cut * 0.6;
+  const L = rows.map((w) => w.l - pad), R = rows.map((w) => w.r + pad), T = rows[0].t - pad, B = rows[n - 1].b + pad;
+  const mid = rows.slice(1).map((w, i) => (rows[i].b + w.t) / 2);
+  const pts = [[L[0] + cut, T], [R[0] - cut, T], [R[0], T + cut]];
+  for (let i = 0; i < n - 1; i++) {
+    const y = mid[i];
+    if (R[i] - R[i + 1] > cut) pts.push([R[i], y - c2], [R[i] - c2, y], [R[i + 1], y]);
+    else if (R[i + 1] - R[i] > cut) pts.push([R[i], y], [R[i + 1] - c2, y], [R[i + 1], y + c2]);
+    else pts.push([R[i], y], [R[i + 1], y]);
+  }
+  pts.push([R[n - 1], B - cut], [R[n - 1] - cut, B], [L[n - 1] + cut, B], [L[n - 1], B - cut]);
+  for (let i = n - 1; i > 0; i--) {
+    const y = mid[i - 1];
+    if (L[i] - L[i - 1] > cut) pts.push([L[i], y], [L[i - 1] + c2, y], [L[i - 1], y - c2]);
+    else if (L[i - 1] - L[i] > cut) pts.push([L[i], y + c2], [L[i] + c2, y], [L[i - 1], y]);
+    else pts.push([L[i], y], [L[i - 1], y]);
+  }
+  pts.push([L[0], T + cut]);
+  return "M" + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join("L") + "Z";
+}
+const gem = (x, y, r) => `M${x} ${y - r}L${x + r * 0.75} ${y}L${x} ${y + r}L${x - r * 0.75} ${y}Z`;
+// Draws both frames under the teams. Returns { frames: [svg a, svg b], sockets: slot → { g, lit } }.
+function buildFrames(ctx, { pad = 26, cut = 24 } = {}) {
+  const sockets = new Map(), frames = [];
+  const first = ctx.stage.querySelector(".vs-side");
+  for (const [side, slots] of [["a", ctx.a], ["b", ctx.b]]) {
+    const rects = slots.map((el) => [el, stageRect(ctx, el)]);
+    const rows = [];
+    for (const [, r] of rects) {
+      let row = rows.find((w) => Math.abs(w.t - r.y) < 30);
+      if (!row) rows.push(row = { t: r.y, b: r.y + r.h, l: r.x, r: r.x + r.w });
+      row.l = Math.min(row.l, r.x); row.r = Math.max(row.r, r.x + r.w); row.b = Math.max(row.b, r.y + r.h);
+    }
+    rows.sort((p, q) => p.t - q.t);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}` }, `vs-frame vs-frame-${side}`);
+    const defs = svgEl("defs");
+    const fill = svgEl("linearGradient", { id: `vsf-fill-${side}`, x1: 0, y1: 0, x2: 0, y2: 1 });
+    fill.append(svgEl("stop", { offset: 0 }, "f1"), svgEl("stop", { offset: 1 }, "f2"));
+    const trim = svgEl("linearGradient", { id: `vsf-trim-${side}`, x1: 0, y1: 0, x2: 1, y2: 1 });
+    trim.append(svgEl("stop", { offset: 0 }, "t1"), svgEl("stop", { offset: 0.5 }, "t2"), svgEl("stop", { offset: 1 }, "t1"));
+    defs.append(fill, trim);
+    const outer = framePath(rows, pad, cut), inner = framePath(rows, pad - 11, cut - 7);
+    const top = rows[0], bottom = rows[rows.length - 1];
+    svg.append(defs,
+      svgEl("path", { d: outer }, "vs-fr-shade"),
+      svgEl("path", { d: outer, fill: `url(#vsf-fill-${side})` }, "vs-fr-fill"),
+      svgEl("path", { d: inner }, "vs-fr-inner"),
+      svgEl("path", { d: outer }, "vs-fr-glow"),
+      svgEl("path", { d: outer, stroke: `url(#vsf-trim-${side})` }, "vs-fr-trim"),
+      svgEl("path", { d: gem((top.l + top.r) / 2, top.t - pad, 15) }, "vs-gem"),
+      svgEl("path", { d: gem((bottom.l + bottom.r) / 2, bottom.b + pad, 15) }, "vs-gem"));
+    const socks = svgEl("g");
+    for (const [el, r] of rects) {
+      const box = { x: r.x - 9, y: r.y - 9, width: r.w + 18, height: r.h + 18, rx: 18 };
+      const g = svgEl("g", {}, "vs-sock"), lit = svgEl("g", {}, "vs-sock-lit");
+      lit.append(svgEl("rect", box, "vs-sock-glow"), svgEl("rect", box, "vs-sock-line"));
+      g.append(svgEl("rect", box, "vs-sock-well"), svgEl("path", { d: gem(r.x + r.w / 2, r.y + r.h / 2, 34) }, "vs-sock-mark"), svgEl("rect", box, "vs-sock-rim"), lit);
+      socks.append(g);
+      sockets.set(el, { g, lit });
+    }
+    svg.append(socks, svgEl("path", { d: outer }, "vs-fr-glint"));
+    ctx.stage.insertBefore(svg, first);
+    frames.push(svg);
+  }
+  return (ctx.fr = { frames, sockets });
+}
+// A socket lights up for good once its card is in.
+function light(s, delay = 0) {
+  s.lit.animate([{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0.8 }], { duration: 700, delay, fill: "forwards" });
+}
+// The frame's trim draws itself around, then the rest fades in.
+function assemble(f, delay = 0) {
+  const trim = f.querySelector(".vs-fr-trim"), len = trim.getTotalLength();
+  trim.style.strokeDasharray = `${len} ${len}`;
+  trim.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 1000, delay, easing: "cubic-bezier(.5,0,.2,1)", fill: "backwards" });
+  for (const p of f.querySelectorAll(".vs-fr-shade, .vs-fr-fill, .vs-fr-inner, .vs-gem, .vs-sock")) p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: delay + 450, fill: "backwards" });
+}
+// A short light runs around the frame's trim.
+function glint(f) {
+  const g = f.querySelector(".vs-fr-glint"), len = g.getTotalLength();
+  g.style.strokeDasharray = `160 ${len}`;
+  g.animate([{ strokeDashoffset: 160, opacity: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 1, offset: 0.92 }, { strokeDashoffset: -len, opacity: 0 }], { duration: 2600, easing: "ease-in-out" });
+}
+// The trim flares, for the VS.
+function flare(ctx, delay = 0) {
+  ctx.fr.frames.forEach((f) => f.querySelector(".vs-fr-glow").animate([{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0 }], { duration: 1100, delay, easing: "ease-out" }));
+}
+const hopOf = (el) => el.querySelector(".vs-hop");
+
+// Draft: the frames draw themselves, then the teams pick in captain's-mode order (a1 b1 b2 a2 a3 b3 …):
+// each socket blinks while it's choosing, and the card slams down into it and locks in.
+function draftIntro(ctx) {
+  const fr = buildFrames(ctx);
+  fr.frames.forEach((f, i) => assemble(f, i * 150));
+  sweepNames(ctx, 600);
+  const order = [];
+  for (let i = 0; i < Math.max(ctx.a.length, ctx.b.length); i++) order.push(...(i % 2 ? [ctx.b[i], ctx.a[i]] : [ctx.a[i], ctx.b[i]]).filter(Boolean));
+  const T0 = 1700, STEP = 360, DROP = 520;
+  order.forEach((el, n) => {
+    const at = T0 + n * STEP, s = fr.sockets.get(el), d = ctx.dirOf(el);
+    s.lit.animate([{ opacity: 0 }, { opacity: 0.8 }, { opacity: 0.1 }, { opacity: 0.8 }, { opacity: 0 }], { duration: 340, delay: at - 340 });
+    hopOf(el).animate([
+      { transform: tf(-760, -7 * d, 1.16), opacity: 0 },
+      { transform: tf(-700, -7 * d, 1.16), opacity: 1, offset: 0.06 },
+      { transform: tf(8, 0, 1.03, 0.95), opacity: 1, offset: 0.6 },
+      { transform: tf(-6, 0, 0.99, 1.01), offset: 0.8 },
+      { transform: tf(0, 0, 1), opacity: 1 },
+    ], { duration: DROP, delay: at, easing: "cubic-bezier(.55,0,.6,1)", fill: "backwards" });
+    light(s, at + DROP * 0.6);
+    later(() => {
+      ctx.act(el).animate([{ filter: "brightness(1.9)" }, { filter: "brightness(1)" }], { duration: 380, easing: "ease-out" });
+      shake(ctx.stage, 4, 220);
+    }, at + DROP * 0.6);
+  });
+  const vsAt = T0 + order.length * STEP + 350;
+  showWord(ctx, [
+    { transform: "scale(4) rotate(8deg)", opacity: 0 },
+    { transform: "scale(.88) rotate(-2deg)", opacity: 1, offset: 0.55 },
+    { transform: "scale(1.08)", opacity: 1, offset: 0.78 },
+    { transform: "scale(1) rotate(0deg)", opacity: 1 },
+  ], { duration: 600, delay: vsAt, easing: "cubic-bezier(.5,0,.4,1)" });
+  later(() => { shake(ctx.stage, 12); flash(ctx, 0.7); }, vsAt + 330);
+  flare(ctx, vsAt + 330);
+  return vsAt + 1200;
+}
+// A light runs around the frames, and now and then a socket pulses.
+function draftIdle(ctx) {
+  every(3400, () => ctx.fr.frames.forEach((f, i) => later(() => glint(f), i * 500)));
+  every(1700, () => pick([...ctx.fr.sockets.values()]).lit.animate([{ filter: "brightness(1)" }, { filter: "brightness(1.8)" }, { filter: "brightness(1)" }], { duration: 900, easing: "ease-in-out" }));
+}
+
+// Teleport: a teleport circle opens in every socket and channels, then each card blinks in on it with
+// a column of light.
+function tpCircle(el, { delay = 0, ms = 1600, peak = 1 } = {}) {
+  const tp = document.createElement("i");
+  tp.className = "vs-tp";
+  el.prepend(tp);
+  tp.animate([
+    { opacity: 0, transform: "scale(.3)" }, { opacity: peak, transform: "scale(1)", offset: 0.22 },
+    { opacity: peak, transform: "scale(1.04)", offset: 0.82 }, { opacity: 0, transform: "scale(1.35)" },
+  ], { duration: ms, delay, easing: "ease-out", fill: "backwards" }).onfinish = () => tp.remove();
+}
+function motes(el, n, from, span) {
+  for (let k = 0; k < n; k++) {
+    const m = document.createElement("i");
+    m.className = "vs-mote";
+    m.style.left = `${rand(15, 85)}%`;
+    m.style.top = `${rand(55, 90)}%`;
+    el.append(m);
+    m.animate([{ transform: "translateY(0px) scale(.6)", opacity: 0 }, { opacity: 1, offset: 0.3 }, { transform: `translateY(${-rand(160, 280)}px) scale(1)`, opacity: 0 }],
+      { duration: rand(900, 1400), delay: from + rand(0, span), easing: "ease-out", fill: "backwards" }).onfinish = () => m.remove();
+  }
+}
+function beam(host, delay = 0, cls = "vs-beam") {
+  const b = document.createElement("i");
+  b.className = cls;
+  host.append(b);
+  b.animate([{ transform: "scaleX(0)", opacity: 0 }, { transform: "scaleX(1)", opacity: 1, offset: 0.25 }, { transform: "scaleX(.2)", opacity: 0 }], { duration: 560, delay, easing: "ease-out", fill: "backwards" }).onfinish = () => b.remove();
+}
+function teleportIntro(ctx) {
+  const fr = buildFrames(ctx);
+  fr.frames.forEach((f) => f.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: "ease-out", fill: "backwards" }));
+  sweepNames(ctx, 300);
+  const T0 = 700, STEP = 150, CHANNEL = 1400;
+  ctx.order.forEach((el, n) => {
+    const at = T0 + n * STEP, arrive = at + CHANNEL;
+    tpCircle(el, { delay: at, ms: CHANNEL + 380 });
+    motes(el, 6, at + 150, CHANNEL - 500);
+    hopOf(el).animate([
+      { opacity: 0, transform: tf(0, 0, 0.84, 1.22), filter: "brightness(4) saturate(0)" },
+      { opacity: 1, transform: tf(0, 0, 1.04, 0.98), filter: "brightness(2.2) saturate(.4)", offset: 0.3 },
+      { opacity: 1, transform: tf(0, 0, 1), filter: "brightness(1) saturate(1)" },
+    ], { duration: 560, delay: arrive, easing: "ease-out", fill: "backwards" });
+    beam(el, arrive - 60);
+    light(fr.sockets.get(el), arrive);
+  });
+  const vsAt = T0 + (ctx.order.length - 1) * STEP + CHANNEL + 450;
+  beam(ctx.stage.querySelector(".vs-mid"), vsAt - 80, "vs-beam vs-beam-mid");
+  showWord(ctx, [
+    { transform: "scale(.25, 2.6)", opacity: 0 },
+    { transform: "scale(1.12, .9)", opacity: 1, offset: 0.45 },
+    { transform: "scale(1)", opacity: 1 },
+  ], { duration: 520, delay: vsAt, easing: "ease-out" });
+  later(() => flash(ctx, 0.55, 600), vsAt);
+  flare(ctx, vsAt);
+  return vsAt + 1100;
+}
+// Now and then a faint circle opens under a card and it shimmers.
+function teleportIdle(ctx) {
+  every(1900, () => {
+    const el = pick(ctx.order);
+    tpCircle(el, { ms: 1500, peak: 0.55 });
+    motes(el, 3, 0, 500);
+    ctx.act(el).animate([{ filter: "brightness(1)" }, { filter: "brightness(1.35) saturate(1.2)" }, { filter: "brightness(1)" }], { duration: 1100, easing: "ease-in-out" });
+  });
+  every(4200, () => ctx.fr.frames.forEach((f) => glint(f)));
+}
+
+// Radiant vs Dire: a green frame slides in from the left and a red one from the right and slam into
+// place; the cards rise up out of their sockets from the outside in, and the sides spark in their colour.
+function sparks(ctx, side, x, y, n, { spread = 120, rise = [120, 260], delay = 0 } = {}) {
+  for (let k = 0; k < n; k++) {
+    const p = document.createElement("i");
+    p.className = `vs-spark vs-spark-${side}`;
+    p.style.left = `${x + rand(-spread, spread)}px`;
+    p.style.top = `${y}px`;
+    ctx.stage.append(p);
+    const dx = rand(-40, 40);
+    p.animate([{ transform: "translate(0px, 0px)", opacity: 0 }, { opacity: 1, offset: 0.15 }, { transform: `translate(${dx}px, ${-rand(...rise)}px)`, opacity: 0 }],
+      { duration: rand(1100, 1900), delay: delay + rand(0, 300), easing: "ease-out", fill: "backwards" }).onfinish = () => p.remove();
+  }
+}
+function ancientIntro(ctx) {
+  const fr = buildFrames(ctx);
+  fr.frames.forEach((f, i) => f.animate([
+    { transform: `translateX(${i ? 1100 : -1100}px)` }, { transform: `translateX(${i ? -16 : 16}px)`, offset: 0.8 }, { transform: "translateX(0px)" },
+  ], { duration: 760, delay: 150 + i * 160, easing: "cubic-bezier(.3,.8,.3,1)", fill: "backwards" }));
+  later(() => shake(ctx.stage, 8, 300), 760);
+  later(() => shake(ctx.stage, 8, 300), 920);
+  sweepNames(ctx, 800);
+  const outerFirst = (list) => [...list].sort((p, q) => Math.abs(ctx.pos.get(q).x - 960) - Math.abs(ctx.pos.get(p).x - 960) || ctx.pos.get(p).y - ctx.pos.get(q).y);
+  const T0 = 1400, STEP = 260, RISE = 720;
+  [outerFirst(ctx.a), outerFirst(ctx.b)].forEach((list) => list.forEach((el, i) => {
+    const at = T0 + i * STEP, s = fr.sockets.get(el), p = ctx.pos.get(el), r = stageRect(ctx, el);
+    el.style.clipPath = "inset(-80px -80px 0px -80px)";
+    hopOf(el).animate([
+      { transform: tf(r.h + 10), filter: "brightness(.35)" },
+      { transform: tf(-16), filter: "brightness(1.3)", offset: 0.72 },
+      { transform: tf(0), filter: "brightness(1)" },
+    ], { duration: RISE, delay: at, easing: "cubic-bezier(.2,.7,.3,1)", fill: "backwards" }).finished.then(() => { el.style.clipPath = ""; }, () => {});
+    sparks(ctx, el.dataset.side, p.x, r.y + r.h, 8, { delay: at, rise: [60, 180] });
+    light(s, at + RISE * 0.5);
+  }));
+  const vsAt = T0 + (Math.max(ctx.a.length, ctx.b.length) - 1) * STEP + RISE + 250;
+  showWord(ctx, [
+    { transform: "scale(2.8)", opacity: 0, letterSpacing: "1.2em" },
+    { transform: "scale(.9)", opacity: 1, letterSpacing: "-.02em", offset: 0.6 },
+    { transform: "scale(1)", opacity: 1, letterSpacing: "-.02em" },
+  ], { duration: 560, delay: vsAt, easing: "cubic-bezier(.5,0,.4,1)" });
+  later(() => {
+    shake(ctx.stage, 13); flash(ctx, 0.6);
+    sparks(ctx, "a", MID.x - 90, MID.y, 14, { spread: 60, rise: [120, 320] });
+    sparks(ctx, "b", MID.x + 90, MID.y, 14, { spread: 60, rise: [120, 320] });
+  }, vsAt + 330);
+  flare(ctx, vsAt + 330);
+  return vsAt + 1200;
+}
+// Each side keeps sparking in its colour from the bottom of its frame, and the sockets glow slowly.
+function ancientIdle(ctx) {
+  ctx.stage.classList.add("vs-pulsing");
+  const base = ["a", "b"].map((side, i) => { const r = ctx.fr.frames[i].querySelector(".vs-fr-fill").getBBox(); return { side, x: r.x + r.width / 2, y: r.y + r.height, w: r.width / 2 }; });
+  every(380, () => base.forEach((b) => sparks(ctx, b.side, b.x, b.y - 20, 1, { spread: b.w * 0.8, rise: [200, 420] })));
+}
+
 const ANIMS = {
   jump: { intro: jumpIntro },
   brawl: { intro: jumpIntro, idle: brawlIdle },
@@ -426,4 +1043,17 @@ const ANIMS = {
   warp: { intro: warpIntro, idle: warpIdle },
   spotlight: { intro: spotlightIntro, idle: spotlightIdle },
   glitch: { intro: glitchIntro, idle: glitchIdle },
+  rise: { intro: riseIntro, idle: riseIdle },
+  domino: { intro: dominoIntro, idle: dominoIdle },
+  thunder: { intro: thunderIntro, idle: thunderIdle },
+  inferno: { intro: infernoIntro, idle: infernoIdle },
+  camera: { intro: cameraIntro, idle: cameraIdle },
+  orbit: { intro: orbitIntro, idle: orbitIdle },
+  blade: { intro: bladeIntro, idle: bladeIdle },
+  retro: { intro: retroIntro, idle: retroIdle },
+  curtain: { intro: curtainIntro, idle: curtainIdle },
+  beat: { intro: beatIntro, idle: beatIdle },
+  draft: { intro: draftIntro, idle: draftIdle },
+  teleport: { intro: teleportIntro, idle: teleportIdle },
+  ancient: { intro: ancientIntro, idle: ancientIdle },
 };

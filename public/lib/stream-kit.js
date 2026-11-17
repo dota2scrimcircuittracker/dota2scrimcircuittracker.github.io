@@ -19,8 +19,29 @@ export const VS_ANIMS = [
   ["warp", "Warp", "The VS spins in, a portal opens and the cards burst out of it in 3D. The teams sway like holograms."],
   ["spotlight", "Spotlight", "Each team slides in together and light streaks leave the VS behind. Then a spotlight steps through every player."],
   ["glitch", "Glitch", "Cards glitch into existence in broken slices and the VS buzzes on like neon. A card glitches now and then."],
+  ["rise", "Rise", "The cards rise up through the floor, left to right, and an ice-blue VS gathers out of a blur. The cards breathe in a slow wave."],
+  ["domino", "Dominoes", "The cards lie flat and tip up one after another from the outside in; the green VS tips up last. A domino wave runs across now and then."],
+  ["thunder", "Thunder", "Lightning strikes where each card lands and a huge bolt brings the electric VS. Lightning keeps hitting random cards."],
+  ["inferno", "Inferno", "Each card burns into view behind a line of fire, the fiery VS flickers on, and embers keep drifting up off the cards."],
+  ["camera", "Camera", "A film shot: close on one team, a pan across to the other, then a pull back with a flash for the silver VS. The shot drifts after."],
+  ["orbit", "Orbit", "The teal VS appears and the cards circle it, then spiral out to their places. Each card keeps drifting in a small circle."],
+  ["blade", "Blade", "Slashes cut across each half to reveal the teams, and the crimson VS is cut in on a diagonal. A slash crosses the stage now and then."],
+  ["retro", "Retro", "The names type in, the cards drop in choppy 8-bit steps and the VS blinks on like an arcade screen. Cards do 8-bit hops after."],
+  ["curtain", "Curtain", "Red curtains with a gold VS hide the stage, then part to show the teams, who take a bow. Gold sparkles glint on the cards."],
+  ["beat", "Beat", "Everything lands on a 120 bpm beat: a card from each side per beat, then a pink VS on the drop. Everything keeps pulsing to the beat."],
+  ["draft", "Draft", "Dota-style frames hold a slot for every card. The teams pick in captain's-mode order and each card slams into its slot and locks in."],
+  ["teleport", "Teleport", "The same frames. A teleport circle channels in every slot, then each card blinks in on a column of light."],
+  ["ancient", "Radiant vs Dire", "A green frame and a red frame slam in from the sides, the cards rise up out of their slots, and each side sparks in its colour."],
 ];
-export const vsSceneUrl = (rootUrl, picks, mode = "main", anim = VS_ANIMS[0][0]) => `${rootUrl}/stream-kit?stream=vs&picks=${picks.map(([k, s]) => (Number.isInteger(s) ? `${k}:${s}` : k)).join(",")}${mode !== "main" ? `&cards=${mode}` : ""}${anim !== VS_ANIMS[0][0] ? `&anim=${anim}` : ""}`;
+// subs: stand-ins on the picked teams, [["<team>", "<account>", name], …], so the scene can name players
+// who aren't on the roster.
+export const vsSceneUrl = (rootUrl, picks, mode = "main", anim = VS_ANIMS[0][0], subs = []) => `${rootUrl}/stream-kit?stream=vs&picks=${picks.map(([k, s]) => (Number.isInteger(s) ? `${k}:${s}` : k)).join(",")}${mode !== "main" ? `&cards=${mode}` : ""}${anim !== VS_ANIMS[0][0] ? `&anim=${anim}` : ""}${subs.length ? `&subs=${encodeURIComponent(subsParam(subs))}` : ""}`;
+
+// Stand-ins in an address: "<team>:<account>:<name>,…", the name escaped so commas and colons in it
+// survive. parseSubs takes the decoded ?subs= value back to [[team, account, name], …], skipping junk.
+export const subsParam = (subs) => subs.map(([t, a, n]) => `${t}:${a}:${encodeURIComponent(n)}`).join(",");
+export const parseSubs = (str) => String(str ?? "").split(",").map((part) => part.split(":")).filter(([t, a, n]) => t && /^\d+$/.test(a ?? "") && n)
+  .map(([t, a, n]) => { try { return [t, a, decodeURIComponent(n)]; } catch { return [t, a, n]; } });
 
 // Up to five cards at 60% in a row; a longer roster shrinks to fit the canvas.
 export function rowLayout(n) {

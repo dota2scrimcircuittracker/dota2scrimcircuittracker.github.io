@@ -6,8 +6,13 @@
 // follow it); "View cards" shows one player's designs to pick from.
 // The picks ride in the address (?picks=<team>:<account>[:<slot>],…&cards=<mode>) so a set can be
 // shared as a link; the older ?teams=<id>,… still opens with those teams' whole rosters.
+// Stand-ins: "Add a stand-in" on a team finds anyone the site knows (every league, scrims, Steam
+// sign-ins) by name, or takes an account ID. They join that team's list and ride in ?subs=.
 import { app, pageHead, esc, SOURCES } from "../core.js";
-import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H, VS_ANIMS } from "../lib/stream-kit.js";
+import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, parseSubs, subsParam, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H, VS_ANIMS } from "../lib/stream-kit.js";
+import { searchIndex } from "../lib/search.js";
+import { loadSearch } from "../parts/searchindex.js";
+import { strangerNames } from "../lib/scout.js";
 import { publicCollection, cardRatings } from "../lib/cosmetics.js";
 import { cardDesignState, cardSlotName } from "../lib/cosmetics-engine.js";
 import { createPlayerCards, PAINT_FILTER, fitDesignCards } from "../parts/player-card.js";
@@ -60,6 +65,15 @@ export async function renderStreamKit(src) {
   let mode = CARD_MODES.some(([m]) => m === q.get("cards")) ? q.get("cards") : "main";
   let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
   let anim = VS_ANIMS.some(([a]) => a === q.get("anim")) ? q.get("anim") : VS_ANIMS[0][0]; // the VS scene's animation
+  // Stand-ins join the end of their team's list, marked standin; one already on that roster is skipped.
+  const addSub = (team, account, name) => {
+    const t = byId.get(team);
+    if (!t || t.players.some((p) => p.account === account)) return false;
+    t.players.push({ name, account, standin: true });
+    return true;
+  };
+  for (const [team, account, name] of parseSubs(q.get("subs"))) addSub(team, account, name);
+  const subsOf = (ts) => ts.flatMap((t) => t.players.filter((p) => p.standin).map((p) => [t.id, p.account, p.name]));
   for (const part of (q.get("picks") ?? "").split(",").filter(Boolean)) {
     const [team, account, slot] = part.split(":");
     if (byId.get(team)?.players.some((p) => p.account === account)) picks.set(`${team}:${account}`, /^\d+$/.test(slot ?? "") ? Number(slot) : null);
@@ -72,6 +86,8 @@ export async function renderStreamKit(src) {
     if (mode !== "main") url.searchParams.set("cards", mode); else url.searchParams.delete("cards");
     if (swap) url.searchParams.set("sides", "swap"); else url.searchParams.delete("sides");
     if (anim !== VS_ANIMS[0][0]) url.searchParams.set("anim", anim); else url.searchParams.delete("anim");
+    const subs = subsOf(teams);
+    if (subs.length) url.searchParams.set("subs", subsParam(subs)); else url.searchParams.delete("subs");
     history.replaceState(history.state, "", url);
   };
   // A new pick takes the filter's card once that player's cards arrive.
@@ -88,9 +104,12 @@ export async function renderStreamKit(src) {
   }
   fromTeams.forEach(addPick);
 
-  const teamRow = (t) => `<div class="sk-team-pick" data-team="${esc(t.id)}" data-search="${esc([t.name, ...t.players.map((p) => p.name)].join(" ").toLowerCase())}">
+  const searchText = (t) => [t.name, ...t.players.map((p) => p.name)].join(" ").toLowerCase();
+  const playerList = (t) => t.players.map((p) => `<label${p.standin ? ` class="sk-sub"` : ""}><input type="checkbox" data-player="${esc(p.account)}"> ${esc(p.name)}${p.standin ? ` <span class="sk-sub-tag">Stand-in</span>` : ""} <span class="sk-pcount" data-cards-of="${esc(p.account)}"></span>${p.standin ? `<button type="button" class="sk-sub-x" data-unsub="${esc(p.account)}" aria-label="Remove ${esc(p.name)}" title="Remove stand-in">×</button>` : ""}</label>`).join("");
+  const teamRow = (t) => `<div class="sk-team-pick" data-team="${esc(t.id)}" data-search="${esc(searchText(t))}">
       <label class="sk-team-box"><input type="checkbox" data-team-box> <span>${esc(t.name)}</span></label>
-      <details><summary><span data-count></span></summary><div class="sk-players">${t.players.map((p) => `<label><input type="checkbox" data-player="${esc(p.account)}"> ${esc(p.name)} <span class="sk-pcount" data-cards-of="${esc(p.account)}"></span></label>`).join("")}</div></details>
+      <details><summary><span data-count></span></summary><div class="sk-players">${playerList(t)}</div>
+        <div class="sk-sub-add"><input type="search" class="sk-sub-find" placeholder="Add a stand-in: name or account ID" aria-label="Add a stand-in to ${esc(t.name)}" autocomplete="off"><div class="sk-sub-hits" hidden></div></div></details>
     </div>`;
   let lastGroup;
   const groups = teams.map((t) => { const head = t.group && t.group !== lastGroup ? `<h4 class="sk-group">${esc(t.group)}</h4>` : ""; lastGroup = t.group; return head + teamRow(t); }).join("");
@@ -113,7 +132,8 @@ export async function renderStreamKit(src) {
       row.querySelectorAll("[data-player]").forEach((c) => { c.checked = picks.has(`${t.id}:${c.dataset.player}`); });
       const box = row.querySelector("[data-team-box]");
       box.checked = n === t.players.length; box.indeterminate = n > 0 && n < t.players.length;
-      row.querySelector("[data-count]").textContent = n ? `${n} of ${t.players.length} players` : `${t.players.length} players`;
+      const subs = t.players.filter((p) => p.standin).length, tail = subs ? ` (${subs} stand-in${subs > 1 ? "s" : ""})` : "";
+      row.querySelector("[data-count]").textContent = (n ? `${n} of ${t.players.length} players` : `${t.players.length} players`) + tail;
       if (n && n < t.players.length) row.querySelector("details").open = true;
     }
   };
@@ -121,7 +141,9 @@ export async function renderStreamKit(src) {
   const picked = () => teams.map((t) => ({ team: t, players: t.players.filter((p) => picks.has(`${t.id}:${p.account}`)).map((p) => ({ ...p, slot: picks.get(`${t.id}:${p.account}`) })) })).filter((g) => g.players.length);
   // The VS scene's link: the first two picked teams, with their card picks.
   const vsTeams = (list) => (swap ? [list[1], list[0]] : list.slice(0, 2));
-  const vsLink = (list, extra = "") => vsSceneUrl(absolute(src.root), vsTeams(list).flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, anim) + extra;
+  const vsLink = (list, extra = "", a = anim) => { const two = vsTeams(list);
+    return vsSceneUrl(absolute(src.root), two.flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, a,
+      two.flatMap(({ team, players }) => players.filter((p) => p.standin).map((p) => [team.id, p.account, p.name]))) + extra; };
   const rowUrl = (k) => { const [team, account] = k.split(":"); return streamCardUrl(byId.get(team).rootUrl, account, picks.get(k)); };
   // A row's link and card name, after its pick changes.
   function refreshRow(k) {
@@ -161,9 +183,10 @@ export async function renderStreamKit(src) {
         <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>
       ${list.length > 1 ? `<section class="panel sk-vs">
-        <header class="sk-cards-head"><h3>VS scene</h3><span><label>Animation <select data-anim>${VS_ANIMS.map(([a, label]) => `<option value="${a}" ${a === anim ? "selected" : ""}>${label}</option>`).join("")}</select></label> <button type="button" data-swap>Swap sides</button></span></header>
-        <p class="sk-anim-note">${esc(VS_ANIMS.find(([a]) => a === anim)[2])}</p>
-        <div class="sk-vs-preview"><iframe title="VS scene preview" src="${esc(vsLink(list, "&preview=1"))}" loading="lazy"></iframe><button type="button" class="sk-replay" data-replay>Replay</button></div>
+        <header class="sk-cards-head"><div><h3>VS scene</h3><span class="muted">Click an animation to watch it with your teams, then choose the one you want.</span></div><button type="button" data-swap>Swap sides</button></header>
+        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about]) => `<div class="sk-anim${a === anim ? " on" : ""}" role="button" tabindex="0" aria-label="Watch ${esc(label)}" data-watch-anim="${a}">
+          <span class="sk-anim-head"><strong>${esc(label)}</strong><span class="sk-anim-use">${a === anim ? "Selected" : "▶ Watch"}</span></span>
+          <span class="muted">${esc(about)}</span></div>`).join("")}</div>
         <p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
         <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>
       </section>` : ""}
@@ -172,13 +195,62 @@ export async function renderStreamKit(src) {
         <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>. One at a time in OBS: add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}; right-click it and choose <b>Refresh</b> to pick up card changes.</p>
         ${list.map(({ team, players }) => `<div class="sk-team"><h4>${esc(team.name)}</h4>${players.map((p) => {
           const k = `${team.id}:${p.account}`, url = rowUrl(k);
-          return `<div class="sk-row" data-key="${esc(k)}"><span class="sk-name">${esc(p.name)}</span>
+          return `<div class="sk-row" data-key="${esc(k)}"><span class="sk-name">${esc(p.name)}${p.standin ? ` <span class="sk-sub-tag">Stand-in</span>` : ""}</span>
             <button type="button" class="sk-view">View card</button><span class="sk-choice">…</span>
             <code>${esc(url)}</code><button type="button" class="sk-copy">Copy</button><a href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>`;
         }).join("")}</div>`).join("")}
       </section>`;
     out.querySelectorAll(".sk-row").forEach((row) => refreshRow(row.dataset.key));
   };
+  // Watching an animation: a pop-up plays it with the picked teams (only one copy of the scene runs),
+  // starting over a few seconds after its intro. ‹ › step through the others; "Use this" picks it.
+  function watchAnim(a) {
+    const list = picked(); if (list.length < 2) return;
+    let i = VS_ANIMS.findIndex(([x]) => x === a);
+    const dlg = document.createElement("dialog");
+    dlg.className = "sk-dlg sk-anim-dlg";
+    dlg.innerHTML = `<header><div><h3 data-name></h3><p class="muted" data-about></p></div><button type="button" class="sk-dlg-close" aria-label="Close">×</button></header>
+      <div class="sk-anim-frame"><iframe title="VS scene example"></iframe></div>
+      <footer><button type="button" data-step="-1" aria-label="Previous animation">‹ Prev</button><span data-count class="muted"></span><button type="button" data-step="1" aria-label="Next animation">Next ›</button>
+        <span class="sk-anim-spacer"></span><button type="button" data-again>Replay</button><button type="button" class="sk-anim-pick" data-use></button></footer>`;
+    document.body.append(dlg);
+    const frame = dlg.querySelector("iframe");
+    const show = () => {
+      const [id, label, about] = VS_ANIMS[i];
+      dlg.querySelector("[data-name]").textContent = label;
+      dlg.querySelector("[data-about]").textContent = about;
+      dlg.querySelector("[data-count]").textContent = `${i + 1} of ${VS_ANIMS.length}`;
+      const use = dlg.querySelector("[data-use]");
+      use.textContent = id === anim ? "Selected ✓" : "Use this";
+      use.disabled = id === anim;
+      frame.src = vsLink(list, "&preview=1&loop=4", id);
+    };
+    dlg.addEventListener("click", (e) => {
+      if (e.target === dlg || e.target.closest(".sk-dlg-close")) return dlg.close();
+      const step = e.target.closest("[data-step]");
+      if (step) { i = (i + Number(step.dataset.step) + VS_ANIMS.length) % VS_ANIMS.length; return show(); }
+      if (e.target.closest("[data-again]")) { frame.src = frame.src; return; }
+      if (e.target.closest("[data-use]")) { chooseAnim(VS_ANIMS[i][0]); show(); }
+    });
+    dlg.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { i = (i + (e.key === "ArrowLeft" ? -1 : 1) + VS_ANIMS.length) % VS_ANIMS.length; show(); }
+    });
+    dlg.addEventListener("close", () => { frame.src = "about:blank"; dlg.remove(); });
+    dlg.showModal();
+    show();
+  }
+  // Picking an animation changes the link and the download.
+  function chooseAnim(a) {
+    anim = a; save();
+    out.querySelectorAll("[data-watch-anim]").forEach((t) => {
+      const on = t.dataset.watchAnim === a;
+      t.classList.toggle("on", on);
+      t.querySelector(".sk-anim-use").textContent = on ? "Selected" : "▶ Watch";
+    });
+    const list = picked(), row = out.querySelector(".sk-vs .sk-row");
+    row.querySelector("code").textContent = vsLink(list);
+    row.querySelector("a").href = vsLink(list, "&preview=1");
+  }
 
   // View cards: the player's saved designs drawn as cards; click one to use it.
   async function viewCards(k) {
@@ -231,6 +303,55 @@ export async function renderStreamKit(src) {
     else if (e.target.matches("[data-player]")) { const k = `${t.id}:${e.target.dataset.player}`; if (e.target.checked) { if (!picks.has(k)) addPick(k); } else picks.delete(k); }
     draw();
   });
+  // Stand-in search: anyone the site knows by name (best match first, one row per account), or an
+  // account ID typed in full (named from Steam or OpenDota). Picking one adds and ticks them.
+  let index = null;
+  const subHits = async (box) => {
+    const row = box.closest(".sk-team-pick"), t = byId.get(row.dataset.team), list = row.querySelector(".sk-sub-hits"), term = box.value.trim();
+    if (!term) { list.hidden = true; list.innerHTML = ""; return; }
+    if (!index) { list.hidden = false; list.innerHTML = `<p class="muted">Loading players…</p>`; }
+    try { index ??= await loadSearch(); } catch { list.innerHTML = `<p class="muted">Player search didn't load. Try again.</p>`; return; }
+    if (box.value.trim() !== term) return;
+    const seen = new Set(t.players.map((p) => p.account)), hits = [];
+    for (const r of searchIndex(index, term, 40)) {
+      const account = decodeURIComponent(r.href.split("/player/")[1] ?? "");
+      if (r.kind !== "player" || !/^\d+$/.test(account) || seen.has(account)) continue;
+      seen.add(account);
+      hits.push({ account, name: r.name, about: `${r.team ? `${r.standin ? "Stand-in for " : ""}${r.team}` : "No team"} · ${r.leagueLabel}` });
+      if (hits.length === 8) break;
+    }
+    if (/^\d{4,12}$/.test(term) && !seen.has(term)) hits.push({ account: term, name: null, about: "Account ID" });
+    list.hidden = false;
+    list.innerHTML = hits.length ? hits.map((h) => `<button type="button" class="sk-sub-hit" data-account="${esc(h.account)}" data-name="${esc(h.name ?? "")}"><strong>${esc(h.name ?? `Account ${h.account}`)}</strong><span class="muted">${esc(h.about)}</span></button>`).join("")
+      : `<p class="muted">No player found. Type their Dota account ID to add anyone.</p>`;
+  };
+  grid.addEventListener("input", (e) => { if (e.target.matches(".sk-sub-find")) subHits(e.target); });
+  const redrawRow = (row, t) => {
+    row.dataset.search = searchText(t);
+    row.querySelector(".sk-players").innerHTML = playerList(t);
+    row.querySelectorAll("[data-cards-of]").forEach((el) => playerDesigns(el.dataset.cardsOf).then(({ designs, failed }) => {
+      el.textContent = failed ? "" : designs.length > 1 ? `${designs.length} cards` : designs.length ? "1 card" : "default";
+      el.classList.toggle("many", designs.length > 1);
+    }));
+  };
+  grid.addEventListener("click", async (e) => {
+    const row = e.target.closest(".sk-team-pick"); if (!row) return;
+    const t = byId.get(row.dataset.team), hit = e.target.closest(".sk-sub-hit"), x = e.target.closest("[data-unsub]");
+    if (x) {
+      e.preventDefault();
+      t.players = t.players.filter((p) => !(p.standin && p.account === x.dataset.unsub));
+      picks.delete(`${t.id}:${x.dataset.unsub}`);
+      redrawRow(row, t); draw(); return;
+    }
+    if (!hit) return;
+    const { account } = hit.dataset;
+    let name = hit.dataset.name;
+    if (!name) { hit.disabled = true; name = (await strangerNames([account]).catch(() => new Map())).get(account) ?? `Account ${account}`; }
+    if (addSub(t.id, account, name) && !picks.has(`${t.id}:${account}`)) addPick(`${t.id}:${account}`);
+    const box = row.querySelector(".sk-sub-find");
+    box.value = ""; row.querySelector(".sk-sub-hits").hidden = true;
+    redrawRow(row, t); draw(); box.focus();
+  });
   app.querySelector(".sk-filter").addEventListener("input", (e) => {
     const term = e.target.value.trim().toLowerCase();
     grid.querySelectorAll(".sk-team-pick").forEach((r) => { r.hidden = !!term && !r.dataset.search.includes(term); });
@@ -246,8 +367,11 @@ export async function renderStreamKit(src) {
     }));
   }, true);
 
+  out.addEventListener("keydown", (e) => {
+    const tile = e.target.closest?.("[data-watch-anim]");
+    if (tile && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); watchAnim(tile.dataset.watchAnim); }
+  });
   out.addEventListener("change", async (e) => {
-    if (e.target.matches("[data-anim]")) { anim = e.target.value; return draw(); }
     const sel = e.target.closest("[data-mode]"); if (!sel) return;
     mode = sel.value; save();
     sel.disabled = true;
@@ -262,7 +386,8 @@ export async function renderStreamKit(src) {
     const c = e.target.closest(".sk-copy");
     if (c) return copy(c.hasAttribute("data-vs") ? vsLink(picked()) : rowUrl(c.closest(".sk-row").dataset.key), c);
     if (e.target.closest("[data-swap]")) { swap = !swap; return draw(); }
-    if (e.target.closest("[data-replay]")) { const f = out.querySelector(".sk-vs-preview iframe"); f.src = f.src; return; }
+    const tile = e.target.closest("[data-watch-anim]");
+    if (tile) return watchAnim(tile.dataset.watchAnim);
     const s = e.target.closest("[data-share]");
     if (s) return copy(location.href, s);
     if (!e.target.closest("[data-download]")) return;

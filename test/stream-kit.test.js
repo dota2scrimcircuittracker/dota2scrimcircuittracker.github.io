@@ -93,8 +93,20 @@ test('the VS scene: its link carries both teams\' picks, and the OBS import open
 
 test('the VS scene animation rides in its link, the default left out', async () => {
   const { vsSceneUrl, VS_ANIMS } = await import('../public/lib/stream-kit.js');
-  assert.deepEqual(VS_ANIMS.map(([a]) => a), ['jump', 'brawl', 'deal', 'meteor', 'warp', 'spotlight', 'glitch']);
+  assert.deepEqual(VS_ANIMS.map(([a]) => a), ['jump', 'brawl', 'deal', 'meteor', 'warp', 'spotlight', 'glitch', 'rise', 'domino', 'thunder', 'inferno', 'camera', 'orbit', 'blade', 'retro', 'curtain', 'beat', 'draft', 'teleport', 'ancient']);
   assert.equal(vsSceneUrl(root, [['1:2', null]], 'main', 'jump'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2');
   assert.equal(vsSceneUrl(root, [['1:2', null]], 'recent', 'meteor'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2&cards=recent&anim=meteor');
   assert.ok(VS_ANIMS.every(([, label, about]) => label && about.endsWith('.')));
+});
+
+test('stand-ins ride in the VS link and the kit address, names with commas and colons intact', async () => {
+  const { vsSceneUrl, subsParam, parseSubs } = await import('../public/lib/stream-kit.js');
+  const subs = [['15012', '555', 'Ringer, Jr: 天才'], ['14995', '777', 'Sub']];
+  const url = vsSceneUrl(root, [['15012:555', 2], ['14995:777', null]], 'main', 'jump', subs);
+  assert.ok(url.startsWith('https://example.test/champion/stream-kit?stream=vs&picks=15012:555:2,14995:777&subs='));
+  assert.deepEqual(parseSubs(new URL(url).searchParams.get('subs')), subs);
+  assert.deepEqual(parseSubs(subsParam(subs)), subs);
+  assert.equal(vsSceneUrl(root, [['1:2', null]], 'main', 'jump', []), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2');
+  assert.deepEqual(parseSubs('1:abc:x,2:3:,:4:y,,5:6:ok'), [['5', '6', 'ok']]);
+  assert.deepEqual(parseSubs(null), []);
 });
