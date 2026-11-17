@@ -8,9 +8,19 @@ const CANVAS_W = 1920, CANVAS_H = 1080, GAP = 24;
 // saved card designs (null: their main card).
 export const streamCardUrl = (rootUrl, account, slot = null) => `${rootUrl}/player/${account}?stream=card${Number.isInteger(slot) ? `&card=${slot}` : ""}`;
 // The VS scene (parts/stream-vs.js): the kit page with ?stream=vs and the two teams' picks.
-// picks: [["<team>:<account>", slot|null], …]; mode: the "Card for everyone" filter.
+// picks: [["<team>:<account>", slot|null], …]; mode: the "Card for everyone" filter; anim: one of
+// VS_ANIMS (the first, the default, is left out of the link).
 export const VS_W = 1920, VS_H = 1080;
-export const vsSceneUrl = (rootUrl, picks, mode = "main") => `${rootUrl}/stream-kit?stream=vs&picks=${picks.map(([k, s]) => (Number.isInteger(s) ? `${k}:${s}` : k)).join(",")}${mode !== "main" ? `&cards=${mode}` : ""}`;
+export const VS_ANIMS = [
+  ["jump", "Jump in", "The cards jump in one by one and a VS slams down, then they hold still."],
+  ["brawl", "Brawl", "The same jump-in, then the cards keep busy: hops, flips to their stats, taunts, waves and clashes."],
+  ["deal", "Deal", "Dealt out of the middle face down like a hand of cards, then turned face up in a ripple. A shine sweeps across now and then."],
+  ["meteor", "Meteor", "Cards crash down from above with shockwaves and the VS bursts in. Energy pulses roll out from the VS and light up each card."],
+  ["warp", "Warp", "The VS spins in, a portal opens and the cards burst out of it in 3D. The teams sway like holograms."],
+  ["spotlight", "Spotlight", "Each team slides in together and light streaks leave the VS behind. Then a spotlight steps through every player."],
+  ["glitch", "Glitch", "Cards glitch into existence in broken slices and the VS buzzes on like neon. A card glitches now and then."],
+];
+export const vsSceneUrl = (rootUrl, picks, mode = "main", anim = VS_ANIMS[0][0]) => `${rootUrl}/stream-kit?stream=vs&picks=${picks.map(([k, s]) => (Number.isInteger(s) ? `${k}:${s}` : k)).join(",")}${mode !== "main" ? `&cards=${mode}` : ""}${anim !== VS_ANIMS[0][0] ? `&anim=${anim}` : ""}`;
 
 // Up to five cards at 60% in a row; a longer roster shrinks to fit the canvas.
 export function rowLayout(n) {

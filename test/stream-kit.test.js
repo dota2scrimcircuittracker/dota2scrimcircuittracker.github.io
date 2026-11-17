@@ -90,3 +90,11 @@ test('the VS scene: its link carries both teams\' picks, and the OBS import open
   assert.equal(src.settings.restart_when_active, true); // the intro replays each time the scene comes on
   assert.equal(c.sources.find((s) => s.name === 'Scene - o-b-j vs Kaleb').settings.items[0].source_uuid, src.uuid);
 });
+
+test('the VS scene animation rides in its link, the default left out', async () => {
+  const { vsSceneUrl, VS_ANIMS } = await import('../public/lib/stream-kit.js');
+  assert.deepEqual(VS_ANIMS.map(([a]) => a), ['jump', 'brawl', 'deal', 'meteor', 'warp', 'spotlight', 'glitch']);
+  assert.equal(vsSceneUrl(root, [['1:2', null]], 'main', 'jump'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2');
+  assert.equal(vsSceneUrl(root, [['1:2', null]], 'recent', 'meteor'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2&cards=recent&anim=meteor');
+  assert.ok(VS_ANIMS.every(([, label, about]) => label && about.endsWith('.')));
+});

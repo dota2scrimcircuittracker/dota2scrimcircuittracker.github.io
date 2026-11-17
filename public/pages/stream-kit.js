@@ -7,7 +7,7 @@
 // The picks ride in the address (?picks=<team>:<account>[:<slot>],…&cards=<mode>) so a set can be
 // shared as a link; the older ?teams=<id>,… still opens with those teams' whole rosters.
 import { app, pageHead, esc, SOURCES } from "../core.js";
-import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H } from "../lib/stream-kit.js";
+import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H, VS_ANIMS } from "../lib/stream-kit.js";
 import { publicCollection, cardRatings } from "../lib/cosmetics.js";
 import { cardDesignState, cardSlotName } from "../lib/cosmetics-engine.js";
 import { createPlayerCards, PAINT_FILTER, fitDesignCards } from "../parts/player-card.js";
@@ -59,6 +59,7 @@ export async function renderStreamKit(src) {
   const q = new URLSearchParams(location.search);
   let mode = CARD_MODES.some(([m]) => m === q.get("cards")) ? q.get("cards") : "main";
   let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
+  let anim = VS_ANIMS.some(([a]) => a === q.get("anim")) ? q.get("anim") : VS_ANIMS[0][0]; // the VS scene's animation
   for (const part of (q.get("picks") ?? "").split(",").filter(Boolean)) {
     const [team, account, slot] = part.split(":");
     if (byId.get(team)?.players.some((p) => p.account === account)) picks.set(`${team}:${account}`, /^\d+$/.test(slot ?? "") ? Number(slot) : null);
@@ -70,6 +71,7 @@ export async function renderStreamKit(src) {
     if (picks.size) url.searchParams.set("picks", [...picks].map(([k, s]) => (s == null ? k : `${k}:${s}`)).join(",")); else url.searchParams.delete("picks");
     if (mode !== "main") url.searchParams.set("cards", mode); else url.searchParams.delete("cards");
     if (swap) url.searchParams.set("sides", "swap"); else url.searchParams.delete("sides");
+    if (anim !== VS_ANIMS[0][0]) url.searchParams.set("anim", anim); else url.searchParams.delete("anim");
     history.replaceState(history.state, "", url);
   };
   // A new pick takes the filter's card once that player's cards arrive.
@@ -119,7 +121,7 @@ export async function renderStreamKit(src) {
   const picked = () => teams.map((t) => ({ team: t, players: t.players.filter((p) => picks.has(`${t.id}:${p.account}`)).map((p) => ({ ...p, slot: picks.get(`${t.id}:${p.account}`) })) })).filter((g) => g.players.length);
   // The VS scene's link: the first two picked teams, with their card picks.
   const vsTeams = (list) => (swap ? [list[1], list[0]] : list.slice(0, 2));
-  const vsLink = (list, extra = "") => vsSceneUrl(absolute(src.root), vsTeams(list).flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode) + extra;
+  const vsLink = (list, extra = "") => vsSceneUrl(absolute(src.root), vsTeams(list).flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, anim) + extra;
   const rowUrl = (k) => { const [team, account] = k.split(":"); return streamCardUrl(byId.get(team).rootUrl, account, picks.get(k)); };
   // A row's link and card name, after its pick changes.
   function refreshRow(k) {
@@ -159,8 +161,10 @@ export async function renderStreamKit(src) {
         <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>
       ${list.length > 1 ? `<section class="panel sk-vs">
-        <header class="sk-cards-head"><h3>VS scene</h3><button type="button" data-swap>Swap sides</button></header>
-        <p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right: the cards jump in, a VS slams down, then they keep moving: hops, flips to their stats, taunts, clashes. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
+        <header class="sk-cards-head"><h3>VS scene</h3><span><label>Animation <select data-anim>${VS_ANIMS.map(([a, label]) => `<option value="${a}" ${a === anim ? "selected" : ""}>${label}</option>`).join("")}</select></label> <button type="button" data-swap>Swap sides</button></span></header>
+        <p class="sk-anim-note">${esc(VS_ANIMS.find(([a]) => a === anim)[2])}</p>
+        <div class="sk-vs-preview"><iframe title="VS scene preview" src="${esc(vsLink(list, "&preview=1"))}" loading="lazy"></iframe><button type="button" class="sk-replay" data-replay>Replay</button></div>
+        <p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
         <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>
       </section>` : ""}
       <section class="panel">
@@ -243,6 +247,7 @@ export async function renderStreamKit(src) {
   }, true);
 
   out.addEventListener("change", async (e) => {
+    if (e.target.matches("[data-anim]")) { anim = e.target.value; return draw(); }
     const sel = e.target.closest("[data-mode]"); if (!sel) return;
     mode = sel.value; save();
     sel.disabled = true;
@@ -257,6 +262,7 @@ export async function renderStreamKit(src) {
     const c = e.target.closest(".sk-copy");
     if (c) return copy(c.hasAttribute("data-vs") ? vsLink(picked()) : rowUrl(c.closest(".sk-row").dataset.key), c);
     if (e.target.closest("[data-swap]")) { swap = !swap; return draw(); }
+    if (e.target.closest("[data-replay]")) { const f = out.querySelector(".sk-vs-preview iframe"); f.src = f.src; return; }
     const s = e.target.closest("[data-share]");
     if (s) return copy(location.href, s);
     if (!e.target.closest("[data-download]")) return;
