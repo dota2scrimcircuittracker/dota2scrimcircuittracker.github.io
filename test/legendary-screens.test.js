@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {grantLogin,rollPack,setProfileBackground} from '../public/lib/cosmetics-engine.js';
+import {grantLogin,rollPack,setProfileBackground,equipCosmetics} from '../public/lib/cosmetics-engine.js';
 import {LEGENDARY_SCREENS} from '../public/lib/legendary-screens.js';
-import {screenArt} from '../public/lib/card-art.js';
+import {screenArt,cardArtOptions} from '../public/lib/card-art.js';
 
 const gaben='scr:saint-gaben';
 const withPack=pack=>({...grantLogin(null,new Date(0)),packs:[pack]});
@@ -46,4 +46,24 @@ test('gift-only backgrounds never drop from border packs', () => {
   }
   const rest={...withPack('common:border'),screens:LEGENDARY_SCREENS.filter(s=>s.drops!==false).map(s=>s.id)};
   assert.deepEqual(rollPack(rest,0,()=>0).screens,[]);
+});
+
+test('Chen and El Sombrero belong to Chen and Storm Spirit', () => {
+  const owned=['scr:chen-spiroar','scr:el-sombrero'];
+  const ids=hero=>cardArtOptions(hero,owned).map(a=>a.id);
+  assert.ok(ids('Chen').includes('scr:chen-spiroar'));
+  assert.ok(!ids('Chen').includes('scr:el-sombrero'));
+  assert.ok(ids('Storm Spirit').includes('scr:el-sombrero'));
+  assert.ok(!ids('Storm Spirit').includes('scr:chen-spiroar'));
+  assert.ok(!ids('Axe').some(id=>owned.includes(id)));
+  assert.equal(screenArt('scr:chen-spiroar').hero,'Chen');
+  assert.equal(screenArt('scr:el-sombrero').hero,'Storm Spirit');
+});
+
+test('a hero-tied background saves only on its hero', () => {
+  const state={...withPack('common'),screens:['scr:chen-spiroar','scr:el-sombrero']};
+  assert.doesNotThrow(()=>equipCosmetics(state,{baseCard:{hero:66,art:'scr:chen-spiroar'}}));
+  assert.throws(()=>equipCosmetics(state,{baseCard:{hero:2,art:'scr:chen-spiroar'}}),/for Chen/);
+  assert.doesNotThrow(()=>equipCosmetics(state,{baseCard:{hero:17,art:'scr:el-sombrero'}}));
+  assert.throws(()=>equipCosmetics(state,{baseCard:{hero:2,art:'scr:el-sombrero'}}),/for Storm Spirit/);
 });
