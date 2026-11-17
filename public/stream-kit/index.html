@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stream Kit · Champion Final</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+  :root { --bg: #0d0c0b; --panel: #171513; --line: #2c2823; --bone: #efe6d6; --muted: #a59c8c; --gold: #e8b64c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--bone); font: 15px/1.55 Epilogue, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  .kicker { font: 600 12px/1 "Martian Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+  h1 { font: 900 clamp(40px, 8vw, 64px)/.95 "Big Shoulders Stencil Display", Impact, sans-serif; text-transform: uppercase; margin: 10px 0 8px; }
+  h2 { font: 800 26px/1 "Big Shoulders Stencil Display", Impact, sans-serif; text-transform: uppercase; margin: 0 0 12px; }
+  p { margin: 0 0 12px; color: var(--muted); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-top: 18px; }
+  ol { margin: 0; padding-left: 20px; } li { margin: 6px 0; }
+  b { color: var(--bone); }
+  a.btn, button { display: inline-block; font: 600 13px/1 "Martian Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: #1a1408; background: var(--gold); border: 0; border-radius: 6px; padding: 12px 16px; text-decoration: none; cursor: pointer; }
+  button.copy { background: transparent; color: var(--gold); border: 1px solid var(--gold); padding: 8px 10px; font-size: 11px; }
+  .team { margin-top: 14px; } .team h3 { font: 600 13px/1 "Martian Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--bone); margin: 0 0 8px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .row .name { width: 120px; flex: none; font-weight: 600; }
+  .row code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px "Martian Mono", monospace; color: var(--muted); }
+  .row .open { color: var(--gold); font-size: 13px; }
+  @media (max-width: 560px) { .row { flex-wrap: wrap; } .row .name { width: auto; flex: 1; } .row code { flex-basis: 100%; order: 3; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="kicker">AD2L · Champion Final · Thursday</div>
+  <h1>Stream Kit</h1>
+  <p>Animated player cards for o-b-j vs Gank Me Harder Daddy Kaleb, on a transparent background, ready for OBS. The cards load live from the site, so they show each player's current card, record and hero.</p>
+
+  <section>
+    <h2>Fastest: import the scenes</h2>
+    <ol>
+      <li><a class="btn" href="dsl-champion-final.json" download>Download OBS scenes</a></li>
+      <li>In OBS: <b>Scene Collection → Import</b>, pick the file, then <b>Scene Collection → DSL Champion Final</b>.</li>
+      <li>You get a scene per team (all five cards in a row) and a scene per player (one big card). Copy any card source into your own scenes.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Or add cards one by one</h2>
+    <p>In OBS add a <b>Browser Source</b>, paste a link, and set width <b>600</b>, height <b>840</b>. Right-click the source and choose <b>Refresh</b> to pick up card changes.</p>
+    <div id="teams"></div>
+  </section>
+
+  <section>
+    <h2>Any other player</h2>
+    <p>Add <b>?stream=card</b> to the end of their profile link on the site, e.g. <code>…/champion/player/124583057?stream=card</code>. Signed in, you'll also see a "Copy stream link" box on their profile.</p>
+  </section>
+</main>
+<script>
+  const base = new URL('../champion/player/', location.href).href;
+  const teams = {
+    'o-b-j': [['Jimmy', 229031494], ['Edge Tember', 114111470], ['Sinatra', 88239134], ['Insane Chaos', 58405454], ['FireFist', 116567778]],
+    'Gank Me Harder Daddy Kaleb': [['Spiroar', 202345767], ['Kaleb', 836834145], ['Lorenzo', 121514552], ['Dr. Spike', 19192564], ['starboy', 124583057]],
+  };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  document.getElementById('teams').innerHTML = Object.entries(teams).map(([team, players]) => `<div class="team"><h3>${esc(team)}</h3>${players.map(([name, id]) => {
+    const url = `${base}${id}?stream=card`;
+    return `<div class="row"><span class="name">${esc(name)}</span><code>${esc(url)}</code><button type="button" class="copy" data-url="${esc(url)}">Copy</button><a class="open" href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>`;
+  }).join('')}</div>`).join('');
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('button.copy'); if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.url); b.textContent = 'Copied'; } catch { b.textContent = 'Select it'; }
+    setTimeout(() => (b.textContent = 'Copy'), 1500);
+  });
+</script>
+</body>
+</html>

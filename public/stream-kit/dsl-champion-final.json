@@ -1,0 +1,1979 @@
+{
+ "name": "DSL Champion Final",
+ "sources": [
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Jimmy",
+   "uuid": "96853a54-4e41-41ee-9649-b1208bb37b66",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/229031494?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Edge Tember",
+   "uuid": "efd20f3a-1a1d-47be-8efa-cedde033ac0b",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/114111470?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Sinatra",
+   "uuid": "19d27059-aec6-43e5-941d-d2932bb4bd10",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/88239134?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Insane Chaos",
+   "uuid": "cefa3d10-ea6d-48dc-87e2-fd3f84745258",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/58405454?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - FireFist",
+   "uuid": "f4e80860-2d57-4916-8f28-ba8203fc03ef",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/116567778?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Spiroar",
+   "uuid": "741b4076-daac-471d-9eb4-6cb4b891f1fc",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/202345767?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Kaleb",
+   "uuid": "b3c91643-ff29-4d45-a12c-28b030f4708f",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/836834145?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Lorenzo",
+   "uuid": "527ac3bd-50ee-4f29-b817-231fa34cf2cf",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/121514552?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - Dr. Spike",
+   "uuid": "baf811f2-7fa6-421b-bfb1-322c6023fe6c",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/19192564?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Card - starboy",
+   "uuid": "f7eacaf2-8272-43b6-a335-b1d2192e307e",
+   "id": "browser_source",
+   "versioned_id": "browser_source",
+   "settings": {
+    "url": "https://dota2scrimcircuittracker.github.io/champion/player/124583057?stream=card",
+    "width": 600,
+    "height": 840,
+    "fps": 30,
+    "fps_custom": true,
+    "shutdown": false,
+    "restart_when_active": false,
+    "css": "",
+    "reroute_audio": false
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "libobs.mute": [],
+    "libobs.unmute": [],
+    "libobs.push-to-mute": [],
+    "libobs.push-to-talk": [],
+    "ObsBrowser.Refresh": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Team - o-b-j",
+   "uuid": "de12128e-0871-427b-9030-3992c4ecb607",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 5,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Jimmy",
+      "source_uuid": "96853a54-4e41-41ee-9649-b1208bb37b66",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 12.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": -1.7555555555555555,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - Edge Tember",
+      "source_uuid": "efd20f3a-1a1d-47be-8efa-cedde033ac0b",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 2,
+      "group_item_backup": false,
+      "pos": {
+       "x": 396.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": -1.0444444444444445,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - Sinatra",
+      "source_uuid": "19d27059-aec6-43e5-941d-d2932bb4bd10",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 3,
+      "group_item_backup": false,
+      "pos": {
+       "x": 780.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": -0.3333333333333333,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - Insane Chaos",
+      "source_uuid": "cefa3d10-ea6d-48dc-87e2-fd3f84745258",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 4,
+      "group_item_backup": false,
+      "pos": {
+       "x": 1164.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": 0.37777777777777777,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - FireFist",
+      "source_uuid": "f4e80860-2d57-4916-8f28-ba8203fc03ef",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 5,
+      "group_item_backup": false,
+      "pos": {
+       "x": 1548.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": 1.0888888888888888,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": [],
+    "libobs.show_scene_item.2": [],
+    "libobs.hide_scene_item.2": [],
+    "libobs.show_scene_item.3": [],
+    "libobs.hide_scene_item.3": [],
+    "libobs.show_scene_item.4": [],
+    "libobs.hide_scene_item.4": [],
+    "libobs.show_scene_item.5": [],
+    "libobs.hide_scene_item.5": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Team - Gank Me Harder Daddy Kaleb",
+   "uuid": "44bf5f52-94e9-46b1-a000-d934a579f0a0",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 5,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Spiroar",
+      "source_uuid": "741b4076-daac-471d-9eb4-6cb4b891f1fc",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 12.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": -1.7555555555555555,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - Kaleb",
+      "source_uuid": "b3c91643-ff29-4d45-a12c-28b030f4708f",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 2,
+      "group_item_backup": false,
+      "pos": {
+       "x": 396.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": -1.0444444444444445,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - Lorenzo",
+      "source_uuid": "527ac3bd-50ee-4f29-b817-231fa34cf2cf",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 3,
+      "group_item_backup": false,
+      "pos": {
+       "x": 780.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": -0.3333333333333333,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - Dr. Spike",
+      "source_uuid": "baf811f2-7fa6-421b-bfb1-322c6023fe6c",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 4,
+      "group_item_backup": false,
+      "pos": {
+       "x": 1164.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": 0.37777777777777777,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     },
+     {
+      "name": "Card - starboy",
+      "source_uuid": "f7eacaf2-8272-43b6-a335-b1d2192e307e",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 5,
+      "group_item_backup": false,
+      "pos": {
+       "x": 1548.0,
+       "y": 288.0
+      },
+      "pos_rel": {
+       "x": 1.0888888888888888,
+       "y": -0.4666666666666667
+      },
+      "scale": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "scale_rel": {
+       "x": 0.6,
+       "y": 0.6
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": [],
+    "libobs.show_scene_item.2": [],
+    "libobs.hide_scene_item.2": [],
+    "libobs.show_scene_item.3": [],
+    "libobs.hide_scene_item.3": [],
+    "libobs.show_scene_item.4": [],
+    "libobs.hide_scene_item.4": [],
+    "libobs.show_scene_item.5": [],
+    "libobs.hide_scene_item.5": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Jimmy",
+   "uuid": "8d6554df-facd-46fa-b565-1acc00c44019",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Jimmy",
+      "source_uuid": "96853a54-4e41-41ee-9649-b1208bb37b66",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Edge Tember",
+   "uuid": "328316a4-8d38-4dd0-b4e1-04a3bbed79f8",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Edge Tember",
+      "source_uuid": "efd20f3a-1a1d-47be-8efa-cedde033ac0b",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Sinatra",
+   "uuid": "7e8f2fdf-e1bf-4db1-aadb-a24fc5d4ca06",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Sinatra",
+      "source_uuid": "19d27059-aec6-43e5-941d-d2932bb4bd10",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Insane Chaos",
+   "uuid": "c86870ad-e7a8-461d-99e2-76ef8524fbb1",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Insane Chaos",
+      "source_uuid": "cefa3d10-ea6d-48dc-87e2-fd3f84745258",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - FireFist",
+   "uuid": "2e7c1c15-fda8-4314-8c65-50924a3d3e63",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - FireFist",
+      "source_uuid": "f4e80860-2d57-4916-8f28-ba8203fc03ef",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Spiroar",
+   "uuid": "a82101fa-cade-4da1-80de-d94e464b2f06",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Spiroar",
+      "source_uuid": "741b4076-daac-471d-9eb4-6cb4b891f1fc",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Kaleb",
+   "uuid": "7c5b99f0-b104-4a31-bb33-8cf853824643",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Kaleb",
+      "source_uuid": "b3c91643-ff29-4d45-a12c-28b030f4708f",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Lorenzo",
+   "uuid": "18f545bd-ad90-4d03-b2db-c0b1fabde0ef",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Lorenzo",
+      "source_uuid": "527ac3bd-50ee-4f29-b817-231fa34cf2cf",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - Dr. Spike",
+   "uuid": "88916906-ebb4-498b-bdaf-fac1ad6f7729",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - Dr. Spike",
+      "source_uuid": "baf811f2-7fa6-421b-bfb1-322c6023fe6c",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  },
+  {
+   "prev_ver": 537001986,
+   "name": "Player - starboy",
+   "uuid": "4c34d44a-59b5-453d-9870-10722bc3ed1b",
+   "id": "scene",
+   "versioned_id": "scene",
+   "settings": {
+    "id_counter": 1,
+    "custom_size": false,
+    "items": [
+     {
+      "name": "Card - starboy",
+      "source_uuid": "f7eacaf2-8272-43b6-a335-b1d2192e307e",
+      "visible": true,
+      "locked": false,
+      "rot": 0.0,
+      "scale_ref": {
+       "x": 1920.0,
+       "y": 1080.0
+      },
+      "align": 5,
+      "bounds_type": 0,
+      "bounds_align": 0,
+      "bounds_crop": false,
+      "crop_left": 0,
+      "crop_top": 0,
+      "crop_right": 0,
+      "crop_bottom": 0,
+      "id": 1,
+      "group_item_backup": false,
+      "pos": {
+       "x": 660.0,
+       "y": 120.0
+      },
+      "pos_rel": {
+       "x": -0.5555555555555556,
+       "y": -0.7777777777777778
+      },
+      "scale": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "scale_rel": {
+       "x": 1.0,
+       "y": 1.0
+      },
+      "bounds": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "bounds_rel": {
+       "x": 0.0,
+       "y": 0.0
+      },
+      "scale_filter": "disable",
+      "blend_method": "default",
+      "blend_type": "normal",
+      "show_transition": {
+       "duration": 0
+      },
+      "hide_transition": {
+       "duration": 0
+      },
+      "private_settings": {}
+     }
+    ]
+   },
+   "mixers": 0,
+   "sync": 0,
+   "flags": 0,
+   "volume": 1.0,
+   "balance": 0.5,
+   "enabled": true,
+   "muted": false,
+   "push-to-mute": false,
+   "push-to-mute-delay": 0,
+   "push-to-talk": false,
+   "push-to-talk-delay": 0,
+   "hotkeys": {
+    "OBSBasic.SelectScene": [],
+    "libobs.show_scene_item.1": [],
+    "libobs.hide_scene_item.1": []
+   },
+   "deinterlace_mode": 0,
+   "deinterlace_field_order": 0,
+   "monitoring_type": 0,
+   "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+   "private_settings": {}
+  }
+ ],
+ "groups": [],
+ "scene_order": [
+  {
+   "name": "Team - o-b-j"
+  },
+  {
+   "name": "Team - Gank Me Harder Daddy Kaleb"
+  },
+  {
+   "name": "Player - Jimmy"
+  },
+  {
+   "name": "Player - Edge Tember"
+  },
+  {
+   "name": "Player - Sinatra"
+  },
+  {
+   "name": "Player - Insane Chaos"
+  },
+  {
+   "name": "Player - FireFist"
+  },
+  {
+   "name": "Player - Spiroar"
+  },
+  {
+   "name": "Player - Kaleb"
+  },
+  {
+   "name": "Player - Lorenzo"
+  },
+  {
+   "name": "Player - Dr. Spike"
+  },
+  {
+   "name": "Player - starboy"
+  }
+ ],
+ "current_scene": "Team - o-b-j",
+ "current_program_scene": "Team - o-b-j",
+ "current_transition": "Fade",
+ "transition_duration": 300,
+ "transitions": [],
+ "quick_transitions": [],
+ "resolution": {
+  "x": 1920,
+  "y": 1080
+ },
+ "saved_projectors": []
+}
