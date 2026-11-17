@@ -29,6 +29,7 @@ const uploadPage = () => import("./pages/upload.js");
 const predictPage = () => import("./pages/predict.js");
 const drafterPage = () => import("./pages/drafter.js");
 const searchPage = () => import("./pages/search.js");
+const streamKitPage = () => import("./pages/stream-kit.js");
 const galleryPage = () => import("./pages/gallery.js");
 
 // ---------- League switcher + router ----------
@@ -323,10 +324,10 @@ const metaMenu = async (src) => ({ items: [
 const toolsMenu = async (src) => ({ items: toolList(src).map(({ name, href, action }) => ({ name, href: href ?? "#", action })) });
 // The nav tab a page belongs to: Players and Heroes live under Meta; the Drafter, Upload and the
 // table builder under Tools.
-const NAV_OF = { players: "meta", heroes: "meta", drafter: "tools", upload: "tools", search: "tools" };
+const NAV_OF = { players: "meta", heroes: "meta", drafter: "tools", upload: "tools", search: "tools", streamkit: "tools" };
 const navOf = (section) => NAV_OF[section] ?? section;
 // The page's own name for the window title, where it isn't its nav tab's.
-const SECTION_TITLE = { players: "Players", heroes: "Heroes", drafter: "Drafter", upload: "Upload", search: "Search" };
+const SECTION_TITLE = { players: "Players", heroes: "Heroes", drafter: "Drafter", upload: "Upload", search: "Search", streamkit: "Stream kit" };
 // The Gallery keeps its sub-tab in the path and no league in the address.
 const galleryMenu = async () => ({ items: GALLERY_TABS.map(([, label, seg]) => ({ name: label, href: `#/gallery${seg ? `/${seg}` : ""}` })) });
 async function weekMenu(src) {
@@ -558,6 +559,7 @@ export function route() {
     else if (src.all && /^\/(predict|drafter|upload|edit)/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
     else if (h.startsWith(`${r}/predict`)) { section = "predict"; page = async () => (await predictPage()).renderPredict(src); }
     else if (h.startsWith(`${r}/drafter`)) { section = "drafter"; page = async () => (await drafterPage()).renderDrafter(src); }
+    else if (h.startsWith(`${r}/stream-kit`) && src.ad2l && !src.all) { section = "streamkit"; page = async () => (await streamKitPage()).renderStreamKit(src); }
     else if (new RegExp(`^${r}/edit/[0-9a-f]{32}$`).test(h)) { section = "week"; page = async () => (await uploadPage()).renderEdit(h.slice(`${r}/edit/`.length), src.key); }
     else if (h.startsWith(`${r}/upload`)) { section = "upload"; page = async () => { const { endEdit, upload, checkDraft, renderUpload } = await uploadPage(); endEdit(); upload.league = src.key; await src.data().catch(() => null); await divUploaded(src.key); if (upload.draft) upload.check = checkDraft(upload.draft); return renderUpload(); }; }
     else if (h.startsWith(`${r}/search`)) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }

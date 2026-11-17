@@ -5507,3 +5507,20 @@ html.stream-card body > *:not(dialog.ft-big) { visibility: hidden !important; }
 html.stream-card dialog.ft-big { background: transparent !important; border: 0 !important; box-shadow: none !important; }
 html.stream-card dialog.ft-big::backdrop { background: transparent !important; backdrop-filter: none !important; }
 html.stream-card .ft-big-close, html.stream-card .fb-dialog-btn, html.stream-card .ft-turn, html.stream-card .ft-expand, html.stream-card .ft-pickbtn { display: none !important; }
+
+/* Stream kit tool (pages/stream-kit.js). */
+.stream-kit > .muted { max-width: 70ch; }
+.stream-kit .panel { margin-top: 14px; }
+.stream-kit .panel h3 { margin: 0 0 10px; }
+.sk-teams header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.sk-link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+.sk-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 16px; }
+.sk-team-grid label { display: flex; gap: 8px; align-items: center; cursor: pointer; min-width: 0; }
+.sk-steps { margin: 0 0 10px; padding-left: 20px; } .sk-steps li { margin: 6px 0; }
+.sk-team { margin-top: 12px; } .sk-team h4 { margin: 0 0 4px; }
+.sk-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); }
+.sk-name { width: 140px; flex: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-row code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; opacity: .75; }
+.sk-empty { margin-top: 14px; }
+@media (max-width: 560px) { .sk-row { flex-wrap: wrap; } .sk-name { width: auto; flex: 1; } .sk-row code { flex-basis: 100%; order: 3; } }
+
