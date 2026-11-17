@@ -293,3 +293,398 @@
   .po-gw { font-size: 11px; }
   .po-mp, .po-m .po-odds { padding: 3px 6px 5px; font-size: 9.5px; }
 }
+
+@media (max-width: 760px) {
+  /* Fantasy "Player lineups": style.css gives each card 84px and scrolls the row sideways, so
+     cards 4 and 5 sat off screen. All five fit in one row, like "Your picks". The nested
+     lineup boxes give up some padding so the cards keep their width. */
+  .ft-view-lineup { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; overflow: visible; padding: 4px 0 8px; margin: 8px 0; }
+  .ft-view-pick .ft-pick-role { font-size: 9px; letter-spacing: .04em; }
+  .ft-saved-week, .ft-entry { padding: 10px 8px; }
+  .ft-saved-entries .ft-entry { margin-inline: 0; }
+  /* Score breakdown tables: the formula row ("Stat points × survival …") was one nowrap line,
+     so each 4-column table was 694px wide. Cells wrap and fit the screen. */
+  .ft-table { width: 100%; }
+  .ft-table :is(th, td) { white-space: normal; padding: 6px 5px; font-size: 12px; line-height: 1.3; }
+  .ft-table th { font-size: 9px; letter-spacing: .06em; }
+  .ft-table .bd-raw { font-size: 10px; }
+  .ft-table :is(th, td):first-child { text-align: left; }
+  .ft-table :is(th, td):last-child { white-space: nowrap; }
+  .ft-table td:first-child:not([colspan]) { font-size: 11.5px; }
+  .ft-table td[colspan] { font-size: 11px; color: var(--dust); }
+}
+
+/* A thumbnail lineup card (under 80px: lineups, and "Your picks" on a phone). The front's type
+   has px floors (a 22px name), so at ~58px the name, record, team and signature piled on top of
+   each other. Show the art and the tier badge only; the player's name sits under the card. The
+   tier list has its own small-card rules. */
+@container (width < 80px) {
+  :is(.ft-view-pick, .ft-stage) .ft-front :is(.ft-name, .ft-record, .ft-tm, .ft-sig, .ft-pos) { display: none; }
+  :is(.ft-view-pick, .ft-stage) .ft-front > .ft-tier { left: 5px; width: 20px; font-size: 13px; padding-bottom: 2px; }
+  :is(.ft-view-pick, .ft-stage) .ft-front .ft-tier small { font-size: 7px; }
+}
+
+@media (max-width: 760px) {
+  /* Predictions "Latest results": two full team names a row on one line made the table 1088px
+     wide. Names become tags ("GMH vs SMD", "GMH wins ✓") and cells wrap. */
+  .pred-night-t :is(th, td) { white-space: normal; padding: 8px 5px; font-size: 12px; line-height: 1.35; }
+  .pred-night-t .team-link .inline-team-logo { display: none; }
+  .pred-night-t [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .pred-night-t [data-tag]::after { content: attr(data-tag); font: 700 11px/1.2 var(--mono); letter-spacing: .04em; }
+  .pred-night-t .muted { display: block; font-size: 10px; }
+}
+
+@media (max-width: 760px) {
+  /* Seeding matrix (10+ seed columns, two totals): 897px wide. Team tags, no "%" in the seed
+     cells (the lead says each cell is a chance; the totals keep theirs), and tight cells, so a
+     10-team division fits a phone. */
+  .po-poss { width: 100%; table-layout: fixed; }
+  .po-poss :is(th, td) { padding: 2px 1px; }
+  .po-poss thead th { font-size: 9px; letter-spacing: 0; white-space: normal; line-height: 1.15; vertical-align: bottom; }
+  .po-poss .pc { display: none; }
+  .po-poss thead th:first-child { width: 40px; }
+  .po-poss thead th.po-sum { width: 44px; padding-inline: 0; font-size: 7px; letter-spacing: -.04em; }
+  .po-poss tbody th { min-width: 0; max-width: none; }
+  .po-poss tbody th button.po-team { gap: 3px; padding: 6px 0; }
+  .po-poss .po-caret { border-left-width: 4px; }
+  .po-poss .po-tname [data-tag]::after { font-size: 10px; }
+  .po-poss td.po-c { padding-inline: 0; }
+  .po-c button { min-width: 0; padding: 7px 0; font-size: 9px; letter-spacing: -.04em; border-width: 0; }
+  .po-c button.on { border-width: 1px; }
+  .po-sum { font-size: 10px; }
+  /* Tiebreaker and 1v1 tables: wrap instead of a 666px row. */
+  .po-ev { width: 100%; }
+  .po-ev :is(th, td) { white-space: normal; padding: 7px 3px; font-size: 11px; line-height: 1.3; }
+  .po-ev th { font-size: 8.5px; letter-spacing: 0; }
+  #app .po-ev td.name { min-width: 0; max-width: none; font-size: 12px; }
+  .po-ev td .linkish { white-space: normal; text-align: left; font-size: 10px; }
+}
+
+@media (max-width: 760px) {
+  /* Bracket leaderboard: the champion pick, the series columns and the playoff picture's team
+     names were nowrap, so each table ran 420-530px wide. They wrap. */
+  .pred-board :is(td, th), .pb-hist :is(td, th), .po-table :is(td, th) { white-space: normal; }
+  .pred-board :is(td, th) { padding: 8px 5px; }
+  .pred-board th.pb-series { min-width: 0; max-width: none; font-size: 10px; }
+  .pred-board .pk-chip, .pb-hist .pk-chip { white-space: normal; font-size: 10px; line-height: 1.25; }
+  .pb-hist td:first-child, .pb-hist td:has(> .pk-chip) { min-width: 0; }
+  .po-table :is(td, th) { padding-inline: 5px; }
+}
+
+@media (max-width: 760px) {
+  /* Content week picker: 12 chips scrolled sideways, three on screen. A grid that wraps, six
+     compact chips a row (number, date, games stacked). */
+  .week-top { gap: 14px; margin-bottom: 20px; }
+  #app .week-pick { flex: 1 1 100%; display: block; padding-left: 0; }
+  .week-pick-label { margin-bottom: 6px; }
+  .week-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 5px; overflow: visible; padding-bottom: 0; }
+  .week-chip { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 6px 2px 5px; }
+  .week-chip .wn { font-size: 18px; }
+  .week-chip :is(.wd, .wc) { font-size: 8.5px; letter-spacing: .02em; white-space: nowrap; }
+  /* Series headline: smaller names, the score never splits ("0–" / "2"). */
+  .series-head { font-size: 18px; gap: 8px; align-items: center; }
+  .series-head > span:not(.series-score) { flex: 1 1 0; min-width: 0; }
+  .series-head > span:last-child { text-align: right; }
+  .series-head .series-score { flex: none; margin: 0; white-space: nowrap; }
+  .series-head::after { display: none; } /* the h2 rule line took a third of the row */
+  /* Game headers: tags ("GMH 34–16 SMD") so the line fits; the series headline above has the
+     full names. */
+  .gp-result { white-space: nowrap; font-size: 18px; }
+  .gp-result .inline-team-logo { display: none; }
+  .gp-result [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .gp-result [data-tag]::after { content: attr(data-tag); font: 800 18px/1.1 var(--display); letter-spacing: .03em; }
+}
+
+@media (max-width: 760px) {
+  /* Content "Playoffs" list: round, teams and status stacked in three rows, the score floating
+     between the names. Round and status share the top line; below, "Team A  1–2  Team B". */
+  .po-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 8px 10px; }
+  .po-round { font-size: 9.5px; }
+  .po-status { grid-row: 1; grid-column: 2; font-size: 10px; }
+  .po-teams { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; font-size: 13px; line-height: 1.25; }
+  .po-teams > b:last-child { text-align: right; }
+  .po-teams > b:last-child .team-link { flex-direction: row-reverse; }
+  .po-teams .series-score { font: 800 15px/1 var(--display); color: var(--accent); white-space: nowrap; vertical-align: baseline; }
+}
+
+@media (max-width: 760px) {
+  /* Content "Up next": two phone rules fought (one centred, one left-aligned), so team A
+     floated mid-card and team B sat under the odds. Both teams side by side on top, the round,
+     odds and draft link below. */
+  .fixture.st-next { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); text-align: left; gap: 10px 12px; }
+  .st-next .fx-team { font-size: 17px; text-align: left; }
+  .st-next .fx-team.b { grid-row: 1; grid-column: 2; text-align: right; }
+  .st-next .fx-team.b .team-link { flex-direction: row-reverse; }
+  .st-next .fx-score { grid-column: 1 / -1; min-width: 0; text-align: left; }
+}
+
+@media (max-width: 760px) {
+  /* Stat tables with a pinned name column (Teams table, players): a long team name was one
+     nowrap line, so the stat column was pushed off screen. Names wrap to two lines. */
+  .table-wrap.sticky-name tbody td.l:nth-child(2) { white-space: normal; min-width: 0; line-height: 1.25; }
+  .table-wrap.sticky-name tbody td.l:nth-child(2) .team-link { align-items: flex-start; }
+}
+
+@media (max-width: 760px) {
+  /* Teams "Matches": each series ran ~145px tall (13px names over three lines, roomy head).
+     Tighter names and head, smaller logos. */
+  .mx-head { padding: 6px 10px; }
+  .mx-wk { font-size: 14px; }
+  .mx-date { font-size: 10.5px; }
+  .mx-t { padding: 6px 8px; font-size: 12px; line-height: 1.25; }
+  .mx-t .inline-team-logo { width: 14px; height: 14px; }
+  .mx-x { padding: 0 8px 6px; }
+  .mx-grid { gap: 10px; }
+}
+
+@media (max-width: 760px) {
+  /* Player tables: the team is a second name column, wrapped to three lines a row. Tags. */
+  .table-wrap.sticky-name td.name:not(:nth-child(2)) { min-width: 0; }
+  .table-wrap.sticky-name td.name:not(:nth-child(2)) .inline-team-logo { display: none; }
+  .table-wrap.sticky-name td.name:not(:nth-child(2)) [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .table-wrap.sticky-name td.name:not(:nth-child(2)) [data-tag]::after { content: attr(data-tag); font: 700 11px/1.2 var(--mono); letter-spacing: .04em; }
+}
+
+@media (max-width: 760px) {
+  /* Stat leaders: a 56px "Top 3" rail beside three full-width plates stacked (~530px). The rail
+     becomes a slim strip on top and the podium sits in one row of three. */
+  .ld-band { grid-template-columns: minmax(0, 1fr); }
+  .ld-tag { flex-direction: row; gap: 8px; padding: 5px 10px; clip-path: none; justify-content: flex-start; }
+  .ld-arrow { font-size: 16px; }
+  .ld-band-top .ld-plates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px; }
+  .ld-band-top .ld-plate { padding: 8px 7px 10px; }
+  .ld-band-top .ld-num { font-size: 56px; top: -8px; right: 2px; }
+  .ld-band-top .ld-place { font-size: 9px; }
+  .ld-band-top .ld-name { margin-top: 6px; font-size: 14px; }
+  .ld-band-top .ld-meta { font-size: 10px; white-space: normal; }
+  .ld-meta [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .ld-meta [data-tag]::after { content: attr(data-tag); font: 700 10px/1.2 var(--mono); letter-spacing: .04em; }
+  .ld-band-top .ld-meta .inline-team-logo { display: none; }
+  .ld-band-top .ld-val { margin-top: 8px; font-size: 20px; flex-wrap: wrap; gap: 3px; }
+  .ld-band-top .ld-val small { font-size: 8.5px; }
+}
+
+@media (max-width: 760px) {
+  /* Hero tier list: one 135px hero chip a row (13,000px page). Two compact chips a row; the
+     "Breakdown" bar becomes a small caret (the whole chip opens it). An open chip takes the
+     full row for its breakdown. */
+  .tier-band:has(.hchip) .tier-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px; }
+  .chip.hchip { width: auto; min-width: 0; gap: 6px 8px; padding: 8px; position: relative; }
+  .chip.hchip:not(.open) { flex-direction: column; }
+  .chip.hchip:not(.open) .hchip-img { align-self: flex-start; }
+  .chip.hchip:not(.open) .hchip-img .hero-img { width: 44px; height: 25px; }
+  .chip.hchip:not(.open) .chip-top { position: static; }
+  .chip.hchip:not(.open) .chip-rating { position: absolute; top: 8px; right: 9px; font-size: 20px; }
+  .chip.hchip .chip-name { font-size: 12.5px; }
+  .chip.hchip .chip-meta { font-size: 10.5px; margin: 2px 0 5px; }
+  .chip.hchip .chip-foot { gap: 6px; font-size: 9.5px; letter-spacing: 0; }
+  .chip.hchip:not(.open) > .chip-caret { position: absolute; right: 8px; bottom: 7px; flex-basis: auto; padding: 0; border: 0; margin: 0; font-size: 0; background: none; }
+  .chip.hchip:not(.open) > .chip-caret b { font-size: 11px; }
+  .chip.hchip.open { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  /* Players on heroes: the team under each player wrapped to three lines. Tags. */
+  .chip.hchip .chip-meta { white-space: normal; }
+  .chip.hchip .chip-meta [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .chip.hchip .chip-meta [data-tag]::after { content: attr(data-tag); font: 700 10px/1.2 var(--mono); letter-spacing: .04em; }
+}
+
+@media (max-width: 760px) {
+  /* Heroes filter bars: the "picked at least" and hero pickers sat off screen at the end of a
+     sideways-scrolling row. The segments keep their row; the pickers wrap to their own. */
+  .segs.hchip-bar { flex-wrap: wrap; overflow: visible; row-gap: 8px; -webkit-mask-image: none; mask-image: none; }
+  .segs.hchip-bar > :not(.seg) { flex: 1 1 100%; margin: 0; white-space: normal; }
+}
+
+@media (max-width: 760px) {
+  /* Drafter rosters: four profile links on one line beside each name made the table 593px.
+     They wrap under the name. */
+  .dx-roster td.l { white-space: normal; }
+  .dx-roster .dx-ext { display: block; margin-top: 3px; font-size: 10px; line-height: 1.6; }
+  .dx-roster .dx-ext a { white-space: nowrap; }
+}
+
+@media (max-width: 760px) {
+  /* Drafter win-chance line: a long team name wrapped to three lines beside the bar. Tags. */
+  :is(.dx-sx, .dx-sy) [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  :is(.dx-sx, .dx-sy) [data-tag]::after { content: attr(data-tag); font: 700 12px/1.2 var(--mono); letter-spacing: .04em; }
+}
+
+@media (max-width: 760px) {
+  /* Gallery: the 170px column minimum left one screen-wide card a row (two a page). Two a row;
+     the pager counts columns, so a page holds four. */
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 8px; }
+  .gallery-grid figcaption { font-size: 11px; }
+  .gallery-grid .card-rating-votes button { font-size: 9px; letter-spacing: 0; white-space: nowrap; min-height: 32px; }
+}
+
+@media (max-width: 760px) {
+  /* Gallery feed filters: twelve checkboxes one a line (~360px before the first post). Three a
+     row. */
+  .feed-view-pick { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; }
+  .feed-view-pick legend { grid-column: 1 / -1; }
+  .feed-view .feed-view-pick label { min-height: 32px; font-size: 12px; }
+  .feed-view-pick > :not(label):not(legend) { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  /* Game scoreboard: the pinned player cell ("Rubick · pos 5 · Divine 5" on one line) was
+     393px, wider than the screen, so every stat sat off to the right and pinning did nothing.
+     A 156px cell with the hero line wrapped; the stats scroll beside it. */
+  .gm-board td.who { min-width: 0; width: 156px; max-width: 156px; gap: 6px; padding-inline: 6px; }
+  .gm-board td.who .hero-img { width: 34px; height: 19px; }
+  .gm-board .who-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gm-board .who-sub { font-size: 9.5px; white-space: normal; line-height: 1.25; }
+  .gm-board .who-r { min-width: 24px; padding: 3px 3px; font-size: 10px; }
+  .gm-board td.who i.plus { margin-left: -18px; }
+}
+
+@media (max-width: 760px) {
+  /* Tables whose pinned first column is a team (game Draft tab: "Model's guess", rosters), and
+     the draft steps: a full team name on one line was ~316px of a 341px table. Tags. */
+  :is(.table-wrap:not(.sticky-name) td.l:first-child, .cm-steps td) .team-link .inline-team-logo { display: none; }
+  :is(.table-wrap:not(.sticky-name) td.l:first-child, .cm-steps td) .team-link [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  :is(.table-wrap:not(.sticky-name) td.l:first-child, .cm-steps td) .team-link [data-tag]::after { content: attr(data-tag); font: 700 11px/1.2 var(--mono); letter-spacing: .04em; }
+}
+
+@media (max-width: 760px) {
+  /* Game Draft tab tables name the side's team in full on every row. Tags. */
+  .cm-side[data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .cm-side[data-tag]::after { content: attr(data-tag); font: 700 11px/1.2 var(--mono); letter-spacing: .04em; }
+}
+
+@media (max-width: 760px) {
+  /* Game Draft tables: hero names and the model's guess wrap instead of widening the table. */
+  #pp-panel-draft td.l, .cm-steps td.l { white-space: normal; line-height: 1.25; }
+  #pp-panel-draft th { white-space: normal; }
+  #pp-panel-draft td:has(> .hero-img), .cm-steps td:has(> .hero-img) { display: flex; align-items: center; gap: 6px; min-width: 112px; }
+  #pp-panel-draft td > .hero-img { width: 34px; height: 19px; flex: none; }
+}
+
+@media (max-width: 760px) {
+  /* Team "Form" card: five 28px squares ran past the edge of a half-width card. */
+  .cards .card .form { display: flex; gap: 3px; }
+  .cards .card .form i { flex: 1 1 0; min-width: 0; width: auto; max-width: 26px; height: 24px; font-size: 11px; }
+}
+
+@media (max-width: 760px) {
+  /* Team and player rank groups (Results, Economy, …): the group label stayed vertical text,
+     an 86px coloured block a group, and the tiles ran two a row at ~130px. The label is a slim
+     strip and three compact tiles share a row. */
+  .sr-band .ld-tag span { writing-mode: horizontal-tb; transform: none; font-size: 10px; letter-spacing: .14em; }
+  .sr-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 6px; }
+  .sr-tile { padding: 7px 6px 9px; min-width: 0; }
+  .sr-label { font-size: 8.5px; letter-spacing: .03em; line-height: 1.25; }
+  .sr-val { font-size: 18px; margin: 5px 0 4px; }
+  .sr-place { gap: 0 3px; }
+  .sr-place b { font-size: 14px; }
+  .sr-place small, .sr-ov small { font-size: 8.5px; }
+  .sr-ov-place { white-space: normal; font-size: 9px; }
+}
+
+/* Team "Series" drafts sit in a <details> (pages/teams.js): open and without a summary on
+   desktop, folded behind a "Drafts" toggle on a phone. */
+details.hist-drafts > summary { display: none; }
+@media (max-width: 760px) {
+  details.hist-drafts > summary {
+    display: flex; align-items: center; gap: 6px; padding: 9px 0; cursor: pointer; list-style: none;
+    font: 600 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dust);
+  }
+  details.hist-drafts > summary::-webkit-details-marker { display: none; }
+  details.hist-drafts > summary::before { content: "▸"; color: var(--accent); }
+  details.hist-drafts[open] > summary::before { content: "▾"; }
+  .hist-drafts .draft-legend { display: none; } /* the game head already names the winner */
+}
+
+@media (max-width: 760px) {
+  /* Team Draft tab: each series is a <details> on a phone (parts/cmdraft.js), folded. */
+  details.td-series { margin-top: 10px; }
+  details.td-series > summary.td-shead { cursor: pointer; list-style: none; margin: 0; padding: 10px 0; }
+  details.td-series > summary::-webkit-details-marker { display: none; }
+  details.td-series > summary.td-shead::before { content: "▸"; color: var(--accent); font: 600 12px/1 var(--mono); }
+  details.td-series[open] > summary.td-shead::before { content: "▾"; }
+  details.td-series[open] > summary.td-shead { margin-bottom: 10px; }
+}
+
+@media (max-width: 760px) {
+  /* Profile game analysis picker: "vs <full team name>" wrapped to two lines a game. Tags. */
+  .ga-g-vs [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .ga-g-vs [data-tag]::after { content: attr(data-tag); font: 700 11px/1.2 var(--mono); letter-spacing: .04em; }
+}
+
+@media (max-width: 760px) {
+  /* Profile "Stat line": two ~145px tiles a row (1,700px). Three compact tiles a row. */
+  .ga-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ga-stat { padding: 7px 6px 8px; min-width: 0; }
+  .ga-stat .k { font-size: 8.5px; letter-spacing: .03em; flex-basis: 100%; }
+  .ga-top { gap: 1px 4px; }
+  .ga-rk { margin-left: 0; font-size: 12px; }
+  .ga-rk small { font-size: 8.5px; }
+  .ga-stat .v { font-size: 17px; overflow-wrap: anywhere; }
+  .ga-stat .s { font-size: 9px; line-height: 1.25; }
+}
+
+@media (max-width: 760px) {
+  /* Profile achievements: ~170px a row. The progress count sits beside the pack and the
+     pack's odds tuck under it in small type. */
+  .ach-list { gap: 6px; }
+  .ach { gap: 6px; padding: 8px 10px; }
+  .ach-body { gap: 2px; }
+  .ach-body b { font-size: 13px; }
+  .ach-body span, .ach-body small { font-size: 11px; }
+  .ach-reward { gap: 4px 8px; }
+  .ach-odds { font-size: 9.5px; line-height: 1.3; }
+}
+
+@media (max-width: 760px) {
+  /* Stat cards (hero, team, profile Stats/Combat): ~100px each. Compact like the highlight
+     cards: smaller label, value and sub-line. */
+  .cards.player-cards { gap: 6px; }
+  .cards.player-cards > .card { padding: 8px 9px 9px; }
+  .cards.player-cards > .card .k { font-size: 8.5px; letter-spacing: .06em; }
+  .cards.player-cards > .card .v { font-size: 20px; margin-top: 4px; }
+  .cards.player-cards > .card .s { font-size: 10px; line-height: 1.3; margin-top: 3px; }
+  .cards.player-cards > .card .s [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .cards.player-cards > .card .s [data-tag]::after { content: attr(data-tag); font: 700 10px/1.2 var(--mono); letter-spacing: .04em; }
+}
+
+@media (max-width: 760px) {
+  /* Match lists (Teams "Matches", All Divisions): full names wrapped to three lines a row, so
+     All Divisions ran 32,000px. Tags, one line a row; each box's head names the division. */
+  .mx-t [data-tag] { font-size: 0 !important; letter-spacing: 0; }
+  .mx-t [data-tag]::after { content: attr(data-tag); font: 700 12px/1.2 var(--mono); letter-spacing: .04em; }
+  .mx-t { white-space: nowrap; padding-block: 8px; }
+}
+
+@media (max-width: 760px) {
+  /* Match box heads ("Week 14 · Voyager", date, Upcoming) wrapped to three lines. One line. */
+  .mx-head { gap: 6px; padding: 5px 8px; white-space: nowrap; overflow: hidden; }
+  .mx-wk { font-size: 12px; flex: none; }
+  .mx-date { font-size: 9.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .mx-tag { font-size: 8.5px; padding: 2px 4px; flex: none; }
+}
+
+@media (max-width: 760px) {
+  /* All Divisions "Matches": 97 week boxes in one column. With tags a box needs ~150px, so
+     two share a row; the head's date drops to its own line. */
+  .mx-grid.mx-split { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .mx-split .mx-head { flex-wrap: wrap; row-gap: 2px; white-space: normal; }
+  .mx-split .mx-wk { font-size: 11px; white-space: normal; flex: 1 1 100%; }
+  .mx-split .mx-tag { position: absolute; top: 4px; right: 4px; }
+  .mx-split .mx-head:has(.mx-tag) .mx-date { padding-right: 0; }
+  .mx-split .mx-head:has(.mx-tag) .mx-wk { padding-right: 60px; }
+  .mx-split .mx-box { position: relative; min-width: 0; }
+  .mx-split .mx-row { grid-template-columns: minmax(0, 1fr) 22px 22px minmax(0, 1fr); }
+  .mx-split .mx-t { padding-inline: 4px; }
+  .mx-split .mx-t .inline-team-logo { display: none; }
+  .mx-split .mx-t [data-tag]::after { font-size: 11px; }
+}
+
+@media (max-width: 760px) {
+  /* Player tier list (All Divisions, one position): each tier's cards ran in a sideways row up
+     to 1,750px. They wrap, four a row, as on a league's own tier list. */
+  .tier-chips:has(> .fantasy-tier-chip) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .tier-chips > .fantasy-tier-chip { width: auto; min-width: 0; }
+  .tier-chips > .fantasy-tier-chip.open { grid-column: 1 / -1; }
+}

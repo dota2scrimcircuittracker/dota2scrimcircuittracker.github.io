@@ -7,7 +7,7 @@ import { postseason, bracketPoints, playoffScore, playoffPicture, seedsSettled, 
 import { listPredictions, listBrackets, saveBracket, listPlayoffBrackets, submitPlayoffBracket, listPlayoffBracketFixes, submitPlayoffBracketFix, currentUid, myUids, steamAccount, savePrediction, listFixtures, addFixture, moveFixture, deleteFixture } from "../lib/store.js";
 import { settle, asSeries, scrimRatings, fixtureBacktest, fixtureOdds, fixtureCall, fixtureScores, outcomes, outcomeLabel } from "../lib/fixtures.js";
 import { info } from "../lib/glossary.js";
-import { esc, app, pageHead, portrait, teamLink, playerLink, pct, SOURCES, DIVISIONS, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
+import { esc, app, pageHead, portrait, teamLink, teamName as tagName, playerLink, pct, SOURCES, DIVISIONS, allMatches, editUnlocked, when, unlockEdit, playerTabs, wirePlayerTabs } from "../core.js";
 import { loading, errorBox } from "../parts/lanes.js";
 import { lastNight, sinceLabel } from "../parts/ranks.js";
 import { draftHtml, upload } from "./upload.js";
@@ -130,6 +130,12 @@ export async function renderPredict(src) {
   const week = upcoming.filter((s) => s.time === night);
   const mine = (sid) => (preds ?? []).filter((p) => p.series_id === sid && uids.includes(p.uid)).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
   const label = (s, o) => (isPostseason(s) ? `${esc(teamName[o === "home" ? s.home : s.away])} wins` : o === "tie" ? "1–1" : `${esc(teamName[o === "home" ? s.home : s.away])} 2–0`);
+  // The same as HTML, the name carrying its tag for phones (mobile.css). Not for attributes.
+  const labelHtml = (s, o) => {
+    if (o === "tie" && !isPostseason(s)) return "1–1";
+    const id = o === "home" ? s.home : s.away;
+    return `${tagName(src, teamName[id], id)} ${isPostseason(s) ? "wins" : "2–0"}`;
+  };
 
   // The model's full draft for a series, in Captains Mode order, for either team on first
   // pick (not known ahead of time); a toggle switches between the two.
@@ -326,12 +332,12 @@ export async function renderPredict(src) {
       const crowdPick = c?.n ? favourite(c) : null;
       const me = myKey ? valid.find((p) => p.series_id === s.id && nameKey(p.name) === myKey) : null;
       const actual = outcomeOf(s);
-      const tick = (pick) => (pick ? `${label(s, pick)} ${pick === actual ? '<b class="s-a">✓</b>' : '<b class="s-b">✗</b>'}` : '<span class="muted">—</span>');
+      const tick = (pick) => (pick ? `${labelHtml(s, pick)} ${pick === actual ? '<b class="s-a">✓</b>' : '<b class="s-b">✗</b>'}` : '<span class="muted">—</span>');
       return `<tr><td class="l">${teamLink(src, teamName[s.home], s.home)} vs ${teamLink(src, teamName[s.away], s.away)}</td>
         <td>${s.home_score}–${s.away_score}</td><td class="l">${m ? `${tick(m.pick)} <span class="muted">(${Math.round(m.p_actual * 100)}% on the result)</span>` : "—"}</td>
         <td class="l">${c?.n ? `${tick(crowdPick)} <span class="muted">${c.n}</span>` : '<span class="muted">—</span>'}</td>${myKey ? `<td class="l">${me ? tick(me.pick) : '<span class="muted">—</span>'}</td>` : ""}</tr>`;
     }).join("");
-    return `<div class="table-wrap"><table><thead><tr><th scope="col" class="l">Series</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="pred-night-t"><thead><tr><th scope="col" class="l">Series</th><th scope="col">Result</th><th scope="col" class="l">Model${info("model_col")}</th><th scope="col" class="l">Crowd${info("crowd_col")}</th>${myKey ? `<th scope="col" class="l">You${info("you_col")}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
   };
   const past = playedNights.map((t) => `<h3 class="pred-night">${dayLabel(t)}</h3>${nightTable(t)}`).join("");
   // A name that opens that person's history on the Leaderboard.

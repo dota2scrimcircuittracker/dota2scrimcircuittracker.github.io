@@ -4,6 +4,7 @@
 import { recordAchievementEvent } from "../lib/achievement-events.js";
 import { esc, app, pageHead, portrait, pct, profileLinks, myTeam, DIVISIONS, ALL_DIVS, divLite, divData, gameWeeker, tabInUrl, setRoutedAt } from "../core.js";
 import { DRAFTER_MODES as MODES } from "../lib/pagetabs.js";
+import { tagOf } from "../lib/team-tags.js";
 import { sideOf as teamSide } from "../lib/teams.js";
 import { hasDetails } from "../lib/stats.js";
 import { heroGridHtml, wireHeroGrid, myTeamGames } from "../parts/herogrid.js";
@@ -318,9 +319,9 @@ export async function renderDrafter(src) {
 
     board.innerHTML = `
       <div class="dx-score" role="img" aria-label="${esc(s.X.name)} ${pct(pX)} to win, ${esc(s.Y.name)} ${pct(1 - pX)}">
-        <span class="dx-sx"><b>${pct(pX)}</b>${esc(s.X.name)}</span>
+        <span class="dx-sx"><b>${pct(pX)}</b><span data-tag="${esc(tagOf(s.X.name))}">${esc(s.X.name)}</span></span>
         <span class="dx-bar-track dx-meter"><i style="width:${(pX * 100).toFixed(1)}%"></i><em></em></span>
-        <span class="dx-sy">${esc(s.Y.name)}<b>${pct(1 - pX)}</b></span>
+        <span class="dx-sy"><span data-tag="${esc(tagOf(s.Y.name))}">${esc(s.Y.name)}</span><b>${pct(1 - pX)}</b></span>
       </div>
       <section class="dx-stage" aria-label="Draft board">
       <div class="dx-now">

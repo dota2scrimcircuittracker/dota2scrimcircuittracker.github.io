@@ -190,7 +190,9 @@ export async function renderTeams(src, slug) {
   const lengthSection = h.games.length ? `<h2>Game length${info("team_length")}</h2>${lengthHtml(sp.length)}` : "";
   const pairs = playerPairs(h.games.map(({ m }) => m), (m) => sideMap.get(m));
 
-  // Series (AD2L) or game (scrim) history rows, newest first.
+  // Series (AD2L) or game (scrim) history rows, newest first. On a phone each series' drafts
+  // start folded (a full season of drafts ran ~10,000px); elsewhere they show open.
+  const phone = matchMedia("(max-width: 760px)").matches;
   let historyRows;
   const tagCtx = tagContext(matches);
   if (ad2l) {
@@ -208,7 +210,7 @@ export async function renderTeams(src, slug) {
         <span class="hist-score">${done ? `${us}–${them}` : ""}</span>
         <span class="hist-games">${gs.map(({ m, side }, j) => `<a href="${src.link(m)}" class="${m.winner === side ? "w" : "l"}">G${j + 1} ${m.winner === side ? "W" : "L"}</a>${tagsHtml(gameTags(m, tagCtx, side))}`).join("")}</span>
         <span class="hist-date">${s.time ? new Date(s.time * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
-      </div>${gs.some(({ m }) => m.draft?.length) ? `<div class="hist-drafts">${seriesDraftsHtml(src, gs.map(({ m }) => m))}</div>` : ""}`;
+      </div>${gs.some(({ m }) => m.draft?.length) ? `<details class="hist-drafts"${phone ? "" : " open"}><summary>Drafts</summary>${seriesDraftsHtml(src, gs.map(({ m }) => m))}</details>` : ""}`;
     });
   } else {
     historyRows = h.games.map(({ m, side }, i) => {

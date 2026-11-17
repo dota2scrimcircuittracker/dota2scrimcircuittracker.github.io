@@ -546,10 +546,10 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         const p = dv.dist.get(id)[i], on = state.sel?.team === id && state.sel?.place === i + 1;
         const cls = `po-c${lines.some((l) => l.after === i + 1) ? " po-line" : ""}`;
         if (p < 5e-4) return `<td class="${cls} zero">·</td>`;
-        return `<td class="${cls}"><button type="button" data-team="${id}" data-place="${i + 1}" class="${on ? "on" : ""}" style="--p:${Math.min(1, p).toFixed(3)}" title="${esc(name[id])}: ${ord(i + 1)} in ${pctFine(p)}">${pctFine(p)}</button></td>`;
+        return `<td class="${cls}"><button type="button" data-team="${id}" data-place="${i + 1}" class="${on ? "on" : ""}" style="--p:${Math.min(1, p).toFixed(3)}" title="${esc(name[id])}: ${ord(i + 1)} in ${pctFine(p)}">${pctFine(p).replace("%", '<span class="pc">%</span>')}</button></td>`;
       };
       const table = `<div class="table-wrap"><table class="po-poss">
-        <thead><tr><th scope="col" class="l">Team</th>${Array.from({ length: N }, (_, i) => `<th scope="col"${lines.some((l) => l.after === i + 1) ? ' class="po-line"' : ""} title="Seed ${i + 1}">${i ? i + 1 : "Seed 1"}</th>`).join("")}
+        <thead><tr><th scope="col" class="l">Team</th>${Array.from({ length: N }, (_, i) => `<th scope="col"${lines.some((l) => l.after === i + 1) ? ' class="po-line"' : ""} title="Seed ${i + 1}">${i ? i + 1 : '<span class="pc">Seed </span>1'}</th>`).join("")}
           ${cols.map((l) => `<th scope="col" class="po-sum">${esc(l.col)}</th>`).join("")}</tr></thead>
         <tbody>${rows.map((id) => `<tr class="${state.sel?.team === id ? "sel" : ""}"><th scope="row" class="l"><button type="button" class="linkish po-team" data-team="${id}" aria-expanded="${state.sel?.team === id && !state.sel.place}" title="Every place ${esc(name[id])} can reach"><span class="po-caret" aria-hidden="true"></span><span class="po-tname">${teamName(src, name[id], id)}</span></button></th>
           ${Array.from({ length: N }, (_, i) => cell(id, i)).join("")}

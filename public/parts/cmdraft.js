@@ -65,7 +65,7 @@ export function gameDraftHtml(m, src, data, width = null) {
     const best = v?.best.map((x) => `<span class="cm-alt${x.hero === s.hero ? " is-chosen" : ""}" title="${esc(heroes.name(x.hero))}: ${s.pick ? `${pct(x.pick)} to win` : `${pts(x.ban)} pts denied`}">${portrait(heroes.name(x.hero))}<small>${val(x)}</small></span>`).join("") ?? "";
     return `<tr class="${s.pick ? "cm-pick" : "cm-ban"}">
       <td>${i + 1}</td>
-      <td class="l"><span class="cm-side ${cls(s.side)}">${esc(teamOf(s.side))}</span></td>
+      <td class="l"><span class="cm-side ${cls(s.side)}" data-tag="${esc(tagOf(teamOf(s.side)))}">${esc(teamOf(s.side))}</span></td>
       <td class="l">${s.pick ? "Pick" : "Ban"}</td>
       <td class="l cm-hero">${portrait(s.name)} ${esc(s.name)}</td>
       <td>${v?.rank ? `<span class="${v.rank <= 3 ? "cm-good" : v.rank > 20 ? "cm-off" : ""}" title="The model's ${key} value for it ranked ${ord(v.rank)} of the ${v.of} heroes left">${ord(v.rank)}</span>` : "—"}</td>
@@ -86,11 +86,11 @@ export function gameDraftHtml(m, src, data, width = null) {
     const guess = players[j], actual = players.find((p) => p.p.hero === s.name);
     const hit = actual && guess === actual;
     if (actual) { total++; if (hit) right++; }
-    return `<tr><td class="l"><span class="cm-side ${cls(side)}">${esc(teamOf(side))}</span></td><td class="l cm-hero">${portrait(s.name)} ${esc(s.name)}</td>
+    return `<tr><td class="l"><span class="cm-side ${cls(side)}" data-tag="${esc(tagOf(teamOf(side)))}">${esc(teamOf(side))}</span></td><td class="l cm-hero">${portrait(s.name)} ${esc(s.name)}</td>
       <td class="l">${playerLink(src, guess.p)} <small class="muted">${pct(col[j])}</small></td><td class="l">${actual ? playerLink(src, actual.p) : "—"}</td><td>${actual ? (hit ? "✓" : "✗") : ""}</td></tr>`;
   })).join("");
 
-  const readRows = ["radiant", "dire"].flatMap((side) => ctx.info[side].map((p) => `<tr><td class="l"><span class="cm-side ${cls(side)}">${esc(teamOf(side))}</span></td>
+  const readRows = ["radiant", "dire"].flatMap((side) => ctx.info[side].map((p) => `<tr><td class="l"><span class="cm-side ${cls(side)}" data-tag="${esc(tagOf(teamOf(side)))}">${esc(teamOf(side))}</span></td>
     <td class="l">${playerLink(src, p.p)}</td><td>${p.games ? p.games.toLocaleString() : '<span class="muted">none</span>'}</td>
     <td>${p.rank == null ? "—" : rankName(p.rank)}${p.rankFrom === "medal" ? ' <small class="muted">medal</small>' : ""}</td></tr>`)).join("");
   const unknown = [...ctx.info.radiant, ...ctx.info.dire].filter((p) => !p.games).length;
@@ -209,7 +209,10 @@ export function teamDraftsHtml(team, series, src, data, width = 1000) {
         ${oddsBars(team.name, opp, pre, post)}
         ${chart}</div>`;
     }).join("");
-    return `<section class="td-series"><h3 class="td-shead">${label}</h3>${gamesHtml}</section>`;
+    // A phone folds each series (a season of draft charts ran ~14,000px); the heading opens it.
+    return matchMedia("(max-width: 760px)").matches
+      ? `<details class="td-series"><summary class="td-shead">${label}</summary>${gamesHtml}</details>`
+      : `<section class="td-series"><h3 class="td-shead">${label}</h3>${gamesHtml}</section>`;
   }).join("");
   if (!tally.n) return `<p class="muted">No drafted games yet.</p>`;
   const t = tally;

@@ -8,6 +8,7 @@ import { ordinal } from "../lib/ranks.js";
 import { pct, fmt, kg, dur, esc, portrait, shortDate, playerLink, heroLink, teamLink, when, leagueShort, allLeagues } from "../core.js";
 import { rateOf } from "./draft.js";
 import { plusSlot } from "../lib/hero-levels.js";
+import { tagOf } from "../lib/team-tags.js";
 
 // ---------- Game analysis (player page) ----------
 // One of the player's games in depth: a picker (every game, newest first, with its game
@@ -137,7 +138,7 @@ function gamePickerHtml(src, mode, games, gi, rated, page = Math.floor(gi / GA_P
     return `<button type="button" class="ga-g ${x.won ? "ga-w" : "ga-l"}${r ? ` t-${r.tier}` : ""}" data-gi="${k}" aria-pressed="${k === gi}" style="--i:${n}"
         title="${esc(mode === "hero" ? x.p.name : x.p.hero)} vs ${esc(them)} · ${x.won ? "Won" : "Lost"} · ${x.p.kills}/${x.p.deaths}/${x.p.assists}">
       ${portrait(x.p.hero, "ga-g-img")}
-      <span class="ga-g-body">${plusSlot(x.p.account_id, x.p.hero, x.m.start_time)}${mode === "hero" ? `<span class="ga-g-who">${esc(x.p.name)}</span>` : ""}<span class="ga-g-vs">vs ${esc(them)}</span>
+      <span class="ga-g-body">${plusSlot(x.p.account_id, x.p.hero, x.m.start_time)}${mode === "hero" ? `<span class="ga-g-who">${esc(x.p.name)}</span>` : ""}<span class="ga-g-vs">vs <span data-tag="${esc(tagOf(them))}">${esc(them)}</span></span>
         <span class="ga-g-date">${x.m.createdAt ? shortDate(new Date(x.m.createdAt)) : ""} · <b class="res ${x.won ? "w" : "l"}">${x.won ? "W" : "L"}</b></span>
         <span class="ga-g-kda">${x.p.kills}/${x.p.deaths}/${x.p.assists}</span></span>
       ${r ? `<span class="ga-g-r"><b>${r.rating}</b><small>${r.tier}</small></span>` : ""}${flag ? `<span class="ga-g-flag">${flag}</span>` : ""}
