@@ -174,7 +174,7 @@ function rollThemedPack(state, packIndex, random) {
   // the player doesn't have yet, on top of the three borders.
   const screens=[];
   if(kind==='border'&&random()<PACK_ODDS.legendary/100) {
-    const left=LEGENDARY_SCREENS.filter(s=>!(next.screens??[]).includes(s.id));
+    const left=LEGENDARY_SCREENS.filter(s=>s.drops!==false&&!(next.screens??[]).includes(s.id));
     if(left.length)screens.push(left[Math.min(left.length-1,Math.floor(random()*left.length))].id);
   }
   if(screens.length)next.screens=[...(next.screens??[]),...screens];

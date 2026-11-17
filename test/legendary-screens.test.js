@@ -20,7 +20,7 @@ test('a border pack gives a legendary background on a roll under 4%', () => {
 });
 
 test('no second copy, and other themed packs never give one', () => {
-  const owned={...withPack('common:border'),screens:LEGENDARY_SCREENS.map(s=>s.id)};
+  const owned={...withPack('common:border'),screens:LEGENDARY_SCREENS.filter(s=>s.drops!==false).map(s=>s.id)};
   assert.deepEqual(rollPack(owned,0,()=>0).screens,[]);
   assert.deepEqual(rollPack(withPack('common:finish'),0,()=>0).screens,[]);
 });
@@ -35,4 +35,15 @@ test('Saint Gaben works as a profile background and card art', () => {
   const art=screenArt(gaben);
   assert.equal(art.legendary,true);
   assert.match(art.src,/img\/loading-screens\/saint-gaben\.webp$/);
+});
+
+test('gift-only backgrounds never drop from border packs', () => {
+  const giftOnly=LEGENDARY_SCREENS.filter(s=>s.drops===false).map(s=>s.id);
+  assert.ok(giftOnly.includes('scr:chen-spiroar'));
+  for(let n=0;n<200;n++){
+    const r=rollPack(withPack('common:border'),0,Math.random);
+    assert.ok(!r.screens.some(id=>giftOnly.includes(id)));
+  }
+  const rest={...withPack('common:border'),screens:LEGENDARY_SCREENS.filter(s=>s.drops!==false).map(s=>s.id)};
+  assert.deepEqual(rollPack(rest,0,()=>0).screens,[]);
 });
