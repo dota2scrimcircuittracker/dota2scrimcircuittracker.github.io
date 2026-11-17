@@ -559,7 +559,7 @@ export function route() {
     else if (src.all && /^\/(predict|drafter|upload|edit)/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
     else if (h.startsWith(`${r}/predict`)) { section = "predict"; page = async () => (await predictPage()).renderPredict(src); }
     else if (h.startsWith(`${r}/drafter`)) { section = "drafter"; page = async () => (await drafterPage()).renderDrafter(src); }
-    else if (h.startsWith(`${r}/stream-kit`)) { section = "streamkit"; page = async () => (await streamKitPage()).renderStreamKit(src); }
+    else if (/^\/stream-?kit(\/|$)/.test(h.slice(r.length))) { section = "streamkit"; page = async () => (await streamKitPage()).renderStreamKit(src); }
     else if (new RegExp(`^${r}/edit/[0-9a-f]{32}$`).test(h)) { section = "week"; page = async () => (await uploadPage()).renderEdit(h.slice(`${r}/edit/`.length), src.key); }
     else if (h.startsWith(`${r}/upload`)) { section = "upload"; page = async () => { const { endEdit, upload, checkDraft, renderUpload } = await uploadPage(); endEdit(); upload.league = src.key; await src.data().catch(() => null); await divUploaded(src.key); if (upload.draft) upload.check = checkDraft(upload.draft); return renderUpload(); }; }
     else if (h.startsWith(`${r}/search`)) { section = "search"; page = async () => (await searchPage()).renderSearch(src); }
@@ -589,7 +589,7 @@ export function route() {
     else if (/^\/teams\/[^/?]/.test(p)) { section = "standings"; tm = true; page = () => renderTeams(t, safeDecode(p.split("/")[2])); }
     else if (p.startsWith("/content") || p.startsWith("/week")) { section = "week"; page = () => renderWeek(src, Number(p.split("/")[2] ?? 0) || 0); }
     else if (p.startsWith("/tiers")) { section = "players"; tm = true; page = () => renderPlayers(t); }
-    else if (p.startsWith("/stream-kit")) { section = "streamkit"; page = async () => (await streamKitPage()).renderStreamKit(src); }
+    else if (/^\/stream-?kit(\/|$)/.test(p)) { section = "streamkit"; page = async () => (await streamKitPage()).renderStreamKit(src); }
     else if (p.startsWith("/player/")) { section = "players"; tm = true; page = () => renderPlayer(t, safeDecode(p.slice("/player/".length))); }
     else if (p.startsWith("/players")) { section = "players"; tm = true; page = () => renderPlayers(t); }
     else if (p.startsWith("/hero/")) { section = "heroes"; tm = true; page = () => renderHero(t, p.slice("/hero/".length)); }
@@ -621,7 +621,8 @@ export function route() {
   // game or player page opens that tab's list, since it needn't exist in the other league.
   // Teams lands on the other league's Teams. The scrims have no Drafter (and divisions no
   // Schedule): their Teams instead.
-  const tab = section === "standings" ? "" : section;
+  // A section whose path differs from its name (the Stream kit lives at /stream-kit).
+  const tab = section === "standings" ? "" : ({ streamkit: "stream-kit" })[section] ?? section;
   leagueMenu.querySelectorAll("a").forEach((a) => {
     const l = a.dataset.league;
     a.href = `${SOURCES[l].root}/${(l === "scrim" && tab === "drafter") || (l !== "scrim" && tab === "schedule") ? "" : tab}`;
