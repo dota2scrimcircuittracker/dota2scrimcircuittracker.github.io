@@ -167,6 +167,8 @@ export async function renderPlayer(src, key) {
   if(/^\d+$/.test(key)) mountProfileFeed(app.querySelector(".profile-feed-box"),key).catch(()=>{});
   if(/^\d+$/.test(key)) mountProfileAchievements(app.querySelector(".profile-ach-box"),key).catch(()=>{});
   if(/^\d+$/.test(key)) mountGiftPanel(app,key,s.name).catch(()=>{});
+  // ?stream=card: only this player's card, for OBS; otherwise Fav and Brown get the link to it.
+  if(/^\d+$/.test(key)) import("../parts/stream-card.js").then(m=>m.isStreamCard()?m.startStreamCard():m.mountStreamLink(app,inGameName)).catch(()=>{});
   wireItemHeroes();
   wireCharts(app);
   wireTierModal();

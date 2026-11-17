@@ -5500,3 +5500,10 @@ dialog.pb-modal { width: min(1320px, 96vw); }
   .profile-collection:has(>div.cup-reward) { flex-wrap: wrap; }
   .profile-collection>div.cup-reward { flex-basis: 100%; max-width: none; min-width: 0; }
 }
+
+/* Stream card (parts/stream-card.js, ?stream=card): one player's card on a transparent page for OBS. */
+html.stream-card, html.stream-card body { background: transparent !important; overflow: hidden !important; }
+html.stream-card body > *:not(dialog.ft-big) { visibility: hidden !important; }
+html.stream-card dialog.ft-big { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+html.stream-card dialog.ft-big::backdrop { background: transparent !important; backdrop-filter: none !important; }
+html.stream-card .ft-big-close, html.stream-card .fb-dialog-btn, html.stream-card .ft-turn, html.stream-card .ft-expand, html.stream-card .ft-pickbtn { display: none !important; }
