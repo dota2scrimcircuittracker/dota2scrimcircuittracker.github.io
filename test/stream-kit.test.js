@@ -48,3 +48,12 @@ test('items carry the relative fields OBS 31+ positions by', () => {
   assert.deepEqual(it.pos_rel, { x: (660 - 960) / 540, y: (120 - 540) / 540 });
   assert.deepEqual(it.scale_rel, { x: 1, y: 1 });
 });
+
+test('a chosen card slot rides in the link and the OBS source name', () => {
+  assert.equal(streamCardUrl(root, 5, 2), 'https://example.test/champion/player/5?stream=card&card=2');
+  assert.equal(streamCardUrl(root, 5, null), 'https://example.test/champion/player/5?stream=card');
+  const c = obsCollection([{ name: 'A', rootUrl: 'https://example.test/heroic', players: [{ name: 'Spiroar', account: 7, slot: 1, card: 'Chen' }] }], root);
+  const src = c.sources.find((s) => s.id === 'browser_source');
+  assert.equal(src.name, 'Card - Spiroar · Chen');
+  assert.equal(src.settings.url, 'https://example.test/heroic/player/7?stream=card&card=1'); // the team's own league
+});

@@ -12,17 +12,22 @@ export const STREAMERS = new Set([ADMIN_ACCOUNT, '75379546']);
 export const isStreamCard = () => new URLSearchParams(location.search).get('stream') === 'card';
 export function streamCardUrl(href = location.href) {
   const url = new URL(href);
-  url.search = '?stream=card';
+  const slot = url.searchParams.get('card');
+  url.search = /^\d+$/.test(slot ?? '') ? `?stream=card&card=${slot}` : '?stream=card';
   return url.toString();
 }
 
-// Opens the profile's main card in the full-size view and keeps it open.
+// Opens the profile's main card in the full-size view and keeps it open. &card=<slot> picks one of
+// the player's saved designs instead (the profile showcase's data-design-slot); an empty slot falls
+// back to the main card. The main card and the showcase render together (parts/collection.js).
 export function startStreamCard() {
   document.documentElement.classList.add('stream-card'); // app.js sets it at startup too; the CSS is in style.css
+  const slot = new URLSearchParams(location.search).get('card');
   const open = () => {
     if (document.querySelector('dialog.ft-big')) return true;
-    const card = document.querySelector('.ft-card .ft-expand')?.closest('.ft-card');
-    if (!card) return false;
+    const main = document.querySelector('.ft-card .ft-expand')?.closest('.ft-card');
+    if (!main) return false;
+    const card = (/^\d+$/.test(slot ?? '') && document.querySelector(`.ft-card[data-design-slot="${slot}"]`)) || main;
     showBigCard(card);
     const dlg = document.querySelector('dialog.ft-big');
     dlg?.addEventListener('cancel', (e) => e.preventDefault());

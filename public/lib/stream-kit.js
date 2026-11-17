@@ -4,8 +4,9 @@
 export const CARD_W = 600, CARD_H = 840;
 const CANVAS_W = 1920, CANVAS_H = 1080, GAP = 24;
 
-// rootUrl: the league's address up to its route, e.g. "https://…/champion".
-export const streamCardUrl = (rootUrl, account) => `${rootUrl}/player/${account}?stream=card`;
+// rootUrl: the league's address up to its route, e.g. "https://…/champion". slot: one of the player's
+// saved card designs (null: their main card).
+export const streamCardUrl = (rootUrl, account, slot = null) => `${rootUrl}/player/${account}?stream=card${Number.isInteger(slot) ? `&card=${slot}` : ""}`;
 
 // Up to five cards at 60% in a row; a longer roster shrinks to fit the canvas.
 export function rowLayout(n) {
@@ -30,7 +31,8 @@ const scene = (name, items, uuid) => ({
   monitoring_type: 0, private_settings: {}, hotkeys: {},
 });
 
-// teams: [{ name, players: [{ name, account }] }]. One Browser Source per player, a scene per team
+// teams: [{ name, rootUrl?, players: [{ name, account, slot?, card? }] }] (card: the design's name, for
+// the source name; a team's rootUrl overrides the shared one, for All divisions). One Browser Source per player, a scene per team
 // (its cards in a row) and a scene per player (their card centred). Names are made unique, as OBS needs.
 export function obsCollection(teams, rootUrl, { name = "DSL Stream Kit", uuid = () => crypto.randomUUID() } = {}) {
   const used = new Set(), unique = (n) => { let out = n, k = 2; while (used.has(out)) out = `${n} (${k++})`; used.add(out); return out; };
@@ -38,12 +40,12 @@ export function obsCollection(teams, rootUrl, { name = "DSL Stream Kit", uuid = 
   for (const team of teams) {
     const cards = team.players.map((p) => {
       const source = {
-        name: unique(`Card - ${p.name}`), uuid: uuid(), id: "browser_source", versioned_id: "browser_source", enabled: true, muted: false, volume: 1,
-        settings: { url: streamCardUrl(rootUrl, p.account), width: CARD_W, height: CARD_H, fps: 30, fps_custom: true, reroute_audio: false, shutdown: false, restart_when_active: false, css: "" },
+        name: unique(`Card - ${p.name}${p.card ? ` · ${p.card}` : ""}`), uuid: uuid(), id: "browser_source", versioned_id: "browser_source", enabled: true, muted: false, volume: 1,
+        settings: { url: streamCardUrl(team.rootUrl ?? rootUrl, p.account, p.slot ?? null), width: CARD_W, height: CARD_H, fps: 30, fps_custom: true, reroute_audio: false, shutdown: false, restart_when_active: false, css: "" },
         flags: 0, mixers: 0, sync: 0, monitoring_type: 0, private_settings: {}, hotkeys: {},
       };
       sources.push(source);
-      playerScenes.push(scene(unique(`Player - ${p.name}`), [item(source, 1, { x: (CANVAS_W - CARD_W) / 2, y: (CANVAS_H - CARD_H) / 2, scale: 1 })], uuid));
+      playerScenes.push(scene(unique(`Player - ${p.name}${p.card ? ` · ${p.card}` : ""}`), [item(source, 1, { x: (CANVAS_W - CARD_W) / 2, y: (CANVAS_H - CARD_H) / 2, scale: 1 })], uuid));
       return source;
     });
     if (cards.length) teamScenes.push(scene(unique(`Team - ${team.name}`), rowLayout(cards.length).map((at, i) => item(cards[i], i + 1, at)), uuid));

@@ -5512,15 +5512,25 @@ html.stream-card .ft-big-close, html.stream-card .fb-dialog-btn, html.stream-car
 .stream-kit > .muted { max-width: 70ch; }
 .stream-kit .panel { margin-top: 14px; }
 .stream-kit .panel h3 { margin: 0 0 10px; }
-.sk-teams header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.sk-teams header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .sk-link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
-.sk-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 16px; }
+.sk-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 18px; align-items: start; }
+.sk-group { grid-column: 1 / -1; margin: 12px 0 2px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.sk-group:first-child { margin-top: 0; }
+.sk-team-pick { min-width: 0; padding: 4px 0; }
+.sk-team-pick[hidden], .sk-group[hidden] { display: none; }
 .sk-team-grid label { display: flex; gap: 8px; align-items: center; cursor: pointer; min-width: 0; }
+.sk-team-box span { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.sk-team-pick details { margin-left: 26px; }
+.sk-team-pick summary { cursor: pointer; font-size: 12px; opacity: .7; }
+.sk-players { display: grid; gap: 2px; padding: 4px 0 6px; }
+.sk-filter { min-width: 0; width: 220px; max-width: 100%; }
+.sk-card { flex: none; max-width: 170px; }
 .sk-steps { margin: 0 0 10px; padding-left: 20px; } .sk-steps li { margin: 6px 0; }
 .sk-team { margin-top: 12px; } .sk-team h4 { margin: 0 0 4px; }
 .sk-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); }
 .sk-name { width: 140px; flex: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sk-row code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; opacity: .75; }
 .sk-empty { margin-top: 14px; }
-@media (max-width: 560px) { .sk-row { flex-wrap: wrap; } .sk-name { width: auto; flex: 1; } .sk-row code { flex-basis: 100%; order: 3; } }
+@media (max-width: 560px) { .sk-row { flex-wrap: wrap; } .sk-name { width: auto; flex: 1; } .sk-row code { flex-basis: 100%; order: 3; } .sk-card { max-width: 140px; } }
 
