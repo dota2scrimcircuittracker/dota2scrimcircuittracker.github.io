@@ -5530,7 +5530,7 @@ html.stream-vs-preview, html.stream-vs-preview body { background: radial-gradien
 .vs-root .ft-card { width: 100%; }
 .vs-root .ft-turn, .vs-root .ft-expand, .vs-root .ft-pickbtn { display: none !important; }
 .vs-ring { position: absolute; left: 50%; bottom: -14px; width: 300px; height: 44px; border-radius: 50%; pointer-events: none;
-  border: 4px solid rgba(255, 255, 255, .8); box-shadow: 0 0 22px rgba(255, 255, 255, .6); }
+  border: 4px solid color-mix(in srgb, var(--glow, #fff) 55%, #fff); box-shadow: 0 0 22px var(--glow, rgba(255, 255, 255, .6)); }
 .vs-mid { position: absolute; left: 50%; top: 560px; width: 0; height: 0; }
 .vs-word { opacity: 0; position: absolute; left: 0; top: 0; translate: -50% -50%; transform-origin: 50% 50%; font: 900 170px/1 var(--display); letter-spacing: -.02em; white-space: nowrap;
   background: linear-gradient(160deg, var(--vs-c1) 10%, var(--vs-c2) 45%, var(--vs-c3) 80%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
@@ -5577,6 +5577,8 @@ html.stream-vs-preview, html.stream-vs-preview body { background: radial-gradien
   background: linear-gradient(90deg, transparent, rgba(255, 230, 170, .95) 70%, #fff); box-shadow: 0 0 30px rgba(255, 200, 110, .9); }
 .vs-swaying .vs-a { animation: vs-sway-a 7s ease-in-out infinite; }
 .vs-swaying .vs-b { animation: vs-sway-b 7s ease-in-out infinite; }
+.vs-swaying .vs-frame-a { animation: vs-sway-a 7s ease-in-out infinite; }
+.vs-swaying .vs-frame-b { animation: vs-sway-b 7s ease-in-out infinite; }
 @keyframes vs-sway-a { 0%, 100% { transform: perspective(1800px) rotateY(9deg); } 50% { transform: perspective(1800px) rotateY(2deg) translateY(-8px); } }
 @keyframes vs-sway-b { 0%, 100% { transform: perspective(1800px) rotateY(-9deg); } 50% { transform: perspective(1800px) rotateY(-2deg) translateY(-8px); } }
 .vs-spotting .vs-slot .vs-act { transition: transform .55s cubic-bezier(.2, .8, .2, 1), filter .55s; }
@@ -5602,20 +5604,48 @@ html.stream-vs-preview, html.stream-vs-preview body { background: radial-gradien
   background: linear-gradient(180deg, rgba(0, 0, 0, .35), transparent 18%, transparent 80%, rgba(0, 0, 0, .45)), repeating-linear-gradient(90deg, #4a0710 0, #8f1d2c 34px, #b02a3c 52px, #8f1d2c 70px, #4a0710 104px);
   border-bottom: 18px solid #c99a3b; box-shadow: 0 0 40px rgba(0, 0, 0, .7); }
 .vs-drape-l { left: 0; } .vs-drape-r { right: 0; }
+.vs-cardback { position: absolute; inset: 0; z-index: 4; border-radius: 12px; pointer-events: none;
+  border: 3px solid color-mix(in srgb, var(--glow) 70%, #000);
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--glow) 45%, transparent) 0 9%, transparent 10%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 6px, transparent 6px 14px),
+    radial-gradient(ellipse at 50% 40%, #2a2531, #0d0b10 75%);
+  box-shadow: inset 0 0 0 6px rgba(0, 0, 0, .55), inset 0 0 0 7px color-mix(in srgb, var(--glow) 50%, transparent), 0 14px 30px rgba(0, 0, 0, .5); }
 .vs-sparkle { position: absolute; width: 34px; height: 34px; pointer-events: none; z-index: 2;
   background: radial-gradient(circle, #fff 0 18%, #ffe39a 40%, transparent 70%);
   clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%); filter: drop-shadow(0 0 6px #ffd56a); }
 
-/* Slotted VS scenes: Dota-style frames with a socket per card (draft, teleport, ancient). */
-.vs-draft { --vs-c1: #fff1c4; --vs-c2: #e7b94a; --vs-c3: #6a2c91; --vs-glow: rgba(200, 140, 255, .8);
-  --fr-f1: #2a2238; --fr-f2: #0f0c16; --fr-t1: #f6dc8c; --fr-t2: #9a6c1e; --fr-sock: #07060b; --fr-gem: #9b47e0; }
-.vs-draft .vs-frame-a { --lit: #f2c14e; } .vs-draft .vs-frame-b { --lit: #e0523e; }
-.vs-teleport { --vs-c1: #f0ffff; --vs-c2: #66f0ff; --vs-c3: #3b2bff; --vs-glow: rgba(80, 200, 255, .9);
-  --fr-f1: #10243a; --fr-f2: #060c18; --fr-t1: #b4f8ff; --fr-t2: #2d6bd8; --fr-sock: #030812; --fr-gem: #55e8ff; --lit: #6ff2ff; }
+/* VS scene frames: Dota-style frames with a socket per card. The VS colours (.vs-<id>) and the frame
+   (.fr-<frame>) are picked separately in the scene builder. */
+.vs-draft { --vs-c1: #fff1c4; --vs-c2: #e7b94a; --vs-c3: #6a2c91; --vs-glow: rgba(200, 140, 255, .8); }
+.vs-teleport { --vs-c1: #f0ffff; --vs-c2: #66f0ff; --vs-c3: #3b2bff; --vs-glow: rgba(80, 200, 255, .9); }
 .vs-ancient { --vs-c1: #9be36a; --vs-c2: #f2e6c8; --vs-c3: #e2412e; --vs-glow: rgba(255, 210, 140, .7); }
-.vs-ancient .vs-a { --side-glow: rgba(120, 230, 80, .75); } .vs-ancient .vs-b { --side-glow: rgba(255, 70, 40, .8); }
-.vs-ancient .vs-frame-a { --fr-f1: #1f3320; --fr-f2: #0a130b; --fr-t1: #d4f59a; --fr-t2: #4f8a2a; --fr-sock: #040a05; --fr-gem: #8ef05a; --lit: #8ef05a; }
-.vs-ancient .vs-frame-b { --fr-f1: #3a1612; --fr-f2: #140605; --fr-t1: #ffb38a; --fr-t2: #9a2414; --fr-sock: #0d0303; --fr-gem: #ff4a2a; --lit: #ff5a36; }
+.vs-ancient .vs-a, .fr-rd .vs-a { --side-glow: rgba(120, 230, 80, .75); } .vs-ancient .vs-b, .fr-rd .vs-b { --side-glow: rgba(255, 70, 40, .8); }
+.fr-gold { --fr-f1: #2a2238; --fr-f2: #0f0c16; --fr-t1: #f6dc8c; --fr-t2: #9a6c1e; --fr-sock: #07060b; --fr-gem: #9b47e0; }
+.fr-gold .vs-frame-a { --lit: #f2c14e; } .fr-gold .vs-frame-b { --lit: #e0523e; }
+.fr-blue { --fr-f1: #10243a; --fr-f2: #060c18; --fr-t1: #b4f8ff; --fr-t2: #2d6bd8; --fr-sock: #030812; --fr-gem: #55e8ff; }
+.fr-rd .vs-frame-a { --fr-f1: #1f3320; --fr-f2: #0a130b; --fr-t1: #d4f59a; --fr-t2: #4f8a2a; --fr-sock: #040a05; --fr-gem: #8ef05a; --lit: #8ef05a; }
+.fr-rd .vs-frame-b { --fr-f1: #3a1612; --fr-f2: #140605; --fr-t1: #ffb38a; --fr-t2: #9a2414; --fr-sock: #0d0303; --fr-gem: #ff4a2a; --lit: #ff5a36; }
+.fr-team .vs-frame-a { --fr-f1: #33280f; --fr-f2: #120d04; --fr-t1: #ffe39a; --fr-t2: #b07a1a; --fr-sock: #0a0703; --fr-gem: #e8b64c; --lit: #f2c14e; }
+.fr-team .vs-frame-b { --fr-f1: #36130f; --fr-f2: #130504; --fr-t1: #ffb8a8; --fr-t2: #a8301f; --fr-sock: #0d0303; --fr-gem: #e0523e; --lit: #ff6a50; }
+.fr-aegis { --fr-f1: #2b3340; --fr-f2: #0e1218; --fr-t1: #ffffff; --fr-t2: #8fa3bf; --fr-sock: #06080c; --fr-gem: #d8f0ff; }
+/* Frames with no side colours of their own light their sockets, and flare, in the VS's colour. */
+.fr-blue, .fr-aegis, .fr-arcana, .fr-glass { --lit: var(--vs-c2); }
+.fr-molten { --fr-f1: #1c1716; --fr-f2: #070505; --fr-t1: #ffd36b; --fr-t2: #e2410c; --fr-sock: #050303; --fr-gem: #ff7a1a; --lit: #ff8a2a; }
+.fr-molten .vs-fr-glow { opacity: .4; stroke-width: 18; }
+.fr-molten.vs-stage .vs-fr-glow { animation: fr-lava 3s ease-in-out infinite; }
+@keyframes fr-lava { 0%, 100% { stroke-opacity: .25; } 50% { stroke-opacity: .55; } }
+.fr-neon { --fr-f1: #0d0a1c; --fr-f2: #05040c; --fr-t2: #2ee8ff; --fr-sock: #030208; --fr-gem: #ff4fd8; }
+.fr-neon .vs-frame-a { --fr-t1: #ff5ad8; --lit: #ff5ad8; } .fr-neon .vs-frame-b { --fr-t1: #45ecff; --lit: #45ecff; }
+.fr-neon .vs-fr-fill { fill-opacity: .6; }
+.fr-neon .vs-fr-trim { stroke: var(--fr-t1); stroke-width: 4; }
+.fr-neon .vs-fr-glow { opacity: .6; stroke: var(--fr-t1); stroke-width: 16; stroke-opacity: .35; }
+.fr-neon .vs-fr-inner { stroke-opacity: .6; }
+.fr-arcana { --fr-f1: #2a1248; --fr-f2: #0d0518; --fr-t1: #ffe7a0; --fr-t2: #8a4bd8; --fr-sock: #07030c; --fr-gem: #b46cff; }
+.fr-glass { --fr-f1: #9fdcff; --fr-f2: #3d7fb8; --fr-t1: #f2fbff; --fr-t2: #8fd3ff; --fr-sock: #0c1a2a; --fr-gem: #dff6ff; }
+.fr-glass .vs-fr-fill { fill-opacity: .28; }
+.fr-glass .vs-fr-inner { stroke-opacity: .7; }
+.fr-glass .vs-fr-shade { stroke: rgba(0, 0, 0, .2); }
+.fr-glass .vs-sock-well { fill-opacity: .55; }
 .vs-frame { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
 .vs-frame .f1 { stop-color: var(--fr-f1); } .vs-frame .f2 { stop-color: var(--fr-f2); }
 .vs-frame .t1 { stop-color: var(--fr-t1); } .vs-frame .t2 { stop-color: var(--fr-t2); }
@@ -5699,6 +5729,15 @@ dialog.sk-anim-dlg { width: min(1100px, calc(100vw - 32px)); overflow: auto; }
 .sk-anim-head strong { font-size: 15px; }
 .sk-anim-use { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .sk-anim:not(.on) .sk-anim-use { opacity: .75; }
+/* The scene builder: a picker per layer of the VS scene. */
+.sk-build { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px 16px; margin: 14px 0 6px; padding: 14px; border: 1px solid var(--line, rgba(255, 255, 255, .12)); border-radius: 10px; }
+.sk-build-pick { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sk-build-pick > span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
+.sk-build-pick select { width: 100%; }
+.sk-build-pick small { font-size: 12px; line-height: 1.35; }
+.sk-build-go { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sk-build-go .muted { font-size: 13px; }
+.sk-presets-head { margin: 18px 0 0; }
 .sk-anim > .muted { padding: 0 2px; }
 .sk-pcount { font-size: 11px; opacity: .6; }
 .sk-pcount.many { opacity: 1; color: var(--accent); font-weight: 600; }

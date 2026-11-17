@@ -91,12 +91,31 @@ test('the VS scene: its link carries both teams\' picks, and the OBS import open
   assert.equal(c.sources.find((s) => s.name === 'Scene - o-b-j vs Kaleb').settings.items[0].source_uuid, src.uuid);
 });
 
-test('the VS scene animation rides in its link, the default left out', async () => {
+test('the VS scene rides in its link: nothing for the default, &anim= for a ready-made one, else &scene=', async () => {
   const { vsSceneUrl, VS_ANIMS } = await import('../public/lib/stream-kit.js');
-  assert.deepEqual(VS_ANIMS.map(([a]) => a), ['jump', 'brawl', 'deal', 'meteor', 'warp', 'spotlight', 'glitch', 'rise', 'domino', 'thunder', 'inferno', 'camera', 'orbit', 'blade', 'retro', 'curtain', 'beat', 'draft', 'teleport', 'ancient']);
+  assert.deepEqual(VS_ANIMS.map(([a]) => a), ['jump', 'brawl', 'deal', 'meteor', 'warp', 'spotlight', 'glitch', 'rise', 'domino', 'thunder', 'inferno', 'camera', 'orbit', 'blade', 'retro', 'curtain', 'beat', 'draft', 'teleport', 'ancient', 'tp-ancient', 'storm-draft']);
   assert.equal(vsSceneUrl(root, [['1:2', null]], 'main', 'jump'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2');
   assert.equal(vsSceneUrl(root, [['1:2', null]], 'recent', 'meteor'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2&cards=recent&anim=meteor');
+  assert.equal(vsSceneUrl(root, [['1:2', null]], 'main', 'none.meteor.meteor.pulse'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2&anim=meteor');
+  assert.equal(vsSceneUrl(root, [['1:2', null]], 'main', 'gold.glitch.beat.embers'), 'https://example.test/champion/stream-kit?stream=vs&picks=1:2&scene=gold.glitch.beat.embers');
   assert.ok(VS_ANIMS.every(([, label, about]) => label && about.endsWith('.')));
+});
+
+test('scene layers: every ready-made scene is built from real layers, and junk falls back to the default', async () => {
+  const { VS_ANIMS, VS_FRAMES, VS_ENTRANCES, VS_STYLES, VS_AFTER, parseScene, sceneString, sceneFromQuery, presetOf } = await import('../public/lib/stream-kit.js');
+  const ids = [VS_FRAMES, VS_ENTRANCES, VS_STYLES, VS_AFTER].map((l) => l.map(([id]) => id));
+  for (const [id, , , sc] of VS_ANIMS) {
+    sc.split('.').forEach((part, i) => assert.ok(ids[i].includes(part), `${id}: ${part}`));
+    assert.equal(sceneString(parseScene(id)), sc);
+  }
+  assert.equal(new Set(VS_ANIMS.map(([, , , sc]) => sc)).size, VS_ANIMS.length);
+  for (const l of [VS_FRAMES, VS_ENTRANCES, VS_STYLES, VS_AFTER]) assert.ok(l.every(([id, label, about]) => !id.includes('.') && label && about.endsWith('.')));
+  assert.deepEqual(parseScene('rd.teleport.nope.sparks'), { frame: 'rd', enter: 'teleport', vs: 'jump', after: 'sparks' });
+  assert.equal(sceneString(parseScene(null)), 'none.jump.jump.still');
+  assert.equal(sceneFromQuery(new URLSearchParams('anim=draft')), 'gold.pick.draft.glint');
+  assert.equal(sceneFromQuery(new URLSearchParams('scene=blue.thunder.glitch.hops&anim=draft')), 'blue.thunder.glitch.hops');
+  assert.equal(presetOf('rd.teleport.ancient.sparks'), 'tp-ancient');
+  assert.equal(presetOf('blue.thunder.glitch.hops'), null);
 });
 
 test('stand-ins ride in the VS link and the kit address, names with commas and colons intact', async () => {

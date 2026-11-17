@@ -9,7 +9,8 @@
 // Stand-ins: "Add a stand-in" on a team finds anyone the site knows (every league, scrims, Steam
 // sign-ins) by name, or takes an account ID. They join that team's list and ride in ?subs=.
 import { app, pageHead, esc, SOURCES } from "../core.js";
-import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, parseSubs, subsParam, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H, VS_ANIMS } from "../lib/stream-kit.js";
+import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, parseSubs, subsParam, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H, VS_ANIMS,
+  VS_FRAMES, VS_ENTRANCES, VS_STYLES, VS_AFTER, parseScene, sceneString, presetOf, sceneFromQuery, sceneQuery } from "../lib/stream-kit.js";
 import { searchIndex } from "../lib/search.js";
 import { loadSearch } from "../parts/searchindex.js";
 import { strangerNames } from "../lib/scout.js";
@@ -64,7 +65,7 @@ export async function renderStreamKit(src) {
   const q = new URLSearchParams(location.search);
   let mode = CARD_MODES.some(([m]) => m === q.get("cards")) ? q.get("cards") : "main";
   let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
-  let anim = VS_ANIMS.some(([a]) => a === q.get("anim")) ? q.get("anim") : VS_ANIMS[0][0]; // the VS scene's animation
+  let scene = sceneFromQuery(q); // the VS scene: "<frame>.<entrance>.<vs>.<after>" (lib/stream-kit.js)
   // Stand-ins join the end of their team's list, marked standin; one already on that roster is skipped.
   const addSub = (team, account, name) => {
     const t = byId.get(team);
@@ -85,7 +86,9 @@ export async function renderStreamKit(src) {
     if (picks.size) url.searchParams.set("picks", [...picks].map(([k, s]) => (s == null ? k : `${k}:${s}`)).join(",")); else url.searchParams.delete("picks");
     if (mode !== "main") url.searchParams.set("cards", mode); else url.searchParams.delete("cards");
     if (swap) url.searchParams.set("sides", "swap"); else url.searchParams.delete("sides");
-    if (anim !== VS_ANIMS[0][0]) url.searchParams.set("anim", anim); else url.searchParams.delete("anim");
+    url.searchParams.delete("anim"); url.searchParams.delete("scene");
+    const sq = sceneQuery(scene);
+    if (sq) { const [key, value] = sq.slice(1).split("="); url.searchParams.set(key, value); }
     const subs = subsOf(teams);
     if (subs.length) url.searchParams.set("subs", subsParam(subs)); else url.searchParams.delete("subs");
     history.replaceState(history.state, "", url);
@@ -141,6 +144,18 @@ export async function renderStreamKit(src) {
   const picked = () => teams.map((t) => ({ team: t, players: t.players.filter((p) => picks.has(`${t.id}:${p.account}`)).map((p) => ({ ...p, slot: picks.get(`${t.id}:${p.account}`) })) })).filter((g) => g.players.length);
   // The VS scene's link: the first two picked teams, with their card picks.
   const vsTeams = (list) => (swap ? [list[1], list[0]] : list.slice(0, 2));
+  // The scene builder: a picker per layer, each with a line on what the chosen one does.
+  const LAYER_UI = [["frame", "Frame", VS_FRAMES], ["enter", "Entrance", VS_ENTRANCES], ["vs", "VS", VS_STYLES], ["after", "Afterwards", VS_AFTER]];
+  const layerInfo = (k, id) => LAYER_UI.find(([x]) => x === k)[2].find(([x]) => x === id);
+  const sceneName = (s) => VS_ANIMS.find(([id]) => id === presetOf(s))?.[1] ?? "Your own scene";
+  const builder = () => {
+    const sc = parseScene(scene);
+    return `<div class="sk-build">${LAYER_UI.map(([k, label, list]) => `<label class="sk-build-pick"><span>${label}</span>
+        <select data-layer="${k}">${list.map(([id, l]) => `<option value="${id}"${id === sc[k] ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>
+        <small class="muted" data-about-of="${k}">${esc(layerInfo(k, sc[k])[2])}</small></label>`).join("")}
+      <div class="sk-build-go"><button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch your scene</button><span class="muted" data-scene-name>${presetOf(scene) ? `Same as ${esc(sceneName(scene))}` : ""}</span></div></div>`;
+  };
+  const describe = (s) => { const sc = parseScene(s); return `${layerInfo("frame", sc.frame)[1]} · ${layerInfo("enter", sc.enter)[1]} entrance · ${layerInfo("vs", sc.vs)[1]} VS · then ${layerInfo("after", sc.after)[1].toLowerCase()}`; };
   // The animation previews need two teams: short of two picked, the first teams in the list with a
   // full roster fill in as examples (five rostered players each, main cards).
   const previewTeams = (list) => {
@@ -150,7 +165,7 @@ export async function renderStreamKit(src) {
       .slice(0, 2 - list.length).map((t) => ({ team: t, players: roster(t).slice(0, 5).map((p) => ({ ...p, slot: null })) }));
     return [...list, ...fill];
   };
-  const vsLink = (list, extra = "", a = anim) => { const two = vsTeams(list);
+  const vsLink = (list, extra = "", a = scene) => { const two = vsTeams(list);
     return vsSceneUrl(absolute(src.root), two.flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, a,
       two.flatMap(({ team, players }) => players.filter((p) => p.standin).map((p) => [team.id, p.account, p.name]))) + extra; };
   const rowUrl = (k) => { const [team, account] = k.split(":"); return streamCardUrl(byId.get(team).rootUrl, account, picks.get(k)); };
@@ -180,10 +195,12 @@ export async function renderStreamKit(src) {
     syncBoxes(); save();
     const list = picked(), shown = previewTeams(list), real = list.length > 1;
     const vsPanel = shown.length < 2 ? "" : `<section class="panel sk-vs">
-        <header class="sk-cards-head"><div><h3>VS scene</h3><span class="muted">${real ? "Click an animation to watch it with your teams, then choose the one you want."
-          : `Click an animation to watch it. Until you pick two teams it plays with ${esc(shown[0].team.name)} and ${esc(shown[1].team.name)} as examples.`}</span></div>${real ? `<button type="button" data-swap>Swap sides</button>` : ""}</header>
-        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about]) => `<div class="sk-anim${a === anim ? " on" : ""}" role="button" tabindex="0" aria-label="Watch ${esc(label)}" data-watch-anim="${a}">
-          <span class="sk-anim-head"><strong>${esc(label)}</strong><span class="sk-anim-use">${a === anim ? "Selected" : "▶ Watch"}</span></span>
+        <header class="sk-cards-head"><div><h3>VS scene</h3><span class="muted">Build your scene from four layers, or start from a ready-made one and change any layer. ${real ? "Watch plays it with your teams."
+          : `Until you pick two teams, Watch plays it with ${esc(shown[0].team.name)} and ${esc(shown[1].team.name)} as examples.`}</span></div>${real ? `<button type="button" data-swap>Swap sides</button>` : ""}</header>
+        ${builder()}
+        <h4 class="sk-presets-head">Ready-made scenes</h4>
+        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about, sc]) => `<div class="sk-anim${sc === scene ? " on" : ""}" role="button" tabindex="0" aria-label="Watch ${esc(label)}" data-watch-anim="${a}" data-scene="${sc}">
+          <span class="sk-anim-head"><strong>${esc(label)}</strong><span class="sk-anim-use">${sc === scene ? "Selected" : "▶ Watch"}</span></span>
           <span class="muted">${esc(about)}</span></div>`).join("")}</div>
         ${real ? `<p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
         <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>`
@@ -214,51 +231,61 @@ export async function renderStreamKit(src) {
       </section>`;
     out.querySelectorAll(".sk-row").forEach((row) => refreshRow(row.dataset.key));
   };
-  // Watching an animation: a pop-up plays it with the picked teams (only one copy of the scene runs),
-  // starting over a few seconds after its intro. ‹ › step through the others; "Use this" picks it.
-  function watchAnim(a) {
+  // Watching a scene: a pop-up plays it with the picked teams (only one copy of the scene runs),
+  // starting over a few seconds after its intro. For the ready-made scenes ‹ › step through the others;
+  // "Use this" makes it the scene.
+  function watchScenes(items, i) {
     const list = previewTeams(picked()); if (list.length < 2) return;
-    let i = VS_ANIMS.findIndex(([x]) => x === a);
     const dlg = document.createElement("dialog");
     dlg.className = "sk-dlg sk-anim-dlg";
+    const steps = items.length > 1;
     dlg.innerHTML = `<header><div><h3 data-name></h3><p class="muted" data-about></p></div><button type="button" class="sk-dlg-close" aria-label="Close">×</button></header>
       <div class="sk-anim-frame"><iframe title="VS scene example"></iframe></div>
-      <footer><button type="button" data-step="-1" aria-label="Previous animation">‹ Prev</button><span data-count class="muted"></span><button type="button" data-step="1" aria-label="Next animation">Next ›</button>
+      <footer>${steps ? `<button type="button" data-step="-1" aria-label="Previous scene">‹ Prev</button><span data-count class="muted"></span><button type="button" data-step="1" aria-label="Next scene">Next ›</button>` : ""}
         <span class="sk-anim-spacer"></span><button type="button" data-again>Replay</button><button type="button" class="sk-anim-pick" data-use></button></footer>`;
     document.body.append(dlg);
     const frame = dlg.querySelector("iframe");
     const show = () => {
-      const [id, label, about] = VS_ANIMS[i];
+      const [, label, about, sc] = items[i];
       dlg.querySelector("[data-name]").textContent = label;
-      dlg.querySelector("[data-about]").textContent = about;
-      dlg.querySelector("[data-count]").textContent = `${i + 1} of ${VS_ANIMS.length}`;
+      dlg.querySelector("[data-about]").textContent = steps ? `${about} (${describe(sc)})` : about;
+      if (steps) dlg.querySelector("[data-count]").textContent = `${i + 1} of ${items.length}`;
       const use = dlg.querySelector("[data-use]");
-      use.textContent = id === anim ? "Selected ✓" : "Use this";
-      use.disabled = id === anim;
-      frame.src = vsLink(list, "&preview=1&loop=4", id);
+      use.textContent = sc === scene ? "Selected ✓" : "Use this";
+      use.disabled = sc === scene;
+      frame.src = vsLink(list, "&preview=1&loop=4", sc);
     };
+    const step = (n) => { i = (i + n + items.length) % items.length; show(); };
     dlg.addEventListener("click", (e) => {
       if (e.target === dlg || e.target.closest(".sk-dlg-close")) return dlg.close();
-      const step = e.target.closest("[data-step]");
-      if (step) { i = (i + Number(step.dataset.step) + VS_ANIMS.length) % VS_ANIMS.length; return show(); }
+      const st = e.target.closest("[data-step]");
+      if (st) return step(Number(st.dataset.step));
       if (e.target.closest("[data-again]")) { frame.src = frame.src; return; }
-      if (e.target.closest("[data-use]")) { chooseAnim(VS_ANIMS[i][0]); show(); }
+      if (e.target.closest("[data-use]")) { chooseScene(items[i][3]); show(); }
     });
-    dlg.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { i = (i + (e.key === "ArrowLeft" ? -1 : 1) + VS_ANIMS.length) % VS_ANIMS.length; show(); }
-    });
+    dlg.addEventListener("keydown", (e) => { if (steps && (e.key === "ArrowLeft" || e.key === "ArrowRight")) step(e.key === "ArrowLeft" ? -1 : 1); });
     dlg.addEventListener("close", () => { frame.src = "about:blank"; dlg.remove(); });
     dlg.showModal();
     show();
   }
-  // Picking an animation changes the link and the download.
-  function chooseAnim(a) {
-    anim = a; save();
+  const watchAnim = (id) => watchScenes(VS_ANIMS, Math.max(0, VS_ANIMS.findIndex(([x]) => x === id)));
+  const watchOwn = () => watchScenes([[null, sceneName(scene), describe(scene), scene]], 0);
+  // Choosing a scene (a ready-made one, or a layer changed in the builder) changes the link and the download.
+  function chooseScene(s) {
+    scene = sceneString(parseScene(s)); save();
     out.querySelectorAll("[data-watch-anim]").forEach((t) => {
-      const on = t.dataset.watchAnim === a;
+      const on = t.dataset.scene === scene;
       t.classList.toggle("on", on);
       t.querySelector(".sk-anim-use").textContent = on ? "Selected" : "▶ Watch";
     });
+    const sc = parseScene(scene);
+    for (const [k] of LAYER_UI) {
+      const sel = out.querySelector(`[data-layer="${k}"]`); if (!sel) continue;
+      sel.value = sc[k];
+      out.querySelector(`[data-about-of="${k}"]`).textContent = layerInfo(k, sc[k])[2];
+    }
+    const name = out.querySelector("[data-scene-name]");
+    if (name) name.textContent = presetOf(scene) ? `Same as ${sceneName(scene)}` : "";
     const list = picked(), row = out.querySelector(".sk-vs .sk-row");
     if (!row) return;
     row.querySelector("code").textContent = vsLink(list);
@@ -385,6 +412,8 @@ export async function renderStreamKit(src) {
     if (tile && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); watchAnim(tile.dataset.watchAnim); }
   });
   out.addEventListener("change", async (e) => {
+    const layer = e.target.closest("[data-layer]");
+    if (layer) { const sc = parseScene(scene); sc[layer.dataset.layer] = layer.value; return chooseScene(sceneString(sc)); }
     const sel = e.target.closest("[data-mode]"); if (!sel) return;
     mode = sel.value; save();
     sel.disabled = true;
@@ -401,6 +430,7 @@ export async function renderStreamKit(src) {
     if (e.target.closest("[data-swap]")) { swap = !swap; return draw(); }
     const tile = e.target.closest("[data-watch-anim]");
     if (tile) return watchAnim(tile.dataset.watchAnim);
+    if (e.target.closest("[data-watch-scene]")) return watchOwn();
     const s = e.target.closest("[data-share]");
     if (s) return copy(location.href, s);
     if (!e.target.closest("[data-download]")) return;
