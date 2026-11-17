@@ -141,6 +141,15 @@ export async function renderStreamKit(src) {
   const picked = () => teams.map((t) => ({ team: t, players: t.players.filter((p) => picks.has(`${t.id}:${p.account}`)).map((p) => ({ ...p, slot: picks.get(`${t.id}:${p.account}`) })) })).filter((g) => g.players.length);
   // The VS scene's link: the first two picked teams, with their card picks.
   const vsTeams = (list) => (swap ? [list[1], list[0]] : list.slice(0, 2));
+  // The animation previews need two teams: short of two picked, the first teams in the list with a
+  // full roster fill in as examples (five rostered players each, main cards).
+  const previewTeams = (list) => {
+    if (list.length > 1) return list;
+    const have = new Set(list.map((g) => g.team.id)), roster = (t) => t.players.filter((p) => !p.standin);
+    const fill = [...teams.filter((t) => roster(t).length >= 5), ...teams].filter((t, i, all) => !have.has(t.id) && all.indexOf(t) === i)
+      .slice(0, 2 - list.length).map((t) => ({ team: t, players: roster(t).slice(0, 5).map((p) => ({ ...p, slot: null })) }));
+    return [...list, ...fill];
+  };
   const vsLink = (list, extra = "", a = anim) => { const two = vsTeams(list);
     return vsSceneUrl(absolute(src.root), two.flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, a,
       two.flatMap(({ team, players }) => players.filter((p) => p.standin).map((p) => [team.id, p.account, p.name]))) + extra; };
@@ -169,8 +178,18 @@ export async function renderStreamKit(src) {
 
   const draw = () => {
     syncBoxes(); save();
-    const list = picked();
-    if (!list.length) { out.innerHTML = `<p class="muted sk-empty">Pick one or more teams or players.</p>`; return; }
+    const list = picked(), shown = previewTeams(list), real = list.length > 1;
+    const vsPanel = shown.length < 2 ? "" : `<section class="panel sk-vs">
+        <header class="sk-cards-head"><div><h3>VS scene</h3><span class="muted">${real ? "Click an animation to watch it with your teams, then choose the one you want."
+          : `Click an animation to watch it. Until you pick two teams it plays with ${esc(shown[0].team.name)} and ${esc(shown[1].team.name)} as examples.`}</span></div>${real ? `<button type="button" data-swap>Swap sides</button>` : ""}</header>
+        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about]) => `<div class="sk-anim${a === anim ? " on" : ""}" role="button" tabindex="0" aria-label="Watch ${esc(label)}" data-watch-anim="${a}">
+          <span class="sk-anim-head"><strong>${esc(label)}</strong><span class="sk-anim-use">${a === anim ? "Selected" : "▶ Watch"}</span></span>
+          <span class="muted">${esc(about)}</span></div>`).join("")}</div>
+        ${real ? `<p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
+        <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>`
+          : `<p class="muted">Pick two teams above to get the VS scene's OBS link with your choice.</p>`}
+      </section>`;
+    if (!list.length) { out.innerHTML = `<p class="muted sk-empty">Pick one or more teams or players.</p>${vsPanel}`; return; }
     const cards = list.reduce((n, g) => n + g.players.length, 0);
     out.innerHTML = `
       <section class="panel">
@@ -182,14 +201,7 @@ export async function renderStreamKit(src) {
         </ol>
         <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>
-      ${list.length > 1 ? `<section class="panel sk-vs">
-        <header class="sk-cards-head"><div><h3>VS scene</h3><span class="muted">Click an animation to watch it with your teams, then choose the one you want.</span></div><button type="button" data-swap>Swap sides</button></header>
-        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about]) => `<div class="sk-anim${a === anim ? " on" : ""}" role="button" tabindex="0" aria-label="Watch ${esc(label)}" data-watch-anim="${a}">
-          <span class="sk-anim-head"><strong>${esc(label)}</strong><span class="sk-anim-use">${a === anim ? "Selected" : "▶ Watch"}</span></span>
-          <span class="muted">${esc(about)}</span></div>`).join("")}</div>
-        <p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
-        <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>
-      </section>` : ""}
+      ${vsPanel}
       <section class="panel">
         <header class="sk-cards-head"><div><h3>Cards</h3><span class="sk-choices muted"></span></div><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label></header>
         <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>. One at a time in OBS: add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}; right-click it and choose <b>Refresh</b> to pick up card changes.</p>
@@ -205,7 +217,7 @@ export async function renderStreamKit(src) {
   // Watching an animation: a pop-up plays it with the picked teams (only one copy of the scene runs),
   // starting over a few seconds after its intro. ‹ › step through the others; "Use this" picks it.
   function watchAnim(a) {
-    const list = picked(); if (list.length < 2) return;
+    const list = previewTeams(picked()); if (list.length < 2) return;
     let i = VS_ANIMS.findIndex(([x]) => x === a);
     const dlg = document.createElement("dialog");
     dlg.className = "sk-dlg sk-anim-dlg";
@@ -248,6 +260,7 @@ export async function renderStreamKit(src) {
       t.querySelector(".sk-anim-use").textContent = on ? "Selected" : "▶ Watch";
     });
     const list = picked(), row = out.querySelector(".sk-vs .sk-row");
+    if (!row) return;
     row.querySelector("code").textContent = vsLink(list);
     row.querySelector("a").href = vsLink(list, "&preview=1");
   }
