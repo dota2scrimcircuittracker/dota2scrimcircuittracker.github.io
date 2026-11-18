@@ -119,7 +119,7 @@ export async function renderStreamKit(src) {
 
   app.innerHTML = `${pageHead(src.kicker, "Stream kit")}
     <div class="stream-kit reveal" style="--i:2">
-      <p class="muted">Player cards for your stream: animated, on a transparent background, loaded live from the site. Pick teams or single players, choose the VS scene and their cards, then download the OBS scenes at the bottom.</p>
+      <p class="muted">Player cards for your stream: animated, on a transparent background, loaded live from the site. Pick teams or single players, choose their cards and the VS scene, then download the OBS scenes at the bottom.</p>
       <section class="panel sk-teams">
         <header><h3>Teams and players</h3><span><input type="search" class="sk-filter" placeholder="Filter teams or players" aria-label="Filter teams or players"> <button type="button" class="sk-link" data-none>Clear</button></span></header>
         <div class="sk-team-grid">${groups}</div>
@@ -218,7 +218,6 @@ export async function renderStreamKit(src) {
     // Scene names as the file has them: a repeated name gets " (2)", like obsCollection does.
     const seen = new Map(), sceneLabel = (n) => { const k = (seen.get(n) ?? 0) + 1; seen.set(n, k); return k > 1 ? `${n} (${k})` : n; };
     out.innerHTML = `
-      ${vsPanel}
       <section class="panel">
         <header class="sk-cards-head"><div><h3>Cards</h3><span class="sk-choices muted"></span></div><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label></header>
         <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>.</p>
@@ -229,6 +228,7 @@ export async function renderStreamKit(src) {
             <code>${esc(url)}</code><button type="button" class="sk-copy">Copy</button><a href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>`;
         }).join("")}</div>`).join("")}
       </section>
+      ${vsPanel}
       <section class="panel sk-obs">
         <h3>Put it in OBS</h3>
         <div class="sk-dl">
