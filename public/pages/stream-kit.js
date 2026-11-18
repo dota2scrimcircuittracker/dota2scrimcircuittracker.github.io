@@ -154,8 +154,8 @@ export async function renderStreamKit(src) {
   const sceneName = (s) => VS_ANIMS.find(([id]) => id === presetOf(s))?.[1] ?? "Your own scene";
   const builder = () => {
     const sc = parseScene(scene);
-    return `<div class="sk-build">${LAYER_UI.map(([k, label, list]) => `<div class="sk-build-pick"><span class="sk-title"><label for="sk-layer-${k}">${label}</label>${info(`<span data-about-of="${k}">${esc(layerInfo(k, sc[k])[2])}</span>`)}</span>
-        <select id="sk-layer-${k}" data-layer="${k}">${list.map(([id, l]) => `<option value="${id}"${id === sc[k] ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`).join("")}</div>`;
+    return `<div class="sk-build">${LAYER_UI.map(([k, label, list]) => `<div class="sk-build-pick"><span class="sk-title"><span>${label}</span>${info(`<span data-about-of="${k}">${esc(layerInfo(k, sc[k])[2])}</span>`)}</span>
+        <button type="button" class="sk-layer-btn" data-layer-pick="${k}" aria-label="Choose the ${label.toLowerCase()} (${list.length} to watch)"><span data-layer-name="${k}">${esc(layerInfo(k, sc[k])[1])}</span><small>${list.length} ▾</small></button></div>`).join("")}</div>`;
   };
   // "Your own scene" sits with the ready-made ones: the last scene built from the layers, kept while a
   // ready-made one is tried, so it can be ticked again. Until one's been built there's nothing to tick.
@@ -316,6 +316,55 @@ export async function renderStreamKit(src) {
     show();
   }
   const watchAnim = (id) => watchScenes(VS_ANIMS, Math.max(0, VS_ANIMS.findIndex(([x]) => x === id)));
+  // Picking one layer by watching: a pop-up lists that layer's options beside one live preview. "On its
+  // own" plays each option with plain other layers (no frame, Jump in, Gold slam, hold still) so only it
+  // shows; "In your scene" swaps it into the selected scene. Use this sets it.
+  function pickLayer(k) {
+    const list = previewTeams(picked()); if (list.length < 2) return;
+    const [, label, opts] = LAYER_UI.find(([x]) => x === k);
+    let alone = true, at = Math.max(0, opts.findIndex(([id]) => id === parseScene(scene)[k]));
+    const dlg = document.createElement("dialog");
+    dlg.className = "sk-dlg sk-anim-dlg sk-layer-dlg";
+    dlg.innerHTML = `<header><div><h3>Choose the ${esc(label.toLowerCase())}</h3><p class="muted">Click one to watch it. ↑ ↓ step through.</p></div><button type="button" class="sk-dlg-close" aria-label="Close">×</button></header>
+      <div class="sk-layer-body">
+        <div class="sk-layer-list" role="listbox" aria-label="${esc(label)}">${opts.map(([id, l, about], i) => `<button type="button" role="option" data-opt="${i}"><b>${esc(l)}</b><small>${esc(about)}</small></button>`).join("")}</div>
+        <div class="sk-layer-view"><div class="sk-anim-frame"><iframe title="${esc(label)} preview"></iframe></div>
+          <div class="sk-layer-mode" role="group" aria-label="Preview with"><button type="button" data-alone="1">On its own</button><button type="button" data-alone="0">In your scene</button></div>
+          <p class="muted" data-desc></p></div>
+      </div>
+      <footer><span class="sk-anim-spacer"></span><button type="button" data-again>Replay</button><button type="button" class="sk-anim-pick" data-use></button></footer>`;
+    document.body.append(dlg);
+    const frame = dlg.querySelector("iframe");
+    const sceneFor = (id) => { const sc = alone ? parseScene(null) : parseScene(scene); sc[k] = id; return sceneString(sc); };
+    const show = () => {
+      const [id, l] = opts[at], sc = sceneFor(id), mine = parseScene(scene)[k] === id;
+      dlg.querySelectorAll("[data-opt]").forEach((b, i) => { b.setAttribute("aria-selected", String(i === at)); b.classList.toggle("now", opts[i][0] === parseScene(scene)[k]); });
+      dlg.querySelector(`[data-opt="${at}"]`).scrollIntoView({ block: "nearest" });
+      dlg.querySelectorAll("[data-alone]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.alone === "1") === alone)));
+      dlg.querySelector("[data-desc]").textContent = `Playing: ${describe(sc)}.`;
+      const use = dlg.querySelector("[data-use]");
+      use.textContent = mine ? "In your scene ✓" : `Use ${l}`;
+      use.disabled = mine;
+      frame.src = vsLink(list, "&preview=1&loop=4", sc);
+    };
+    dlg.addEventListener("click", (e) => {
+      if (e.target === dlg || e.target.closest(".sk-dlg-close")) return dlg.close();
+      const o = e.target.closest("[data-opt]");
+      if (o) { at = Number(o.dataset.opt); return show(); }
+      const a = e.target.closest("[data-alone]");
+      if (a) { alone = a.dataset.alone === "1"; return show(); }
+      if (e.target.closest("[data-again]")) { frame.src = frame.src; return; }
+      if (e.target.closest("[data-use]")) { const sc = parseScene(scene); sc[k] = opts[at][0]; chooseScene(sceneString(sc)); dlg.close(); }
+    });
+    dlg.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault(); at = (at + (e.key === "ArrowDown" ? 1 : -1) + opts.length) % opts.length; show();
+      dlg.querySelector(`[data-opt="${at}"]`).focus();
+    });
+    dlg.addEventListener("close", () => { frame.src = "about:blank"; dlg.remove(); });
+    dlg.showModal();
+    show();
+  }
   const watchOwn = () => watchScenes([[null, sceneName(scene), describe(scene), scene]], 0);
   // Choosing a scene (a ready-made one, or a layer changed in the builder) changes the link and the download.
   function chooseScene(s) {
@@ -330,8 +379,8 @@ export async function renderStreamKit(src) {
     if (ownEl) ownEl.outerHTML = ownTile();
     const sc = parseScene(scene);
     for (const [k] of LAYER_UI) {
-      const sel = out.querySelector(`[data-layer="${k}"]`); if (!sel) continue;
-      sel.value = sc[k];
+      const name = out.querySelector(`[data-layer-name="${k}"]`); if (!name) continue;
+      name.textContent = layerInfo(k, sc[k])[1];
       out.querySelector(`[data-about-of="${k}"]`).textContent = layerInfo(k, sc[k])[2];
     }
     const cur = out.querySelector("[data-current]");
@@ -467,8 +516,6 @@ export async function renderStreamKit(src) {
     if (use) { if (use.checked) chooseScene(use.dataset.useScene); else use.checked = true; return; }
     const useOwn = e.target.closest("[data-use-own]");
     if (useOwn) { if (useOwn.checked && own) chooseScene(own); else useOwn.checked = !presetOf(scene); return; }
-    const layer = e.target.closest("[data-layer]");
-    if (layer) { const sc = parseScene(scene); sc[layer.dataset.layer] = layer.value; return chooseScene(sceneString(sc)); }
     const sel = e.target.closest("[data-mode]"); if (!sel) return;
     mode = sel.value; save();
     sel.disabled = true;
@@ -497,6 +544,8 @@ export async function renderStreamKit(src) {
     const tile = e.target.closest("[data-watch-anim]");
     if (tile) return watchAnim(tile.dataset.watchAnim);
     if (e.target.closest("[data-watch-scene]")) return watchOwn();
+    const lp = e.target.closest("[data-layer-pick]");
+    if (lp) return pickLayer(lp.dataset.layerPick);
     if (e.target.closest("[data-watch-own]") && own) return watchScenes([[null, "Your own scene", describe(own), own]], 0);
     const s = e.target.closest("[data-share]");
     if (s) return copy(location.href, s);

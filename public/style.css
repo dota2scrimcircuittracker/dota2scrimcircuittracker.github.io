@@ -5842,3 +5842,21 @@ button.sk-anim-use:hover { background: color-mix(in srgb, currentColor 15%, tran
 .sk-anim-own.empty { opacity: .5; }
 .sk-anim-own.empty .sk-anim-check, .sk-anim-own.empty input { cursor: not-allowed; }
 .sk-anim-own { grid-column: span 2; }
+/* Layer buttons and the pick-by-watching pop-up. */
+.sk-layer-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 10px; text-align: left; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.sk-layer-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-layer-btn small { flex: none; font-size: 11px; color: var(--accent); font-weight: 400; }
+.sk-layer-btn:hover { border-color: var(--accent); }
+dialog.sk-layer-dlg { width: min(1180px, calc(100vw - 32px)); }
+.sk-layer-body { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 16px; padding: 14px 18px; align-items: start; }
+.sk-layer-list { display: flex; flex-direction: column; gap: 4px; max-height: min(62vh, 560px); overflow: auto; padding-right: 4px; }
+.sk-layer-list [role="option"] { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; text-align: left; text-transform: none; letter-spacing: 0; border-radius: 8px; }
+.sk-layer-list [role="option"] small { font-size: 12px; line-height: 1.35; opacity: .7; font-weight: 400; }
+.sk-layer-list [role="option"][aria-selected="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.sk-layer-list [role="option"].now b::after { content: " · in your scene"; font-weight: 400; font-size: 11px; color: var(--accent); }
+.sk-layer-view .sk-anim-frame { margin: 0; }
+.sk-layer-view > p { margin: 8px 0 0; font-size: 13px; }
+.sk-layer-mode { display: inline-flex; gap: 4px; margin-top: 10px; }
+.sk-layer-mode button { padding: 5px 12px; font-size: 12px; opacity: .65; }
+.sk-layer-mode button[aria-pressed="true"] { opacity: 1; border-color: var(--accent); color: var(--accent); }
+@media (max-width: 760px) { .sk-layer-body { grid-template-columns: 1fr; } .sk-layer-view { order: -1; } .sk-layer-list { max-height: 40vh; } }
