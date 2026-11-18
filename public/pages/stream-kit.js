@@ -107,6 +107,8 @@ export async function renderStreamKit(src) {
   }
   fromTeams.forEach(addPick);
 
+  // An ⓘ that opens a bubble of help text (html). side "right" opens it leftwards from a right-hand ⓘ.
+  const info = (html, side = "") => `<details class="sk-info${side ? ` sk-info-${side}` : ""}"><summary aria-label="More info">i</summary><div class="sk-info-pop">${html}</div></details>`;
   const searchText = (t) => [t.name, ...t.players.map((p) => p.name)].join(" ").toLowerCase();
   const playerList = (t) => t.players.map((p) => `<label${p.standin ? ` class="sk-sub"` : ""}><input type="checkbox" data-player="${esc(p.account)}"> ${esc(p.name)}${p.standin ? ` <span class="sk-sub-tag">Stand-in</span>` : ""} <span class="sk-pcount" data-cards-of="${esc(p.account)}"></span>${p.standin ? `<button type="button" class="sk-sub-x" data-unsub="${esc(p.account)}" aria-label="Remove ${esc(p.name)}" title="Remove stand-in">×</button>` : ""}</label>`).join("");
   const teamRow = (t) => `<div class="sk-team-pick" data-team="${esc(t.id)}" data-search="${esc(searchText(t))}">
@@ -119,7 +121,7 @@ export async function renderStreamKit(src) {
 
   app.innerHTML = `${pageHead(src.kicker, "Stream kit")}
     <div class="stream-kit reveal" style="--i:2">
-      <p class="muted">Player cards for your stream: animated, on a transparent background, loaded live from the site. Pick teams or single players, choose their cards and the VS scene, then download the OBS scenes at the bottom.</p>
+      <div class="muted sk-intro">Animated player cards and a VS intro for OBS. Pick teams, choose cards and a VS scene, download. ${info("The cards sit on a transparent background and load live from the site, so a player's card edits show on stream. Pick whole teams or single players.")}</div>
       <section class="panel sk-teams">
         <header><h3>Teams and players</h3><span><input type="search" class="sk-filter" placeholder="Filter teams or players" aria-label="Filter teams or players"> <button type="button" class="sk-link" data-none>Clear</button></span></header>
         <div class="sk-team-grid">${groups}</div>
@@ -145,15 +147,21 @@ export async function renderStreamKit(src) {
   // The VS scene's link: the first two picked teams, with their card picks.
   const vsTeams = (list) => (swap ? [list[1], list[0]] : list.slice(0, 2));
   // The scene builder: a picker per layer, each with a line on what the chosen one does.
+  let tab = "cards"; // the open tab under the team picker: cards, vs or obs
   const LAYER_UI = [["frame", "Frame", VS_FRAMES], ["enter", "Entrance", VS_ENTRANCES], ["vs", "VS", VS_STYLES], ["after", "Afterwards", VS_AFTER]];
   const layerInfo = (k, id) => LAYER_UI.find(([x]) => x === k)[2].find(([x]) => x === id);
   const sceneName = (s) => VS_ANIMS.find(([id]) => id === presetOf(s))?.[1] ?? "Your own scene";
   const builder = () => {
     const sc = parseScene(scene);
-    return `<div class="sk-build">${LAYER_UI.map(([k, label, list]) => `<label class="sk-build-pick"><span>${label}</span>
-        <select data-layer="${k}">${list.map(([id, l]) => `<option value="${id}"${id === sc[k] ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>
-        <small class="muted" data-about-of="${k}">${esc(layerInfo(k, sc[k])[2])}</small></label>`).join("")}
-      <div class="sk-build-go"><button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch your scene</button><span class="muted" data-scene-name>${presetOf(scene) ? `Same as ${esc(sceneName(scene))}` : ""}</span></div></div>`;
+    return `<div class="sk-build">${LAYER_UI.map(([k, label, list]) => `<div class="sk-build-pick"><span class="sk-title"><label for="sk-layer-${k}">${label}</label>${info(`<span data-about-of="${k}">${esc(layerInfo(k, sc[k])[2])}</span>`)}</span>
+        <select id="sk-layer-${k}" data-layer="${k}">${list.map(([id, l]) => `<option value="${id}"${id === sc[k] ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`).join("")}</div>`;
+  };
+  // The banner naming the selected scene and its four layers; it's what goes in the link and the download.
+  const current = () => {
+    const sc = parseScene(scene), preset = presetOf(scene);
+    return `<div class="sk-current-text"><small>Selected scene · ${preset ? "ready-made" : "built from layers"}</small><strong>${esc(sceneName(scene))}</strong>
+      <span class="sk-current-layers">${LAYER_UI.map(([k, label]) => `<span><i>${label}</i> ${esc(layerInfo(k, sc[k])[1])}</span>`).join("")}</span></div>
+      <button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch it</button>`;
   };
   const describe = (s) => { const sc = parseScene(s); return `${layerInfo("frame", sc.frame)[1]} · ${layerInfo("enter", sc.enter)[1]} entrance · ${layerInfo("vs", sc.vs)[1]} VS · then ${layerInfo("after", sc.after)[1].toLowerCase()}`; };
   // The animation previews need two teams: short of two picked, the first teams in the list with a
@@ -198,16 +206,17 @@ export async function renderStreamKit(src) {
   const draw = () => {
     syncBoxes(); save();
     const list = picked(), shown = previewTeams(list), real = list.length > 1;
-    const vsPanel = shown.length < 2 ? "" : `<section class="panel sk-vs">
-        <header class="sk-cards-head"><div><h3>VS scene</h3><span class="muted">Build your scene from four layers, or start from a ready-made one and change any layer. ${real ? "Watch plays it with your teams."
-          : `Until you pick two teams, Watch plays it with ${esc(shown[0].team.name)} and ${esc(shown[1].team.name)} as examples.`}</span></div>${real ? `<button type="button" data-swap>Swap sides</button>` : ""}</header>
+    const vsPanel = shown.length < 2 ? "" : `<section class="panel sk-vs" data-pane="vs"${list.length && tab !== "vs" ? " hidden" : ""}>
+        <header class="sk-cards-head"><div class="sk-title"><h3>VS scene</h3>${info(`Build your scene from four layers, or start from a ready-made one and change any layer. ${real ? "Watch plays it with your teams."
+          : `Until you pick two teams, Watch plays it with ${esc(shown[0].team.name)} and ${esc(shown[1].team.name)} as examples.`}`)}</div>${real ? `<button type="button" data-swap>Swap sides</button>` : ""}</header>
+        <div class="sk-current" data-current>${current()}</div>
+        <h4 class="sk-presets-head">Change a layer</h4>
         ${builder()}
-        <h4 class="sk-presets-head">Ready-made scenes</h4>
-        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about, sc]) => `<div class="sk-anim${sc === scene ? " on" : ""}" role="button" tabindex="0" aria-label="Watch ${esc(label)}" data-watch-anim="${a}" data-scene="${sc}">
-          <span class="sk-anim-head"><strong>${esc(label)}</strong><span class="sk-anim-use">${sc === scene ? "Selected" : "▶ Watch"}</span></span>
-          <span class="muted">${esc(about)}</span></div>`).join("")}</div>
-        ${real ? `<p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right.${list.length > 2 ? " It uses the first two teams." : ""}</p>
-        <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>`
+        <h4 class="sk-presets-head">Or pick a ready-made scene <span class="muted">${VS_ANIMS.length}</span></h4>
+        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about, sc]) => `<div class="sk-anim${sc === scene ? " on" : ""}" title="${esc(about)}" data-scene="${sc}">
+          <label class="sk-anim-check"><input type="checkbox" data-use-scene="${sc}"${sc === scene ? " checked" : ""}><strong>${esc(label)}</strong></label>
+          <button type="button" class="sk-anim-use" data-watch-anim="${a}" aria-label="Watch ${esc(label)}" title="Watch ${esc(label)}">▶</button></div>`).join("")}</div>
+        ${real ? `<div class="sk-row sk-vs-link"><span class="sk-name">VS link</span><span class="muted sk-vs-sides">${esc(vsTeams(list)[0].team.name)} left, ${esc(vsTeams(list)[1].team.name)} right${list.length > 2 ? " (first two teams)" : ""}</span><code hidden>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>`
           : `<p class="muted">Pick two teams above to get the VS scene's OBS link with your choice.</p>`}
       </section>`;
     if (!list.length) { out.innerHTML = `<p class="muted sk-empty">Pick one or more teams or players.</p>${vsPanel}`; return; }
@@ -217,45 +226,47 @@ export async function renderStreamKit(src) {
     const total = (real ? 1 : 0) + list.length + cards;
     // Scene names as the file has them: a repeated name gets " (2)", like obsCollection does.
     const seen = new Map(), sceneLabel = (n) => { const k = (seen.get(n) ?? 0) + 1; seen.set(n, k); return k > 1 ? `${n} (${k})` : n; };
+    const TABS = [["cards", "Cards", plural(cards, "player")], ...(vsPanel ? [["vs", "VS scene", `<span data-tab-scene>${esc(sceneName(scene))}</span>`]] : []), ["obs", "Put it in OBS", plural(total, "scene")]];
+    if (!TABS.some(([k]) => k === tab)) tab = "cards";
     out.innerHTML = `
-      <section class="panel">
-        <header class="sk-cards-head"><div><h3>Cards</h3><span class="sk-choices muted"></span></div><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label></header>
-        <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>.</p>
+      <nav class="sk-tabs" role="tablist">${TABS.map(([k, label, sub]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === tab}"><b>${label}</b><small>${sub}</small></button>`).join("")}
+        <button type="button" class="sk-dl-btn" data-download title="${esc(`${plural(total, "scene")}, file ${file}`)}">⬇ Download OBS scenes</button></nav>
+      <section class="panel" data-pane="cards"${tab !== "cards" ? " hidden" : ""}>
+        <header class="sk-cards-head"><div class="sk-title"><h3>Cards</h3><span class="sk-choices muted"></span></div><span class="sk-title"><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+          ${info(`Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>. <b>Copy</b> gives that card's OBS link.`, "right")}</span></header>
         ${list.map(({ team, players }) => `<div class="sk-team"><h4>${esc(team.name)}</h4>${players.map((p) => {
           const k = `${team.id}:${p.account}`, url = rowUrl(k);
           return `<div class="sk-row" data-key="${esc(k)}"><span class="sk-name">${esc(p.name)}${p.standin ? ` <span class="sk-sub-tag">Stand-in</span>` : ""}</span>
             <button type="button" class="sk-view">View card</button><span class="sk-choice">…</span>
-            <code>${esc(url)}</code><button type="button" class="sk-copy">Copy</button><a href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>`;
+            <code hidden>${esc(url)}</code><button type="button" class="sk-copy">Copy link</button><a href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>`;
         }).join("")}</div>`).join("")}
       </section>
       ${vsPanel}
-      <section class="panel sk-obs">
-        <h3>Put it in OBS</h3>
+      <section class="panel sk-obs" data-pane="obs"${tab !== "obs" ? " hidden" : ""}>
         <div class="sk-dl">
-          <button type="button" class="sk-dl-btn" data-download>Download OBS scenes</button>
-          <span><b>${plural(total, "scene")}</b>: ${real ? "the VS scene, " : ""}${plural(list.length, "team scene")} and ${plural(cards, "player scene")}, with the cards you picked above.<br>
-          <span class="muted">File <code>${esc(file)}</code>, called <b>${esc(collection)}</b> in OBS.</span></span>
+          <div><b>${plural(total, "scene")}</b>: ${real ? "the VS scene, " : ""}${plural(list.length, "team scene")} and ${plural(cards, "player scene")}, with the cards you picked.
+          ${info(`That's everything the kit makes; there's no smaller version. Each scene is a Browser Source pointing at the site, so the cards are the real animated cards, loaded live. Want only some of it? Delete the scenes you don't need after importing, or copy single links from the Cards and VS scene tabs.`)}<br>
+          <span class="muted">File <code>${esc(file)}</code>, called <b>${esc(collection)}</b> in OBS.</span></div>
+          <button type="button" class="sk-dl-btn" data-download>⬇ Download</button>
         </div>
-        <h4>What's in the file</h4>
+        <ol class="sk-steps">
+          <li>Download the file.</li>
+          <li>In OBS: <b>Scene Collection → Import</b>, pick the file, then switch to <b>${esc(collection)}</b> under <b>Scene Collection</b>.</li>
+          <li>Changed something here? Download and import again.</li>
+        </ol>
+        <details class="sk-more"><summary>What's in the file <span class="muted">${plural(total, "scene")}</span></summary>
         <ul class="sk-contents">
           ${real ? `<li><b>Scene - ${esc(vsName)}</b> <span class="sk-tag">VS scene</span>
             <span class="muted"><span data-dl-scene>${esc(sceneName(scene))}: ${esc(describe(scene))}.</span> ${esc(vsTeams(list)[0].team.name)} on the left.</span></li>`
             : `<li class="muted">No VS scene: it needs two teams. Pick a second team to add one.</li>`}
           ${list.map(({ team, players }) => `<li><b>Team - ${esc(team.name)}</b> <span class="sk-tag">${plural(players.length, "card")} in a row</span>
             <ul>${players.map((p) => `<li><b>${esc(sceneLabel(`Player - ${p.name}`))}</b> <span class="muted">one big card:</span> <span class="sk-dl-card" data-dl-card="${esc(`${team.id}:${p.account}`)}">…</span></li>`).join("")}</ul></li>`).join("")}
-        </ul>
-        <p class="muted">That's everything the kit makes; there's no smaller version. Each scene is a Browser Source pointing at the site, so the cards are the real animated cards, loaded live. Want only some of it? Delete the scenes you don't need after importing, or copy single links from the VS scene and Cards sections instead.</p>
-        <h4>Import it</h4>
-        <ol class="sk-steps">
-          <li>Click <b>Download OBS scenes</b> above.</li>
-          <li>In OBS: <b>Scene Collection → Import</b>, pick the file, then switch to <b>${esc(collection)}</b> under <b>Scene Collection</b>.</li>
-          <li>Copy any source into your own scenes if you like. Changed teams, cards or the VS scene here? Download again and import again.</li>
-        </ol>
-        <h4>Or add one link at a time</h4>
+        </ul></details>
+        <details class="sk-more"><summary>Or add one link at a time</summary>
         <ul class="sk-steps">
           <li><b>VS scene:</b> add a <b>Browser Source</b> with its link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it.</li>
           <li><b>A card:</b> add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}. Right-click it and choose <b>Refresh</b> to pick up card changes.</li>
-        </ul>
+        </ul></details>
         <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>`;
     out.querySelectorAll(".sk-row").forEach((row) => refreshRow(row.dataset.key));
@@ -302,10 +313,10 @@ export async function renderStreamKit(src) {
   // Choosing a scene (a ready-made one, or a layer changed in the builder) changes the link and the download.
   function chooseScene(s) {
     scene = sceneString(parseScene(s)); save();
-    out.querySelectorAll("[data-watch-anim]").forEach((t) => {
+    out.querySelectorAll(".sk-anim[data-scene]").forEach((t) => {
       const on = t.dataset.scene === scene;
       t.classList.toggle("on", on);
-      t.querySelector(".sk-anim-use").textContent = on ? "Selected" : "▶ Watch";
+      t.querySelector("[data-use-scene]").checked = on;
     });
     const sc = parseScene(scene);
     for (const [k] of LAYER_UI) {
@@ -313,10 +324,12 @@ export async function renderStreamKit(src) {
       sel.value = sc[k];
       out.querySelector(`[data-about-of="${k}"]`).textContent = layerInfo(k, sc[k])[2];
     }
-    const name = out.querySelector("[data-scene-name]");
-    if (name) name.textContent = presetOf(scene) ? `Same as ${sceneName(scene)}` : "";
+    const cur = out.querySelector("[data-current]");
+    if (cur) cur.innerHTML = current();
     const dl = out.querySelector("[data-dl-scene]");
     if (dl) dl.textContent = `${sceneName(scene)}: ${describe(scene)}.`;
+    const tb = out.querySelector("[data-tab-scene]");
+    if (tb) tb.textContent = sceneName(scene);
     const list = picked(), row = out.querySelector(".sk-vs .sk-row");
     if (!row) return;
     row.querySelector("code").textContent = vsLink(list);
@@ -438,11 +451,10 @@ export async function renderStreamKit(src) {
     }));
   }, true);
 
-  out.addEventListener("keydown", (e) => {
-    const tile = e.target.closest?.("[data-watch-anim]");
-    if (tile && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); watchAnim(tile.dataset.watchAnim); }
-  });
   out.addEventListener("change", async (e) => {
+    // A ready-made scene's box: ticking one selects it; one is always ticked unless the layers make your own.
+    const use = e.target.closest("[data-use-scene]");
+    if (use) { if (use.checked) chooseScene(use.dataset.useScene); else use.checked = true; return; }
     const layer = e.target.closest("[data-layer]");
     if (layer) { const sc = parseScene(scene); sc[layer.dataset.layer] = layer.value; return chooseScene(sceneString(sc)); }
     const sel = e.target.closest("[data-mode]"); if (!sel) return;
@@ -453,7 +465,18 @@ export async function renderStreamKit(src) {
   });
   const flash = (btn, text) => { const was = btn.textContent; btn.textContent = text; setTimeout(() => { btn.textContent = was; }, 1500); };
   const copy = (text, btn) => navigator.clipboard.writeText(text).then(() => flash(btn, "Copied"), () => flash(btn, "Copy failed"));
+  // One ⓘ bubble open at a time; a click anywhere else on the page closes it.
+  app.querySelector(".stream-kit").addEventListener("click", (e) => {
+    app.querySelectorAll(".sk-info[open]").forEach((d) => { if (!d.contains(e.target)) d.open = false; });
+  });
   out.addEventListener("click", async (e) => {
+    const tb = e.target.closest("[data-tab]");
+    if (tb) {
+      tab = tb.dataset.tab;
+      out.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b === tb)));
+      out.querySelectorAll("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== tab; });
+      return;
+    }
     const v = e.target.closest(".sk-view");
     if (v) return viewCards(v.closest(".sk-row").dataset.key);
     const c = e.target.closest(".sk-copy");

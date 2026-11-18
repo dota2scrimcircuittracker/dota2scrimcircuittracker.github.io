@@ -685,3 +685,16 @@ details.hist-drafts > summary { display: none; }
   .tier-chips > .fantasy-tier-chip { width: auto; min-width: 0; }
   .tier-chips > .fantasy-tier-chip.open { grid-column: 1 / -1; }
 }
+
+/* Stream kit card rows: name and card on one line, the buttons under them. */
+@media (max-width: 560px) {
+  .sk-row[data-key] { flex-wrap: wrap; row-gap: 6px; }
+  .sk-row[data-key] .sk-name { flex: 1 1 45%; width: auto; }
+  .sk-row[data-key] .sk-choice { flex: 1 1 45%; width: auto; text-align: right; }
+  .sk-row[data-key] .sk-view { order: 2; flex: 1 1 auto; min-width: 0; }
+  .sk-row[data-key] .sk-copy { order: 3; }
+  .sk-row[data-key] > a { order: 4; }
+}
+@media (max-width: 560px) {
+  .sk-anim-grid, .sk-build { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
