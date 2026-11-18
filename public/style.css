@@ -5838,3 +5838,7 @@ button.sk-anim-use { flex: none; min-width: 0; padding: 4px 8px; border: 0; back
 button.sk-anim-use:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
 .sk-anim.on button.sk-anim-use { color: #17130b; }
 .sk-anim-grid { grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); }
+.sk-anim-own:not(.on) { border-style: dashed; }
+.sk-anim-own.empty { opacity: .5; }
+.sk-anim-own.empty .sk-anim-check, .sk-anim-own.empty input { cursor: not-allowed; }
+.sk-anim-own { grid-column: span 2; }

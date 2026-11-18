@@ -66,6 +66,7 @@ export async function renderStreamKit(src) {
   let mode = CARD_MODES.some(([m]) => m === q.get("cards")) ? q.get("cards") : "main";
   let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
   let scene = sceneFromQuery(q); // the VS scene: "<frame>.<entrance>.<vs>.<after>" (lib/stream-kit.js)
+  let own = presetOf(scene) ? null : scene; // the last scene built from the layers (not a ready-made one)
   // Stand-ins join the end of their team's list, marked standin; one already on that roster is skipped.
   const addSub = (team, account, name) => {
     const t = byId.get(team);
@@ -156,6 +157,12 @@ export async function renderStreamKit(src) {
     return `<div class="sk-build">${LAYER_UI.map(([k, label, list]) => `<div class="sk-build-pick"><span class="sk-title"><label for="sk-layer-${k}">${label}</label>${info(`<span data-about-of="${k}">${esc(layerInfo(k, sc[k])[2])}</span>`)}</span>
         <select id="sk-layer-${k}" data-layer="${k}">${list.map(([id, l]) => `<option value="${id}"${id === sc[k] ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`).join("")}</div>`;
   };
+  // "Your own scene" sits with the ready-made ones: the last scene built from the layers, kept while a
+  // ready-made one is tried, so it can be ticked again. Until one's been built there's nothing to tick.
+  const ownHint = () => (own ? `Your own: ${describe(own)}` : "Change any layer to build your own scene");
+  const ownTile = () => `<div class="sk-anim sk-anim-own${presetOf(scene) ? "" : " on"}${own ? "" : " empty"}" title="${esc(ownHint())}" data-own>
+      <label class="sk-anim-check"><input type="checkbox" data-use-own${presetOf(scene) ? "" : " checked"}${own ? "" : " disabled"}><strong>Your own scene</strong></label>
+      <button type="button" class="sk-anim-use" data-watch-own aria-label="Watch your own scene" title="Watch your own scene"${own ? "" : " disabled"}>▶</button></div>`;
   // The banner naming the selected scene and its four layers; it's what goes in the link and the download.
   const current = () => {
     const sc = parseScene(scene), preset = presetOf(scene);
@@ -212,8 +219,8 @@ export async function renderStreamKit(src) {
         <div class="sk-current" data-current>${current()}</div>
         <h4 class="sk-presets-head">Change a layer</h4>
         ${builder()}
-        <h4 class="sk-presets-head">Or pick a ready-made scene <span class="muted">${VS_ANIMS.length}</span></h4>
-        <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about, sc]) => `<div class="sk-anim${sc === scene ? " on" : ""}" title="${esc(about)}" data-scene="${sc}">
+        <h4 class="sk-presets-head">Or pick a scene <span class="muted">yours or ${VS_ANIMS.length} ready-made</span></h4>
+        <div class="sk-anim-grid">${ownTile()}${VS_ANIMS.map(([a, label, about, sc]) => `<div class="sk-anim${sc === scene ? " on" : ""}" title="${esc(about)}" data-scene="${sc}">
           <label class="sk-anim-check"><input type="checkbox" data-use-scene="${sc}"${sc === scene ? " checked" : ""}><strong>${esc(label)}</strong></label>
           <button type="button" class="sk-anim-use" data-watch-anim="${a}" aria-label="Watch ${esc(label)}" title="Watch ${esc(label)}">▶</button></div>`).join("")}</div>
         ${real ? `<div class="sk-row sk-vs-link"><span class="sk-name">VS link</span><span class="muted sk-vs-sides">${esc(vsTeams(list)[0].team.name)} left, ${esc(vsTeams(list)[1].team.name)} right${list.length > 2 ? " (first two teams)" : ""}</span><code hidden>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>`
@@ -313,11 +320,14 @@ export async function renderStreamKit(src) {
   // Choosing a scene (a ready-made one, or a layer changed in the builder) changes the link and the download.
   function chooseScene(s) {
     scene = sceneString(parseScene(s)); save();
+    if (!presetOf(scene)) own = scene;
     out.querySelectorAll(".sk-anim[data-scene]").forEach((t) => {
       const on = t.dataset.scene === scene;
       t.classList.toggle("on", on);
       t.querySelector("[data-use-scene]").checked = on;
     });
+    const ownEl = out.querySelector("[data-own]");
+    if (ownEl) ownEl.outerHTML = ownTile();
     const sc = parseScene(scene);
     for (const [k] of LAYER_UI) {
       const sel = out.querySelector(`[data-layer="${k}"]`); if (!sel) continue;
@@ -455,6 +465,8 @@ export async function renderStreamKit(src) {
     // A ready-made scene's box: ticking one selects it; one is always ticked unless the layers make your own.
     const use = e.target.closest("[data-use-scene]");
     if (use) { if (use.checked) chooseScene(use.dataset.useScene); else use.checked = true; return; }
+    const useOwn = e.target.closest("[data-use-own]");
+    if (useOwn) { if (useOwn.checked && own) chooseScene(own); else useOwn.checked = !presetOf(scene); return; }
     const layer = e.target.closest("[data-layer]");
     if (layer) { const sc = parseScene(scene); sc[layer.dataset.layer] = layer.value; return chooseScene(sceneString(sc)); }
     const sel = e.target.closest("[data-mode]"); if (!sel) return;
@@ -485,6 +497,7 @@ export async function renderStreamKit(src) {
     const tile = e.target.closest("[data-watch-anim]");
     if (tile) return watchAnim(tile.dataset.watchAnim);
     if (e.target.closest("[data-watch-scene]")) return watchOwn();
+    if (e.target.closest("[data-watch-own]") && own) return watchScenes([[null, "Your own scene", describe(own), own]], 0);
     const s = e.target.closest("[data-share]");
     if (s) return copy(location.href, s);
     if (!e.target.closest("[data-download]")) return;
