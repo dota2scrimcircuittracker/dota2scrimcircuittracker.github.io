@@ -91,6 +91,9 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
     clearTimers();
     root.innerHTML = markup;
     const stage = root.querySelector(".vs-stage");
+    // Hidden until the intro's animations are on: the art and fonts load first, and the finished scene
+    // used to show for a few frames before the entrance hid the cards (casters saw them flash).
+    stage.classList.add("vs-hold");
     fitDesignCards(stage);
     // Card art is lazy-loaded on the site, which here meant cards flying in from off stage landed with
     // black art, and a twin card's hidden side turned in blank. Load it all first (up to 4s).
@@ -112,6 +115,7 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
       root.append(b);
     }
     const end = playIntro(ctx, scene);
+    stage.classList.remove("vs-hold");
     if (musicId && !ctx.sfx?.kept) ctx.sfx?.music(musicId, end);
     if (buf && !(fileAt === "after" && ctx.sfx?.kept)) ctx.sfx?.file(buf, fileAt, fileSync);
     // Inside a page (the dev sound-sync tool): say when the cards land and the VS hits, in ms from now.

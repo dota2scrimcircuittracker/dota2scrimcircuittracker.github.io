@@ -5515,6 +5515,7 @@ html.stream-vs-preview, html.stream-vs-preview body { background: radial-gradien
 .vs-root { position: fixed; inset: 0; z-index: 2147483000; overflow: hidden; pointer-events: none; }
 .vs-root .ft-defs { position: absolute; width: 0; height: 0; }
 .vs-stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--s, 1)); }
+.vs-stage.vs-hold { visibility: hidden; }
 .vs-note { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font: 700 48px/1.2 var(--display); color: #fff; text-shadow: 0 3px 12px #000; text-transform: uppercase; }
 .vs-sound-ask { position: fixed; right: 16px; bottom: 16px; z-index: 5; padding: 8px 14px; border: 1px solid #ffffff40; border-radius: 999px; background: #000c; color: #fff; font: 600 14px/1 var(--body, sans-serif); cursor: pointer; }
 .vs-side { position: absolute; top: 110px; width: 800px; display: flex; flex-direction: column; align-items: center; }
