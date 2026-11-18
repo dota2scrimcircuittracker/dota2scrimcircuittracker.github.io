@@ -1174,6 +1174,9 @@ const FRAMES = {
     buildFrames(ctx).frames.forEach((f, i) => assemble(f, i * 150));
     return 1000;
   },
+  // Black and White outline: plain trim, no colour, for a caster's own background. Fade in.
+  black(ctx) { return FRAMES.blue(ctx); },
+  white(ctx) { return FRAMES.blue(ctx); },
   blue(ctx) {
     buildFrames(ctx).frames.forEach((f) => f.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: "ease-out", fill: "backwards" }));
     return 500;

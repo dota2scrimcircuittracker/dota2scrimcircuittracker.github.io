@@ -5648,6 +5648,17 @@ html.stream-vs-preview, html.stream-vs-preview body { background: radial-gradien
 .fr-glass .vs-fr-inner { stroke-opacity: .7; }
 .fr-glass .vs-fr-shade { stroke: rgba(0, 0, 0, .2); }
 .fr-glass .vs-sock-well { fill-opacity: .55; }
+/* Black outline: no colour anywhere, even when the sockets light and the trim flares. */
+.fr-black { --fr-f1: #1c1c1e; --fr-f2: #0a0a0b; --fr-t1: #000; --fr-t2: #000; --fr-sock: #050505; --fr-gem: #000; --lit: #000; }
+.fr-black .vs-fr-trim { stroke-width: 8; }
+.fr-black .vs-fr-inner, .fr-black .vs-sock-mark, .fr-black .vs-sock-rim { stroke: #3a3a3e; }
+.fr-black .vs-gem { stroke: #3a3a3e; }
+/* White outline: the same with white trim on a light grey fill. */
+.fr-white { --fr-f1: #e9eaec; --fr-f2: #c9cbcf; --fr-t1: #fff; --fr-t2: #fff; --fr-sock: #b4b7bc; --fr-gem: #fff; --lit: #fff; }
+.fr-white .vs-fr-trim { stroke-width: 8; }
+.fr-white .vs-fr-inner, .fr-white .vs-sock-mark, .fr-white .vs-sock-rim { stroke: #9a9ea5; }
+.fr-white .vs-gem { stroke: #9a9ea5; }
+.fr-white .vs-sock-well { stroke: rgba(0, 0, 0, .25); }
 .vs-frame { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
 .vs-frame .f1 { stop-color: var(--fr-f1); } .vs-frame .f2 { stop-color: var(--fr-f2); }
 .vs-frame .t1 { stop-color: var(--fr-t1); } .vs-frame .t2 { stop-color: var(--fr-t2); }

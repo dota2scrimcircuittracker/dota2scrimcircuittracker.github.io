@@ -24,6 +24,8 @@ export const VS_FRAMES = [
   ["neon", "Neon", "Thin pink and cyan neon outlines on a dark glass fill. They buzz on like a sign."],
   ["arcana", "Arcana", "Deep purple frames with pale gold trim and violet gems. The trim draws itself in with a flare."],
   ["glass", "Glass", "See-through ice-blue frames with soft white trim. They sharpen out of a blur."],
+  ["black", "Black outline", "Charcoal frames with a plain black outline and no coloured trim or glow, for sitting on your own background. They fade in."],
+  ["white", "White outline", "Light grey frames with a plain white outline and no coloured trim or glow, for sitting on your own background. They fade in."],
 ];
 export const VS_ENTRANCES = [
   ["jump", "Jump in", "The cards spin up from below one by one, land and squash."],

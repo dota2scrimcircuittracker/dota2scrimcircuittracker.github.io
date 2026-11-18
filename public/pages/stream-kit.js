@@ -68,8 +68,8 @@ export async function renderStreamKit(src) {
   let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
   let scene = sceneFromQuery(q); // the VS scene: "<frame>.<entrance>.<vs>.<after>" (lib/stream-kit.js)
   let own = presetOf(scene) ? null : scene; // the last scene built from the layers (not a ready-made one)
-  // The VS scene's intro sound (parts/vs-sound.js), &sound=<id> on its links; null for none. Gong unless changed.
-  let sound = ["none", "off"].includes(q.get("sound")) ? null : soundOf(q.get("sound")) ?? "gong";
+  // The VS scene's intro sound (parts/vs-sound.js), &sound=<id> on its links; null for none. Silent unless one is picked.
+  let sound = soundOf(q.get("sound"));
   let music = musicOf(q.get("music")); // a track on a loop after the intro (&music=<id>), or null
   // Replaying the intro: seconds after it ends before it plays again (&loop=<s>), 0 for once. Music carries on.
   const REPLAYS = [[0, "Once, when the scene comes on"], [15, "Again 15 s after it ends"], [30, "Again 30 s after it ends"], [60, "Again 1 min after it ends"], [120, "Again 2 min after it ends"], [300, "Again 5 min after it ends"]];
@@ -77,14 +77,10 @@ export async function renderStreamKit(src) {
   const replayName = () => (replay ? REPLAYS.find(([s]) => s === replay)[1].replace("Again", "Replays") : "Plays once");
   const soundName = () => (sound ? VS_SOUNDS.find(([id]) => id === sound)[1] : "No sound");
   const musicName = () => (music ? VS_MUSIC.find(([id]) => id === music)[1] : "No music");
-  // A Dota sound (public/audio/dota/): &file=<name>&fileat=<when>&filesync=<seconds>. With neither a sound nor
-  // a file in the address, the 2024 versus screen (Radiant) is the default; its timing fills in from the list.
+  // A Dota sound (public/audio/dota/): &file=<name>&fileat=<when>&filesync=<seconds>. None unless one is picked.
   const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname); // the timing tools are on this computer only
-  const DEFAULT_FILE = "dota-versus-2024-radiant.mp3";
-  let defaultFile = !q.has("sound") && !q.has("file");
-  if (defaultFile) sound = null;
-  let file = defaultFile ? DEFAULT_FILE : fileName(q.get("file"));
-  let fileAt = defaultFile ? "vs" : FILE_AT.some(([k]) => k === q.get("fileat")) ? q.get("fileat") : "intro";
+  let file = fileName(q.get("file"));
+  let fileAt = FILE_AT.some(([k]) => k === q.get("fileat")) ? q.get("fileat") : "intro";
   let fileSync = Math.max(0, Number(q.get("filesync")) || 0);
   // The Dota sounds (public/audio/dota/list.json) and each one's timing: the list's, or on this computer the sync page's.
   let fileList = null;
@@ -113,7 +109,7 @@ export async function renderStreamKit(src) {
     if (picks.size) url.searchParams.set("picks", [...picks].map(([k, s]) => (s == null ? k : `${k}:${s}`)).join(",")); else url.searchParams.delete("picks");
     if (mode !== "main") url.searchParams.set("cards", mode); else url.searchParams.delete("cards");
     if (swap) url.searchParams.set("sides", "swap"); else url.searchParams.delete("sides");
-    url.searchParams.set("sound", sound ?? "none"); // always written: no sound in the address means the default Dota sound
+    if (sound) url.searchParams.set("sound", sound); else url.searchParams.delete("sound");
     if (music) url.searchParams.set("music", music); else url.searchParams.delete("music");
     if (replay) url.searchParams.set("loop", String(replay)); else url.searchParams.delete("loop");
     for (const k of ["file", "fileat", "filesync"]) url.searchParams.delete(k);
@@ -485,8 +481,6 @@ export async function renderStreamKit(src) {
     fileList ??= await fetch(fileListUrl(), { cache: "no-cache" }).then((r) => (r.ok ? r.json() : []), () => []);
     const dl = out.querySelector("#sk-file-list");
     if (dl) dl.innerHTML = fileList.map((f) => `<option value="${esc(f.file)}">${esc(`${f.name} · ${Math.round(f.secs)} s`)}</option>`).join("");
-    // The default sound's timing, once the list is in.
-    if (defaultFile) { defaultFile = false; const f = fileList.find((x) => x.file === file); if (f) { fileSync = timingOf(f); save(); refreshVsLink(); } }
     const grid = out.querySelector("[data-dota-grid]");
     if (!grid) return;
     const t = timings(), none = !sound && !file;
