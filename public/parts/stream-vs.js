@@ -13,10 +13,12 @@
 // &music=<id> plays a track (VS_MUSIC) on a loop from just after the VS lands. &file=<name> plays your
 // Dota sound from public/audio/dota/ (&fileat=intro|vs|after, &filesync=<seconds>).
 // &loop=<seconds> plays the intro again that long after it ends, over and over; the music carries on.
+// &framefx=fire|water|smoke sets the frames alight (or awash, or smoking) in their own colours (FRAME_FX).
 import { esc } from "../core.js";
 import { createPlayerCards, PAINT_FILTER, fitDesignCards, flipPlayerCard, shrinkToFit } from "./player-card.js";
 import { pickSlot, parseScene, sceneFromQuery } from "../lib/stream-kit.js";
 import { vsSound, soundOf, musicOf, fileName, loadFile, vsHitAt } from "./vs-sound.js";
+import { attachSmoke } from "../lib/border-smoke.js";
 
 const W = 1920, H = 1080;
 const MID = { x: 960, y: 560 }; // the VS, in stage pixels
@@ -84,11 +86,13 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
   </div>`;
   // &loop=<seconds>: start over that long after the intro ends (the kit's replay setting and its gallery).
   const loop = Number(q.get("loop")) || 0;
+  const frameFx = FRAME_FX[q.get("framefx")] ? q.get("framefx") : null;
   const soundId = soundOf(q.get("sound")), musicId = musicOf(q.get("music")), file = fileName(q.get("file"));
   const fileAt = q.get("fileat") ?? "intro", fileSync = Math.max(0, Number(q.get("filesync")) || 0);
   const fileBuf = file ? loadFile(file) : null; // starts loading now, alongside the cards
   const run = async (again = false) => {
     clearTimers();
+    stopFrameFx();
     root.innerHTML = markup;
     const stage = root.querySelector(".vs-stage");
     // Hidden until the intro's animations are on: the art and fonts load first, and the finished scene
@@ -115,6 +119,7 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
       root.append(b);
     }
     const end = playIntro(ctx, scene);
+    if (frameFx && ctx.fr) frameEffect(ctx, frameFx);
     stage.classList.remove("vs-hold");
     if (musicId && !ctx.sfx?.kept) ctx.sfx?.music(musicId, end);
     if (buf && !(fileAt === "after" && ctx.sfx?.kept)) ctx.sfx?.file(buf, fileAt, fileSync);
@@ -207,7 +212,7 @@ function stageRect(ctx, el) {
   return { x: (r.left - st.left) / s, y: (r.top - st.top) / s, w: r.width / s, h: r.height / s };
 }
 // The outline around rows of cards: straight sides, cut corners, stepping in or out between rows.
-function framePath(rows, pad, cut) {
+function framePts(rows, pad, cut) {
   const n = rows.length, c2 = cut * 0.6;
   const L = rows.map((w) => w.l - pad), R = rows.map((w) => w.r + pad), T = rows[0].t - pad, B = rows[n - 1].b + pad;
   const mid = rows.slice(1).map((w, i) => (rows[i].b + w.t) / 2);
@@ -226,7 +231,10 @@ function framePath(rows, pad, cut) {
     else pts.push([L[i], y], [L[i - 1], y]);
   }
   pts.push([L[0], T + cut]);
-  return "M" + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join("L") + "Z";
+  return pts;
+}
+function framePath(rows, pad, cut) {
+  return "M" + framePts(rows, pad, cut).map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join("L") + "Z";
 }
 const gem = (x, y, r) => `M${x} ${y - r}L${x + r * 0.75} ${y}L${x} ${y + r}L${x - r * 0.75} ${y}Z`;
 // Draws both frames under the teams. Returns { frames: [svg a, svg b], sockets: slot → { g, lit } }.
@@ -270,9 +278,65 @@ function buildFrames(ctx, { pad = 26, cut = 24 } = {}) {
     }
     svg.append(socks, svgEl("path", { d: outer }, "vs-fr-glint"));
     ctx.stage.insertBefore(svg, first);
+    svg._outline = framePts(rows, pad, cut);
     frames.push(svg);
   }
   return (ctx.fr = { frames, sockets });
+}
+// Frame effects (&framefx): the card maker's living borders (lib/border-smoke.js) traced round each frame's
+// outline and coloured from that frame's own trim, so Arcane burns cyan, Molten orange, Black outline black.
+// Only the motion comes from here; the colours come from the frame.
+const FRAME_FX = {
+  fire: { scale: 30, speed: 1.3, reach: 40, turb: 1.35, rise: 1.15, density: 1.1, light: 1, emit: .85 },
+  // Water: the card maker's Liquid Mercury surface (glossy, hard-edged blobs flowing round the frame), in water colours.
+  water: { look: "mercury", scale: 46, speed: .55, reach: 16, turb: .6, rise: -.1, density: 1.1, light: 1, emit: .1 },
+  // Smoke: big slow billows, matte (blocks light rather than glowing).
+  smoke: { scale: 64, speed: .32, reach: 40, turb: .9, rise: .3, density: 1.05, light: .7, emit: 0 },
+};
+const FX_UNIT = 1.6; // stage px per effect px: the styles were tuned on a 210 px card, and these frames are ~640 px
+let frameFxLive = [];
+function stopFrameFx() { frameFxLive.forEach((h) => h.stop()); frameFxLive = []; }
+const rgbOf = (css) => { // any CSS colour → [r, g, b] 0-255
+  const x = document.createElement("canvas").getContext("2d"); x.fillStyle = "#000"; x.fillStyle = css || "#000";
+  const v = x.fillStyle; if (v[0] === "#") return [1, 3, 5].map((i) => parseInt(v.slice(i, i + 2), 16));
+  return (v.match(/[\d.]+/g) ?? [0, 0, 0]).slice(0, 3).map(Number);
+};
+const hex = (c) => "#" + c.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+const grey = (c, t) => { const l = c[0] * .3 + c[1] * .59 + c[2] * .11; return mix(c, [l, l, l], t); };
+function framePalette(svg, kind) {
+  const css = getComputedStyle(svg), get = (k) => css.getPropertyValue(k).trim();
+  const lit = rgbOf(get("--fr-fx") || get("--lit") || get("--fr-t1")), t1 = rgbOf(get("--fr-t1"));
+  const dark = lit[0] * .3 + lit[1] * .59 + lit[2] * .11 < 24; // Black outline: dark smoke and flames, not light
+  const K = [0, 0, 0], Wh = [255, 255, 255];
+  if (dark) return kind === "water" ? { colors: ["#000000", "#101114", "#3a3d44", "#9aa0aa"], emit: 0 } : { colors: ["#000000", "#0c0c0d", "#26262a", "#4a4a50"], emit: 0 };
+  // Water: deep water in the frame's colour with white glints.
+  if (kind === "water") return { colors: [hex(mix(lit, K, .9)), hex(mix(lit, K, .45)), hex(mix(lit, Wh, .3)), hex(mix(lit, Wh, .92))] };
+  // Smoke: mostly grey, tinted by the frame, dark at its heart.
+  if (kind === "smoke") { const g = grey(lit, .65); return { colors: [hex(mix(g, K, .9)), hex(mix(g, K, .62)), hex(mix(g, K, .25)), hex(mix(g, Wh, .35))] }; }
+  return { colors: [hex(mix(lit, K, .85)), hex(mix(lit, K, .45)), hex(lit), hex(mix(t1, Wh, .55))] };
+}
+function frameEffect(ctx, kind) {
+  for (const svg of ctx.fr.frames) {
+    const pts = svg._outline, xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0, h = Math.max(...ys) - y0;
+    const box = document.createElement("div");
+    box.className = "vs-frame-fx";
+    Object.assign(box.style, { left: `${x0}px`, top: `${y0}px`, width: `${w}px`, height: `${h}px` });
+    svg.after(box);
+    let fx = null;
+    try { fx = attachSmoke(box, { ...FRAME_FX[kind], ...framePalette(svg, kind) }, { shape: pts.map(([x, y]) => [x - x0, y - y0]), unit: FX_UNIT, radius: 0, border: 5, maxDpr: .75, z: 0 }); }
+    catch (err) { console.warn("frame effect", err); }
+    if (!fx) { box.remove(); continue; }
+    frameFxLive.push(fx);
+    // Arrive with the frame: copy its own entrance (drop, slide, unfold…) or, for frames whose parts
+    // assemble themselves, fade in as the trim finishes.
+    const [ox, oy] = getComputedStyle(svg).transformOrigin.split(" ").map(parseFloat);
+    box.style.transformOrigin = `${ox - x0}px ${oy - y0}px`;
+    const own = svg.getAnimations();
+    if (own.length) for (const a of own) box.animate(a.effect.getKeyframes(), a.effect.getTiming());
+    else box.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 700, fill: "backwards" });
+  }
 }
 // A socket lights up for good once its card is in.
 function light(s, delay = 0) {

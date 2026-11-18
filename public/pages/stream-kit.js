@@ -10,7 +10,7 @@
 // sign-ins) by name, or takes an account ID. They join that team's list and ride in ?subs=.
 import { app, pageHead, esc, SOURCES } from "../core.js";
 import { obsCollection, streamCardUrl, vsSceneUrl, pickSlot, parseSubs, subsParam, CARD_MODES, CARD_W, CARD_H, VS_W, VS_H, VS_ANIMS,
-  VS_FRAMES, VS_ENTRANCES, VS_STYLES, VS_AFTER, parseScene, sceneString, presetOf, sceneFromQuery, sceneQuery } from "../lib/stream-kit.js";
+  VS_FRAMES, VS_FRAME_FX, VS_ENTRANCES, VS_STYLES, VS_AFTER, parseScene, sceneString, presetOf, sceneFromQuery, sceneQuery } from "../lib/stream-kit.js";
 import { searchIndex } from "../lib/search.js";
 import { loadSearch } from "../parts/searchindex.js";
 import { strangerNames } from "../lib/scout.js";
@@ -67,6 +67,8 @@ export async function renderStreamKit(src) {
   let mode = CARD_MODES.some(([m]) => m === q.get("cards")) ? q.get("cards") : "main";
   let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
   let scene = sceneFromQuery(q); // the VS scene: "<frame>.<entrance>.<vs>.<after>" (lib/stream-kit.js)
+  // Fire, water or smoke on the frames (&framefx); null for none.
+  let frameFx = VS_FRAME_FX.some(([k]) => k === q.get("framefx")) ? q.get("framefx") : null;
   let own = presetOf(scene) ? null : scene; // the last scene built from the layers (not a ready-made one)
   // The VS scene's intro sound (parts/vs-sound.js), &sound=<id> on its links; null for none. Silent unless one is picked.
   let sound = soundOf(q.get("sound"));
@@ -111,6 +113,7 @@ export async function renderStreamKit(src) {
     if (swap) url.searchParams.set("sides", "swap"); else url.searchParams.delete("sides");
     if (sound) url.searchParams.set("sound", sound); else url.searchParams.delete("sound");
     if (music) url.searchParams.set("music", music); else url.searchParams.delete("music");
+    if (frameFx) url.searchParams.set("framefx", frameFx); else url.searchParams.delete("framefx");
     if (replay) url.searchParams.set("loop", String(replay)); else url.searchParams.delete("loop");
     for (const k of ["file", "fileat", "filesync"]) url.searchParams.delete(k);
     if (file) { url.searchParams.set("file", file); url.searchParams.set("fileat", fileAt); if (fileAt === "vs" && fileSync) url.searchParams.set("filesync", String(fileSync)); }
@@ -178,11 +181,13 @@ export async function renderStreamKit(src) {
   let tab = "cards"; // the open tab under the team picker: cards, vs or obs
   const LAYER_UI = [["frame", "Frame", VS_FRAMES], ["enter", "Entrance", VS_ENTRANCES], ["vs", "VS", VS_STYLES], ["after", "Afterwards", VS_AFTER]];
   const layerInfo = (k, id) => LAYER_UI.find(([x]) => x === k)[2].find(([x]) => x === id);
+  // The frame's button also names its effect: "Draft frames · Fire".
+  const layerLabel = (k, sc) => layerInfo(k, sc[k])[1] + (k === "frame" && frameFx && sc.frame !== "none" ? ` · ${VS_FRAME_FX.find(([x]) => x === frameFx)[1]}` : "");
   const sceneName = (s) => VS_ANIMS.find(([id]) => id === presetOf(s))?.[1] ?? "Your own scene";
   const builder = () => {
     const sc = parseScene(scene);
     return `<div class="sk-build">${LAYER_UI.map(([k, label, list]) => `<div class="sk-build-pick"><span class="sk-title"><span>${label}</span>${info(`<span data-about-of="${k}">${esc(layerInfo(k, sc[k])[2])}</span>`)}</span>
-        <button type="button" class="sk-layer-btn" data-layer-pick="${k}" aria-label="Choose the ${label.toLowerCase()} (${list.length} to watch)"><span data-layer-name="${k}">${esc(layerInfo(k, sc[k])[1])}</span><small>${list.length} ▾</small></button></div>`).join("")}</div>`;
+        <button type="button" class="sk-layer-btn" data-layer-pick="${k}" aria-label="Choose the ${label.toLowerCase()} (${list.length} to watch)"><span data-layer-name="${k}">${esc(layerLabel(k, sc))}</span><small>${list.length} ▾</small></button></div>`).join("")}</div>`;
   };
   // "Your own scene" sits with the ready-made ones: the last scene built from the layers, kept while a
   // ready-made one is tried, so it can be ticked again. Until one's been built there's nothing to tick.
@@ -198,7 +203,8 @@ export async function renderStreamKit(src) {
       <div class="sk-current-act">${picked().length ? `<button type="button" class="sk-sound-chip" data-tab-go="sound" title="Change the intro sound">${sound ? "🔊" : "🔇"} <span data-sound-name>${esc(soundLabel())}</span></button>` : ""}
       <button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch it</button></div>`;
   };
-  const describe = (s) => { const sc = parseScene(s); return `${layerInfo("frame", sc.frame)[1]} · ${layerInfo("enter", sc.enter)[1]} entrance · ${layerInfo("vs", sc.vs)[1]} VS · then ${layerInfo("after", sc.after)[1].toLowerCase()}`; };
+  const fxName = (sc) => (frameFx && sc.frame !== "none" ? ` (${VS_FRAME_FX.find(([k]) => k === frameFx)[1].toLowerCase()})` : "");
+  const describe = (s) => { const sc = parseScene(s); return `${layerInfo("frame", sc.frame)[1]}${fxName(sc)} · ${layerInfo("enter", sc.enter)[1]} entrance · ${layerInfo("vs", sc.vs)[1]} VS · then ${layerInfo("after", sc.after)[1].toLowerCase()}`; };
   // The animation previews need two teams: short of two picked, the first teams in the list with a
   // full roster fill in as examples (five rostered players each, main cards).
   const previewTeams = (list) => {
@@ -211,6 +217,7 @@ export async function renderStreamKit(src) {
   const vsLink = (list, extra = "", a = scene) => { const two = vsTeams(list);
     return vsSceneUrl(absolute(src.root), two.flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, a,
       two.flatMap(({ team, players }) => players.filter((p) => p.standin).map((p) => [team.id, p.account, p.name]))) + (sound ? `&sound=${sound}` : "") + (music ? `&music=${music}` : "")
+      + (frameFx && parseScene(a).frame !== "none" ? `&framefx=${frameFx}` : "")
       + (file ? `&file=${encodeURIComponent(file)}&fileat=${fileAt}${fileAt === "vs" && fileSync ? `&filesync=${fileSync}` : ""}` : "")
       + (replay && !extra.includes("loop=") ? `&loop=${replay}` : "") + extra; };
   // The OBS scene collection's name and file name: the team's name for one team, else the division.
@@ -388,6 +395,8 @@ export async function renderStreamKit(src) {
         <div class="sk-layer-list" role="listbox" aria-label="${esc(label)}">${opts.map(([id, l, about], i) => `<button type="button" role="option" data-opt="${i}"><b>${esc(l)}</b><small>${esc(about)}</small></button>`).join("")}</div>
         <div class="sk-layer-view"><div class="sk-anim-frame"><iframe title="${esc(label)} preview"></iframe></div>
           <div class="sk-layer-mode" role="group" aria-label="Preview with"><button type="button" data-alone="1">On its own</button><button type="button" data-alone="0">In your scene</button></div>
+          ${k === "frame" ? `<div class="sk-frame-fx" data-frame-fx-row><span class="sk-title"><span>Frame effect</span>${info("Sets the frames alight, awash or smoking, each in its own colour: Arcane burns blue, Molten orange, Black outline black. Tick one, or none for plain frames. It goes in your scene straight away, with whichever frame you use.")}</span>
+            ${VS_FRAME_FX.map(([fx, l, about]) => `<label title="${esc(about)}"><input type="checkbox" data-frame-fx="${fx}"${fx === frameFx ? " checked" : ""}> ${esc(l)}</label>`).join("")}</div>` : ""}
           <p class="muted" data-desc></p></div>
       </div>
       <footer><span class="sk-anim-spacer"></span><button type="button" data-again>Replay</button><button type="button" class="sk-anim-pick" data-use></button></footer>`;
@@ -400,6 +409,8 @@ export async function renderStreamKit(src) {
       dlg.querySelector(`[data-opt="${at}"]`).scrollIntoView({ block: "nearest" });
       dlg.querySelectorAll("[data-alone]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.alone === "1") === alone)));
       dlg.querySelector("[data-desc]").textContent = `Playing: ${describe(sc)}.`;
+      const fxRow = dlg.querySelector("[data-frame-fx-row]");
+      if (fxRow) fxRow.hidden = id === "none";
       const use = dlg.querySelector("[data-use]");
       use.textContent = mine ? "In your scene ✓" : `Use ${l}`;
       use.disabled = mine;
@@ -412,6 +423,13 @@ export async function renderStreamKit(src) {
       const a = e.target.closest("[data-alone]");
       if (a) { alone = a.dataset.alone === "1"; return show(); }
       if (e.target.closest("[data-again]")) { frame.src = frame.src; return; }
+      // Frame effect: at most one ticked, none for plain frames. It's set on the scene at once and replays the preview.
+      const ffx = e.target.closest("[data-frame-fx]");
+      if (ffx) {
+        frameFx = ffx.checked ? ffx.dataset.frameFx : null;
+        dlg.querySelectorAll("[data-frame-fx]").forEach((b) => { b.checked = b.dataset.frameFx === frameFx; });
+        save(); chooseScene(scene); return show();
+      }
       if (e.target.closest("[data-use]")) { const sc = parseScene(scene); sc[k] = opts[at][0]; chooseScene(sceneString(sc)); dlg.close(); }
     });
     dlg.addEventListener("keydown", (e) => {
@@ -438,7 +456,7 @@ export async function renderStreamKit(src) {
     const sc = parseScene(scene);
     for (const [k] of LAYER_UI) {
       const name = out.querySelector(`[data-layer-name="${k}"]`); if (!name) continue;
-      name.textContent = layerInfo(k, sc[k])[1];
+      name.textContent = layerLabel(k, sc);
       out.querySelector(`[data-about-of="${k}"]`).textContent = layerInfo(k, sc[k])[2];
     }
     const cur = out.querySelector("[data-current]");

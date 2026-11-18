@@ -27,6 +27,13 @@ export const VS_FRAMES = [
   ["black", "Black outline", "Charcoal frames with a plain black outline and no coloured trim or glow, for sitting on your own background. They fade in."],
   ["white", "White outline", "Light grey frames with a plain white outline and no coloured trim or glow, for sitting on your own background. They fade in."],
 ];
+// Frame effects (&framefx, parts/stream-vs.js): the card maker's living borders traced round the frames,
+// in each frame's own colours. Optional, on top of any frame but "none".
+export const VS_FRAME_FX = [
+  ["fire", "Fire", "Flames lick up off the frames in their own colour."],
+  ["water", "Water", "Water churns round the frames in their own colour and spills downward."],
+  ["smoke", "Smoke", "Smoke curls off the frames, a muted shade of their colour."],
+];
 export const VS_ENTRANCES = [
   ["jump", "Jump in", "The cards spin up from below one by one, land and squash."],
   ["deal", "Deal", "Dealt out of the middle face down, then turned face up in a ripple."],

@@ -174,7 +174,7 @@ const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 25
 
 const VERT = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
 const FRAG = `precision highp float;
-uniform vec2 uRes,uSize,uCard;uniform vec3 uC0,uC1,uC2,uC3,uB0,uB1,uB2,uB3;uniform sampler2D uMask,uArt;uniform vec4 uArtRect,uWA,uWB;uniform float uOver,uGlow;uniform vec2 uArtFade;uniform float uArtOn,uFlow,uSwirl,uLanes,uStars,uBlend,uDpr,uTime,uBorder,uRadius,uScale,uReach,uTurb,uRise,uDensity,uLight,uEmit,uFlash;
+uniform vec2 uRes,uSize,uCard;uniform vec3 uC0,uC1,uC2,uC3,uB0,uB1,uB2,uB3;uniform sampler2D uMask,uArt;uniform vec4 uArtRect,uWA,uWB;uniform float uOver,uGlow;uniform vec2 uArtFade;uniform vec2 uPoly[33];uniform float uPolyN;uniform float uArtOn,uFlow,uSwirl,uLanes,uStars,uBlend,uDpr,uTime,uBorder,uRadius,uScale,uReach,uTurb,uRise,uDensity,uLight,uEmit,uFlash;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
@@ -205,6 +205,15 @@ void main(){
   // Sigs and finishes drift one way (up, or down for falling styles). The frame's edge-normal flips direction
   // along the card's diagonals, which drew a visible X across a finish.
   if(uMode>.5)n=vec2(.3,uRise<-.05?.95:-.95);
+#if SHAPE == 1
+  // A custom outline (attachSmoke's shape: a closed polygon, last point = first): its exact signed
+  // distance and outward normal replace the rounded rectangle's.
+  { float bd=1e9, sg=1.; vec2 bb=vec2(0.,-1.);
+    for(int i=0;i<32;i++){ if(float(i)>=uPolyN-1.)break; vec2 va=uPoly[i], vb=uPoly[i+1], e=vb-va, w=rel-va;
+      vec2 b=w-e*clamp(dot(w,e)/dot(e,e),0.,1.); float dd=dot(b,b); if(dd<bd){bd=dd;bb=b;}
+      bvec3 cc=bvec3(rel.y>=va.y,rel.y<vb.y,e.x*w.y>e.y*w.x); if(all(cc)||all(not(cc)))sg=-sg; }
+    d=sg*sqrt(bd); n=length(bb)>.001?sg*normalize(bb):vec2(0.,-1.); }
+#endif
   vec2 uv=p/uScale; float T=uTime;
   if(uLook>6.5&&uLook<7.5){ // galaxy: the field turns, faster near the middle, so it winds into a spiral
     float an=(T*.08+2.2/(1.+length(rel)/60.))*uSwirl; uv=(mat2(cos(an),-sin(an),sin(an),cos(an))*rel+c)/uScale; }
@@ -531,14 +540,14 @@ function shared() {
   return G;
 }
 // Look and mode are compile-time constants, so each program keeps only its own branches. Cached per look and mode.
-function program(look, mode) {
-  const key = `${look}|${mode}`, gl = G.gl; let P = G.progs.get(key); if (P) return P;
+function program(look, mode, shape = false) {
+  const key = `${look}|${mode}|${shape ? 1 : 0}`, gl = G.gl; let P = G.progs.get(key); if (P) return P;
   const prog = gl.createProgram();
   gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VERT));
   gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FRAG.replace('precision highp float;\n',
-    `precision highp float;\n#define uLook ${look.toFixed(1)}\n#define uMode ${mode.toFixed(1)}\n`)));
+    `precision highp float;\n#define uLook ${look.toFixed(1)}\n#define uMode ${mode.toFixed(1)}\n#define SHAPE ${shape ? 1 : 0}\n`)));
   gl.bindAttribLocation(prog, 0, 'a'); gl.linkProgram(prog);
-  const U = {}; for (const n of ['uRes', 'uSize', 'uCard', 'uDpr', 'uTime', 'uBorder', 'uRadius', 'uScale', 'uReach', 'uTurb', 'uRise', 'uDensity', 'uLight', 'uEmit', 'uFlash', 'uC0', 'uC1', 'uC2', 'uC3', 'uB0', 'uB1', 'uB2', 'uB3', 'uBlend', 'uMask', 'uSwirl', 'uLanes', 'uStars', 'uArt', 'uArtOn', 'uArtRect', 'uArtFade', 'uFlow', 'uWA', 'uWB', 'uOver', 'uGlow']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uRes', 'uSize', 'uCard', 'uDpr', 'uTime', 'uBorder', 'uRadius', 'uScale', 'uReach', 'uTurb', 'uRise', 'uDensity', 'uLight', 'uEmit', 'uFlash', 'uC0', 'uC1', 'uC2', 'uC3', 'uB0', 'uB1', 'uB2', 'uB3', 'uBlend', 'uMask', 'uSwirl', 'uLanes', 'uStars', 'uArt', 'uArtOn', 'uArtRect', 'uArtFade', 'uFlow', 'uWA', 'uWB', 'uOver', 'uGlow', 'uPoly', 'uPolyN']) U[n] = gl.getUniformLocation(prog, n);
   P = { prog, U }; G.progs.set(key, P); return P;
 }
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -562,13 +571,15 @@ const kick = () => { if (G && !G.raf && G.list.size && !reduced()) { G.last = 0;
 
 // glow (sig mode): true = a halo behind a scene signature's letters, 'outline' = a ring round its art.
 export function attachSmoke(el, styleId, { border = 6, radius = 14, speed = 1, amount = 1, maxDpr = 2, mode = 'border', sig = null,
-  pad = mode === 'finish' ? 0 : mode === 'sig' ? 30 : PAD, z = 3, art = null, unit = 1, glow = false } = {}) {
+  pad = mode === 'finish' ? 0 : mode === 'sig' ? 30 : PAD, z = 3, art = null, unit = 1, glow = false, shape = null } = {}) {
+  // styleId: a style's id, or a style object of your own (same fields). shape (border mode): the frame's outline
+  // as [[x, y], …] in el's CSS px, for frames that aren't a rounded rectangle (the stream kit's VS frames).
   // unit: CSS px per effect px. The styles were tuned on a 210 px card; a card of width w passes w / 210 so the
   // smoke keeps its proportions. border, radius and pad are in effect px.
-  const base = ALL[styleId]; if (!base) throw new Error(`No smoke style ${styleId}`);
+  const base = typeof styleId === 'object' ? styleId : ALL[styleId]; if (!base) throw new Error(`No smoke style ${styleId}`);
   const PAD = pad;
   if (!shared()) return null;
-  const gl = G.gl, P = program(LOOK[base.look] ?? 0, MODES[mode] ?? 0), U = P.U;
+  const gl = G.gl, P = program(LOOK[base.look] ?? 0, MODES[mode] ?? 0, !!shape), U = P.U;
   const cols = base.colors.map(rgb), colsB = (base.colorsB ?? base.colors).map(rgb);
   const c = document.createElement('canvas'); c.className = 'smoke-canvas';
   const place = (k) => { const o = PAD * k; Object.assign(c.style, { left: `-${o}px`, top: `-${o}px`, width: `calc(100% + ${o * 2}px)`, height: `calc(100% + ${o * 2}px)` }); };
@@ -627,6 +638,11 @@ export function attachSmoke(el, styleId, { border = 6, radius = 14, speed = 1, a
     gl.uniform1f(U.uRise, v.rise); gl.uniform1f(U.uDensity, v.density * opts.amount); gl.uniform1f(U.uLight, v.light);
     gl.uniform1f(U.uOver, v.overlay ?? 0); gl.uniform1f(U.uGlow, glow === 'outline' ? 2 : glow ? 1 : 0); gl.uniform1f(U.uEmit, v.emit ?? 0); gl.uniform1f(U.uFlash, flash); cols.forEach((col, i) => gl.uniform3fv(U[`uC${i}`], col));
     colsB.forEach((col, i) => gl.uniform3fv(U[`uB${i}`], col)); gl.uniform1f(U.uBlend, BLEND[v.blend] ?? 0);
+    if (shape) { // to effect px, centred on the canvas, closed; at most 32 edges
+      const pts = [...shape, shape[0]].slice(0, 33).flatMap(([x, y]) => [x / k + PAD - w / 2, y / k + PAD - h / 2]);
+      const buf = new Float32Array(66); buf.set(pts.slice(0, 66));
+      gl.uniform2fv(U.uPoly, buf); gl.uniform1f(U.uPolyN, pts.length / 2);
+    }
     gl.uniform1f(U.uArtOn, artImg ? 1 : 0); gl.uniform2f(U.uArtFade, ...artFade);
     if (artImg) { // cover-crop, matching CSS background-size: cover at posY
       const cw = w - PAD * 2, ch = h - PAD * 2, iw = artImg.naturalWidth || artImg.width, ih = artImg.naturalHeight || artImg.height;

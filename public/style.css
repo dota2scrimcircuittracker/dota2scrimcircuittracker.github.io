@@ -5888,3 +5888,11 @@ dialog.sk-layer-dlg { width: min(1180px, calc(100vw - 32px)); }
 .sk-file label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .sk-file input[type="text"] { width: 220px; }
 .sk-file input[type="number"] { width: 70px; }
+/* Frame effects (&framefx, parts/stream-vs.js frameEffect): the smoke canvas spills past this box. */
+.vs-frame-fx { position: absolute; pointer-events: none; }
+/* Their glow follows the VS's colour; the frame effect takes the frame's own. */
+.fr-blue { --fr-fx: #4fc8ff; } .fr-aegis { --fr-fx: #cfe6ff; } .fr-arcana { --fr-fx: #a45cff; } .fr-glass { --fr-fx: #8fd3ff; }
+.sk-frame-fx { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 10px 14px; border: 1px solid var(--line, rgba(255, 255, 255, .12)); border-radius: 10px; }
+.sk-frame-fx[hidden] { display: none; }
+.sk-frame-fx > .sk-title { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 4px; }
+.sk-frame-fx label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
