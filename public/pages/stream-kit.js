@@ -119,7 +119,7 @@ export async function renderStreamKit(src) {
 
   app.innerHTML = `${pageHead(src.kicker, "Stream kit")}
     <div class="stream-kit reveal" style="--i:2">
-      <p class="muted">Player cards for your stream: animated, on a transparent background, loaded live from the site. Pick teams or single players, choose their cards, then import the OBS scenes or copy card links.</p>
+      <p class="muted">Player cards for your stream: animated, on a transparent background, loaded live from the site. Pick teams or single players, choose the VS scene and their cards, then download the OBS scenes at the bottom.</p>
       <section class="panel sk-teams">
         <header><h3>Teams and players</h3><span><input type="search" class="sk-filter" placeholder="Filter teams or players" aria-label="Filter teams or players"> <button type="button" class="sk-link" data-none>Clear</button></span></header>
         <div class="sk-team-grid">${groups}</div>
@@ -168,6 +168,9 @@ export async function renderStreamKit(src) {
   const vsLink = (list, extra = "", a = scene) => { const two = vsTeams(list);
     return vsSceneUrl(absolute(src.root), two.flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, a,
       two.flatMap(({ team, players }) => players.filter((p) => p.standin).map((p) => [team.id, p.account, p.name]))) + extra; };
+  // The OBS scene collection's name and file name: the team's name for one team, else the division.
+  const collectionName = (list) => { const one = list.length === 1 ? list[0].team.name : null;
+    return { name: one ? `DSL - ${one}` : `DSL Stream Kit - ${src.division ?? "Scrims"}`, file: `dsl-stream-kit-${slug(one ?? src.division ?? "scrims")}.json` }; };
   const rowUrl = (k) => { const [team, account] = k.split(":"); return streamCardUrl(byId.get(team).rootUrl, account, picks.get(k)); };
   // A row's link and card name, after its pick changes.
   function refreshRow(k) {
@@ -178,6 +181,7 @@ export async function renderStreamKit(src) {
       if (!row.isConnected) return;
       const label = row.querySelector(".sk-choice"), view = row.querySelector(".sk-view");
       label.textContent = failed ? "Couldn't load cards" : designs.length ? choiceName(designs, picks.get(k)) : "Default card";
+      out.querySelectorAll(`[data-dl-card="${CSS.escape(k)}"]`).forEach((el) => { el.textContent = !failed && !designs.length ? "the site's default card (no saved cards)" : label.textContent; });
       view.textContent = designs.length > 1 ? `View ${designs.length} cards` : "View card";
       view.classList.toggle("many", designs.length > 1);
       view.title = failed ? "Their cards didn't load: open to try again" : designs.length ? "" : "No saved cards: the stream shows the site's default card";
@@ -202,32 +206,57 @@ export async function renderStreamKit(src) {
         <div class="sk-anim-grid">${VS_ANIMS.map(([a, label, about, sc]) => `<div class="sk-anim${sc === scene ? " on" : ""}" role="button" tabindex="0" aria-label="Watch ${esc(label)}" data-watch-anim="${a}" data-scene="${sc}">
           <span class="sk-anim-head"><strong>${esc(label)}</strong><span class="sk-anim-use">${sc === scene ? "Selected" : "▶ Watch"}</span></span>
           <span class="muted">${esc(about)}</span></div>`).join("")}</div>
-        ${real ? `<p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right. ${list.length > 2 ? "It uses the first two teams. " : ""}In OBS add a <b>Browser Source</b> with this link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. The OBS download above has it set up already.</p>
+        ${real ? `<p class="muted">${esc(vsTeams(list)[0].team.name)} on the left, ${esc(vsTeams(list)[1].team.name)} on the right.${list.length > 2 ? " It uses the first two teams." : ""}</p>
         <div class="sk-row"><span class="sk-name">VS scene</span><code>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>`
           : `<p class="muted">Pick two teams above to get the VS scene's OBS link with your choice.</p>`}
       </section>`;
     if (!list.length) { out.innerHTML = `<p class="muted sk-empty">Pick one or more teams or players.</p>${vsPanel}`; return; }
-    const cards = list.reduce((n, g) => n + g.players.length, 0);
+    const cards = list.reduce((n, g) => n + g.players.length, 0), plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+    const { name: collection, file } = collectionName(list);
+    const vsName = real ? vsTeams(list).map((g) => g.team.name).join(" vs ") : null;
+    const total = (real ? 1 : 0) + list.length + cards;
+    // Scene names as the file has them: a repeated name gets " (2)", like obsCollection does.
+    const seen = new Map(), sceneLabel = (n) => { const k = (seen.get(n) ?? 0) + 1; seen.set(n, k); return k > 1 ? `${n} (${k})` : n; };
     out.innerHTML = `
-      <section class="panel">
-        <h3>Import into OBS</h3>
-        <ol class="sk-steps">
-          <li><button type="button" data-download>Download OBS scenes</button> <span class="muted">${list.length} team${list.length > 1 ? "s" : ""}, ${cards} card${cards > 1 ? "s" : ""}</span></li>
-          <li>In OBS: <b>Scene Collection → Import</b>, pick the file, then switch to it under <b>Scene Collection</b>.</li>
-          <li>You get ${list.length > 1 ? `a VS scene (${esc(vsTeams(list)[0].team.name)} vs ${esc(vsTeams(list)[1].team.name)}), ` : ""}a scene per team (its picked cards in a row) and a scene per player (one big card). Copy any card source into your own scenes.</li>
-        </ol>
-        <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
-      </section>
       ${vsPanel}
       <section class="panel">
         <header class="sk-cards-head"><div><h3>Cards</h3><span class="sk-choices muted"></span></div><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label></header>
-        <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>. One at a time in OBS: add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}; right-click it and choose <b>Refresh</b> to pick up card changes.</p>
+        <p class="muted">Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>.</p>
         ${list.map(({ team, players }) => `<div class="sk-team"><h4>${esc(team.name)}</h4>${players.map((p) => {
           const k = `${team.id}:${p.account}`, url = rowUrl(k);
           return `<div class="sk-row" data-key="${esc(k)}"><span class="sk-name">${esc(p.name)}${p.standin ? ` <span class="sk-sub-tag">Stand-in</span>` : ""}</span>
             <button type="button" class="sk-view">View card</button><span class="sk-choice">…</span>
             <code>${esc(url)}</code><button type="button" class="sk-copy">Copy</button><a href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>`;
         }).join("")}</div>`).join("")}
+      </section>
+      <section class="panel sk-obs">
+        <h3>Put it in OBS</h3>
+        <div class="sk-dl">
+          <button type="button" class="sk-dl-btn" data-download>Download OBS scenes</button>
+          <span><b>${plural(total, "scene")}</b>: ${real ? "the VS scene, " : ""}${plural(list.length, "team scene")} and ${plural(cards, "player scene")}, with the cards you picked above.<br>
+          <span class="muted">File <code>${esc(file)}</code>, called <b>${esc(collection)}</b> in OBS.</span></span>
+        </div>
+        <h4>What's in the file</h4>
+        <ul class="sk-contents">
+          ${real ? `<li><b>Scene - ${esc(vsName)}</b> <span class="sk-tag">VS scene</span>
+            <span class="muted"><span data-dl-scene>${esc(sceneName(scene))}: ${esc(describe(scene))}.</span> ${esc(vsTeams(list)[0].team.name)} on the left.</span></li>`
+            : `<li class="muted">No VS scene: it needs two teams. Pick a second team to add one.</li>`}
+          ${list.map(({ team, players }) => `<li><b>Team - ${esc(team.name)}</b> <span class="sk-tag">${plural(players.length, "card")} in a row</span>
+            <ul>${players.map((p) => `<li><b>${esc(sceneLabel(`Player - ${p.name}`))}</b> <span class="muted">one big card:</span> <span class="sk-dl-card" data-dl-card="${esc(`${team.id}:${p.account}`)}">…</span></li>`).join("")}</ul></li>`).join("")}
+        </ul>
+        <p class="muted">That's everything the kit makes; there's no smaller version. Each scene is a Browser Source pointing at the site, so the cards are the real animated cards, loaded live. Want only some of it? Delete the scenes you don't need after importing, or copy single links from the VS scene and Cards sections instead.</p>
+        <h4>Import it</h4>
+        <ol class="sk-steps">
+          <li>Click <b>Download OBS scenes</b> above.</li>
+          <li>In OBS: <b>Scene Collection → Import</b>, pick the file, then switch to <b>${esc(collection)}</b> under <b>Scene Collection</b>.</li>
+          <li>Copy any source into your own scenes if you like. Changed teams, cards or the VS scene here? Download again and import again.</li>
+        </ol>
+        <h4>Or add one link at a time</h4>
+        <ul class="sk-steps">
+          <li><b>VS scene:</b> add a <b>Browser Source</b> with its link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it.</li>
+          <li><b>A card:</b> add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}. Right-click it and choose <b>Refresh</b> to pick up card changes.</li>
+        </ul>
+        <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>`;
     out.querySelectorAll(".sk-row").forEach((row) => refreshRow(row.dataset.key));
   };
@@ -286,6 +315,8 @@ export async function renderStreamKit(src) {
     }
     const name = out.querySelector("[data-scene-name]");
     if (name) name.textContent = presetOf(scene) ? `Same as ${sceneName(scene)}` : "";
+    const dl = out.querySelector("[data-dl-scene]");
+    if (dl) dl.textContent = `${sceneName(scene)}: ${describe(scene)}.`;
     const list = picked(), row = out.querySelector(".sk-vs .sk-row");
     if (!row) return;
     row.querySelector("code").textContent = vsLink(list);
@@ -439,12 +470,12 @@ export async function renderStreamKit(src) {
     const named = await Promise.all(list.map(async ({ team, players }) => ({ name: team.name, rootUrl: team.rootUrl,
       players: await Promise.all(players.map(async (p) => ({ name: p.name, account: p.account, slot: p.slot,
         card: p.slot == null ? null : choiceName((await playerDesigns(p.account)).designs, p.slot) }))) })));
-    const one = list.length === 1 ? list[0].team.name : null;
     const vs = list.length > 1 ? { name: vsTeams(list).map((g) => g.team.name).join(" vs "), url: vsLink(list) } : null;
-    const json = obsCollection(named, list[0].team.rootUrl, { name: one ? `DSL - ${one}` : `DSL Stream Kit - ${src.division ?? "Scrims"}`, vs });
+    const { name, file } = collectionName(list);
+    const json = obsCollection(named, list[0].team.rootUrl, { name, vs });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(json, null, 1)], { type: "application/json" }));
-    a.download = `dsl-stream-kit-${slug(one ?? src.division ?? "scrims")}.json`;
+    a.download = file;
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   });
