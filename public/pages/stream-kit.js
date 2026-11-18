@@ -18,6 +18,7 @@ import { publicCollection, cardRatings } from "../lib/cosmetics.js";
 import { cardDesignState, cardSlotName } from "../lib/cosmetics-engine.js";
 import { createPlayerCards, PAINT_FILTER, fitDesignCards } from "../parts/player-card.js";
 import { divisionTiers } from "../parts/tiers.js";
+import { VS_SOUNDS, SOUND_GROUPS, VS_MUSIC, FILE_AT, soundOf, musicOf, fileName, fileUrl, fileListUrl, playSample, playMusicSample } from "../parts/vs-sound.js";
 import { loading, errorBox } from "../parts/lanes.js";
 
 const absolute = (root) => `${location.origin}/${root.replace(/^#\//, "")}`;
@@ -67,6 +68,31 @@ export async function renderStreamKit(src) {
   let swap = q.get("sides") === "swap"; // the VS scene's second team on the left
   let scene = sceneFromQuery(q); // the VS scene: "<frame>.<entrance>.<vs>.<after>" (lib/stream-kit.js)
   let own = presetOf(scene) ? null : scene; // the last scene built from the layers (not a ready-made one)
+  // The VS scene's intro sound (parts/vs-sound.js), &sound=<id> on its links; null for none. Gong unless changed.
+  let sound = ["none", "off"].includes(q.get("sound")) ? null : soundOf(q.get("sound")) ?? "gong";
+  let music = musicOf(q.get("music")); // a track on a loop after the intro (&music=<id>), or null
+  // Replaying the intro: seconds after it ends before it plays again (&loop=<s>), 0 for once. Music carries on.
+  const REPLAYS = [[0, "Once, when the scene comes on"], [15, "Again 15 s after it ends"], [30, "Again 30 s after it ends"], [60, "Again 1 min after it ends"], [120, "Again 2 min after it ends"], [300, "Again 5 min after it ends"]];
+  let replay = REPLAYS.some(([s]) => s === Number(q.get("loop"))) ? Number(q.get("loop")) : 0;
+  const replayName = () => (replay ? REPLAYS.find(([s]) => s === replay)[1].replace("Again", "Replays") : "Plays once");
+  const soundName = () => (sound ? VS_SOUNDS.find(([id]) => id === sound)[1] : "No sound");
+  const musicName = () => (music ? VS_MUSIC.find(([id]) => id === music)[1] : "No music");
+  // A Dota sound (public/audio/dota/): &file=<name>&fileat=<when>&filesync=<seconds>. With neither a sound nor
+  // a file in the address, the 2024 versus screen (Radiant) is the default; its timing fills in from the list.
+  const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname); // the timing tools are on this computer only
+  const DEFAULT_FILE = "dota-versus-2024-radiant.mp3";
+  let defaultFile = !q.has("sound") && !q.has("file");
+  if (defaultFile) sound = null;
+  let file = defaultFile ? DEFAULT_FILE : fileName(q.get("file"));
+  let fileAt = defaultFile ? "vs" : FILE_AT.some(([k]) => k === q.get("fileat")) ? q.get("fileat") : "intro";
+  let fileSync = Math.max(0, Number(q.get("filesync")) || 0);
+  // The Dota sounds (public/audio/dota/list.json) and each one's timing: the list's, or on this computer the sync page's.
+  let fileList = null;
+  const fileLabel = () => fileList?.find((f) => f.file === file)?.name ?? file;
+  const timings = () => { try { return JSON.parse(localStorage.getItem("dsl-sound-sync")) ?? {}; } catch { return {}; } };
+  const timingOf = (f) => timings()[f.file] ?? f.moment;
+  const soundLabel = () => [sound || !(music || file) ? soundName() : null, file ? fileLabel() : null, music ? musicName() : null].filter(Boolean).join(" + ");
+  const soundSummary = () => `${sound ? `Sound: ${soundName()}` : file ? `Sound: ${fileLabel()}` : "No sound"}${sound && file ? `, plus ${fileLabel()}` : ""}${music ? `, then ${musicName()} on a loop` : ""}.`;
   // Stand-ins join the end of their team's list, marked standin; one already on that roster is skipped.
   const addSub = (team, account, name) => {
     const t = byId.get(team);
@@ -87,6 +113,11 @@ export async function renderStreamKit(src) {
     if (picks.size) url.searchParams.set("picks", [...picks].map(([k, s]) => (s == null ? k : `${k}:${s}`)).join(",")); else url.searchParams.delete("picks");
     if (mode !== "main") url.searchParams.set("cards", mode); else url.searchParams.delete("cards");
     if (swap) url.searchParams.set("sides", "swap"); else url.searchParams.delete("sides");
+    url.searchParams.set("sound", sound ?? "none"); // always written: no sound in the address means the default Dota sound
+    if (music) url.searchParams.set("music", music); else url.searchParams.delete("music");
+    if (replay) url.searchParams.set("loop", String(replay)); else url.searchParams.delete("loop");
+    for (const k of ["file", "fileat", "filesync"]) url.searchParams.delete(k);
+    if (file) { url.searchParams.set("file", file); url.searchParams.set("fileat", fileAt); if (fileAt === "vs" && fileSync) url.searchParams.set("filesync", String(fileSync)); }
     url.searchParams.delete("anim"); url.searchParams.delete("scene");
     const sq = sceneQuery(scene);
     if (sq) { const [key, value] = sq.slice(1).split("="); url.searchParams.set(key, value); }
@@ -168,7 +199,8 @@ export async function renderStreamKit(src) {
     const sc = parseScene(scene), preset = presetOf(scene);
     return `<div class="sk-current-text"><small>Selected scene · ${preset ? "ready-made" : "built from layers"}</small><strong>${esc(sceneName(scene))}</strong>
       <span class="sk-current-layers">${LAYER_UI.map(([k, label]) => `<span><i>${label}</i> ${esc(layerInfo(k, sc[k])[1])}</span>`).join("")}</span></div>
-      <button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch it</button>`;
+      <div class="sk-current-act">${picked().length ? `<button type="button" class="sk-sound-chip" data-tab-go="sound" title="Change the intro sound">${sound ? "🔊" : "🔇"} <span data-sound-name>${esc(soundLabel())}</span></button>` : ""}
+      <button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch it</button></div>`;
   };
   const describe = (s) => { const sc = parseScene(s); return `${layerInfo("frame", sc.frame)[1]} · ${layerInfo("enter", sc.enter)[1]} entrance · ${layerInfo("vs", sc.vs)[1]} VS · then ${layerInfo("after", sc.after)[1].toLowerCase()}`; };
   // The animation previews need two teams: short of two picked, the first teams in the list with a
@@ -182,7 +214,9 @@ export async function renderStreamKit(src) {
   };
   const vsLink = (list, extra = "", a = scene) => { const two = vsTeams(list);
     return vsSceneUrl(absolute(src.root), two.flatMap(({ team, players }) => players.map((p) => [`${team.id}:${p.account}`, p.slot])), mode, a,
-      two.flatMap(({ team, players }) => players.filter((p) => p.standin).map((p) => [team.id, p.account, p.name]))) + extra; };
+      two.flatMap(({ team, players }) => players.filter((p) => p.standin).map((p) => [team.id, p.account, p.name]))) + (sound ? `&sound=${sound}` : "") + (music ? `&music=${music}` : "")
+      + (file ? `&file=${encodeURIComponent(file)}&fileat=${fileAt}${fileAt === "vs" && fileSync ? `&filesync=${fileSync}` : ""}` : "")
+      + (replay && !extra.includes("loop=") ? `&loop=${replay}` : "") + extra; };
   // The OBS scene collection's name and file name: the team's name for one team, else the division.
   const collectionName = (list) => { const one = list.length === 1 ? list[0].team.name : null;
     return { name: one ? `DSL - ${one}` : `DSL Stream Kit - ${src.division ?? "Scrims"}`, file: `dsl-stream-kit-${slug(one ?? src.division ?? "scrims")}.json` }; };
@@ -217,6 +251,8 @@ export async function renderStreamKit(src) {
         <header class="sk-cards-head"><div class="sk-title"><h3>VS scene</h3>${info(`Build your scene from four layers, or start from a ready-made one and change any layer. ${real ? "Watch plays it with your teams."
           : `Until you pick two teams, Watch plays it with ${esc(shown[0].team.name)} and ${esc(shown[1].team.name)} as examples.`}`)}</div>${real ? `<button type="button" data-swap>Swap sides</button>` : ""}</header>
         <div class="sk-current" data-current>${current()}</div>
+        <div class="sk-replay"><label>Intro <select data-replay>${REPLAYS.map(([s, l]) => `<option value="${s}"${s === replay ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
+          ${info(`Plays the cards' intro again while the scene stays on, for a long break between games. Music from the Sound tab keeps going underneath, dipping while the intro replays. Switching scenes in OBS still starts it fresh.`)}</div>
         <h4 class="sk-presets-head">Change a layer</h4>
         ${builder()}
         <h4 class="sk-presets-head">Or pick a scene <span class="muted">yours or ${VS_ANIMS.length} ready-made</span></h4>
@@ -226,18 +262,42 @@ export async function renderStreamKit(src) {
         ${real ? `<div class="sk-row sk-vs-link"><span class="sk-name">VS link</span><span class="muted sk-vs-sides">${esc(vsTeams(list)[0].team.name)} left, ${esc(vsTeams(list)[1].team.name)} right${list.length > 2 ? " (first two teams)" : ""}</span><code hidden>${esc(vsLink(list))}</code><button type="button" class="sk-copy" data-vs>Copy</button><a href="${esc(vsLink(list, "&preview=1"))}" target="_blank" rel="noopener">Preview</a></div>`
           : `<p class="muted">Pick two teams above to get the VS scene's OBS link with your choice.</p>`}
       </section>`;
+    const soundPanel = !vsPanel ? "" : `<section class="panel sk-sounds" data-pane="sound"${tab !== "sound" ? " hidden" : ""}>
+        <header class="sk-cards-head"><div class="sk-title"><h3>Sound</h3>${info(`The VS scene plays this as its intro runs: each card lands on a hit and the VS on a big one, timed to whichever scene you pick. ▶ plays a sample here; <b>Watch with your scene</b> plays it with your teams. In OBS it's its own channel in the audio mixer, so you can turn it down there.`)}</div>
+          <button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch with your scene</button></header>
+        <h4 class="sk-presets-head">Dota sounds ${info(`Sounds from Dota 2's versus screen and intro screens, each timed so its big moment lands on the VS. ▶ plays it from just before that moment.${LOCAL ? ` Set a track's timing on the <a href="/_dev/sound-sync.html" target="_blank" rel="noopener">sound sync page</a> (this computer only).` : ""}`)}</h4>
+        <div class="sk-anim-grid sk-sound-grid" data-dota-grid><p class="muted">Loading…</p></div>
+        <details class="sk-other-sounds"${sound ? " open" : ""}><summary>Other sounds <span class="muted">${VS_SOUNDS.length} made ones</span></summary>
+        ${[[null, [[null, "No sound", "The VS scene stays silent."]]], ...SOUND_GROUPS.map((g) => [g, VS_SOUNDS.filter((x) => x[3] === g)])].filter(([g]) => g).map(([g, items]) => `${g ? `<h4 class="sk-presets-head">${esc(g)} <span class="muted">${items.length}</span></h4>` : ""}
+        <div class="sk-anim-grid sk-sound-grid">${items.map(([id, label, about]) => `<div class="sk-anim${id === sound ? " on" : ""}" title="${esc(about)}" data-sound-tile="${id ?? ""}">
+          <label class="sk-anim-check"><input type="checkbox" data-use-sound="${id ?? ""}"${id === sound ? " checked" : ""}><strong>${esc(label)}</strong></label>
+          ${id ? `<button type="button" class="sk-anim-use" data-play-sound="${id}" aria-label="Play ${esc(label)}" title="Play ${esc(label)}">▶</button>` : ""}<small class="muted">${esc(about)}</small></div>`).join("")}</div>`).join("")}
+        </details>
+        <h3 class="sk-music-head">Music after the intro ${info(`Starts just after the VS lands and loops, quietly, until you switch scenes. ▶ plays it here; press ■ to stop.`)}</h3>
+        <div class="sk-anim-grid sk-sound-grid">${[[null, "No music", "Silent once the intro's done."], ...VS_MUSIC].map(([id, label, about]) => `<div class="sk-anim${id === music ? " on" : ""}" title="${esc(about)}" data-music-tile="${id ?? ""}">
+          <label class="sk-anim-check"><input type="checkbox" data-use-music="${id ?? ""}"${id === music ? " checked" : ""}><strong>${esc(label)}</strong></label>
+          ${id ? `<button type="button" class="sk-anim-use" data-play-music="${id}" aria-label="Play ${esc(label)}" title="Play ${esc(label)}">▶</button>` : ""}<small class="muted">${esc(about)}</small></div>`).join("")}</div>
+        ${LOCAL ? `<h3 class="sk-music-head">Your own audio file <span class="sk-tag">This computer only</span> ${info(`Any file in <code>public/audio/dota/</code> by name, with its timing set by hand. Files there go on the site when committed.`)}</h3>
+        <div class="sk-file">
+          <label>File name <input type="text" data-file list="sk-file-list" placeholder="dota-startup-1.mp3" value="${esc(file ?? "")}" spellcheck="false"></label><datalist id="sk-file-list"></datalist>
+          <label>Plays <select data-file-at>${FILE_AT.map(([k, l]) => `<option value="${k}"${k === fileAt ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+          <label data-file-sync-row${fileAt === "vs" ? "" : " hidden"}>Big moment <input type="number" data-file-sync min="0" step="0.1" value="${fileSync}"> s into the file</label>
+          <span class="muted" data-file-status></span>
+          <button type="button" class="sk-anim-pick" data-watch-scene>▶ Watch with your scene</button>
+        </div>` : ""}
+      </section>`;
     if (!list.length) { out.innerHTML = `<p class="muted sk-empty">Pick one or more teams or players.</p>${vsPanel}`; return; }
     const cards = list.reduce((n, g) => n + g.players.length, 0), plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
-    const { name: collection, file } = collectionName(list);
+    const { name: collection, file: dlFile } = collectionName(list);
     const vsName = real ? vsTeams(list).map((g) => g.team.name).join(" vs ") : null;
     const total = (real ? 1 : 0) + list.length + cards;
     // Scene names as the file has them: a repeated name gets " (2)", like obsCollection does.
     const seen = new Map(), sceneLabel = (n) => { const k = (seen.get(n) ?? 0) + 1; seen.set(n, k); return k > 1 ? `${n} (${k})` : n; };
-    const TABS = [["cards", "Cards", plural(cards, "player")], ...(vsPanel ? [["vs", "VS scene", `<span data-tab-scene>${esc(sceneName(scene))}</span>`]] : []), ["obs", "Put it in OBS", plural(total, "scene")]];
+    const TABS = [["cards", "Cards", plural(cards, "player")], ...(vsPanel ? [["vs", "VS scene", `<span data-tab-scene>${esc(sceneName(scene))}</span>`], ["sound", "Sound", `<span data-tab-sound>${esc(soundLabel())}</span>`]] : []), ["obs", "Put it in OBS", plural(total, "scene")]];
     if (!TABS.some(([k]) => k === tab)) tab = "cards";
     out.innerHTML = `
       <nav class="sk-tabs" role="tablist">${TABS.map(([k, label, sub]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === tab}"><b>${label}</b><small>${sub}</small></button>`).join("")}
-        <button type="button" class="sk-dl-btn" data-download title="${esc(`${plural(total, "scene")}, file ${file}`)}">⬇ Download OBS scenes</button></nav>
+        <button type="button" class="sk-dl-btn" data-download title="${esc(`${plural(total, "scene")}, file ${dlFile}`)}">⬇ Download OBS scenes</button></nav>
       <section class="panel" data-pane="cards"${tab !== "cards" ? " hidden" : ""}>
         <header class="sk-cards-head"><div class="sk-title"><h3>Cards</h3><span class="sk-choices muted"></span></div><span class="sk-title"><label>Card for everyone <select data-mode>${CARD_MODES.map(([m, label]) => `<option value="${m}" ${m === mode ? "selected" : ""}>${label}</option>`).join("")}</select></label>
           ${info(`Highest rated uses the community's card ratings; a player with none, or one card, shows their main card. Change one player's card with <b>View cards</b>. <b>Copy</b> gives that card's OBS link.`, "right")}</span></header>
@@ -249,11 +309,12 @@ export async function renderStreamKit(src) {
         }).join("")}</div>`).join("")}
       </section>
       ${vsPanel}
+      ${soundPanel}
       <section class="panel sk-obs" data-pane="obs"${tab !== "obs" ? " hidden" : ""}>
         <div class="sk-dl">
           <div><b>${plural(total, "scene")}</b>: ${real ? "the VS scene, " : ""}${plural(list.length, "team scene")} and ${plural(cards, "player scene")}, with the cards you picked.
           ${info(`That's everything the kit makes; there's no smaller version. Each scene is a Browser Source pointing at the site, so the cards are the real animated cards, loaded live. Want only some of it? Delete the scenes you don't need after importing, or copy single links from the Cards and VS scene tabs.`)}<br>
-          <span class="muted">File <code>${esc(file)}</code>, called <b>${esc(collection)}</b> in OBS.</span></div>
+          <span class="muted">File <code>${esc(dlFile)}</code>, called <b>${esc(collection)}</b> in OBS.</span></div>
           <button type="button" class="sk-dl-btn" data-download>⬇ Download</button>
         </div>
         <ol class="sk-steps">
@@ -264,19 +325,20 @@ export async function renderStreamKit(src) {
         <details class="sk-more"><summary>What's in the file <span class="muted">${plural(total, "scene")}</span></summary>
         <ul class="sk-contents">
           ${real ? `<li><b>Scene - ${esc(vsName)}</b> <span class="sk-tag">VS scene</span>
-            <span class="muted"><span data-dl-scene>${esc(sceneName(scene))}: ${esc(describe(scene))}.</span> ${esc(vsTeams(list)[0].team.name)} on the left.</span></li>`
+            <span class="muted"><span data-dl-scene>${esc(sceneName(scene))}: ${esc(describe(scene))}.</span> <span data-dl-replay>${esc(replayName())}.</span> <span data-dl-sound>${esc(soundSummary())}</span> ${esc(vsTeams(list)[0].team.name)} on the left.</span></li>`
             : `<li class="muted">No VS scene: it needs two teams. Pick a second team to add one.</li>`}
           ${list.map(({ team, players }) => `<li><b>Team - ${esc(team.name)}</b> <span class="sk-tag">${plural(players.length, "card")} in a row</span>
             <ul>${players.map((p) => `<li><b>${esc(sceneLabel(`Player - ${p.name}`))}</b> <span class="muted">one big card:</span> <span class="sk-dl-card" data-dl-card="${esc(`${team.id}:${p.account}`)}">…</span></li>`).join("")}</ul></li>`).join("")}
         </ul></details>
         <details class="sk-more"><summary>Or add one link at a time</summary>
         <ul class="sk-steps">
-          <li><b>VS scene:</b> add a <b>Browser Source</b> with its link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it.</li>
+          <li><b>VS scene:</b> add a <b>Browser Source</b> with its link, width ${VS_W}, height ${VS_H}, and tick <b>Refresh browser when scene becomes active</b> so the intro plays each time you switch to it. For the intro sound, also tick <b>Control audio via OBS</b>.</li>
           <li><b>A card:</b> add a <b>Browser Source</b> with the link, width ${CARD_W}, height ${CARD_H}. Right-click it and choose <b>Refresh</b> to pick up card changes.</li>
         </ul></details>
         <p class="muted">Share this set: <button type="button" class="sk-link" data-share>copy this page's link</button></p>
       </section>`;
     out.querySelectorAll(".sk-row").forEach((row) => refreshRow(row.dataset.key));
+    listFiles();
   };
   // Watching a scene: a pop-up plays it with the picked teams (only one copy of the scene runs),
   // starting over a few seconds after its intro. For the ready-made scenes ‹ › step through the others;
@@ -389,6 +451,98 @@ export async function renderStreamKit(src) {
     if (dl) dl.textContent = `${sceneName(scene)}: ${describe(scene)}.`;
     const tb = out.querySelector("[data-tab-scene]");
     if (tb) tb.textContent = sceneName(scene);
+    refreshVsLink();
+  }
+  // Choosing the intro sound changes the VS link and the download.
+  function chooseSound(id, { keepFile = true } = {}) {
+    sound = id;
+    if (!keepFile) file = null;
+    save();
+    out.querySelectorAll("[data-dota-tile]").forEach((t) => {
+      const on = !sound && t.dataset.dotaTile === file;
+      t.classList.toggle("on", on);
+      t.querySelector("[data-use-dota]").checked = on;
+    });
+    out.querySelectorAll("[data-sound-tile]").forEach((t) => {
+      const on = (t.dataset.soundTile || null) === sound && !!(t.dataset.soundTile || !file); // No sound: not with a Dota track
+      t.classList.toggle("on", on);
+      t.querySelector("[data-use-sound]").checked = on;
+    });
+    soundLabels();
+  }
+  function chooseMusic(id) {
+    music = id; save();
+    out.querySelectorAll("[data-music-tile]").forEach((t) => {
+      const on = (t.dataset.musicTile || null) === music;
+      t.classList.toggle("on", on);
+      t.querySelector("[data-use-music]").checked = on;
+    });
+    soundLabels();
+  }
+  // public/audio/dota/list.json: [{ file, name, secs, moment }], offered as choices for the
+  // file name; picking one fills in its suggested big moment.
+  async function listFiles() {
+    fileList ??= await fetch(fileListUrl(), { cache: "no-cache" }).then((r) => (r.ok ? r.json() : []), () => []);
+    const dl = out.querySelector("#sk-file-list");
+    if (dl) dl.innerHTML = fileList.map((f) => `<option value="${esc(f.file)}">${esc(`${f.name} · ${Math.round(f.secs)} s`)}</option>`).join("");
+    // The default sound's timing, once the list is in.
+    if (defaultFile) { defaultFile = false; const f = fileList.find((x) => x.file === file); if (f) { fileSync = timingOf(f); save(); refreshVsLink(); } }
+    const grid = out.querySelector("[data-dota-grid]");
+    if (!grid) return;
+    const t = timings(), none = !sound && !file;
+    grid.innerHTML = `<div class="sk-anim${none ? " on" : ""}" title="The VS scene stays silent." data-sound-tile="">
+        <label class="sk-anim-check"><input type="checkbox" data-use-sound=""${none ? " checked" : ""}><strong>No sound</strong></label><small class="muted">The VS scene stays silent.</small></div>`
+      + (fileList.length ? fileList.map((f) => { const on = !sound && f.file === file, at = timingOf(f);
+        return `<div class="sk-anim${on ? " on" : ""}" data-dota-tile="${esc(f.file)}">
+        <label class="sk-anim-check"><input type="checkbox" data-use-dota="${esc(f.file)}"${on ? " checked" : ""}><strong>${esc(f.name)}</strong></label>
+        <button type="button" class="sk-anim-use" data-play-dota="${esc(f.file)}" aria-label="Play ${esc(f.name)}" title="Play ${esc(f.name)}">▶</button>
+        <small class="muted">${LOCAL ? `${f.file in t ? "Timed here ✓" : "List timing"}: ` : `${Math.round(f.secs)} s, `}big moment ${at.toFixed(2)} s in.${LOCAL ? ` <a href="/_dev/sound-sync.html?file=${encodeURIComponent(f.file)}&fileat=vs&filesync=${at}" target="_blank" rel="noopener">Adjust</a>` : ""}</small></div>`; }).join("")
+        : `<p class="muted">The Dota sounds didn't load. Refresh to try again.</p>`);
+    soundLabels();
+  }
+  // Picking a Dota track: it becomes the intro sound, its big moment on the VS (in place of a made sound).
+  function chooseDota(name) {
+    const f = fileList?.find((x) => x.file === name); if (!f) return;
+    file = f.file; fileAt = "vs"; fileSync = timingOf(f);
+    const box = out.querySelector("[data-file]"); if (box) box.value = file;
+    const at = out.querySelector("[data-file-at]"); if (at) at.value = "vs";
+    const sy = out.querySelector("[data-file-sync]"); if (sy) sy.value = fileSync;
+    const row = out.querySelector("[data-file-sync-row]"); if (row) row.hidden = false;
+    chooseSound(null);
+  }
+  // Says whether the file is in public/audio/dota/.
+  async function checkFile(name) {
+    const el = out.querySelector("[data-file-status]"); if (!el) return;
+    if (!name) { el.textContent = ""; return; }
+    if (!fileName(name)) { el.textContent = "Use a file name ending in .mp3, .ogg, .wav or .m4a."; return; }
+    const ok = await fetch(fileUrl(name), { method: "HEAD", cache: "no-store" }).then((r) => r.ok, () => false);
+    el.textContent = ok ? "Found ✓" : "Not in public/audio/dota/.";
+  }
+  // The sound's name on the tab, the banner chip and the download summary, and the VS link.
+  function soundLabels() {
+    out.querySelectorAll("[data-tab-sound], [data-sound-name]").forEach((el) => { el.textContent = soundLabel(); });
+    const chip = out.querySelector(".sk-sound-chip");
+    if (chip) chip.firstChild.textContent = sound || music || file ? "🔊 " : "🔇 ";
+    const dls = out.querySelector("[data-dl-sound]");
+    if (dls) dls.textContent = soundSummary();
+    refreshVsLink();
+  }
+  // ▶ on a sound: plays its sample here (about 4 s); another ▶, or ■, stops it.
+  let sample = null;
+  function playSound(btn) {
+    const was = sample;
+    if (sample) { sample.run.stop(); clearTimeout(sample.timer); sample.btn.textContent = "▶"; sample = null; }
+    if (was?.btn === btn) return;
+    const track = btn.dataset.playMusic, dota = fileList?.find((f) => f.file === btn.dataset.playDota);
+    let run;
+    if (dota) { const a = new Audio(fileUrl(dota.file)); a.currentTime = Math.max(0, timingOf(dota) - 3); a.play().catch(() => {}); run = { stop: () => a.pause() }; }
+    else run = track ? playMusicSample(track) : playSample(btn.dataset.playSound);
+    if (!run) return;
+    btn.textContent = "■";
+    // An intro sample is about 4 s; a track plays for 30 s unless stopped.
+    sample = { run, btn, timer: setTimeout(() => { run.stop(); btn.textContent = "▶"; sample = null; }, track ? 30000 : dota ? 10000 : 5000) };
+  }
+  function refreshVsLink() {
     const list = picked(), row = out.querySelector(".sk-vs .sk-row");
     if (!row) return;
     row.querySelector("code").textContent = vsLink(list);
@@ -511,6 +665,28 @@ export async function renderStreamKit(src) {
   }, true);
 
   out.addEventListener("change", async (e) => {
+    if (e.target.matches("[data-replay]")) {
+      replay = Number(e.target.value) || 0; save(); refreshVsLink();
+      const dr = out.querySelector("[data-dl-replay]"); if (dr) dr.textContent = `${replayName()}.`;
+      return;
+    }
+    if (e.target.matches("[data-file], [data-file-at], [data-file-sync]")) {
+      const box = out.querySelector("[data-file]");
+      const picked = e.target.matches("[data-file]") ? fileList?.find((f) => f.file === box.value.trim()) : null;
+      if (picked) out.querySelector("[data-file-sync]").value = picked.moment;
+      file = fileName(box.value.trim());
+      fileAt = out.querySelector("[data-file-at]").value;
+      fileSync = Math.max(0, Number(out.querySelector("[data-file-sync]").value) || 0);
+      out.querySelector("[data-file-sync-row]").hidden = fileAt !== "vs";
+      save(); soundLabels(); checkFile(box.value.trim());
+      return;
+    }
+    const um = e.target.closest("[data-use-music]");
+    if (um) { if (um.checked) chooseMusic(um.dataset.useMusic || null); else um.checked = true; return; }
+    const us = e.target.closest("[data-use-sound]");
+    if (us) { if (us.checked) chooseSound(us.dataset.useSound || null, { keepFile: false }); else us.checked = true; return; }
+    const ud = e.target.closest("[data-use-dota]");
+    if (ud) { if (ud.checked) chooseDota(ud.dataset.useDota); else ud.checked = true; return; }
     // A ready-made scene's box: ticking one selects it; one is always ticked unless the layers make your own.
     const use = e.target.closest("[data-use-scene]");
     if (use) { if (use.checked) chooseScene(use.dataset.useScene); else use.checked = true; return; }
@@ -529,11 +705,14 @@ export async function renderStreamKit(src) {
     app.querySelectorAll(".sk-info[open]").forEach((d) => { if (!d.contains(e.target)) d.open = false; });
   });
   out.addEventListener("click", async (e) => {
-    const tb = e.target.closest("[data-tab]");
+    const go = e.target.closest("[data-tab-go]");
+    const tb = go ? out.querySelector(`[data-tab="${go.dataset.tabGo}"]`) : e.target.closest("[data-tab]");
     if (tb) {
+      if (sample && tb.dataset.tab !== "sound") playSound(sample.btn);
       tab = tb.dataset.tab;
       out.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b === tb)));
       out.querySelectorAll("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== tab; });
+      if (tab === "sound") { listFiles(); if (file) checkFile(file); }
       return;
     }
     const v = e.target.closest(".sk-view");
@@ -544,6 +723,8 @@ export async function renderStreamKit(src) {
     const tile = e.target.closest("[data-watch-anim]");
     if (tile) return watchAnim(tile.dataset.watchAnim);
     if (e.target.closest("[data-watch-scene]")) return watchOwn();
+    const ps = e.target.closest("[data-play-sound], [data-play-music], [data-play-dota]");
+    if (ps) return playSound(ps);
     const lp = e.target.closest("[data-layer-pick]");
     if (lp) return pickLayer(lp.dataset.layerPick);
     if (e.target.closest("[data-watch-own]") && own) return watchScenes([[null, "Your own scene", describe(own), own]], 0);
@@ -556,11 +737,11 @@ export async function renderStreamKit(src) {
       players: await Promise.all(players.map(async (p) => ({ name: p.name, account: p.account, slot: p.slot,
         card: p.slot == null ? null : choiceName((await playerDesigns(p.account)).designs, p.slot) }))) })));
     const vs = list.length > 1 ? { name: vsTeams(list).map((g) => g.team.name).join(" vs "), url: vsLink(list) } : null;
-    const { name, file } = collectionName(list);
+    const { name, file: dlFile } = collectionName(list);
     const json = obsCollection(named, list[0].team.rootUrl, { name, vs });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(json, null, 1)], { type: "application/json" }));
-    a.download = file;
+    a.download = dlFile;
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   });

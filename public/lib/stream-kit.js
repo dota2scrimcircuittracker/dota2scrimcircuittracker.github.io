@@ -178,8 +178,9 @@ export function obsCollection(teams, rootUrl, { name = "DSL Stream Kit", uuid = 
   if (vs) {
     const source = {
       name: unique(`VS - ${vs.name}`), uuid: uuid(), id: "browser_source", versioned_id: "browser_source", enabled: true, muted: false, volume: 1,
-      settings: { url: vs.url, width: VS_W, height: VS_H, fps: 60, fps_custom: true, reroute_audio: false, shutdown: true, restart_when_active: true, css: "" },
-      flags: 0, mixers: 0, sync: 0, monitoring_type: 0, private_settings: {}, hotkeys: {},
+      // reroute_audio: its intro sound (if the link has &sound=1) goes through OBS, on every track.
+      settings: { url: vs.url, width: VS_W, height: VS_H, fps: 60, fps_custom: true, reroute_audio: true, shutdown: true, restart_when_active: true, css: "" },
+      flags: 0, mixers: 255, sync: 0, monitoring_type: 0, private_settings: {}, hotkeys: {},
     };
     sources.push(source);
     teamScenes.push(scene(unique(`Scene - ${vs.name}`), [item(source, 1, { x: 0, y: 0, scale: 1 })], uuid));

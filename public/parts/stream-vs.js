@@ -9,9 +9,14 @@
 //   after     what keeps going once the intro is over
 // OBS replays the intro each time the scene comes on (the kit's import sets "Refresh browser when
 // scene becomes active"). &preview=1 puts a dark backdrop behind it, for checking it in a browser.
+// &sound=<id> plays that intro sound (parts/vs-sound.js VS_SOUNDS) in time with it; &sound=1 is Gong.
+// &music=<id> plays a track (VS_MUSIC) on a loop from just after the VS lands. &file=<name> plays your
+// Dota sound from public/audio/dota/ (&fileat=intro|vs|after, &filesync=<seconds>).
+// &loop=<seconds> plays the intro again that long after it ends, over and over; the music carries on.
 import { esc } from "../core.js";
 import { createPlayerCards, PAINT_FILTER, fitDesignCards, flipPlayerCard, shrinkToFit } from "./player-card.js";
 import { pickSlot, parseScene, sceneFromQuery } from "../lib/stream-kit.js";
+import { vsSound, soundOf, musicOf, fileName, loadFile, vsHitAt } from "./vs-sound.js";
 
 const W = 1920, H = 1080;
 const MID = { x: 960, y: 560 }; // the VS, in stage pixels
@@ -21,6 +26,16 @@ const tf = (y = 0, r = 0, sx = 1, sy = sx, x = 0) => `translateX(${x}px) transla
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const rand = (a, b) => a + Math.random() * (b - a);
+// When, as a fraction of its duration, an animation eased by cubic-bezier(x1, y1, x2, y2) reaches progress p.
+// A keyframe at offset p shows then, not at p × duration: with an easing that starts fast, a card's
+// landing keyframe at 0.7 can show at a third of the way through. Card landings (and their sound) use this.
+function reach([x1, y1, x2, y2], p) {
+  const b = (a1, a2, k) => 3 * a1 * k * (1 - k) ** 2 + 3 * a2 * k * k * (1 - k) + k ** 3;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 30; i++) { const k = (lo + hi) / 2; if (b(y1, y2, k) < p) lo = k; else hi = k; }
+  return b(x1, x2, (lo + hi) / 2);
+}
+const EASE_OUT = [0, 0, 0.58, 1], EASE_IN_OUT = [0.42, 0, 0.58, 1];
 
 // sides: [{ team: { id, name }, players: [{ name, account }] }], the first two shown.
 // picks: "<team>:<account>" → slot (null or missing: the main card, or the filter's card for `mode`).
@@ -67,9 +82,12 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
     </div>`).join("")}
     <div class="vs-mid"><span class="vs-word">VS</span></div>
   </div>`;
-  // &loop=<seconds>: start over that long after the intro ends (the kit's animation gallery).
+  // &loop=<seconds>: start over that long after the intro ends (the kit's replay setting and its gallery).
   const loop = Number(q.get("loop")) || 0;
-  const run = async () => {
+  const soundId = soundOf(q.get("sound")), musicId = musicOf(q.get("music")), file = fileName(q.get("file"));
+  const fileAt = q.get("fileat") ?? "intro", fileSync = Math.max(0, Number(q.get("filesync")) || 0);
+  const fileBuf = file ? loadFile(file) : null; // starts loading now, alongside the cards
+  const run = async (again = false) => {
     clearTimers();
     root.innerHTML = markup;
     const stage = root.querySelector(".vs-stage");
@@ -84,9 +102,22 @@ export async function mountVsScene(sides, { picks, mode, playerDesigns, getRende
     if (!stage.getBoundingClientRect().width) return later(run, 300); // not laid out yet (a hidden frame): try again
     stage.querySelectorAll(".vs-team").forEach((h) => shrinkToFit(h, { measure: h.firstElementChild, floor: 0.45 }));
     const ctx = context(stage);
+    const buf = fileBuf && await fileBuf;
+    if (!stage.isConnected) return;
+    ctx.sfx = soundId || musicId || buf ? vsSound(soundId, { keep: again }) : null;
+    // A browser tab won't play sound before a click: offer one that replays it with sound (OBS needs none).
+    if (ctx.sfx?.blocked && q.get("preview") === "1") {
+      const b = Object.assign(document.createElement("button"), { type: "button", className: "vs-sound-ask", textContent: "🔊 Click for sound" });
+      b.addEventListener("click", () => run(), { once: true });
+      root.append(b);
+    }
     const end = playIntro(ctx, scene);
+    if (musicId && !ctx.sfx?.kept) ctx.sfx?.music(musicId, end);
+    if (buf && !(fileAt === "after" && ctx.sfx?.kept)) ctx.sfx?.file(buf, fileAt, fileSync);
+    // Inside a page (the dev sound-sync tool): say when the cards land and the VS hits, in ms from now.
+    if (parent !== window) parent.postMessage({ type: "vs-timeline", ...ctx.marks, end }, location.origin);
     later(() => { ctx.word.classList.add("idle"); AFTER[scene.after]?.(ctx); }, end);
-    if (loop > 0) later(run, end + loop * 1000);
+    if (loop > 0) later(() => run(true), end + loop * 1000);
   };
   run();
 }
@@ -270,7 +301,7 @@ const hopOf = (el) => el.querySelector(".vs-hop");
 // Jump in: cards spin up from below, land, squash and settle.
 function jumpIn(ctx, t) {
   sweepNames(ctx, ctx.nl + 150);
-  const T0 = t + 500, STEP = 170, DUR = 950;
+  const T0 = t + 500, STEP = 170, DUR = 950, LAND = DUR * reach([0.3, 0.7, 0.4, 1], 0.7);
   ctx.order.forEach((el, n) => {
     const d = ctx.dirOf(el), delay = T0 + n * STEP;
     el.animate([
@@ -280,8 +311,8 @@ function jumpIn(ctx, t) {
       { transform: tf(-26, -2 * d, 0.97, 1.04), offset: 0.84 },
       { transform: tf(0, 0, 1), opacity: 1 },
     ], { duration: DUR, delay, easing: "cubic-bezier(.3,.7,.4,1)", fill: "backwards" });
-    later(() => ring(el), delay + DUR * 0.7);
-    ctx.landed(el, delay + DUR * 0.7);
+    later(() => ring(el), delay + LAND);
+    ctx.landed(el, delay + LAND);
   });
   return T0 + (ctx.order.length - 1) * STEP + DUR + 120;
 }
@@ -319,7 +350,7 @@ function dealIn(ctx, t) {
       if (c && !isTwin(c)) flipPlayerCard(c, false);
       ctx.act(el).animate([{ transform: tf() }, { transform: tf(-22, 0, 1.08) }, { transform: tf() }], { duration: 600, easing: "cubic-bezier(.3,.7,.4,1)" });
     }, reveal + j * RIPPLE);
-    ctx.landed(el, reveal + j * RIPPLE + 200);
+    ctx.landed(el, reveal + j * RIPPLE + 120);
   });
   return reveal + ctx.byX.length * RIPPLE + 350;
 }
@@ -358,7 +389,7 @@ function warpIn(ctx, t) {
       { transform: `perspective(1200px) translate(0px, 0px) scale(1.06) rotateY(${-14 * d}deg)`, filter: "blur(0px)", offset: 0.75 },
       { transform: "perspective(1200px) translate(0px, 0px) scale(1) rotateY(0deg)", filter: "blur(0px)", opacity: 1 },
     ], { duration: DUR, delay: T0 + n * STEP, easing: "cubic-bezier(.2,.7,.3,1)", fill: "backwards" });
-    ctx.landed(el, T0 + n * STEP + DUR * 0.75);
+    ctx.landed(el, T0 + n * STEP + DUR * reach([0.2, 0.7, 0.3, 1], 0.75));
   });
   const namesAt = T0 + (ctx.order.length - 1) * STEP + 400;
   ctx.names.forEach((h, i) => h.animate([{ opacity: 0, letterSpacing: ".7em", filter: "blur(14px)" }, { opacity: 1, letterSpacing: ".02em", filter: "blur(0px)" }], { duration: 900, delay: namesAt + i * 100, easing: "cubic-bezier(.2,.7,.3,1)", fill: "backwards" }));
@@ -376,7 +407,7 @@ function slideIn(ctx, t) {
     ], { duration: 950, delay: at, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" });
     ctx.fr?.frames[i].animate([{ transform: `translateX(${1150 * s}px)`, opacity: 0 }, { transform: `translateX(${-30 * s}px)`, opacity: 1, offset: 0.75 }, { transform: "translateX(0px)", opacity: 1 }],
       { duration: 950, delay: at, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" });
-    (i ? ctx.b : ctx.a).forEach((el) => ctx.landed(el, at + 700));
+    (i ? ctx.b : ctx.a).forEach((el) => ctx.landed(el, at + 950 * reach([0.2, 0.8, 0.2, 1], 0.75)));
   });
   return t + 1500;
 }
@@ -415,7 +446,7 @@ function riseIn(ctx, t) {
       { transform: "translateY(-10px)", clipPath: "inset(0px 0px 0px 0px)", filter: "brightness(1.15)", offset: 0.8 },
       { transform: "translateY(0px)", clipPath: "inset(0px 0px 0px 0px)", filter: "brightness(1)" },
     ], { duration: DUR, delay: T0 + n * STEP, easing: "cubic-bezier(.2,.7,.2,1)", fill: "backwards" });
-    ctx.landed(el, T0 + n * STEP + DUR * 0.6);
+    ctx.landed(el, T0 + n * STEP + DUR * reach([0.2, 0.7, 0.2, 1], 0.8));
   });
   return T0 + (ctx.byX.length - 1) * STEP + DUR - 200;
 }
@@ -425,14 +456,14 @@ const tip = (deg) => `perspective(900px) rotateX(${deg}deg)`;
 function dominoIn(ctx, t) {
   ctx.names.forEach((h, i) => h.animate([{ transform: tip(90), opacity: 0, transformOrigin: "50% 0%" }, { transform: tip(-10), opacity: 1, offset: 0.7, transformOrigin: "50% 0%" }, { transform: tip(0), opacity: 1, transformOrigin: "50% 0%" }], { duration: 700, delay: ctx.nl + 150 + i * 150, easing: "ease-out", fill: "backwards" }));
   const outsideIn = [...ctx.order].sort((x, y) => Math.abs(ctx.pos.get(y).x - MID.x) - Math.abs(ctx.pos.get(x).x - MID.x));
-  const T0 = t + 500, STEP = 120, DUR = 750;
+  const T0 = t + 500, STEP = 120, DUR = 750, LAND = DUR * reach([0.4, 0, 0.3, 1], 0.65);
   outsideIn.forEach((el, n) => {
     el.animate([
       { transform: tip(-88), opacity: 0 }, { opacity: 1, offset: 0.1 },
       { transform: tip(14), offset: 0.65 }, { transform: tip(-5), offset: 0.84 }, { transform: tip(0), opacity: 1 },
     ], { duration: DUR, delay: T0 + n * STEP, easing: "cubic-bezier(.4,0,.3,1)", fill: "backwards" });
-    later(() => ring(el, { size: 1.4, ms: 500 }), T0 + n * STEP + DUR * 0.62);
-    ctx.landed(el, T0 + n * STEP + DUR * 0.62);
+    later(() => ring(el, { size: 1.4, ms: 500 }), T0 + n * STEP + LAND);
+    ctx.landed(el, T0 + n * STEP + LAND);
   });
   return T0 + (outsideIn.length - 1) * STEP + DUR;
 }
@@ -494,7 +525,7 @@ function fireIn(ctx, t) {
     fire.className = "vs-flame";
     el.append(fire);
     fire.animate([{ transform: "translateY(0px)", opacity: 0 }, { transform: "translateY(-25px)", opacity: 1, offset: 0.06 }, { transform: "translateY(-350px)", opacity: 1, offset: 0.7 }, { transform: "translateY(-370px)", opacity: 0 }], { duration: DUR, delay, easing: "ease-in-out", fill: "both" }).onfinish = () => fire.remove();
-    ctx.landed(el, delay + DUR * 0.7);
+    ctx.landed(el, delay + DUR * reach(EASE_IN_OUT, 0.7));
   });
   return T0 + (ctx.byX.length - 1) * STEP + DUR - 100;
 }
@@ -643,7 +674,7 @@ function beatIn(ctx, t) {
   const rows = Math.max(ctx.a.length, ctx.b.length);
   for (let i = 0; i < rows; i++) {
     const at = t + BEAT * (i + 2);
-    [ctx.a[i], ctx.b[i]].filter(Boolean).forEach((el) => { pop(el, at); ctx.landed(el, at + 180); });
+    [ctx.a[i], ctx.b[i]].filter(Boolean).forEach((el) => { pop(el, at); ctx.landed(el, at + 460 * reach(EASE_OUT, 0.4)); });
     later(() => ctx.stage.animate([{ transform: "scale(1)" }, { transform: "scale(1.012)" }, { transform: "scale(1)" }], { duration: 260, composite: "add" }), at);
   }
   return t + BEAT * (rows + 2);
@@ -655,7 +686,7 @@ function pickIn(ctx, t) {
   sweepNames(ctx, ctx.nl + 300);
   const order = [];
   for (let i = 0; i < Math.max(ctx.a.length, ctx.b.length); i++) order.push(...(i % 2 ? [ctx.b[i], ctx.a[i]] : [ctx.a[i], ctx.b[i]]).filter(Boolean));
-  const T0 = t + 700, STEP = 360, DROP = 520;
+  const T0 = t + 700, STEP = 360, DROP = 520, SLAM = DROP * reach([0.55, 0, 0.6, 1], 0.6);
   order.forEach((el, n) => {
     const at = T0 + n * STEP, s = ctx.fr?.sockets.get(el), d = ctx.dirOf(el);
     s?.lit.animate([{ opacity: 0 }, { opacity: 0.8 }, { opacity: 0.1 }, { opacity: 0.8 }, { opacity: 0 }], { duration: 340, delay: at - 340 });
@@ -666,12 +697,12 @@ function pickIn(ctx, t) {
       { transform: tf(-6, 0, 0.99, 1.01), offset: 0.8 },
       { transform: tf(0, 0, 1), opacity: 1 },
     ], { duration: DROP, delay: at, easing: "cubic-bezier(.55,0,.6,1)", fill: "backwards" });
-    ctx.landed(el, at + DROP * 0.6);
+    ctx.landed(el, at + SLAM);
     later(() => {
       ctx.act(el).animate([{ filter: "brightness(1.9)" }, { filter: "brightness(1)" }], { duration: 380, easing: "ease-out" });
       shake(ctx.stage, 4, 220);
       if (!ctx.fr) ring(el, { size: 1.3, ms: 450 });
-    }, at + DROP * 0.6);
+    }, at + SLAM);
   });
   return T0 + order.length * STEP + 350;
 }
@@ -747,7 +778,7 @@ function emergeIn(ctx, t) {
       { transform: tf(0), filter: "brightness(1)" },
     ], { duration: RISE, delay: at, easing: "cubic-bezier(.2,.7,.3,1)", fill: "backwards" }).finished.then(() => { el.style.clipPath = ""; }, () => {});
     sparks(ctx, el.dataset.side, p.x, r.y + r.h, 8, { delay: at, rise: [60, 180] });
-    ctx.landed(el, at + RISE * 0.5);
+    ctx.landed(el, at + RISE * reach([0.2, 0.7, 0.3, 1], 0.72));
   }));
   return T0 + (Math.max(ctx.a.length, ctx.b.length) - 1) * STEP + RISE + 250;
 }
@@ -1160,6 +1191,7 @@ const FRAMES = {
     ], { duration: 700, delay: 150 + i * 180, easing: "cubic-bezier(.55,0,.6,1)", fill: "backwards" }));
     later(() => { shake(ctx.stage, 10, 320); flash(ctx, 0.35, 500); }, 680);
     later(() => shake(ctx.stage, 10, 320), 860);
+    ctx.sfx?.thud(680); ctx.sfx?.thud(860);
     return 1000;
   },
   // Molten: the frames rise from below red hot and cool to black stone.
@@ -1195,6 +1227,7 @@ const FRAMES = {
     ], { duration: 760, delay: 150 + i * 160, easing: "cubic-bezier(.3,.8,.3,1)", fill: "backwards" }));
     later(() => shake(ctx.stage, 8, 300), 760);
     later(() => shake(ctx.stage, 8, 300), 920);
+    ctx.sfx?.thud(760); ctx.sfx?.thud(920);
     return 1000;
   },
 };
@@ -1214,10 +1247,13 @@ function playIntro(ctx, scene) {
   const t = FRAMES[scene.frame](ctx);
   ctx.nl = Math.max(0, t - 500); // the team names may start a little before the cards
   let vsEnd = null, vsTime = null;
-  ctx.vsAt = (at) => { vsTime = at; vsEnd = VS[scene.vs](ctx, at); };
-  ctx.landed = (el, at) => { const s = ctx.fr?.sockets.get(el); if (s) light(s, at); };
+  ctx.vsAt = (at) => { vsTime = at; vsEnd = VS[scene.vs](ctx, at); ctx.sfx?.vs(scene.vs, at); ctx.marks.vs = vsHitAt(scene.vs, at); };
+  ctx.marks = { lands: [], vs: null, frame: t };
+  ctx.landed = (el, at) => { const s = ctx.fr?.sockets.get(el); if (s) light(s, at); ctx.sfx?.land(el.dataset.side, at); ctx.marks.lands.push(at); };
+  if (ctx.fr) ctx.sfx?.frame(t);
   const ret = ENTRANCES[scene.enter](ctx, t);
   if (vsEnd == null) ctx.vsAt(ret);
+  ctx.sfx?.done();
   if (ctx.fr) flare(ctx, vsTime + 330);
   return Math.max(vsEnd, vsTime === ret ? 0 : ret);
 }
