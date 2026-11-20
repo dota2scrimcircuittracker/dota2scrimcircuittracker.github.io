@@ -5,13 +5,15 @@ import { info } from "../lib/glossary.js";
 import { clock, itemIcon } from "../lib/items.js";
 import { laneCuts, laneBoard, LANE_GROUPS, playerLane, isJungler } from "../lib/lanes.js";
 import { hasCombat, bestStreakOf, streakName, pausesOf } from "../lib/combat.js";
-import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg, subtabsMoved, sideBar, weekStart } from "../core.js";
+import { gameMvp, esc, playerLink, fmt, heroLink, signedK, teamLink, dur, portrait, draftStrip, app, pageHead, shortDate, when, kg, subtabsMoved, sideBar, weekStart, DIVISIONS } from "../core.js";
 import { fbOf, hitText } from "../parts/combat.js";
 import { bestLaner, loading, errorBox, weekOfFn } from "../parts/lanes.js";
 import { upNextHtml } from "./standings.js";
 import { tagContext, gameTags, tagsHtml } from "../lib/gametags.js";
 import { plusSlot } from "../lib/hero-levels.js";
-import { announcedRole, postseasonRows, SEASON } from "../lib/divisions.js";
+import { announcedRole, postseasonRows, SEASON, isPostseason } from "../lib/divisions.js";
+import { postseason } from "../lib/playoffs.js";
+import { fitRatings } from "../lib/predict.js";
 
 function weekHighlights(games, src, league = games) {
   const all = games.flatMap((m) => m.players.map((p) => ({ p, m })));
@@ -138,6 +140,10 @@ export async function renderWeek(src, back = 0) {
     const tname = Object.fromEntries(ad2l.teams.map((t) => [t.id, t.name]));
     // All divisions: each series chip wears its division's menu colour, named in the sub line.
     const tteam = src.all ? new Map(ad2l.teams.map((t) => [t.id, t])) : null;
+    // Playoff series: each one's best-of (the grand final is Bo5), so a series still being played
+    // names no winner. All Divisions has no one bracket: a playoff series there needs 3 wins.
+    const roles = !src.all && ad2l.series.some(isPostseason) ? postseason(ad2l.teams, ad2l.series, fitRatings(ad2l.teams, ad2l.series), { split: !!DIVISIONS[src.key]?.views && !src.view }).roles : null;
+    const unfinished = (s, sa, sb) => !!s && isPostseason(s) && Math.max(sa ?? 0, sb ?? 0) < Math.ceil((announcedRole(src.key, s)?.bestOf ?? roles?.get(s.id)?.bestOf ?? 5) / 2);
     items = [...bySeries.entries()].map(([sid, gs]) => {
       const s = ad2l.series.find((x) => x.id === sid);
       const winsOf = (id) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === id).length;
@@ -153,7 +159,7 @@ export async function renderWeek(src, back = 0) {
       return {
         lg: home?.league ?? null,
         a: s ? tname[s.home] ?? gs[0].team_a : gs[0].team_a, b: s ? tname[s.away] ?? gs[0].team_b : gs[0].team_b, sa, sb,
-        win: sa == null || sb == null || sa === sb ? null : sa > sb ? "a" : "b",
+        win: sa == null || sb == null || sa === sb || unfinished(s, sa, sb) ? null : sa > sb ? "a" : "b",
         sub: `${home ? `${esc(home.division)} · ` : ""}${gs.length} game${gs.length === 1 ? "" : "s"}${live ? ' · <span class="sp-live">Live</span>' : ""}`,
         html: `<h2 class="series-head">${head}</h2>${gs.map((m, j) => gamePanel(m, src, `Game ${j + 1}`, cuts, tagCtx)).join("")}`,
       };
@@ -224,7 +230,7 @@ export async function renderWeek(src, back = 0) {
   }
   // From week 8 (the first postseason week) on: the playoffs so far.
   const showBracket = !!ad2l && !src.all && SEASON.regularEnd != null && weeks[back] >= postStart;
-  const prow = showBracket ? postseasonRows(src.key, ad2l) : [];
+  const prow = showBracket ? postseasonRows(src.key, ad2l, postseason(ad2l.teams, ad2l.series, fitRatings(ad2l.teams, ad2l.series), { split: !!DIVISIONS[src.key]?.views && !src.view }).roles) : [];
   app.innerHTML = `
     <div class="week-top">
       ${pageHead(src.kicker, "Content", `Week of ${shortDate(start)} – ${shortDate(end)} · ${inWeek.length} game${inWeek.length === 1 ? "" : "s"}${src.ad2l ? " · drafts in pick/ban order" : ""}`)}

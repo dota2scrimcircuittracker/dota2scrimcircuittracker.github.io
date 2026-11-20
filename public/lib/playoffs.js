@@ -406,7 +406,7 @@ export function playoffPicture(teams, series, ratings, { split = false, call, ch
   // Played postseason series settle their tiebreaker or bracket match, ahead of anyone's pick.
   const actual = postResults(series);
   // Without picks or results, `choose` stays unset so the model's own wording stays (1v1 mids).
-  const choose = own || actual.any ? (k, a, b, ...rest) => actual.winner(k, a, b) ?? own?.(k, a, b, ...rest) : undefined;
+  const choose = own || actual.any ? (k, a, b, ...rest) => actual.winner(k, a, b, rest[0]) ?? own?.(k, a, b, ...rest) : undefined;
   const divs = [...new Set(teams.map((t) => t.division ?? ""))].sort();
   const out = {
     series: projected,
@@ -470,10 +470,13 @@ function postResults(series) {
     (byPair.get(k) ?? byPair.set(k, []).get(k)).push(s);
   }
   const taken = new Map(), used = new Map();
-  const seriesFor = (key, a, b) => {
+  // A series only settles its match once a team has won it: Bo5 grand final at 2–1 is still
+  // being played. bestOf unknown: any lead counts (the old reading).
+  const won = (s, bestOf) => Math.max(s.home_score, s.away_score) >= Math.ceil((bestOf ?? 1) / 2);
+  const seriesFor = (key, a, b, bestOf) => {
     if (taken.has(key)) return taken.get(key);
     if (a == null || b == null || a === TBD || b === TBD || !key || key.startsWith("mid:") || key === "pick") return null;
-    const pk = pairKey(a, b), n = used.get(pk) ?? 0, s = byPair.get(pk)?.[n] ?? null;
+    const pk = pairKey(a, b), n = used.get(pk) ?? 0, s0 = byPair.get(pk)?.[n] ?? null, s = s0 && won(s0, bestOf) ? s0 : null;
     if (s) { used.set(pk, n + 1); taken.set(key, s); }
     return s;
   };
@@ -505,7 +508,7 @@ function postResults(series) {
   };
   return {
     any: byPair.size > 0 || series.some(isPostseason),
-    winner: (key, a, b) => { const s = seriesFor(key, a, b); return s ? winnerOf(s) : tbWinner(key, a, b); },
+    winner: (key, a, b, bestOf) => { const s = seriesFor(key, a, b, bestOf); return s ? winnerOf(s) : tbWinner(key, a, b); },
     mark,
     markAll: (b) => { if (b) for (const m of b.matches) mark(m); return b; },
     seedPick,

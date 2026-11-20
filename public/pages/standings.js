@@ -324,7 +324,7 @@ export async function renderStandings(src) {
   const brBox = app.querySelector("#st-bracket");
   if (brBox) {
     const panel = brBox.closest(".pp-panel");
-    const fill = () => import("../parts/playoffs.js").then(({ mountResultsBracket }) => mountResultsBracket(brBox, src, d, postseasonRows(src.key, d))).catch((e) => { brBox.innerHTML = errorBox(e); });
+    const fill = () => import("../parts/playoffs.js").then(({ mountResultsBracket }) => mountResultsBracket(brBox, src, d, postseasonRows(src.key, d, postseason(d.teams, d.series, fitRatings(d.teams, d.series), { split: !!DIVISIONS[src.key]?.views && !src.view }).roles))).catch((e) => { brBox.innerHTML = errorBox(e); });
     if (!panel.hidden) fill();
     else new MutationObserver((_, obs) => { if (!panel.hidden) { obs.disconnect(); fill(); } }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   }

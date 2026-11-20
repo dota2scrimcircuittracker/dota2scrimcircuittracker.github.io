@@ -97,13 +97,15 @@ export const groupStage = (series) => series.filter((s) => !isPostseason(s));
 // The postseason as played so far: each tiebreaker and playoff series, final or still to play.
 // No predictions. Series PlayOn hasn't posted count from their games (the announced best-of,
 // else Bo3), so a tiebreaker shows its running score and "Live" while games are coming in.
-export function postseasonRows(key, d) {
+// roles: lib/playoffs.js postseason(...).roles, for each series' round and best-of (the grand
+// final is Bo5); without it a posted series reads as a Bo3.
+export function postseasonRows(key, d, roles = null) {
   const name = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const rows = [];
   const covered = new Set();
   for (const s of withAnnounced(key, d.series).filter((x) => x.time && (typeof x.id === "string" || isPostseason(x)))) {
     if (!(name[s.home] || name[s.away])) continue;
-    const role = announcedRole(key, s), bestOf = role?.bestOf ?? 3;
+    const role = announcedRole(key, s) ?? roles?.get(s.id) ?? null, bestOf = role?.bestOf ?? 3;
     // A posted series PlayOn hasn't scored yet takes its score from the two teams' unticketed
     // games since the day before it (Warrior's Rats and Bunnies v 9 to 5 Guys, played late).
     const unscored = typeof s.id === "number" && !s.home_score && !s.away_score && s.home != null && s.away != null;
