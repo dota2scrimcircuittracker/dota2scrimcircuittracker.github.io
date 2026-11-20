@@ -264,9 +264,10 @@ const HISTORY_DAYS = 390;
 const PROJECT = ["hero_id", "kills", "deaths", "assists", "last_hits", "gold_per_min", "hero_healing", "lane_role", "average_rank"].map((f) => `&project=${f}`).join("");
 // Each account's list is kept on disk for 2 hours, so a run that dies partway (OpenDota errors)
 // and is run again picks up where it stopped instead of walking every account again.
-async function playerMatches(acct, date) {
+// fresh: skip the 2-hour cache (a team playing tonight: its newest game must show up next run).
+async function playerMatches(acct, date, fresh = false) {
   const file = path.join(CACHE, "opendota", `matches_${acct}.json`);
-  if (existsSync(file) && Date.now() - statSync(file).mtimeMs < 2 * 3600e3) {
+  if (!fresh && existsSync(file) && Date.now() - statSync(file).mtimeMs < 2 * 3600e3) {
     const kept = JSON.parse(await readFile(file, "utf8"));
     if (kept.date >= date) return kept.rows;
   }
@@ -278,10 +279,12 @@ async function playerMatches(acct, date) {
 const candidates = new Set();
 const pubRows = new Map(); // main account -> rows
 const historyRows = new Map(); // main account -> rows (smurfs merged), for the draft model
+// Teams with a series in the last 12 hours or the next 2: their match lists are fetched fresh.
+const playingNow = new Set(series.filter((s) => s.time && s.time > Date.now() / 1000 - 12 * 3600 && s.time < Date.now() / 1000 + 2 * 3600).flatMap((s) => [s.home, s.away]));
 for (const [acct, o] of ONLY ? [] : owner) {
   // OpenDota can 500 on a long history for a busy account: fall back to the season window (its
   // league games and pubs still count; the draft history is shorter this run), then to skipping it.
-  const rows = await playerMatches(acct, Math.max(days, PUB_DAYS, HISTORY_DAYS))
+  const rows = await playerMatches(acct, Math.max(days, PUB_DAYS, HISTORY_DAYS), playingNow.has(o.team))
     .catch((e) => (console.log(`  ${acct}: ${e.message}; retrying with the last ${Math.max(days, PUB_DAYS)} days`),
       playerMatches(acct, Math.max(days, PUB_DAYS))))
     .catch((e) => (console.log(`  ${acct}: ${e.message}; skipped this run`), []));
@@ -504,17 +507,20 @@ async function buildGame(id) {
   };
 }
 
-// PlayOn can sit at 0–0 for days after a series is played. When its games are found, score the
-// series from them; a score PlayOn does enter replaces this on the next sync.
+// PlayOn lags the games: it can sit at 0–0 for days, or at 2–1 after game 4 of a Bo5 was played.
+// When more of a series' games are found than PlayOn's score counts, score it from the games.
+// PlayOn's score stands when it counts as many games or more (a game nobody has public history
+// for can't be found).
 function scoreFromGames(list, gameList) {
   for (const s of list) {
     // No time check: a series played early (before PlayOn's date) is scored by its games too.
-    if (s.home_score || s.away_score) continue;
     const mine = gameList.filter((g) => g.series_id === s.id);
-    if (!mine.length) continue;
+    const was = (s.home_score ?? 0) + (s.away_score ?? 0);
+    if (mine.length <= was) continue;
     const won = (id) => mine.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === id).length;
+    const playon = was ? `${s.home_score}–${s.away_score} on PlayOn` : "no score on PlayOn";
     [s.home_score, s.away_score] = [won(s.home), won(s.away)];
-    console.log(`  series ${s.id}: no score on PlayOn, ${s.home_score}–${s.away_score} from ${mine.length} games`);
+    console.log(`  series ${s.id}: ${playon}, ${s.home_score}–${s.away_score} from ${mine.length} games`);
   }
 }
 
