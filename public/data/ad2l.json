@@ -2,7 +2,7 @@
  "season": "S48 Champion League - Amateur Dota 2 League",
  "playon_season_id": 675,
  "league_id": 20077,
- "updated": "2026-11-20T02:46:15.140Z",
+ "updated": "2026-11-20T03:17:21.503Z",
  "teams": [
   {
    "id": 15026,
@@ -112894,14 +112894,7 @@
    14,
    6,
    19,
-   0,
-   1792551168,
-   "Dawnbreaker",
-   0,
-   12,
-   11,
-   11,
-   1
+   0
   ],
   "362604635": [
    1793829066,
