@@ -6,7 +6,7 @@
 @font-face{font-family:'NP Marker';src:url('/fonts/autograph-permanentmarker.ttf') format('truetype');font-display:swap}
 @font-face{font-family:'NP Stencil';src:url('/fonts/big-shoulders-stencil-latin.woff2') format('woff2');font-weight:600 900;font-display:swap}
 
-.np{position:relative;display:inline-block;line-height:1.1;padding:0 .12em;white-space:nowrap;isolation:isolate;vertical-align:baseline;-webkit-text-fill-color:transparent;color:transparent}
+.np{position:relative;display:inline-block;line-height:1.1;padding:0 .12em;white-space:nowrap;isolation:isolate;vertical-align:baseline;text-transform:none;letter-spacing:normal;font-style:normal;-webkit-text-fill-color:transparent;color:transparent}
 .np::before,.np::after{pointer-events:none}
 .player-link:hover .np,.player-link:focus-visible .np{filter:brightness(1.25)}
 
