@@ -900,7 +900,7 @@ What is live before then (`parts/pack-cards.js`, on your own profile beside each
   `lib/arcana-cup.js` `arcanaCards`, the same podium that gets the Cup's prize packs) are the only
   arcana player cards: the entry's design as frozen in the Cup, for its owner, as an extra pack card on
   top of their four. Owners choose its bonus stat in an "Arcana pack cards" row on their profile; it
-  isn't voted. No settled bracket, no arcana cards. Arcana items on a profile design (Twin Card,
+  isn't voted. Everyone sees them on the owner's profile with an Arcana label and no vote buttons: a saved card with the same design gets the label instead of its rating, and a podium design no longer in their slots shows as an extra "Arcana card" at the front, outside the drag order (`parts/collection.js` `mountRatings`). No settled bracket, no arcana cards. Arcana items on a profile design (Twin Card,
   stacked finishes) don't make it an arcana card: it's an ordinary design and can be one of the four.
 - **Rarity comes from votes** — the community's ratings in Gallery (`#/gallery`) set each pack
   card's rarity (`lib/player-cards.js`); your own rating breaks ties. You rate your own pack cards

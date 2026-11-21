@@ -33,6 +33,7 @@ import {expansionBorderSwatchHtml,expansionFinishSwatchHtml,expansionFinishHtml,
 import {createEditorDrafts,positionAtPointer} from '../lib/card-editor-workspace.js';
 import {mountCardEditorUI} from './card-editor-ui.js';
 import {mountPackCards} from './pack-cards.js';
+import {arcanaPlaceText} from '../lib/pack-card-view.js';
 import {cupRewardHtml} from '../lib/cup-rewards.js';
 
 const pointerPoint=e=>({x:e.clientX,y:e.clientY});
@@ -1040,7 +1041,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
     fitDesignCards(section);
     wirePlayerCards(section.querySelector('.profile-collection-card'));
     // Community ratings under each card; the owner also gets a Winter pack cards line and dialog (parts/pack-cards.js).
-    if(showcase)Promise.all([mountRatings(section,account).catch(()=>{}),steamAccount().catch(()=>null)]).then(([,viewer])=>{
+    if(showcase)Promise.all([mountRatings(section,account,design=>renderer.card(player,null,{own:true,equipmentOverride:design})).catch(()=>{}),steamAccount().catch(()=>null)]).then(([,viewer])=>{
       const own=viewer!=null&&String(viewer)===String(account);
       return mountPackCards(section,{account,own,designs:preferences.cardDesigns,nameOf:slot=>cardSlotName(preferences,slot),cardHtml:design=>renderer.card(player,null,{own:true,equipmentOverride:design}),fit:fitDesignCards,fetchCards:playerCards,act:collectionAction});
     }).catch(()=>{});
@@ -1090,7 +1091,7 @@ function wireCardOrder(box) {
   box.after(hint);
   let drag=null,justDragged=false;
   const order=()=>{
-    const shown=[...box.querySelectorAll(':scope>figure')].map(figureSlot);
+    const shown=[...box.querySelectorAll(':scope>figure:not(.card-arcana-only)')].map(figureSlot);
     return [...shown,...cardOrderFallback(shown)];
   };
   const move=e=>{
@@ -1101,7 +1102,7 @@ function wireCardOrder(box) {
       if(far)start();
       return;
     }
-    const over=[...box.querySelectorAll(':scope>figure')].find(f=>{if(f===drag.fig)return false;const r=f.getBoundingClientRect();return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;});
+    const over=[...box.querySelectorAll(':scope>figure:not(.card-arcana-only)')].find(f=>{if(f===drag.fig)return false;const r=f.getBoundingClientRect();return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;});
     if(!over)return;
     const r=over.getBoundingClientRect();
     box.insertBefore(drag.fig,e.clientX<r.left+r.width/2?over:over.nextSibling);
@@ -1128,7 +1129,7 @@ function wireCardOrder(box) {
   box.addEventListener('dragstart',e=>e.preventDefault());
   box.addEventListener('contextmenu',e=>{if(drag)e.preventDefault();});
   box.addEventListener('pointerdown',e=>{
-    const fig=e.target.closest('.cards-reorderable>figure');
+    const fig=e.target.closest('.cards-reorderable>figure:not(.card-arcana-only)');
     if(drag||!fig||e.button!==0||e.target.closest('.card-rating, input, select, textarea'))return;
     const touch=e.pointerType!=='mouse';
     drag={fig,x:e.clientX,y:e.clientY,started:false,touch,before:order(),timer:touch?setTimeout(start,350):0};
@@ -1138,15 +1139,34 @@ function wireCardOrder(box) {
 // Slots not on the page (none today: every slot shows, saved or empty) keep their place at the end.
 const cardOrderFallback=shown=>Array.from({length:CARD_SLOTS},(_,i)=>i).filter(i=>!shown.includes(i));
 
-async function mountRatings(section,account) {
-  const [cards,viewer]=await Promise.all([cardRatings(account),steamAccount().catch(()=>null)]);
+// Ratings under a profile's saved cards. A player's Arcana Cup podium cards (the arcana player cards,
+// lib/arcana-cup.js arcanaCards) aren't voted: a saved card with the same design shows its Arcana
+// rarity instead, and one no longer in their saved slots shows as an extra card (cup design, frozen)
+// at the front, outside the drag order. cardHtml(design) -> a card's HTML.
+async function mountRatings(section,account,cardHtml) {
+  const [cards,viewer,pack]=await Promise.all([cardRatings(account),steamAccount().catch(()=>null),playerCards(account).catch(()=>null)]);
   const votes=viewer==null?{}:await myCardVotes().catch(()=>({}));
   if(!section.isConnected)return;
+  const arcana=new Map((pack?.arcana??[]).map(c=>[c.key,c])),shown=new Set();
   for(const r of cards) {
     const fig=r&&section.querySelector(`[data-design-slot="${r.slot}"]`)?.closest('figure');
-    if(fig)mountRating(fig,account,r,{viewer,votes});
+    if(!fig)continue;
+    const a=arcana.get(r.key);
+    if(a){shown.add(a.key);fig.classList.add('card-arcana');fig.insertAdjacentHTML('beforeend',arcanaRarityHtml(a));}
+    else mountRating(fig,account,r,{viewer,votes});
   }
+  const box=section.querySelector('.profile-card-designs');
+  const extra=[...arcana.values()].filter(a=>!shown.has(a.key)&&a.design);
+  if(!box||!extra.length)return;
+  for(const a of extra.reverse()) {
+    const fig=document.createElement('figure');fig.className='card-arcana card-arcana-only';
+    fig.innerHTML=`${cardHtml(a.design)}<figcaption>Arcana card</figcaption>${arcanaRarityHtml(a)}`;
+    const first=box.querySelector(':scope>figure');if(first)first.before(fig);else box.append(fig);
+    fitDesignCards(fig);
+  }
+  wirePlayerCards(box);
 }
+const arcanaRarityHtml=a=>`<div class="card-rating card-arcana-rarity"><p class="card-rating-pick"><b class="cup-arcana">Arcana</b></p><p class="card-arcana-from">${esc(arcanaPlaceText(a))}</p></div>`;
 
 // The Gallery: every saved card anyone in the league has changed, with its rating. Sorted by the
 // community's rating (legendary first; among equals, the clearer verdict, then more votes), by
