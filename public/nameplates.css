@@ -63,6 +63,24 @@
 @keyframes np-honey-flow{to{background-position:-240% 0}}
 @keyframes np-motes{to{background-position:5px -46px,21px -51px}}
 
+/* Sandstorm (Brown, after his Brown Wisp border): sand-grain script with wind streaks sliding through it,
+   a gust trail blowing off to the right and grit flying left to right. */
+.np-sand{font-family:'NP Dafoe',cursive;font-size:1.25em;line-height:.95;padding:0 .3em 0 .2em;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='40'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3  0 0 0 0 .17  0 0 0 0 .06  0 0 0 1.6 -.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0/90px 40px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='40'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .5' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 .93  0 0 0 0 .78  0 0 0 2.2 -1.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E") 0 0/160px 40px,
+    linear-gradient(100deg,#8a5a2b,#e8c48a 22%,#c8925a 42%,#f6e1b0 58%,#a8743c 78%,#e0b678);
+  background-size:90px 40px,160px 40px,300% 100%;-webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 1px 0 #2a1608) drop-shadow(0 0 6px #c8925a77);animation:np-sand-blow 7s linear infinite}
+.np-sand::before{content:attr(data-text);position:absolute;inset:0;padding:inherit;z-index:-1;-webkit-text-fill-color:#d9a868;
+  filter:blur(1.5px);opacity:0;animation:np-sand-gust 3.4s ease-out infinite}
+.np-sand::after{content:"";position:absolute;inset:-25% -15% -15% -10%;
+  background:radial-gradient(circle,#f3d39a 0 .9px,#0000 1.5px) 0 0/19px 11px,radial-gradient(circle,#c8925a 0 .7px,#0000 1.3px) 7px 5px/27px 15px,radial-gradient(ellipse 4px .6px,#e8c48aaa,#0000) 3px 2px/41px 13px;
+  -webkit-mask:radial-gradient(ellipse 50% 50% at 50% 50%,#000 35%,#0000);mask:radial-gradient(ellipse 50% 50% at 50% 50%,#000 35%,#0000);animation:np-sand-grit 1.6s linear infinite}
+@keyframes np-sand-blow{to{background-position:90px 0,320px 0,-300% 0}}
+@keyframes np-sand-gust{0%{opacity:0;transform:translateX(0) scaleX(1)}25%{opacity:.55}100%{opacity:0;transform:translateX(.6em) scaleX(1.15)}}
+@keyframes np-sand-grit{to{background-position:57px 3px,81px -5px,123px 2px}}
+
 /* Let Him Cook (slowz-): worn frost block letters, teal sparkles at the corners. */
 .np-cook{font-family:'NP Stencil',Impact,sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:0 .3em;
   background:radial-gradient(circle,#0c2236 0 .7px,#0000 1.2px) 0 0/9px 8px,linear-gradient(180deg,#ffffff 30%,#cdeeff 70%,#8fd6ff);

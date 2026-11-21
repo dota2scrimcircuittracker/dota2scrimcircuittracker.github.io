@@ -8,7 +8,7 @@ export const NAMEPLATES = {
   154390881: 'neon',  // 死ぬのがいいわ · Artistic 1st (TA card)
   94202887: 'gild',   // Math · Artistic 3rd
   127139604: 'hail',  // Scionara · Funny 1st
-  75379546: 'honey',  // Brown · Funny 2nd
+  75379546: 'sand',   // Brown · Funny 2nd (Sandstorm, his pick; Amber Glint was the first take)
   170288961: 'cook',  // slowz- · Funny 3rd
 };
 
