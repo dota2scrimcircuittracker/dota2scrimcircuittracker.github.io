@@ -16,6 +16,7 @@ import { info } from "./lib/glossary.js";
 import { ordinal, RANK_STATS, RANK_GROUPS } from "./lib/ranks.js";
 import { routeOf, sharePath } from "./lib/share.js";
 import { withNicknames, loadNicknames, displayName } from "./lib/nicknames.js";
+import { plateName } from "./lib/nameplates.js";
 import { DIVISIONS as DIVISION_LIST, fullName, SEASON, unpostedTime } from "./lib/divisions.js";
 import { teamSplits } from "./lib/combat.js";
 import { isBye } from "./lib/playoffs.js";
@@ -95,7 +96,7 @@ export function profileLinks(accountId, playonId = null, sep = " · ") {
 export const playerHref = (src, key) => `${src.root}/player/${encodeURIComponent(key)}`;
 export function playerLink(src, p, nested = false, label = null) {
   const href = playerHref(src, p.key ?? playerKey(p));
-  const text = label ?? esc(displayName(p));
+  const text = label ?? plateName(p.player_key ?? p.key ?? p.account_id ?? p.account, displayName(p));
   return nested
     ? `<span class="player-link" role="link" tabindex="0" data-href="${href}">${text}</span>`
     : `<a class="player-link" href="${href}">${text}</a>`;
