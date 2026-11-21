@@ -84,6 +84,32 @@ function league(root, key, name, d, view, { brief = false } = {}) {
   const most = [...picks].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h, n]) => `${h} (${n})`).join(", ");
   page(`${root}/heroes`, `Heroes · ${label}`, `${plural(picks.size, "hero")} played${most ? `. Most picked: ${most}` : ""}. Pick, ban and win rates.`, color, key);
 
+  // Player pages: everyone with a ticketed game here, plus rostered players who haven't played.
+  const seen = new Map();
+  for (const g of [...d.games].sort((a, b) => a.start_time - b.start_time)) for (const p of g.players) {
+    if (!/^\d+$/.test(p.player_key)) continue;
+    const s = seen.get(p.player_key) ?? { name: p.name, team: p.team_name, n: 0, w: 0, k: 0, dd: 0, a: 0, heroes: new Map() };
+    s.name = p.name; if (!p.standin) s.team = p.team_name; // newest game wins
+    s.n++; if (g.winner === p.team) s.w++;
+    s.k += p.kills; s.dd += p.deaths; s.a += p.assists;
+    s.heroes.set(p.hero, (s.heroes.get(p.hero) ?? 0) + 1);
+    seen.set(p.player_key, s);
+  }
+  for (const t of d.teams) for (const p of t.players) {
+    const id = String(p.account_id ?? "");
+    if (!/^\d+$/.test(id)) continue;
+    const s = seen.get(id);
+    if (s) { s.team = t.name; continue; } // roster team over the last game's
+    seen.set(id, { name: p.name, team: t.name, n: 0 });
+  }
+  for (const [id, s] of seen) {
+    const at = s.team ? ` · ${s.team}` : "";
+    const desc = s.n
+      ? `${s.w}–${s.n - s.w} in ${plural(s.n, "game")} · KDA ${((s.k + s.a) / Math.max(1, s.dd)).toFixed(2)} (${(s.k / s.n).toFixed(1)}/${(s.dd / s.n).toFixed(1)}/${(s.a / s.n).toFixed(1)}). Top heroes: ${[...s.heroes].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h, n]) => `${h} (${n})`).join(", ")}.`
+      : "No ticketed games yet. Profile, pubs and hero pool.";
+    page(`${root}/player/${id}`, `${s.name}${at} · ${label}`, desc, color, key);
+  }
+
   if (brief) return;
   const upcoming = d.series.filter((s) => !((s.home_score ?? 0) + (s.away_score ?? 0)) && s.time && s.time * 1000 > Date.now() - 6 * 3600e3).length;
   page(`${root}/predict`, `Predictions · ${label}`, `${upcoming ? `${plural(upcoming, "series")} to call. ` : ""}Pick the winners and see how the model's picks have done.`, color, key);

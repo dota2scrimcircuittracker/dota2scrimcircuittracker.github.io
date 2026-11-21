@@ -8,7 +8,10 @@ import { DIVISIONS, slugOf } from "./divisions.js";
 
 // / (and /ad2l/) is the league picker, the scrims are /scrims/ (Teams) and /scrims/<tab>/,
 // Champion is /champion/. /all/ (every division together) has only its list tabs: no Predict,
-// Upload, team or game pages. The scrims' old /week/, /teams/… are forwards (share-pages.js).
+// Upload, team or game pages. Player pages (/<league>/player/<account id>/) exist in every AD2L
+// league and view, /all/ too; scrim players live in Firestore, so they have none. A player who
+// joined after the last deploy has no page yet: 404.html (the app) opens it with the site preview.
+// The scrims' old /week/, /teams/… are forwards (share-pages.js).
 const TABS = "content|week|players|heroes|predict|upload";
 const DIV_TABS = `${TABS}|drafter`; // the Drafter is AD2L only: scrims have no draft
 // Division addresses (lib/divisions.js). A division played in sub-divisions (Heroic/Aegis) also
@@ -16,7 +19,7 @@ const DIV_TABS = `${TABS}|drafter`; // the Drafter is AD2L only: scrims have no 
 const LEAGUES = DIVISIONS.map(slugOf).join("|");
 const VIEWED = DIVISIONS.filter((d) => d.views).map(slugOf).join("|") || "(?!)";
 const VIEWS = [...new Set(DIVISIONS.flatMap((d) => d.views ?? []))].join("") || "a";
-const SHAREABLE = new RegExp(`^(?:scrims(?:/(?:${TABS}))?|ad2l|all(?:/(?:content|week|players|heroes))?|(?:${LEAGUES}|(?:${VIEWED})/[${VIEWS}])(?:/(?:${DIV_TABS}))?|(?:${LEAGUES})/(?:teams|game)/\\d+)?$`);
+const SHAREABLE = new RegExp(`^(?:scrims(?:/(?:${TABS}))?|ad2l|all(?:/(?:content|week|players|heroes))?|(?:${LEAGUES}|(?:${VIEWED})/[${VIEWS}])(?:/(?:${DIV_TABS}))?|(?:${LEAGUES})/(?:teams|game)/\\d+|(?:all|${LEAGUES}|(?:${VIEWED})/[${VIEWS}])/player/\\d+)?$`);
 
 // "#/heroic/b/week" -> "/heroic/b/week/"; null when the route has no preview page.
 export function sharePath(hash) {

@@ -10,6 +10,7 @@ test("shareable routes map to preview paths and back", () => {
     ["#/warrior/", "/warrior/"], ["#/warrior/week", "/warrior/week/"], ["#/challenger/players", "/challenger/players/"],
     ["#/voyager/", "/voyager/"], ["#/explorer/predict", "/explorer/predict/"], ["#/voyager/teams/15000", "/voyager/teams/15000/"],
     ["#/all/", "/all/"], ["#/all/players", "/all/players/"], ["#/all/week", "/all/week/"], ["#/all/heroes", "/all/heroes/"],
+    ["#/heroic/b/player/127139604", "/heroic/b/player/127139604/"], ["#/champion/player/88279069", "/champion/player/88279069/"], ["#/all/player/88279069", "/all/player/88279069/"],
   ]) {
     assert.equal(sharePath(hash), path, hash);
     if (path !== "/") assert.equal(sharePath(routeOf(path)), path, `round trip ${path}`);
@@ -27,6 +28,6 @@ test("shareable routes map to preview paths and back", () => {
 });
 
 test("routes without a preview page return null", () => {
-  for (const hash of ["#/week", "#/teams", "#/scrims/drafter", "#/scrims/teams/pub-stars", "#/scrims/match/abc", "#/heroic/a/game/123", "#/player/abc", "#/heroic/game/0123456789abcdef0123456789abcdef", "#/heroic/week/2", "#/champion/player/1", "#/ad2l/week", "#/ad2l/teams/1", "#/match/abc", "#/all/predict", "#/all/upload", "#/all/teams/15000", "#/all/game/8969465019"])
+  for (const hash of ["#/week", "#/teams", "#/scrims/drafter", "#/scrims/teams/pub-stars", "#/scrims/match/abc", "#/heroic/a/game/123", "#/player/abc", "#/heroic/game/0123456789abcdef0123456789abcdef", "#/heroic/week/2", "#/scrims/player/1", "#/champion/player/abc","#/ad2l/week", "#/ad2l/teams/1", "#/match/abc", "#/all/predict", "#/all/upload", "#/all/teams/15000", "#/all/game/8969465019"])
     assert.equal(sharePath(hash), null, hash);
 });
