@@ -52,6 +52,15 @@ export const ANNOUNCED = {
 export const CONFIRMED_PICKS = [
   [15009, 15020], // Conqueror: Cult of the One Mag God feat. Retirement Home v Cult of the One Mag God v4 (seed 4)
 ];
+// Postseason series that are over at the score PlayOn has, though their best-of says more games
+// could follow: a grand final played as a Bo3 where the bracket expects a Bo5. Series ids.
+// New season: empty it.
+export const CONFIRMED_FINAL = [
+  20854, // Explorer grand final: The Petting Zoo Rejects 2–0 Stanley's Soldiers, a Bo3 (PlayOn, played 2026-11-19)
+  20864, // Voyager grand final: Quasar Dreams 2–1 Farmers Farming Forever, a Bo3 (PlayOn, played 2026-11-19)
+  20884, // Warrior grand final: Savage Sabres 2–1 Daddy's okay actually…, a Bo3 (PlayOn, played 2026-11-19)
+  20894, // Conqueror grand final: WOT can you do 2–0 Leo + 4 Anchors, a Bo3 (PlayOn, played 2026-11-19)
+];
 // A league's series plus its announced ones that PlayOn hasn't posted yet (no PlayOn series
 // with the same teams within 4 days; a team still to be decided matches anyone). Every known
 // team, so a bracket series a few days later (Challenger's Castaway Baes v SUX, Oct 18) doesn't
@@ -116,7 +125,7 @@ export function postseasonRows(key, d, roles = null) {
     const wins = (x) => gs.filter((g) => (g.winner === "a" ? g.team_a_id : g.team_b_id) === x).length;
     const fromGames = typeof s.id === "string" || gs.length > 0;
     const [sa, sb] = fromGames ? [wins(home), wins(away)] : [s.home_score ?? 0, s.away_score ?? 0];
-    rows.push({ unposted: fromGames, t: s.time, label: role?.label ?? "Playoffs", bestOf, home, away, sa, sb, played: sa + sb > 0, done: Math.max(sa, sb) >= Math.ceil(bestOf / 2), last: Math.max(0, ...gs.map((g) => g.start_time ?? 0)), when: s.time });
+    rows.push({ unposted: fromGames, t: s.time, label: role?.label ?? "Playoffs", bestOf, home, away, sa, sb, played: sa + sb > 0, done: Math.max(sa, sb) >= Math.ceil(bestOf / 2) || CONFIRMED_FINAL.includes(s.id), last: Math.max(0, ...gs.map((g) => g.start_time ?? 0)), when: s.time });
   }
   // Games with no series at all (a playoff match PlayOn hasn't posted): grouped by the pair.
   const loose = new Map();

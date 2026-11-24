@@ -22,7 +22,7 @@
 import { matchOdds, modelCall, gameChance } from "./predict.js";
 import { isPlayed, gameWins, strengthOfSchedule } from "./schedule.js";
 import { ordinal as ord } from "./ranks.js";
-import { isPostseason, groupStage, REMOVED, CONFIRMED_PICKS } from "./divisions.js";
+import { isPostseason, groupStage, REMOVED, CONFIRMED_PICKS, CONFIRMED_FINAL } from "./divisions.js";
 
 export const REG_WEEKS = 7;
 export const isBye = (t) => /\bbye week\b/i.test(t?.name ?? "");
@@ -472,7 +472,8 @@ function postResults(series) {
   const taken = new Map(), used = new Map();
   // A series only settles its match once a team has won it: Bo5 grand final at 2–1 is still
   // being played. bestOf unknown: any lead counts (the old reading).
-  const won = (s, bestOf) => Math.max(s.home_score, s.away_score) >= Math.ceil((bestOf ?? 1) / 2);
+  // A series the admins confirmed over (lib/divisions.js CONFIRMED_FINAL) counts at its score.
+  const won = (s, bestOf) => CONFIRMED_FINAL.includes(s.id) || Math.max(s.home_score, s.away_score) >= Math.ceil((bestOf ?? 1) / 2);
   const seriesFor = (key, a, b, bestOf) => {
     if (taken.has(key)) return taken.get(key);
     if (a == null || b == null || a === TBD || b === TBD || !key || key.startsWith("mid:") || key === "pick") return null;
