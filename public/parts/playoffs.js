@@ -272,7 +272,7 @@ export function mountPlayoffs(el, src, d, ratings, myCalls = new Map(), { view =
         : !b.fixed && pickOpen && (m.id === "u1" || m.id === "u2") ? "Could switch: seed 1 picks seed 3 or 4"
         : b.fixed && !b.pickSet && m.week === 1 ? "Could switch: cross-division matchups not announced" : "";
       const box = (m) => { const why = maybeWhy(m); return `<div class="po-m${m.side === "final" ? " gf" : ""}${m.bye ? " is-bye" : ""}${m.pending ? " is-tbd" : ""}${why ? " is-maybe" : ""}">
-          <div class="po-mh">${esc(m.label)} · ${m.side === "final" ? "Bo3 or Bo5" : bo(m.bestOf)}${!m.bye && (live || frozen || m.real) ? tag(m) : ""}</div>
+          <div class="po-mh">${esc(m.label)} · ${m.side === "final" && !m.real ? "Bo5" : bo(m.bestOf)}${!m.bye && (live || frozen || m.real) ? tag(m) : ""}</div>
           ${slot(m, m.a)}${slot(m, m.b)}
           ${m.bye || m.pending ? "" : finPicks ? finLine(m) : m.real ? `<div class="po-mp">${teamName(src, name[m.winner], m.winner)} won ${sc(m)}</div>` : fin === "closed" ? `<div class="po-mp">Yet to play</div>` : status ? `<div class="po-mp">${statusLine(m)}</div>` : m.open && !live ? `<div class="po-mp">not picked</div>` : live ? ""
             : `<div class="po-mp">${teamName(src, name[m.winner], m.winner)} ${sc(m)} · ${pct(m.p)} to win${m.side === "final" ? " (as Bo5)" : ""}</div>
