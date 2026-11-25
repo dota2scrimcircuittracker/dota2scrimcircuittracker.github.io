@@ -55,17 +55,17 @@ export const CONFIRMED_PICKS = [
 // Postseason series that are over at the score PlayOn has, though their best-of says more games
 // could follow: a grand final played as a Bo3 where the bracket expects a Bo5. Series ids.
 // New season: empty it.
-// These three were Bo5s (Fav, 2026-11-25): the winners are confirmed, but our pull is missing grand
+// These two were Bo5s (Fav, 2026-11-25): the winners are confirmed, but our pull is missing grand
 // final games, so PlayOn's score here is short of what was played.
 export const CONFIRMED_FINAL = [
   20854, // Explorer grand final: The Petting Zoo Rejects beat Stanley's Soldiers (PlayOn has 2–0)
-  20864, // Voyager grand final: Quasar Dreams beat Farmers Farming Forever (PlayOn has 2–1)
   20884, // Warrior grand final: Savage Sabres beat Daddy's okay actually… (PlayOn has 2–1)
 ];
 // Postseason series played at a different best-of than the bracket's: series id -> games.
 // New season: empty it.
 export const SERIES_BEST_OF = {
   20894: 3, // Conqueror grand final, a Bo3 (Fav, 2026-11-25): WOT can you do 2–0 Leo + 4 Anchors
+  20864: 3, // Voyager grand final, a Bo3 (Fav, 2026-11-25): Quasar Dreams 2–1 Farmers Farming Forever
 };
 // A league's series plus its announced ones that PlayOn hasn't posted yet (no PlayOn series
 // with the same teams within 4 days; a team still to be decided matches anyone). Every known
