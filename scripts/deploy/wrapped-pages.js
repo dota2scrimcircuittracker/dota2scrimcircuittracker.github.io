@@ -4,6 +4,7 @@
 //   /<league>/wrapped/<player>/   that player's Wrapped, with their own title, description and
 //                                 image (img/og/wrapped/<league>/<player>.jpg, drawn by
 //                                 scripts/gen/wrapped-og.py)
+//   /<league>/wrapped/team/<id>/  that team's Wrapped, the same way (img/og/wrapped/<league>/team-<id>.jpg)
 //   data/wrapped-players.json     who has a Wrapped, with what their profile's Wrapped tab shows
 //                                 (pages/wrapped.js mountPlayerWrapped), so a profile doesn't
 //                                 load every division to find out. Always written; empty before
@@ -20,6 +21,8 @@ import { withDerived, isRemake, hasDetails } from "../../public/lib/stats.js";
 import { laneCuts } from "../../public/lib/lanes.js";
 import { seasonGames, seasonAwards, playerWrapped, byPlayer, seasonOver, seasonResults } from "../../public/lib/wrapped.js";
 import { HERO_META } from "../../public/lib/hero-meta.js";
+import { heroArt } from "../../public/lib/hero-art.js";
+import { teamGames, overview } from "../../public/lib/team-wrapped.js";
 import { SEASON, DIVISIONS, slugOf } from "../../public/lib/divisions.js";
 import { SITE, appPage } from "./page-head.js";
 
@@ -27,6 +30,19 @@ const OUT = path.resolve(process.argv[2] ?? "_site");
 const PREVIEW = process.argv.includes("--preview");
 const slugOfHero = new Map(HERO_META.map(([, n, s]) => [n, s]));
 const plural = (n, w) => `${n} ${n === 1 ? w : `${w}s`}`;
+// A team's finish from seasonResults: "4th, Aegis", "Champions", or its group-stage place.
+const finishOf = (f) => {
+  const po = f?.playoff, gp = f?.group;
+  return po ? (po.alive ? null : `${po.label}${po.bracket ? `, ${po.bracket}` : ""}`) : gp ? `#${gp.rank} of ${gp.of} in the group stage` : null;
+};
+// The hero played most among names (one per pick) that has art on the site, as the tile job's
+// art (the site's hero art, the backdrop) and hero (its slug, for Valve's full render).
+const artOf = (heroes) => {
+  const n = new Map();
+  for (const h of heroes) if (heroArt(h)) n.set(h, (n.get(h) ?? 0) + 1);
+  const top = [...n].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return top ? { art: path.join(OUT, heroArt(top).src), hero: slugOfHero.get(top) ?? null } : { art: null, hero: null };
+};
 const num = (v, f) => (f === "%" ? `${Math.round(v * 100)}%` : Number(v).toFixed(f));
 const app = await readFile(path.join(OUT, "index.html"), "utf8");
 
@@ -36,6 +52,7 @@ async function write(p, head) {
 }
 
 const jobs = [];
+let teamPages = 0;
 let leagues = 0;
 // Profile tabs: a player's home is the first division (this order) whose season games have them,
 // as pages/wrapped.js homeOf. Listed once that division's season is over.
@@ -64,18 +81,54 @@ for (const dv of DIVISIONS) {
   const slug = slugOf(dv), league = `AD2L ${dv.name}`;
 
   const champs = awards.filter((a) => a.key === "champions").map((a) => `${a.title}: ${d.teams.find((t) => t.id === a.team)?.name ?? "?"}`);
+  const leagueImg = `${SITE}/img/og/wrapped/${dv.key}/league.jpg`;
   const named = [...champs, ...awards.filter((a) => a.p).map((a) => `${a.title}: ${a.p.name}${a.key === "duo" ? ` + ${a.hero}` : ""}`)];
   await write(`${slug}/wrapped`, {
     title: `${SEASON.name} Wrapped · ${league}`,
     description: `The ${dv.name} season in review. ${named.join(" · ")}. Every player's own Wrapped is on their profile.`,
-    color: dv.color, image: `${SITE}/img/og/${dv.key}.png`,
+    color: dv.color, image: leagueImg,
   });
   // The season review story itself (#/<league>/wrapped/review): same preview, its own address.
   await write(`${slug}/wrapped/review`, {
     title: `${SEASON.name} season review · ${league}`,
     description: `The ${dv.name} season in review. ${named.join(" · ")}.`,
-    color: dv.color, image: `${SITE}/img/og/${dv.key}.png`,
+    color: dv.color, image: leagueImg,
   });
+  // One image for both, like the hub's tile: the league's most-picked hero, champions and MVP.
+  jobs.push({
+    tile: true, out: path.join(OUT, "img", "og", "wrapped", dv.key, "league.jpg"), color: dv.color, dark: dv.dark,
+    kicker: `AD2L · ${SEASON.name}`, name: dv.name, sub: `${plural(games.length, "game")} · ${plural(d.teams.length, "team")} · season in review`,
+    line: named.slice(0, 2).join("  ·  ") || null, ...artOf(games.flatMap((m) => m.players.map((q) => q.hero))),
+  });
+
+  // Each team's Wrapped (#/<league>/wrapped/team/<id>): record, finish, top heroes and roster.
+  for (const t of d.teams) {
+    const tg = teamGames(games, t.id);
+    if (!tg.length) continue;
+    const o = overview(tg), top = o.heroes[0], finish = finishOf(results?.teams.get(t.id));
+    const roster = o.roster.filter((r) => r.games > r.standin).slice(0, 5).map((r) => r.name);
+    const facts = [
+      `${o.wins}–${o.losses} in ${plural(o.games, "game")}`,
+      finish,
+      top && `most played ${top.hero} (${top.w}–${top.n - top.w})`,
+      roster.length && roster.join(", "),
+    ].filter(Boolean);
+    const file = `team-${t.id}.jpg`;
+    await write(`${slug}/wrapped/team/${t.id}`, {
+      title: `${t.name}'s ${SEASON.name} Wrapped · ${league}`,
+      description: `${facts.join(" · ")}.`,
+      color: dv.color, image: `${SITE}/img/og/wrapped/${dv.key}/${file}`,
+      alt: `${t.name}'s ${SEASON.name} Wrapped: ${facts[0]}`,
+    });
+    jobs.push({
+      tile: true, out: path.join(OUT, "img", "og", "wrapped", dv.key, file), color: dv.color, dark: dv.dark,
+      kicker: `Team · AD2L ${dv.name} · ${SEASON.name}`, name: t.name, sub: roster.join(" · ") || dv.name,
+      stats: [["RECORD", `${o.wins}–${o.losses}`], ["GAMES", String(o.games)], ["HEROES", String(o.heroes.length)], ["KILLS", String(o.kills)]],
+      line: [finish, top && `Most played: ${top.hero} (${top.w}–${top.n - top.w})`].filter(Boolean).join("  ·  ") || null,
+      ...artOf(o.heroes.flatMap((h) => Array(h.n).fill(h.hero))),
+    });
+    teamPages++;
+  }
 
   for (const e of byPlayer(games).values()) {
     if (!/^\d+$/.test(e.key)) continue;
@@ -85,8 +138,7 @@ for (const dv of DIVISIONS) {
     const kda = ((w.kills + w.assists) / Math.max(w.deaths, 1)).toFixed(1);
     const sig = w.signature && { value: num(w.signature.value, w.signature.fmt), label: w.signature.label, rank: w.signature.rank, of: w.signature.of };
     // The team's finish: "4th, Aegis", "Champions", or its group-stage place.
-    const po = w.finish?.playoff, gp = w.finish?.group;
-    const finish = po ? (po.alive ? null : `${po.label}${po.bracket ? `, ${po.bracket}` : ""}`) : gp ? `#${gp.rank} of ${gp.of} in the group stage` : null;
+    const finish = finishOf(w.finish);
     const facts = [
       `${w.wins}–${w.losses} for ${team} in ${plural(w.games, "game")}`,
       finish,
@@ -103,11 +155,11 @@ for (const dv of DIVISIONS) {
       alt: `${name}'s ${SEASON.name} Wrapped: ${facts[0]}`,
     });
     jobs.push({
-      out: path.join(OUT, "img", "og", "wrapped", dv.key, `${e.key}.jpg`),
-      league: dv.name, season: SEASON.name, color: dv.color, dark: dv.dark,
-      name, team, finish, record: `${w.wins}–${w.losses}`, games: w.games, mvps: w.mvps, kda, signature: sig,
-      heroes: w.heroes.map((h) => ({ name: h.hero, slug: slugOfHero.get(h.hero) ?? null, record: `${h.w}–${h.n - h.w}` })),
-      awards: w.awards.map((a) => a.title),
+      tile: true, out: path.join(OUT, "img", "og", "wrapped", dv.key, `${e.key}.jpg`), color: dv.color, dark: dv.dark,
+      kicker: `AD2L ${dv.name} · ${SEASON.name}`, name, sub: [team, finish].filter(Boolean).join(" · "),
+      stats: [["RECORD", `${w.wins}–${w.losses}`], ["GAMES", String(w.games)], ["MVPS", String(w.mvps)], ["KDA", kda]],
+      line: [w.awards.length && w.awards.map((a) => a.title).join(" · "), sig && `#${sig.rank} of ${sig.of} · ${sig.value} ${sig.label}`].filter(Boolean)[0] || null,
+      ...artOf(w.heroes.flatMap((h) => Array(h.n).fill(h.hero))),
     });
   }
 }
@@ -125,4 +177,4 @@ if (jobs.length) {
   await rm(list, { force: true });
   if (run.status !== 0) throw new Error(`wrapped-og.py failed (${run.error?.message ?? `exit ${run.status}`})`);
 }
-console.log(`Wrapped previews: ${leagues} league${leagues === 1 ? "" : "s"} open, ${jobs.length} player pages${PREVIEW ? " (--preview)" : ""}, ${Object.keys(profiles).length} profile tabs`);
+console.log(`Wrapped previews: ${leagues} league${leagues === 1 ? "" : "s"} open, ${jobs.length} images (${leagues} league, ${teamPages} team, the rest player)${PREVIEW ? " (--preview)" : ""}, ${Object.keys(profiles).length} profile tabs`);

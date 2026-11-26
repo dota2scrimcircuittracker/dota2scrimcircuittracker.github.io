@@ -1,4 +1,6 @@
-# AD2L Wrapped link-preview images, one per player: 1200x630 JPEGs. The player's name, record,
+# AD2L Wrapped link-preview images, one per league, team and player. Jobs with tile: true (all
+# that wrapped-pages.js writes) are drawn like the Wrapped hub's tiles (draw_tile); draw is the
+# older player card. Older player card: 1200x630 JPEGs. The player's name, record,
 # MVPs, KDA, signature stat, awards and top three heroes over their top hero's full render, in
 # the league's colours and the site's fonts. scripts/deploy/wrapped-pages.js writes the job list
 # and runs this at deploy time; the images aren't committed.
@@ -12,7 +14,7 @@ import re
 import sys
 import urllib.request
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / ".cache" / "fonts"
@@ -133,6 +135,121 @@ def background(color, dark):
     return img.convert("RGBA")
 
 
+def cover(im, w, h, y_bias=0.3):
+    # Scale to fill w x h, cropping the overflow (y_bias: how far down the crop sits, 0 = top).
+    scale = max(w / im.width, h / im.height)
+    im = im.resize((max(w, round(im.width * scale)), max(h, round(im.height * scale))), Image.LANCZOS)
+    x0, y0 = (im.width - w) // 2, int((im.height - h) * y_bias)
+    return im.crop((x0, y0, x0 + w, y0 + h))
+
+
+def place_render(img, slug):
+    # The hero's full render on the right, fading out to the left so the words stay clear.
+    render = art(slug, "render")
+    if not render:
+        return
+    box = render.getbbox()
+    if box:
+        render = render.crop(box)
+    scale = 700 / render.height
+    render = render.resize((max(1, int(render.width * scale)), 700), Image.LANCZOS)
+    x0 = max(560, 930 - render.width // 2)
+    fade = Image.new("L", render.size, 255)
+    fd = ImageDraw.Draw(fade)
+    for i in range(220):
+        fd.line([(i, 0), (i, render.height)], fill=int(255 * i / 220))
+    alpha = Image.composite(render.getchannel("A"), Image.new("L", render.size, 0), fade)
+    render.putalpha(alpha)
+    shadow = Image.new("RGBA", render.size, (0, 0, 0, 0))
+    shadow.putalpha(alpha.point(lambda a: a * 0.6))
+    img.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(18)), (x0 + 14, 10))
+    img.alpha_composite(render, (x0, -20))
+
+
+def draw_tile(job):
+    # The Wrapped hub's tile (pages/wrapped.js renderHub), landscape: the hero's art as a soft
+    # backdrop under the league's colour, its full render sharp on the right, NAME / WRAPPED in
+    # the league's colour, a frame in that colour. Players and teams add their numbers.
+    accent, dark = hexrgb(job["color"]), hexrgb(job["dark"])
+    img = background(job["color"], job["dark"])
+    src = job.get("art")
+    if src and Path(src).exists():
+        try:
+            a = Image.open(src).convert("RGB")
+            back = cover(a, W, H).filter(ImageFilter.GaussianBlur(max(3, int(1200 / a.width * 2))))
+            back = Image.blend(back, Image.new("RGB", (W, H), dark), 0.25)
+            img = Image.blend(img.convert("RGB"), back, 0.8).convert("RGBA")
+        except Exception as e:
+            print(f"  art {src}: {e}", file=sys.stderr)
+    # The tile's wash: the league's dark colour at the top, ink at the bottom and down the left.
+    wash = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    wd = ImageDraw.Draw(wash)
+    for y in range(H):
+        t = y / H
+        top = max(0.0, 0.45 - t * 1.5)
+        wd.line([(0, y), (W, y)], fill=dark + (int(255 * top),))
+    img.alpha_composite(wash)
+    place_render(img, job.get("hero"))
+    left = Image.new("L", (W, H), 0)
+    ld = ImageDraw.Draw(left)
+    for x in range(W):
+        ld.line([(x, 0), (x, H)], fill=int(235 * max(0.0, 1 - x / 760) ** 1.3))
+    bottom = Image.new("L", (W, H), 0)
+    bd = ImageDraw.Draw(bottom)
+    for y in range(H):
+        bd.line([(0, y), (W, y)], fill=int(200 * max(0.0, (y / H - 0.55) / 0.45) ** 1.5))
+    shade = Image.new("RGBA", (W, H), INK + (255,))
+    img = Image.composite(shade, img, ImageChops.lighter(left, bottom))
+
+    d = ImageDraw.Draw(img)
+    x, width = 72, 640
+    # Kicker: a rule, then AD2L · S48 (or what the job says) in the league's colour.
+    d.line([(x, 72), (x + 36, 72)], fill=accent, width=3)
+    spaced(d, (x + 50, 60), job["kicker"].upper(), font("mono-600.ttf", 21), accent, 5)
+
+    stats, line = job.get("stats"), job.get("line")
+    name = job["name"].upper()
+    nf = fit(d, name, "display-900.ttf", 150, width, 64)
+    mf = font("display-900.ttf", 128 if not stats else 112)
+    # Stack from the bottom: brand row, line, stats, sub, WRAPPED, name.
+    y = H - 64
+    if line:
+        lf = font("epilogue-500.ttf", 25)
+        y -= 34
+        d.text((x, y), ellipsize(d, line, lf, width + 80), font=lf, fill=GOLD)
+        y -= 14
+    if stats:
+        y -= 92
+        sx = x
+        for label, value in stats:
+            vf = font("display-900.ttf", 60)
+            spaced(d, (sx, y), label, font("mono-600.ttf", 14), DUST, 3)
+            d.text((sx - 2, y + 18), value, font=vf, fill=BONE)
+            sx += max(112, int(d.textlength(value, font=vf)) + 38)
+        y -= 18
+    sf = font("epilogue-500.ttf", 28)
+    y -= 38
+    d.text((x, y), ellipsize(d, job["sub"], sf, width + 60), font=sf, fill=(214, 205, 191))
+    y -= 8
+    mark = "WRAPPED"
+    mh = d.textbbox((0, 0), mark, font=mf)
+    y -= mh[3]
+    d.text((x - 4, y), mark, font=mf, fill=accent)
+    nh = d.textbbox((0, 0), name, font=nf)
+    y -= nh[3] - 6
+    d.text((x - 4, y), name, font=nf, fill=BONE)
+
+    # The frame, in the league's colour, like the tile's border.
+    d.rounded_rectangle([14, 14, W - 15, H - 15], radius=26, outline=accent, width=5)
+    brand = "ad2l stat tracker"
+    bf = font("mono-400.ttf", 15)
+    d.text((W - 48 - d.textlength(brand, font=bf), H - 50), brand, font=bf, fill=DUST)
+
+    out = Path(job["out"])
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.convert("RGB").save(out, "JPEG", quality=86, optimize=True, progressive=True)
+
+
 def draw(job):
     img = background(job["color"], job["dark"])
     accent = hexrgb(job["color"])
@@ -181,7 +298,8 @@ def draw(job):
         d.text((x + d.textlength(team, font=tf), team_y), fin, font=tf, fill=GOLD)
 
     # The numbers.
-    stats = [("RECORD", job["record"]), ("GAMES", str(job["games"])), ("MVPS", str(job["mvps"])), ("KDA", job["kda"])]
+    # A job can name its own four (a team's); a player's are record, games, MVPs and KDA.
+    stats = job.get("stats") or [("RECORD", job["record"]), ("GAMES", str(job["games"])), ("MVPS", str(job["mvps"])), ("KDA", job["kda"])]
     sx = x
     for label, value in stats:
         vf = font("display-900.ttf", 72)
@@ -241,7 +359,7 @@ def main():
     jobs = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     fetch_fonts()
     for i, job in enumerate(jobs):
-        draw(job)
+        (draw_tile if job.get("tile") else draw)(job)
         if (i + 1) % 50 == 0:
             print(f"  {i + 1}/{len(jobs)} Wrapped images")
     print(f"wrote {len(jobs)} Wrapped images")
