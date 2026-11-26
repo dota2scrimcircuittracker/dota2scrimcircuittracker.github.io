@@ -47,6 +47,19 @@
 /* Highlights / Full story: the switch between a player's two versions, in every card's footer. */
 .wr-story .wr-modebtn { white-space: nowrap; color: var(--wr-gold); border-color: rgba(232, 182, 76, .5); }
 @media (max-width: 420px) { .wr-foot:has(.wr-modebtn) { gap: 6px; } .wr-foot:has(.wr-modebtn) .wr-share { padding: 6px 9px; } }
+/* Phones: the footer's label goes and Post / Pin shorten to "Post" / the pin, so every button stays
+   on one row inside the card (the full words stay for screen readers). A card still too tall for
+   the screen scrolls its body instead of pushing the footer off; the hotspot map is smaller. */
+@media (max-width: 560px) {
+  .wr-foot:has(.wr-share) { gap: 6px; }
+  .wr-foot:has(.wr-share) > span { display: none; }
+  .wr-foot .wr-share, .wr-foot .wr-pin { white-space: nowrap; padding: 6px 9px; }
+  .wr-foot [data-post-feed], .wr-foot .wr-pin { font-size: 0; }
+  .wr-foot [data-post-feed]::after { content: "Post"; font-size: .75rem; }
+  .wr-foot .wr-pin::after { content: "📌"; font-size: .8rem; }
+  .wr-story .wr-map { width: min(100%, 15em); }
+  .wr-story .wr-body { min-height: 0; overflow-y: auto; scrollbar-width: none; }
+}
 /* The card list: the rail's names, as a sheet over the card. */
 .wr-list { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding: 14px 12px 12px; border-radius: 18px; background: rgba(12, 11, 10, .96); color: #efe7da; }
 .wr-list[hidden] { display: none; }
