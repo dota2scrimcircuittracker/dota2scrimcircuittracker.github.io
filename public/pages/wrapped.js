@@ -2,7 +2,7 @@
 // season first (signed in, or the player in the address), then the league's awards. Each of your
 // cards (and any award you won) can be pinned to your profile; the profile draws it with
 // pinnedCardHtml. The maths is lib/wrapped.js.
-import { app, wrappedSrcData, esc, pageHead, playerLink, teamLink, heroLink, fmt, pct, signedK, setTitle, SOURCES, playerHref, DIVISIONS } from "../core.js";
+import { app, wrappedSrcData, esc, pageHead, playerLink, teamLink, heroLink, fmt, pct, signedK, setTitle, SOURCES, playerHref, DIVISIONS, floorOf } from "../core.js";
 import { loadNicknames, nicknameOf } from "../lib/nicknames.js";
 import { hasDetails, playerKey, mainAccount } from "../lib/stats.js";
 import { laneCuts, LANE_GROUPS } from "../lib/lanes.js";
@@ -22,8 +22,7 @@ import { itemByKey, CATALOG, PERSONAL_CATALOG } from "../lib/cosmetics-catalog.j
 import { loading, errorBox } from "../parts/lanes.js";
 import { listCards } from "../lib/store.js";
 import { clipOf, clipHtml } from "../lib/clips.js";
-import { gameRatings, rankLabel } from "../lib/tiers.js";
-import { tierRef } from "../parts/tiers.js";
+import { gameRatings, rankLabel, tierModel, tierList } from "../lib/tiers.js";
 import { hitText } from "../parts/combat.js";
 import { MULTI, streakName } from "../lib/combat.js";
 import { teamWrapped } from "../lib/team-wrapped.js";
@@ -490,10 +489,14 @@ const leaguePersonalityMap = () => (personalities ??= (async () => {
 })().catch((e) => { personalities = null; throw e; }));
 const sharedPersonality = async (src, key) => (await leaguePersonalityMap().catch(() => null))?.get(src.key)?.get(key) ?? null;
 // A player's game ratings in their division, oldest first: [{ m, p, rating, tier }], or null under 3.
+// The rating model is fitted on Wrapped's own copy of the division: the same model and ratings as
+// parts/tiers.js tierRef on the full file (none of the fields lib/lite.js drops are read), without
+// downloading the full file (about 1 MB more) for it.
 async function ratingsOf(src, data, key) {
-  const model = await tierRef(src).catch(() => null);
-  if (!model) return null;
   const detailed = (data.detailed ??= data.d.games.filter(hasDetails));
+  let model = null;
+  try { model = (data.model ??= tierModel(detailed, { minGames: floorOf(src) })); } catch { return null; }
+  if (!model) return null;
   const pts = [];
   for (const m of data.games) {
     const p = m.players.find((q) => playerKey(q) === key);
@@ -850,6 +853,15 @@ function wireArt(host) {
 // hero. c.pc: { src, key, hero (null: the card as they saved it) }. Drawn after the slide shows,
 // since it needs everyone's saved cards (lib/store.js listCards, fetched once).
 let savedCards = null, cardTiers = null, cardKit = null;
+// Each card's tier (account id -> { tier, rating }), the one on their profile: the same lists as
+// parts/tiers.js divisionTiers, made from Wrapped's own copies of the divisions instead of every
+// full division file (about 5 MB more to download). Same models (see ratingsOf), same tiers.
+const wrappedTiers = () => (cardTiers ??= Promise.all(Object.keys(DIVISIONS).filter((k) => SOURCES[k]).map(async (k) => {
+  const src = SOURCES[k], data = await wrappedData(src), min = floorOf(src);
+  const detailed = (data.detailed ??= data.d.games.filter(hasDetails));
+  return tierList(detailed, { model: (data.model ??= tierModel(detailed, { minGames: min })), minGames: min });
+})).then((lists) => new Map(lists.flatMap((l) => l.tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { tier, rating: p.rating }])))))
+  .catch(() => new Map()));
 const heroId = (name) => HERO_META.find(([, n]) => n === name)?.[0] ?? null;
 // A player's saved designs (lib/cosmetics-engine.js cardAppearance): their main one first, then the
 // rest in their profile's order. [] with none saved.
@@ -866,8 +878,7 @@ async function playerCardHtml({ src, key, hero, n = 0, design: claimed = null })
   if (!/^\d+$/.test(String(key))) return "";
   cardKit ??= import("../parts/player-card.js");
   savedCards ??= listCards().catch(() => new Map());
-  cardTiers ??= import("../parts/tiers.js").then((m) => m.divisionTiers()).catch(() => new Map());
-  const [{ createPlayerCards, PAINT_FILTER }, { d, games }, saved, tiers] = await Promise.all([cardKit, wrappedData(src), savedCards, cardTiers]);
+  const [{ createPlayerCards, PAINT_FILTER }, { d, games }, saved, tiers] = await Promise.all([cardKit, wrappedData(src), savedCards, wrappedTiers()]);
   const account = Number(key), ov = saved.get(account) ?? {};
   // New version (FAV_WALLS): only a card the player made, exactly as they made it. The opening slide
   // (no hero) shows their main design; a hero's slide shows the design they made for that hero, and
@@ -911,8 +922,7 @@ async function claimDesigns(cards, key) {
 // An Arcana Cup entry: the frozen design as it was entered (parts/arcana-cup.js draws it the same way).
 async function cupCardHtml({ entry, name }) {
   cardKit ??= import("../parts/player-card.js");
-  cardTiers ??= import("../parts/tiers.js").then((m) => m.divisionTiers()).catch(() => new Map());
-  const [{ createPlayerCards, PAINT_FILTER }, { d, games }, tiers] = await Promise.all([cardKit, wrappedData(SOURCES.all), cardTiers]);
+  const [{ createPlayerCards, PAINT_FILTER }, { d, games }, tiers] = await Promise.all([cardKit, wrappedData(SOURCES.all), wrappedTiers()]);
   const team = d.teams.find((t) => t.players.some((q) => String(q.account_id) === String(entry.account)))?.name ?? "AD2L";
   const draw = createPlayerCards(games, { cards: new Map(), teams: d.teams, tiers });
   return (document.getElementById("ft-paint") ? "" : PAINT_FILTER) + draw.card({ account: Number(entry.account), name, team }, null, { own: true, pickButtons: false, equipmentOverride: entry.design }).replace("data-pick=", "data-cup-entry=");
@@ -1462,8 +1472,14 @@ async function renderPlayerWrapped(src, key) {
 // AD2L's only. /wrapped/<player> is that player's own Wrapped.
 export async function renderWrapped(src, who = null) {
   addStyles();
-  if (FAV_WALLS) favWalls ??= await loadFavWalls().catch((e) => (console.warn("fav walls unavailable", e), null));
   src = whole(src);
+  // Start every download this Wrapped needs now, side by side: below, each waits on the one before
+  // (the reads file only after every division has loaded, the saved card designs only at the end).
+  // A team's Wrapped reads its own division; every other one reads them all.
+  for (const k of who?.team != null ? [src.key] : Object.keys(DIVISIONS)) if (SOURCES[k]) wrappedSrcData(SOURCES[k]).catch(() => {});
+  prebuiltFile();
+  savedCards ??= listCards().catch(() => new Map());
+  if (FAV_WALLS) favWalls ??= await loadFavWalls().catch((e) => (console.warn("fav walls unavailable", e), null));
   if (who?.team != null) return renderTeamWrapped(src, who.team);
   if (who?.review) return renderReview(src);
   if (who) return renderPlayerWrapped(src, who);

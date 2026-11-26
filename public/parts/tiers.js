@@ -1,7 +1,8 @@
 // Tier list: ratings, the breakdown modal and the tier section on the Players page.
-import { createPlayerCards, PAINT_FILTER, wirePlayerCards } from "./player-card.js";
 import { listCards } from "../lib/store.js";
-import { playerEquipment, applyExpandedEquipment } from '../lib/cosmetics.js';
+// The card art and cosmetics behind the tier board's cards load with the board, so the pages that only
+// read tiers (tierRef) don't download them.
+const cardKit = () => Promise.all([import("./player-card.js"), import("../lib/cosmetics.js")]).then(([pc, cos]) => ({ ...pc, ...cos }));
 import { hasDetails } from "../lib/stats.js";
 import { tierModel, tierModels, METRICS, tierList, ratingOf, TIERS, VERSIONS, LIVE, perPosition, PODIUM_STATS } from "../lib/tiers.js";
 import { info, tierInfo } from "../lib/glossary.js";
@@ -245,9 +246,10 @@ export function tierSection(src, matches, model) {
   // Cards draw plain at first; the saved designs and cosmetics (Firestore and the collection
   // Worker, slow to connect on a cold phone) redraw them when they arrive, so the list never waits.
   const teams = src.ad2l ? src.data().then((d) => d.teams, () => []) : Promise.resolve([]);
-  let cardData = teams.then((teams) => ({ cards: new Map(), renderer: createPlayerCards(matches, { teams, tiers: tierMap(full0) }) }));
-  Promise.all([listCards(), teams]).then(([cards, teams]) => {
-    cardData = Promise.resolve({ cards, renderer: createPlayerCards(matches, { cards, teams, tiers: tierMap(full0) }) });
+  const kit = cardKit();
+  let cardData = Promise.all([teams, kit]).then(([teams, kit]) => ({ kit, cards: new Map(), renderer: kit.createPlayerCards(matches, { teams, tiers: tierMap(full0) }) }));
+  Promise.all([listCards(), teams, kit]).then(([cards, teams, kit]) => {
+    cardData = Promise.resolve({ kit, cards, renderer: kit.createPlayerCards(matches, { cards, teams, tiers: tierMap(full0) }) });
     if (redrawTiers === draw) draw();
   }, () => {});
   // Pos 1–5: the players whose main position it is (all their games), made once.
@@ -283,7 +285,7 @@ export function tierSection(src, matches, model) {
     // All: the all-roles list, the one on profiles; with every league, that field's model.
     const list = n ? posLists[lk] : !wide ? full
       : (posLists[lk] ??= tierList(matches, { model: (wideAll[ver] ??= tierModel(everyGame, { minGames: floorOf(src), version: ver })), minGames: floorOf(src) }));
-    const { renderer:{card}, cards } = await cardData;
+    const { renderer:{card}, cards, kit: { PAINT_FILTER, wirePlayerCards, applyExpandedEquipment, playerEquipment } } = await cardData;
     const chip = (p, i, tier) => {
       const open = tierOpen.has(p.key);
       const account = p.account_id ?? (/^\d+$/.test(p.key) ? Number(p.key) : p.key);

@@ -1,8 +1,8 @@
 // Card cosmetics animate backgrounds, masks and blends, which repaint every frame. A phone can't
 // repaint them and scroll at once (parts of the page blink in and out), so they pause while the
 // page scrolls (html.cards-still, CSS) and while a card or feed post is off screen
-// ([data-effects-offscreen]).
-const OFF = 'data-effects-offscreen', HOSTS = '.ft-card, .feed-post';
+// ([data-effects-offscreen]). Animated nameplates (lib/nameplates.js .np) pause off screen too: long tables hold many.
+const OFF = 'data-effects-offscreen', HOSTS = '.ft-card, .feed-post, .np';
 
 export function startCardMotion() {
   if (typeof document === 'undefined') return;

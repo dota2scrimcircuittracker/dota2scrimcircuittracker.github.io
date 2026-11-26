@@ -8,17 +8,7 @@ import { DIVISIONS as DIVISION_LIST, slugOf, fullName, divisionCss, SEASON, play
 import { esc, DIVISIONS, SOURCES, TM_KEY, timeSel, gameWeeker, seriesWeek, shortDate, divLite, allMatches, addressOf, routedAt, setRoutedAt, navigate, goToSection, showTab, app, tabInUrl, here, bySlug, timeSrc, allLoad, gameLeague, divUploaded, setTitle, myTeam, setMyTeam, myTeamOptions, teamFromOption, pageHead } from "./core.js";
 import { weekOfFn } from "./parts/lanes.js";
 import { tabList, PLAYERS_PAGE_TABS, HEROES_PAGE_TABS, PREDICT_TABS, DRAFTER_MODES, GALLERY_TABS } from "./lib/pagetabs.js";
-import { renderMatch, renderMatches } from "./pages/games.js";
-import { renderHero } from "./pages/hero.js";
-import { renderHeroes } from "./pages/heroes.js";
-import { renderPlayer } from "./pages/player.js";
-import { renderPlayers } from "./pages/players.js";
-import { renderStandings } from "./pages/standings.js";
-import { renderTeams } from "./pages/teams.js";
-import { renderWeek } from "./pages/week.js";
-import { renderTools, toolList, startFeedbackMode } from "./pages/tools.js";
 import { mountMe, myLeagueHome } from "./parts/me.js";
-import { mountGift } from './parts/collection.js';
 import { startPlusLevels } from "./lib/hero-levels.js";
 import { startCardMotion } from "./lib/card-motion.js";
 
@@ -32,6 +22,43 @@ const drafterPage = () => import("./pages/drafter.js");
 const searchPage = () => import("./pages/search.js");
 const streamKitPage = () => import("./pages/stream-kit.js");
 const galleryPage = () => import("./pages/gallery.js");
+// Every page loads on first visit, so the first page downloads only its own code, not the whole site's.
+// lazy(load, name) stands in for the page's render function and passes its arguments on.
+const lazy = (load, name) => (...args) => load().then((m) => m[name](...args));
+const gamesPage = () => import("./pages/games.js"), toolsPage = () => import("./pages/tools.js");
+const renderMatch = lazy(gamesPage, "renderMatch"), renderMatches = lazy(gamesPage, "renderMatches");
+const renderHero = lazy(() => import("./pages/hero.js"), "renderHero");
+const renderHeroes = lazy(() => import("./pages/heroes.js"), "renderHeroes");
+const renderPlayer = lazy(() => import("./pages/player.js"), "renderPlayer");
+const renderPlayers = lazy(() => import("./pages/players.js"), "renderPlayers");
+const renderStandings = lazy(() => import("./pages/standings.js"), "renderStandings");
+const renderTeams = lazy(() => import("./pages/teams.js"), "renderTeams");
+const renderWeek = lazy(() => import("./pages/week.js"), "renderWeek");
+const renderTools = lazy(toolsPage, "renderTools"), startFeedbackMode = lazy(toolsPage, "startFeedbackMode");
+
+// Packs button: drawn at once; the collection code behind it (parts/collection.js, with the card art and
+// cosmetics) loads once the page is idle, or on the first click, and then fills the pack count.
+const collectionCode = () => import("./parts/collection.js");
+function mountGift() {
+  if (!document.getElementById("collection-gift")) {
+    const button = document.createElement("button");
+    button.id = "collection-gift"; button.className = "collection-gift"; button.type = "button";
+    button.title = "Packs and collection"; button.setAttribute("aria-label", "Open packs and collection");
+    button.innerHTML = `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 13h24v6H4zm2 6h20v11H6zm10-6v17M16 13C4 13 5 2 11 4c4 1 5 9 5 9zm0 0c12 0 11-11 5-9-4 1-5 9-5 9z"/></svg><span></span>`;
+    button.onclick = () => {
+      const tab = document.querySelector('#nav a[data-nav="gallery"]');
+      if (!tab) return collectionCode().then((m) => m.openCollection());
+      const a = document.createElement("a"); a.href = `${tab.getAttribute("href").replace(/\/$/, "")}/packs`;
+      document.body.append(a); a.click(); a.remove();
+    };
+    document.getElementById("me")?.before(button);
+  }
+  // Idle alone fires while the first page still waits on the network, so wait for load and two seconds more.
+  const idle = window.requestIdleCallback ?? ((f) => f());
+  const fill = () => collectionCode().then((m) => m.mountGift()).catch((e) => console.warn("collection unavailable", e));
+  const later = () => setTimeout(() => idle(fill, { timeout: 3000 }), 2000);
+  document.readyState === "complete" ? later() : addEventListener("load", later, { once: true });
+}
 
 // ---------- League switcher + router ----------
 
@@ -322,7 +349,7 @@ const metaMenu = async (src) => ({ items: [
   ...(await pageMenu(HEROES_PAGE_TABS, "heroes")(src)).items.map((x) => ({ ...x, group: "Heroes" })),
 ] });
 // Tools: the Drafter, Upload, the table builder and Feedback (pages/tools.js).
-const toolsMenu = async (src) => ({ items: toolList(src).map(({ name, href, action }) => ({ name, href: href ?? "#", action })) });
+const toolsMenu = async (src) => ({ items: (await toolsPage()).toolList(src).map(({ name, href, action }) => ({ name, href: href ?? "#", action })) });
 // The nav tab a page belongs to: Players and Heroes live under Meta; the Drafter, Upload and the
 // table builder under Tools.
 const NAV_OF = { players: "meta", heroes: "meta", drafter: "tools", upload: "tools", search: "tools", streamkit: "tools" };

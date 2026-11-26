@@ -1,3 +1,4 @@
+import { loadCardStyles } from './card-styles.js';
 import { CATALOG, DEFAULT_EQUIPMENT, itemByKey, SMOKE_CATALOG, smokeStyleOf } from './cosmetics-catalog.js';
 import './smoke-fx.js';
 import { signatureHtml } from './signatures.js';
@@ -12,6 +13,8 @@ import { CANVAS_FINISHES } from './card-fx.js';
 import {expansionBorderHtml,expansionFinishHtml,expansionSymbolHtml,borderEmblemList,hasExpansionEmblems,expansionSymbolStyle} from './cosmetics-expansion.js';
 import {WAVE_ANIMATED_FINISHES} from './cosmetics-wave-catalog.js';
 import {hasParticleGroups} from './cosmetics-particle-groups.js';
+// Card styles first (lib/card-styles.js): every page that draws a card imports this module.
+await loadCardStyles();
 // Finishes with a speed setting: the particle ones, plus fx- finishes that animate (lib/card-fx.js, cosmetics-fx.css).
 export const PARTICLE_FINISHES=Object.freeze(['inferno','blizzard','voidstorm','sandstorm','cosmic','diamond','stars','goldust','starlight','fx-drift','fx-sheen','fx-waves','supernova','deep-sea','reality-rift','shattered-time','ink-water','lenticular',...WAVE_ANIMATED_FINISHES,...Object.keys(CANVAS_FINISHES),...SMOKE_CATALOG.filter(i=>i.type==='finish').map(i=>i.id)]);
 // Finishes drawn on a canvas; fx- borders have a border speed.
