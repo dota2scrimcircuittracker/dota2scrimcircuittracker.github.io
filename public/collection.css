@@ -308,6 +308,9 @@
 .feed-compose-images figure{position:relative;margin:0;aspect-ratio:1;overflow:hidden;border-radius:8px;background:#17131c}
 .feed-compose-images img{width:100%;height:100%;object-fit:cover}
 .collection-dialog .feed-compose-images button,.feed-compose-images button{position:absolute;top:4px;right:4px;width:26px;height:26px;padding:0;border-radius:50%;background:#100d13d9;line-height:1}
+.feed-compose-wrapped{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid #d6b25e66;border-radius:8px;background:#d6b25e14;font-size:.85rem}.feed-compose-wrapped[hidden]{display:none}
+.collection-dialog .feed-compose-wrapped button,.feed-compose-wrapped button{width:26px;height:26px;padding:0;border-radius:50%;line-height:1;flex:none}
+.feed-wrapped{margin:10px 0}.feed-wrapped .wr-pinned{margin:0}.feed-wrapped>p{margin:0;color:var(--dust,#a99fb5);font-size:.85rem}
 .feed-compose-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .collection-dialog .feed-compose-tool,.feed-compose-tool{display:inline-flex;flex-direction:row;align-items:center;padding:7px 12px;border:1px solid #504653;border-radius:999px;background:#25212b;color:#e2d8e6;font-size:13px;cursor:pointer;text-transform:none}
 .feed-compose-tool[aria-pressed=true]{border-color:#c3995f;background:#54402a;color:#ffe2a9}

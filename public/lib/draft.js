@@ -114,3 +114,30 @@ export function teamSideSplit(games) {
   }
   return out;
 }
+
+// The league's bans and picks by phase: every ban and every pick once, with the record of the team
+// that made it. Same shape as teamDraftPhases, without "against". matches: games with a draft.
+export function leagueDraftPhases(matches) {
+  const both = matches.filter((m) => m.draft?.length).flatMap((m) => [{ m, side: "a" }, { m, side: "b" }]);
+  const r = teamDraftPhases(both);
+  if (!r) return null;
+  const drafted = r.drafted / 2;
+  return { drafted, layout: r.layout, totals: { bans: r.totals.bans, picks: r.totals.picks }, bans: r.bans, picks: r.picks };
+}
+
+// The league's side and pick-order split: Radiant's record, first pick's record, and first pick's
+// record on each side. matches: every game with a winner.
+export function leagueSideSplit(matches) {
+  const rec = () => ({ n: 0, wins: 0 });
+  const out = { games: 0, radiant: rec(), drafted: 0, first: rec(), firstOn: { a: rec(), b: rec() } };
+  for (const m of matches) {
+    if (!m.winner) continue;
+    out.games++; out.radiant.n++; if (m.winner === "a") out.radiant.wins++;
+    const fp = [...(m.draft ?? [])].sort((x, y) => x.order - y.order).find((s) => s.pick);
+    if (!fp) continue;
+    const won = m.winner === fp.side;
+    out.drafted++; out.first.n++; if (won) out.first.wins++;
+    out.firstOn[fp.side].n++; if (won) out.firstOn[fp.side].wins++;
+  }
+  return out;
+}

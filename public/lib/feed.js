@@ -10,6 +10,7 @@
 import { DOTA_EMOTICONS, dotaEmoticonLabel, dotaEmoticonSrc } from './dota-emoticons.js';
 import { checkText } from './moderation.js';
 import { plainMentions } from './mentions.js';
+import { wrappedRef } from './wrapped-cards.js';
 
 const CORE_REACTIONS = ['❤️', '🔥', '😂', '😮', '👏', '💀', '😡', '😢', '😎', '🤦', '😭', '🏳️'];
 // The larger in-game catalog uses its Dota chat code as the stored key. Keeping the original
@@ -95,6 +96,7 @@ export const FEED_TYPES = Object.freeze({
   games: { label: 'Games', match: (p) => p.kind === 'user' && !!p.game },
   images: { label: 'Screenshots', match: (p) => p.kind === 'user' && !!p.images?.length },
   polls: { label: 'Polls', match: (p) => p.kind === 'user' && !!p.poll },
+  wrapped: { label: 'Wrapped', match: (p) => p.kind === 'user' && !!p.wrapped },
   cards: { label: 'Card designs', match: (p) => p.kind === 'card' },
   pulls: { label: 'Pack pulls', match: (p) => p.kind === 'pull' },
 });
@@ -313,8 +315,9 @@ export function pollTimeLeft(poll, now) {
 }
 
 // The stored post, from what the browser sent. images is the decoded bytes of each image.
-export function buildUserPost({ account, at, text, clip, game, images = [], poll = null }) {
-  const body = cleanPostText(text), parsed = parseClip(clip), built = buildPoll(poll, at);
+// wrapped: one of the poster's AD2L Wrapped cards ({ season, div, card }), drawn live like a profile pin.
+export function buildUserPost({ account, at, text, clip, game, images = [], poll = null, wrapped = null }) {
+  const body = cleanPostText(text), parsed = parseClip(clip), built = buildPoll(poll, at), card = wrapped == null ? null : wrappedRef(wrapped);
   if (built && !body) throw new Error('Write the poll\'s question.');
   if (images.length > MAX_IMAGES) throw new Error(`Add up to ${MAX_IMAGES} images.`);
   const media = images.map((bytes) => {
@@ -325,8 +328,8 @@ export function buildUserPost({ account, at, text, clip, game, images = [], poll
   });
   const match = game == null || game === '' ? null : String(game);
   if (match != null && !/^\d{1,20}$/.test(match)) throw new Error('Choose one of your games.');
-  if (!body && !parsed && !match && !media.length && !built) throw new Error('Write something, or add an image, clip or game.');
-  return { kind: 'user', account, at, text: body, ...(parsed ? { clip: parsed } : {}), ...(match ? { game: match } : {}), ...(media.length ? { images: media } : {}), ...(built ? { poll: built } : {}) };
+  if (!body && !parsed && !match && !media.length && !built && !card) throw new Error('Write something, or add an image, clip or game.');
+  return { kind: 'user', account, at, text: body, ...(parsed ? { clip: parsed } : {}), ...(match ? { game: match } : {}), ...(media.length ? { images: media } : {}), ...(built ? { poll: built } : {}), ...(card ? { wrapped: card } : {}) };
 }
 // The poster can remove any of their own posts (saved cards and pulls included); Fav can remove any post.
 export function canRemovePost(id, account, admin = false) {

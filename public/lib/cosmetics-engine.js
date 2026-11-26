@@ -9,7 +9,7 @@ const screenHero=new Map(ALL_SCREENS.map(s=>[s.id,s.hero??null]));
 import { CARD_STYLES, validCardCrop } from './card-art.js';
 import { validLayout, MAX_NAME } from './card-layout.js';
 import { LETTER_CASES } from './signatures.js';
-import { validCard as validWrappedCard } from './wrapped-cards.js';
+import { wrappedRef } from './wrapped-cards.js';
 import {validFinishSettings} from './cosmetics-expansion-settings.js';
 import {validBorderSettings} from './cosmetics-particle-groups.js';
 import {hasExpansionEmblems} from './cosmetics-expansion-symbols.js';
@@ -100,12 +100,7 @@ export function setProfileBackground(state,{background=null}={}) {
 // The page draws it from the league's games, so a card the player doesn't have shows nothing.
 export function setWrappedPin(state,{pin=null}={}) {
   if(pin==null)return {...state,wrappedPin:null};
-  if(typeof pin!=='object'||Array.isArray(pin))throw new Error('Choose a Wrapped card.');
-  const {season,div,card}=pin;
-  if(typeof season!=='string'||!/^S\d{1,3}$/.test(season))throw new Error('Choose a season.');
-  if(typeof div!=='string'||!/^[a-z]{2,12}(_[a-z])?$/.test(div))throw new Error('Choose a division.');
-  if(!validWrappedCard(card))throw new Error('Choose a Wrapped card.');
-  return {...state,wrappedPin:{season,div,card}};
+  return {...state,wrappedPin:wrappedRef(pin)};
 }
 export function saveCardDesign(state,raw,slot=state.primaryCard??0) {
   if(!Number.isInteger(slot)||slot<0||slot>=slotCount(state))throw new Error('Choose one of your cards.');

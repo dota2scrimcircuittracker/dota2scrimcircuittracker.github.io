@@ -9,6 +9,8 @@ import { isPostseason, groupStage } from "./divisions.js";
 import { isPlayed } from "./schedule.js";
 import { ordinal } from "./ranks.js";
 import { phasedDraft } from "./draft.js";
+import { BIG_LEAD } from "./timeline.js";
+import { STOMP_LEAD, tagContext } from "./gametags.js";
 
 // The cards a player's recap can show (lib/wrapped-cards.js), in story order. award:<key> cards
 // (an award they won) sit after "mvps". A pin names one of these.
@@ -185,7 +187,12 @@ function nemesisMoreOf(rows) {
     const e = by.get(q.hero) ?? { hero: q.hero, n: 0, lost: 0 }; e.n++; if (!won(m, p)) e.lost++; by.set(q.hero, e);
   }
   const next = [...by.values()].filter((e) => e.lost >= 2).sort((a, b) => b.lost - a.lost || a.n - b.n)[0] ?? null;
-  return { who: [...who].sort((a, b) => b[1] - a[1]), kdaVs: kda(games), kdaAll: kda(rows), win, next };
+  // strip: every game against the hero, oldest first: the game, their own hero, whether they won.
+  const strip = (hero) => rows.filter(({ m, p }) => m.players.some((q) => q.team !== p.team && q.hero === hero))
+    .sort((a, b) => (a.m.start_time ?? 0) - (b.m.start_time ?? 0))
+    .map(({ m, p }) => ({ id: m.id, hero: p.hero, won: won(m, p) }));
+  return { who: [...who].sort((a, b) => b[1] - a[1]), kdaVs: kda(games), kdaAll: kda(rows), win, strip: strip(top.hero),
+    next: next && { ...next, strip: strip(next.hero) } };
 }
 export function deadTimeOf(rows) {
   const xs = rows.filter(({ p }) => Number.isFinite(p.time_dead));
@@ -713,6 +720,73 @@ export function leadChanges(m) {
   return n;
 }
 
+// The team that won a game (m.winner is the side, and teams swap sides between games).
+const teamWon = (m) => (m.winner === "a" ? m.team_a_id ?? m.team_a : m.team_b_id ?? m.team_b) ?? m.winner;
+
+// How close a series was. split: the loser took at least one game (sweeps rank below every
+// split series). score, series-wide:
+//   +4 went the distance (2-1, 3-2, or a 1-1 draw), +2 for 3-1
+//   +2 the winner came back from 0-1 in the series, +10 from 0-2 (a reverse sweep tops a bloodier 2-1)
+//   +2 playoffs
+//   up to +2 for an even matchup by the model (read.q, home's one-game chance, near 50%)
+// and per game:
+//   each lead change by its size (leadSwings): the peak lead before plus the peak lead after,
+//     1 point per 10k swung, up to 2.5 per change (5k one way then 5k the other = 1)
+//   up to +1.5 when both teams held a lead (5k each is a real fight)
+//   kills against the league's average game (`avgKills`): +3 per 100% above, from -1 to +2
+//   +1 the winner came back from 5k+ (BIG_LEAD) down
+//   -1.5 a stomp (winner up 20k, loser never ahead)
+//   +0.5 a long game (the league's longest tenth, `long` seconds)
+// More games add more per-game points, so a 3-2 tends to beat an equally tight 2-1.
+// s: the series record, which decides the score when it has one. notes: short reasons for the card.
+export function seriesCloseness(gs, s, { read = null, long = null, avgKills = null } = {}) {
+  const order = [...gs].sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+  const wins = new Map();
+  for (const m of order) wins.set(teamWon(m), (wins.get(teamWon(m)) ?? 0) + 1);
+  let w, l;
+  if (s && s.home_score != null && s.away_score != null) [w, l] = [Math.max(s.home_score, s.away_score), Math.min(s.home_score, s.away_score)];
+  else [w = 0, l = 0] = [...wins.values()].sort((a, b) => b - a);
+  const notes = [];
+  let score = l === 0 ? 0 : l >= w - 1 ? 4 : 2;
+  // Came back in the series: read from the games' order, only when every game is here.
+  if (l > 0 && w > l && order.length === w + l) {
+    const champ = [...wins.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const down = order.findIndex((m) => teamWon(m) === champ);
+    if (down > 0) { score += down >= 2 ? 10 : 2; notes.push(down >= 2 ? `Came back from 0–${down}` : "Came back from 0–1"); }
+  }
+  if (s && isPostseason(s)) { score += 2; notes.push("Playoffs"); }
+  if (read && Number.isFinite(read.q)) score += 2 * (1 - Math.abs(read.q - 0.5) * 2);
+  for (const [i, m] of order.entries()) {
+    const adv = m.gold_adv ?? [];
+    const lead = (side) => Math.max(0, ...adv.slice(2).map((g) => (side === "a" ? g : -g)));
+    const won = m.winner === "b" ? "b" : "a", lost = won === "a" ? "b" : "a";
+    score += sum(leadSwings(m), (g) => Math.min(g / 10000, 2.5)) + Math.min(Math.min(lead("a"), lead("b")) / 5000, 1.5);
+    const kills = sum(m.players ?? [], (p) => p.kills ?? 0);
+    if (avgKills > 0) {
+      score += Math.max(-1, Math.min(2, (kills / avgKills - 1) * 3));
+      if (kills >= avgKills * 1.5) notes.push(`Game ${i + 1}: ${kills} kills`);
+    }
+    if (lead(lost) >= BIG_LEAD) { score += 1; notes.push(`Game ${i + 1} comeback from ${Math.round(lead(lost) / 1000)}k down`); }
+    if (lead(won) >= STOMP_LEAD && lead(lost) <= 0) score -= 1.5;
+    if (long && m.duration_sec >= long) score += 0.5;
+  }
+  return { split: l > 0 ? 1 : 0, score, notes, games: order };
+}
+
+// The size of each lead change in a game (same rules as leadChanges): the biggest lead on one
+// side before the flip plus the biggest lead on the other side after it.
+export function leadSwings(m) {
+  const peaks = [];
+  let side = 0;
+  for (const [i, g] of (m.gold_adv ?? []).entries()) {
+    if (i < 2 || Math.abs(g) < 1000) continue;
+    const s = Math.sign(g);
+    if (s !== side) { peaks.push(0); side = s; }
+    peaks[peaks.length - 1] = Math.max(peaks[peaks.length - 1], Math.abs(g));
+  }
+  return peaks.slice(1).map((p, i) => peaks[i] + p);
+}
+
 // Series model reads, worked out by the page (pages/wrapped.js): [{ s, home, away, q (home's
 // chance in one game), p (the chance of the result that happened) }], decided series only.
 // A team's overachievement, scored by surprise: each series it won as the model's underdog
@@ -859,14 +933,19 @@ export function seasonAwards(games, { series = [], teams = [], reads = [], cuts 
     if (top[0]?.climb > 0) out.push({ ...top[0], key: "sandbagged", title: "Most sandbagged", player: top[0].key, top: top.slice(0, 5) });
   }
 
-  // Best series: the most lead changes across its games, then the most games, then kills.
+  // Best series: seriesCloseness above. Sweeps (2-0, 3-0) only win when no series had a game
+  // go the other way. games come back in play order.
+  const long = tagContext(games).long;
+  const avgKills = games.length ? sum(games, (m) => sum(m.players ?? [], (p) => p.kills ?? 0)) / games.length : null;
   const bySeries = new Map();
   for (const m of games) if (m.series_id != null) (bySeries.get(m.series_id) ?? bySeries.set(m.series_id, []).get(m.series_id)).push(m);
-  const bs = [...bySeries.entries()].map(([id, gs]) => ({ id, games: gs, swings: sum(gs, leadChanges), kills: sum(gs, (m) => sum(m.players, (p) => p.kills)) }))
-    .sort((a, b) => b.swings - a.swings || b.games.length - a.games.length || b.kills - a.kills)[0];
-  if (bs && bs.swings) {
-    const s = series.find((x) => x.id === bs.id);
-    out.push({ key: "series", title: "Series of the season", series: bs.id, s, games: bs.games, swings: bs.swings, kills: bs.kills });
+  const bsAll = [...bySeries.entries()].map(([id, gs]) => ({ id, games: gs, swings: sum(gs, leadChanges), kills: sum(gs, (m) => sum(m.players, (p) => p.kills)), ...seriesCloseness(gs, series?.find((x) => x.id === id), { read: reads.find((r) => r.s?.id === id), long, avgKills }) }))
+    .sort((a, b) => b.split - a.split || b.score - a.score || b.kills - a.kills);
+  const [bs, next] = bsAll.filter((x) => x.split || x.swings);
+  if (bs) {
+    const pick = (x) => ({ series: x.id, s: series.find((y) => y.id === x.id), games: x.games, swings: x.swings, kills: x.kills, notes: x.notes });
+    // runnerUp: second place, shown under the winner on the card.
+    out.push({ key: "series", title: "Series of the season", ...pick(bs), runnerUp: next ? pick(next) : null });
   }
 
   // Biggest upset: the decided series whose result the model thought least likely (under 40%).

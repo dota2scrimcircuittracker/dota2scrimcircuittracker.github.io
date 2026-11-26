@@ -7,7 +7,8 @@ import { wireCharts } from "../lib/charts.js";
 import { collectWards, wireWardMaps } from "../lib/wardmap.js";
 import { teamFightMapHtml, wireFightMaps } from "../lib/fightmap.js";
 import { teamSmokeHtml, wireSmokeMaps } from "../lib/smokemap.js";
-import { teamDraftPhases, teamSideSplit, PHASES } from "../lib/draft.js";
+import { teamDraftPhases, teamSideSplit } from "../lib/draft.js";
+import { phaseGridHtml, wirePhaseGrid } from "../parts/phasegrid.js";
 import { teamByName } from "../lib/unticketed.js";
 import { info } from "../lib/glossary.js";
 import { clock } from "../lib/items.js";
@@ -389,38 +390,12 @@ export async function renderTeams(src, slug) {
   const phases = (() => {
     const ph = h.drafted ? teamDraftPhases(h.games.map(({ m }) => ({ m, side: sideOf(m, team) })).filter((g) => g.side)) : null;
     if (!ph) return "";
-    // Each chip carries all three readings; the toggle above the grid picks which one shows.
-    const SHOW = 6, n = ph.drafted, rec = (x) => `${x.wins}–${x.n - x.wins}`;
-    const wr = (x) => x.wins / x.n, tone = (x) => (wr(x) > 0.5 ? "up" : wr(x) < 0.5 ? "down" : "");
-    const verb = { bans: "Banned by", against: "Banned against", picks: "Picked by" };
-    const chip = (key, x, i, j) => `<div class="hero-chip ph-chip${j >= SHOW ? " ph-extra" : ""}" title="${esc(`${x.hero}: ${verb[key].toLowerCase()} ${team.name} ${plural(x.n, "time")} in phase ${i + 1} (${pct0(x.n / n)} of ${plural(n, "draft")}). ${key === "picks" ? "Record with it" : "Their record in those games"}: ${rec(x)}.`)}">
-        ${portrait(x.hero)}<span>${heroLink(src, x.hero)}</span>
-        <b class="pv pv-n">${key === "picks" ? rec(x) : `×${x.n}`}</b>
-        <b class="pv pv-r">${pct0(x.n / n)}</b>
-        <b class="pv pv-w ${tone(x)}">${pct0(wr(x))}<small>${rec(x)}</small></b></div>`;
-    const cell = (key, list, i) => {
-      const t = ph.totals[key][i], heroes = list.length;
-      const sum = t.n ? `${plural(t.n, key === "picks" ? "pick" : "ban")} · ${(t.n / n).toFixed(1)} per draft · ${heroes} hero${heroes === 1 ? "" : "es"}` : "None";
-      return `<div class="ph-cell"><div class="ph-sum"><b class="ph-mob">Phase ${i + 1} · </b>${sum}</div>
-        ${list.length ? `<div class="hero-chips">${list.map((x, j) => chip(key, x, i, j)).join("")}</div>` : ""}
-        ${list.length > SHOW ? `<button type="button" class="link-btn ph-more" data-more="${list.length - SHOW}">+${list.length - SHOW} more</button>` : ""}</div>`;
-    };
-    const line = (key, label, sub) => `<div class="ph-row"><div class="ph-label">${label}${sub ? `<small>${sub}</small>` : ""}</div>${ph[key].map((l, i) => cell(key, l, i)).join("")}</div>`;
-    const shape = (l) => (l ? `${plural(l.bans, "ban")} · ${plural(l.picks, "pick")}` : "");
-    const view = (() => { try { return localStorage.getItem("phaseView") || "n"; } catch { return "n"; } })();
-    const seg = ([id, label]) => `<button type="button" class="seg${id === view ? " on" : ""}" data-ph-view="${id}" aria-pressed="${id === view}">${label}</button>`;
-    return `<h2>Draft by phase${info("draft_by_phase")}</h2>
-      <div class="ph-bar">
-        <div class="row segs ph-segs" role="group" aria-label="Show">${[["n", "Count"], ["r", "% of drafts"], ["w", "Win %"]].map(seg).join("")}</div>
-        <span class="ph-note">${plural(n, "draft")} · ${ph.wins}–${n - ph.wins} in them</span>
-      </div>
-      <div class="phase-grid reveal" data-view="${view}">
-        <div class="ph-row ph-top"><div class="ph-label"></div>${PHASES.map((p, i) => `<div class="ph-head">Phase ${p}<small>${shape(ph.layout?.[i])} in the whole draft</small></div>`).join("")}</div>
-        ${line("bans", "They ban", "")}
-        ${line("against", "Banned against them", "")}
-        ${line("picks", "They pick", "")}
-      </div>
-`;
+    const n = ph.drafted, rec = (x) => `${x.wins}–${x.n - x.wins}`;
+    const verb = { bans: "banned by", against: "banned against", picks: "picked by" };
+    return phaseGridHtml(src, ph, [["bans", "They ban"], ["against", "Banned against them"], ["picks", "They pick"]], {
+      note: `${plural(n, "draft")} · ${ph.wins}–${n - ph.wins} in them`,
+      tip: (key, x, i) => `${x.hero}: ${verb[key]} ${team.name} ${plural(x.n, "time")} in phase ${i + 1} (${pct0(x.n / n)} of ${plural(n, "draft")}). ${key === "picks" ? "Record with it" : "Their record in those games"}: ${rec(x)}.`,
+    });
   })();
   // How often they're Radiant and how often they pick first, with the record each way. Scrim
   // sides are only "left" and "right", so scrims show pick order alone.
@@ -570,14 +545,7 @@ export async function renderTeams(src, slug) {
     const to = b.dataset.gotoAnchor && document.getElementById(b.dataset.gotoAnchor);
     if (to) scrollToSection(to);
   }));
-  // Draft by phase: Count / % of drafts / Win % toggle (remembered), and "+N more" per cell.
-  app.querySelector(".ph-segs")?.addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-ph-view]");
-    if (!b) return;
-    app.querySelector(".phase-grid").dataset.view = b.dataset.phView;
-    for (const x of app.querySelectorAll(".ph-segs .seg")) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }
-    try { localStorage.setItem("phaseView", b.dataset.phView); } catch {}
-  });
+  wirePhaseGrid(app); // Draft by phase: the view toggle and "+N more"
   wirePools();
   // Hero pool source switch.
   app.querySelector(".hpool-segs")?.addEventListener("click", async (e) => {
@@ -609,10 +577,6 @@ export async function renderTeams(src, slug) {
       : `Every public and ranked game on record for the roster's accounts: ${total} games.`;
     view.innerHTML = all.size ? heroPool([...all.values()].sort((a, b) => b.picks - a.picks)) : none; wirePools();
   });
-  app.querySelectorAll(".ph-more").forEach((b) => (b.onclick = () => {
-    const open = b.closest(".ph-cell").classList.toggle("open");
-    b.textContent = open ? "Show less" : `+${b.dataset.more} more`;
-  }));
 
   // All-leagues places on the Team ranks fill in once every league has loaded (still this team?).
   if (src.ad2l && tline) overallTeamRows(src).then((all) => {

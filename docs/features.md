@@ -287,7 +287,7 @@ first. STRATZ lists levels from 11 up; lower ones and private profiles show none
 
 ## Heroes tab and hero pages
 
-The Heroes tab has three sub-tabs (`?tab=tiers|players|table`):
+The Heroes tab has four sub-tabs (`?tab=tiers|players|table|draft`):
 
 - **Hero tiers** — the heroes themselves, ranked S–D by how well players do on them: the
   games-weighted average hero rating of everyone who played it, padded with 3 games at 50 (the
@@ -309,6 +309,13 @@ The Heroes tab has three sub-tabs (`?tab=tiers|players|table`):
   = 3 bans + 6 picks, phase 3 = last 4 bans + last 2 picks; read from each draft, not
   hard-coded), win % per pick phase and first-pick win rate. Heroes under a minimum number of
   games (default 3, changeable) are hidden so one-off 100% heroes don't top the list.
+- **Draft** — the drafting meta, the team page's Draft tab for the whole division (or All): the
+  draft highlight cards (first pick record, top phase 1 ban and pick, most last-picked, best last
+  pick), side and pick order (Radiant vs Dire and first vs second pick, by wins; first pick's
+  record on each side), the 12 most contested heroes (picked or banned per draft), and Draft by
+  phase (every ban and pick per phase, Count / % of drafts / Win % for the team that made it;
+  `parts/phasegrid.js`, shared with the team page). Hidden where there are no Captains Mode
+  drafts (scrims). Radiant and First blood cards stay on All heroes.
 - **Hero pages** — record, pick and ban rates, average draft slot (AD2L), the same by phase,
   record by pick number, best team and player on it, biggest games, a teams table (picks, W–L,
   win % on the hero, who played it, bans for and against), a players table, Matchups (record

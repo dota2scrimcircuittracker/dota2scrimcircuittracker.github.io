@@ -23,6 +23,48 @@
 .wr-tap:disabled { cursor: default; }
 .wr-prev { left: 0; }
 .wr-next { right: 0; width: 66%; }
+/* No long-press menu, text pick or tap flash on the tap zones (a press held pauses auto-play). */
+.wr-story { -webkit-tap-highlight-color: transparent; }
+.wr-tap { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* The player's own controls (pages/wrapped.js mountStory) at the two ends of the progress line:
+   the card count (phones, where the rail is hidden: it opens the card list) and auto-play's
+   play/pause. The progress bar steps in to make room (its margins). */
+.wr-top { position: absolute; z-index: 4; top: 1.5px; left: 12px; right: 12px; height: 20px; display: flex; align-items: center; pointer-events: none; }
+.wr-story:has(.wr-border) .wr-top { top: calc(var(--wr-edge) * 1.3 + 4px - 8.5px); left: calc(var(--wr-edge) + 8px); right: calc(var(--wr-edge) + 8px); }
+.wr-story:has(.wr-play:not([hidden])) .wr-progress { margin-right: 36px; }
+.wr-story :is(.wr-count-btn, .wr-play, .wr-resume), .wr-story .wr-list button { all: unset; box-sizing: border-box; cursor: pointer; pointer-events: auto; }
+.wr-story :is(.wr-play, .wr-resume)[hidden] { display: none; }
+.wr-story .wr-count-btn { min-width: 58px; text-align: center; font: 600 .62rem/1 var(--mono); letter-spacing: .04em; color: #efe7da; background: rgba(0, 0, 0, .45); padding: 4px 6px; border-radius: 999px; }
+.wr-story .wr-play { margin-left: auto; width: 28px; height: 20px; display: grid; place-items: center; font: 700 .6rem/1 var(--body); color: #efe7da; background: rgba(0, 0, 0, .4); border-radius: 999px; }
+.wr-story .wr-play[aria-pressed="true"] { background: rgba(232, 182, 76, .9); color: #111; }
+.wr-story :is(.wr-count-btn, .wr-play, .wr-resume, .wr-list button):focus-visible { outline: 2px solid #e8b64c; outline-offset: 2px; }
+/* Auto-play fills the card's segment as it goes (its width set each frame). */
+.wr-auto .wr-progress span.now i { transition: none; }
+/* "Continue from card N": offered on the first card when the story was left part way, in the
+   footer in place of its label (Share and Image stay on the right). */
+.wr-story .wr-resume { white-space: nowrap; font: 700 .75rem var(--body); text-transform: none; letter-spacing: 0; color: #111; background: #efe7da; padding: 7px 12px; border-radius: 999px; }
+.wr-foot:has(.wr-resume) > span { display: none; }
+/* Highlights / Full story: the switch between a player's two versions, in every card's footer. */
+.wr-story .wr-modebtn { white-space: nowrap; color: var(--wr-gold); border-color: rgba(232, 182, 76, .5); }
+@media (max-width: 420px) { .wr-foot:has(.wr-modebtn) { gap: 6px; } .wr-foot:has(.wr-modebtn) .wr-share { padding: 6px 9px; } }
+/* The card list: the rail's names, as a sheet over the card. */
+.wr-list { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding: 14px 12px 12px; border-radius: 18px; background: rgba(12, 11, 10, .96); color: #efe7da; }
+.wr-list[hidden] { display: none; }
+.wr-list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px 6px; font: 700 .72rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #c2b8aa; }
+.wr-story .wr-list-head button { flex: none; width: 36px; height: 36px; display: grid; place-items: center; font-size: 1rem; color: #efe7da; background: rgba(255, 255, 255, .08); border-radius: 50%; }
+.wr-list ol { list-style: none; margin: 0; padding: 0; }
+.wr-list > ol { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.wr-story .wr-list li > button { display: block; width: 100%; padding: 10px 12px; border-left: 2px solid transparent; font: 600 .95rem var(--body); color: #c2b8aa; }
+.wr-story .wr-list li > button span { display: block; font: 700 .64rem var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+.wr-story .wr-list li:has(> .wr-rail-slides) > [data-part] { padding: 14px 12px 4px; font: 700 .68rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #e8b64c; }
+.wr-story .wr-list .wr-rail-slides button { padding-left: 18px; }
+.wr-story .wr-list button[aria-current="true"] { color: #efe7da; border-left-color: #e8b64c; background: rgba(255, 255, 255, .05); }
+@media (max-width: 899px) {
+  /* The progress bar opens the card list too: a taller tap area round the thin bar. */
+  .wr-progress { pointer-events: auto; cursor: pointer; margin-left: 64px; }
+  .wr-progress::before { content: ""; position: absolute; inset: -10px 0; }
+}
+@media (min-width: 900px) { .wr-story .wr-count-btn { display: none; } }
 
 /* A card, styled like its link-preview image (scripts/gen/wrapped-og.py): near black, the
    league's colour glowing in from the top left and the slide's tone from the bottom right, the
@@ -99,6 +141,9 @@
 .wr-hname { font: 900 1.5rem/1 var(--display); text-transform: uppercase; overflow-wrap: anywhere; }
 .wr-hname small { display: block; margin-top: 4px; font: 500 .8rem var(--body); text-transform: none; color: var(--wr-dust); }
 .wr-hrec { font: 900 1.7rem/1 var(--display); }
+.wr-hrec .wr-wr { display: block; margin-top: 3px; font: 600 .72rem/1 var(--body); text-align: right; color: var(--wr-dust); }
+.wr-hrec .wr-wr.up { color: #1ed760; }
+.wr-hrec .wr-wr.down { color: #ff6b81; }
 .wr-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; margin: 0; }
 .wr-summary div.wide { grid-column: 1 / -1; }
 .wr-summary dd { margin: 4px 0 0; font: 900 1.8rem/1.02 var(--display); text-transform: uppercase; }
@@ -130,6 +175,15 @@
   .wr-stage .wr-has-backdrop .wr-wall img { animation: wr-wall 6s ease-out both, wr-pan 22s ease-in-out .4s infinite alternate; }
   .wr-new .wr-stage .wr-wall { animation: wr-drift 46s ease-in-out 1s infinite alternate; }
   .wr-new .wr-stage .wr-has-backdrop .wr-wall img { animation: wr-wall 6s ease-out both, wr-pan-slow 70s ease-in-out .4s infinite alternate; }
+  /* A switch card's views (pages/wrapped.js viewsHtml) rise like the body's own lines. Flipping
+     the switch (.wr-swapped) brings the new view in quicker and all at once. */
+  .wr-stage .wr-body > .wr-view { animation: none; }
+  .wr-stage .wr-view > * { --d: .16s; animation: wr-rise .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d); }
+  .wr-stage .wr-view > :nth-child(2) { --d: .24s; }
+  .wr-stage .wr-view > :nth-child(3) { --d: .32s; }
+  .wr-stage .wr-view > :nth-child(n + 4) { --d: .4s; }
+  .wr-stage .wr-swapped .wr-view > * { --d: 0s; animation-duration: .3s; }
+  .wr-stage .wr-swapped .wr-view :is(.wr-stats > div, .wr-chip) { animation-duration: .3s; animation-delay: calc(var(--k) * .04s); }
   .wr-stage .wr-body > * { --d: 0s; animation: wr-rise .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d); }
   .wr-stage .wr-body > :nth-child(2) { --d: .08s; }
   .wr-stage .wr-body > :nth-child(3) { --d: .16s; }
@@ -162,13 +216,51 @@
 .wr-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; width: min(480px, 100%); }
 .wr-pick label { width: 100%; text-align: center; font: 600 .78rem var(--mono); color: var(--dust); }
 .wr-pick input { flex: 1; min-width: 0; }
+.wr-field { display: flex; flex: 1; gap: 8px; min-width: 0; }
 .wr-pick-msg { width: 100%; margin: 0; text-align: center; color: var(--dust); font-size: .85rem; }
 .wr-pick-msg:empty { display: none; }
-/* Every Wrapped (the hub): the search, then a card per review side by side. */
+/* Every Wrapped (the hub): the search, then a card per review side by side. One column 1320px wide,
+   the title lined up with it, over a wall of the season's heroes (.wr-collage, also behind every story). */
+.wr-hubpage { position: relative; isolation: isolate; --hub-w: min(1320px, 100%); }
+.wr-hubpage > .page-head { width: var(--hub-w); margin-inline: auto; text-align: center; }
+.wr-hubpage > .page-head .kicker { justify-content: center; }
+.wr-collage { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; animation: wr-collage-in 1.2s ease both; }
+@keyframes wr-collage-in { from { opacity: 0; } }
+.wr-collage-wall { position: absolute; inset: -25% -20%; display: grid; grid-auto-rows: 1fr; gap: 14px; transform: rotate(-8deg);
+  filter: brightness(.42) saturate(.85); opacity: .55; }
+.wr-collage-row { display: flex; gap: 14px; width: max-content; animation: wr-collage-drift 180s linear infinite; }
+.wr-collage-row.is-rev { animation-direction: reverse; animation-duration: 220s; }
+.wr-collage-row img { width: 340px; height: 100%; min-height: 200px; object-fit: cover; border-radius: 14px; }
+/* Dark in the middle where the tiles sit, the art showing at the edges; fades into the page at the bottom. */
+.wr-collage::after { content: ""; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 55% 60% at 50% 50%, rgba(12, 11, 10, .88), rgba(12, 11, 10, .45) 70%, rgba(12, 11, 10, .2)),
+    linear-gradient(180deg, rgba(12, 11, 10, .55), transparent 25%, transparent 75%, rgba(12, 11, 10, .8)); }
+@keyframes wr-collage-drift { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .wr-collage, .wr-collage-row { animation: none; } }
 .wr-hub { display: grid; gap: 20px; justify-items: center; padding: 8px 0 40px; }
 .wr-hub-lead { margin: 0; color: var(--dust); text-align: center; }
 .wr-hub .wr-pick, .wr-hub .wr-pick label { width: min(560px, 100%); justify-content: center; text-align: center; }
-.wr-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; width: min(1100px, 100%); }
+/* The hub's two searches (player, team): side by side panels, each a search field with its button. */
+.wr-finds { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; width: var(--hub-w, min(1100px, 100%)); }
+.wr-finds .wr-pick { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label mine" "field field" "msg msg"; align-items: center; gap: 10px 12px;
+  width: auto; padding: 16px 18px; border: 1px solid var(--seam-2); border-radius: 14px; background: linear-gradient(160deg, rgba(232, 182, 76, .07), rgba(255, 255, 255, .015) 60%); }
+.wr-finds .wr-pick label { grid-area: label; width: auto; text-align: left; font: 700 .72rem var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.wr-finds .wr-pick > a { grid-area: mine; font: 600 .78rem var(--body); color: var(--gold); text-decoration: none; padding: 3px 11px; border: 1px solid rgba(232, 182, 76, .45); border-radius: 999px; transition: background .15s, color .15s; }
+.wr-finds .wr-pick > a:hover { background: var(--gold); color: #1a1206; }
+.wr-finds .wr-pick-msg { grid-area: msg; text-align: left; }
+.wr-finds .wr-field { grid-area: field; gap: 0; overflow: hidden; border: 1px solid var(--seam-2); border-radius: 10px; background: rgba(0, 0, 0, .38); transition: border-color .15s, box-shadow .15s; }
+.wr-finds .wr-field:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(232, 182, 76, .18); }
+.wr-finds .wr-field input { appearance: none; -webkit-appearance: none; height: auto; margin: 0; padding: 12px 12px 12px 40px; border: 0; border-radius: 0; outline: none; box-shadow: none; color: var(--bone); font: 500 .95rem var(--body);
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a39a8c' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-4-4'/%3E%3C/svg%3E") no-repeat 14px center / 16px; }
+.wr-finds .wr-field input::placeholder { color: var(--dust); opacity: .8; }
+.wr-finds .wr-field input::-webkit-search-cancel-button { filter: invert(.7); cursor: pointer; }
+.wr-finds .wr-field button { margin: 0; padding: 0 20px; border: 0; border-left: 1px solid var(--seam-2); border-radius: 0; background: var(--gold); color: #1a1206; font: 700 .76rem var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; transition: filter .15s; }
+.wr-finds .wr-field button:hover { filter: brightness(1.12); }
+.wr-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; width: var(--hub-w, min(1100px, 100%)); }
+/* Five to a row on wide screens, an unfilled last row centred. */
+.wr-tiles > .wr-tile { flex: 0 1 calc((100% - 4 * 18px) / 5); min-width: 200px; }
+@media (max-width: 480px) { .wr-tiles { gap: 12px; } .wr-tiles > .wr-tile { flex-basis: calc((100% - 12px) / 2); min-width: 0; padding: 14px 12px; }
+  .wr-tiles .wr-tile-name { font-size: 1.35rem; overflow-wrap: anywhere; } .wr-tiles .wr-tile-mark { font-size: 1.6rem; } .wr-tiles .wr-tile-sub, .wr-tiles .wr-tile-state { font-size: .74rem; } }
 .wr-tile { position: relative; display: flex; flex-direction: column; gap: 6px; aspect-ratio: 9 / 13; padding: 18px 16px; border-radius: 16px; overflow: hidden;
   text-decoration: none; color: #efe7da; border: 2px solid var(--tc); font-family: var(--body); isolation: isolate;
   background: linear-gradient(160deg, var(--td), #0c0b0a 75%);
@@ -203,6 +295,9 @@
 .wr-pinned .wr-hrec { font-size: 1.15rem; }
 .wr-pinned .wr-summary dd { font-size: 1.15rem; }
 .wr-pinned-link { display: inline-block; margin-bottom: 6px; font: 600 .75rem var(--mono); color: var(--gold); }
+/* A whole-Wrapped Feed post (card "story"): the intro card and a button to watch the story. */
+.wr-watch { display: block; margin-top: 8px; padding: 9px 12px; border-radius: 999px; background: #e8b64c; color: #111; font: 700 .85rem var(--body); text-align: center; text-decoration: none; }
+.wr-watch:hover { filter: brightness(1.08); }
 
 /* The parts rail and wider card: desktop only. Phones keep the story as it is (rail hidden, the
    layout box adds nothing). */
@@ -261,6 +356,10 @@ body:has(.wr-full) { overflow: hidden; }
 .wr-close { color: #efe7da; text-decoration: none; font: 600 .85rem var(--mono); padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .06); }
 .wr-close:hover { background: rgba(255, 255, 255, .12); }
 .wr-full-mark { font: 600 .7rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: #c2b8aa; }
+/* A player's story: Highlights only / Full story (?short=1), beside the mark. Phones drop the mark. */
+.wr-mode { margin-left: auto; white-space: nowrap; color: #e8b64c; text-decoration: none; font: 600 .8rem var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(232, 182, 76, .4); }
+.wr-mode:hover, .wr-mode:focus-visible { background: rgba(232, 182, 76, .12); }
+@media (max-width: 599px) { .wr-full-bar:has(.wr-mode) .wr-full-mark, .wr-mode-n { display: none; } }
 .wr-full-body { flex: 1; display: grid; align-content: center; justify-items: center; gap: 14px; padding: 0 16px 16px; }
 .wr-full .wr-page { width: 100%; padding-bottom: 0; }
 /* A season review's story sits in its own section: full width too. Centred (justify-items above), it
@@ -335,7 +434,7 @@ body:has(.wr-full) { overflow: hidden; }
 .wr-table th { padding: 7px 10px; font: 600 .62rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--wr-dust); text-align: right; }
 .wr-table th:first-child, .wr-table td:first-child { text-align: left; }
 .wr-table td { padding: 5px 10px; text-align: right; font-variant-numeric: tabular-nums; border-top: 1px solid rgba(255, 255, 255, .06); }
-.wr-table td.wr-top { color: #1ed760; font-weight: 700; }
+.wr-table td.wr-best { color: #1ed760; font-weight: 700; }
 .wr-table tr.me td { color: var(--wr-gold); font-weight: 700; }
 .wr-hbars { display: grid; grid-template-columns: 7em minmax(0, 1fr) 2.4em; gap: 6px 10px; align-items: center; margin-top: 14px; font-size: .82rem; }
 .wr-hbars i { height: 9px; border-radius: 5px; background: rgba(255, 255, 255, .1); overflow: hidden; }
@@ -420,3 +519,29 @@ body:has(.wr-full) { overflow: hidden; }
 .wr-story:has(.wr-border .wr-ring) { --wr-edge: 10px; }
 /* Award slides: the next 3 under the winner (the race, top 4 in all). */
 .wr-next { margin: 14px 0 6px; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+/* Nemesis card: every game against the hero as a strip of their own hero's portraits, green for a
+   win, red for a loss; the KDA bars; the runner-up as small pips. */
+.wr-nm-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 4px; }
+.wr-nm-g { position: relative; display: block; width: 58px; height: 33px; border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 2px var(--nm, #e2524a); }
+.wr-nm-g.is-w { --nm: #3ccf6e; }
+.wr-nm-g img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.55) brightness(.75); }
+.wr-nm-g.is-w img { filter: none; }
+.wr-nm-g span { display: grid; place-items: center; height: 100%; font-size: .6rem; color: var(--wr-dust); }
+.wr-nm-g b { position: absolute; right: 0; bottom: 0; padding: 0 4px; font: 700 .62rem/1.4 var(--mono); color: #0c0b0a; background: var(--nm, #e2524a); border-top-left-radius: 5px; }
+.wr-nm-g:hover, .wr-nm-g:focus-visible { box-shadow: inset 0 0 0 2px var(--nm, #e2524a), 0 0 0 2px var(--wr-bone); }
+.wr-trait b.wr-nm-bad { background: #e2524a; }
+.wr-trait b.wr-nm-all { background: rgba(239, 231, 218, .55); }
+.wr-nm-next { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 14px; font-size: .9rem; }
+.wr-nm-next img { width: 52px; height: 29px; border-radius: 5px; object-fit: cover; }
+.wr-nm-pips { display: inline-flex; gap: 4px; }
+.wr-nm-pips a { width: 12px; height: 12px; border-radius: 3px; background: #e2524a; }
+.wr-nm-pips a.is-w { background: #3ccf6e; }
+
+/* The switch on a switch card: "A game | A minute" and the like. */
+.wr-view { display: contents; }
+.wr-view[hidden] { display: none; }
+.wr-switch { display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 12px; border-radius: 999px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .18); backdrop-filter: blur(6px); }
+.wr-switch button { font: 600 .66rem var(--mono); letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--wr-bone) 70%, transparent); background: none; border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: background .2s, color .2s; }
+.wr-switch button:hover { color: var(--wr-bone); }
+.wr-switch button[aria-pressed="true"] { color: var(--wr-ink); background: var(--wr-gold); cursor: default; }
+.wr-switch button:focus-visible { outline: 2px solid var(--wr-gold); outline-offset: 2px; }

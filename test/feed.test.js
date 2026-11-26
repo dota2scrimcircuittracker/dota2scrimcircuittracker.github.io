@@ -129,6 +129,13 @@ test('player posts: text tidied, clips parsed, images checked by their bytes',as
   assert.throws(()=>buildUserPost({account:'1',at:5,images:[svg]}),/JPEG, PNG/);
   assert.throws(()=>buildUserPost({account:'1',at:5,images:[Uint8Array.from({length:MAX_IMAGE_BYTES+1},(_,i)=>[0xff,0xd8,0xff][i]??0)]}),/under/);
   assert.throws(()=>buildUserPost({account:'1',at:5,game:'../x'}),/your games/);
+  // A Wrapped card post: the reference only, checked like a profile pin; a card alone is enough.
+  const wr={season:'S48',div:'heroic_a',card:'award:mvp'};
+  assert.deepEqual(buildUserPost({account:'1',at:5,wrapped:{...wr,extra:'x'}}),{kind:'user',account:'1',at:5,text:'',wrapped:wr});
+  // Champion's league id is 'ad2l'.
+  for(const card of ['story','perf-team','m-vision','m-rec-gpm','clip'])assert.equal(buildUserPost({account:'1',at:5,wrapped:{...wr,card}}).wrapped.card,card);
+  assert.equal(buildUserPost({account:'1',at:5,wrapped:{...wr,div:'ad2l'}}).wrapped.div,'ad2l');
+  for(const bad of [{...wr,card:'secret'},{...wr,card:'m-<x>'},{...wr,card:'part1'},{...wr,season:'48'},{...wr,div:'../x'},'S48',[wr]])assert.throws(()=>buildUserPost({account:'1',at:5,wrapped:bad}),/Choose/);
   const id=userPostId('1',5);assert.equal(postOwner(id),'1');
   assert.equal(canRemovePost(id,'1'),true);assert.equal(canRemovePost(id,'2'),false);assert.equal(canRemovePost(id,'2',true),true);
   // Owners remove their saved-card and pull posts too, not other players'.

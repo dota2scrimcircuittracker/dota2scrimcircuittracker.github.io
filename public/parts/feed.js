@@ -258,6 +258,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       ${p.poll ? pollHtml(p) : ''}
       ${p.game ? gameHtml(p) : ''}
       ${p.clip ? clipHtml(p.clip) : ''}
+      ${p.wrapped ? `<div class="feed-wrapped" data-wrapped="${esc(JSON.stringify(p.wrapped))}" data-account="${esc(p.account)}"><p>Loading Wrapped card…</p></div>` : ''}
       ${imgs.length ? `<div class="feed-images feed-images-${imgs.length}">${imgs.map((_, i) => `<button type="button" data-zoom="${esc(feedMediaUrl(p.id, i))}" aria-label="Open image ${i + 1}"><img src="${esc(feedMediaUrl(p.id, i))}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}`;
   }
   function postHtml(p, pinned = false) {
@@ -265,7 +266,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     if (p.kind === 'user') {
       return `<article class="feed-post feed-user${pinned ? ' feed-pinned' : ''}${p.pinned ? ' feed-pin-top' : ''}" data-post="${esc(p.id)}" data-account="${esc(p.account)}" style="--rarity:#6f6280">
       ${pinned ? '<p class="feed-pin-note">From your notifications</p>' : ''}${p.pinned ? '<p class="feed-pin-badge">Pinned by Fav</p>' : ''}
-      <header>${who(p.account)} <span>${p.poll ? 'started a poll' : p.game ? 'highlighted a game' : p.clip ? 'shared a clip' : p.images?.length ? 'posted' : 'wrote'}</span> ${when(p.at)}${toolsHtml(p)}</header>
+      <header>${who(p.account)} <span>${p.poll ? 'started a poll' : p.wrapped ? (p.wrapped.card === 'story' ? 'shared their Wrapped' : 'shared a Wrapped card') : p.game ? 'highlighted a game' : p.clip ? 'shared a clip' : p.images?.length ? 'posted' : 'wrote'}</span> ${when(p.at)}${toolsHtml(p)}</header>
       <div class="feed-user-body">${userPostHtml(p)}</div>
       <div class="feed-user-foot"><div class="feed-reacts" role="group" aria-label="Reactions">${reactsHtml(p)}</div>${reactionControlHtml(p)}</div>
       <div class="feed-comments">${commentsHtml(p)}</div>
@@ -305,6 +306,17 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
   // post that still shows that look gets the buttons; an older look says it was replaced.
   const ratingsOf = new Map();
   let myVotes = null;
+  // Wrapped card posts: the poster's own card, drawn live like a profile pin (pages/wrapped.js
+  // pinnedCardHtml, loaded on first need). Another season's card or one they no longer have says so.
+  function mountWrappedCards() {
+    const boxes = [...list.querySelectorAll('.feed-wrapped:not([data-drawn])')];
+    if (!boxes.length) return;
+    for (const b of boxes) b.dataset.drawn = '1';
+    import('../pages/wrapped.js').then((m) => Promise.all(boxes.map(async (b) => {
+      const html = await m.pinnedCardHtml(JSON.parse(b.dataset.wrapped), b.dataset.account).catch(() => '');
+      b.innerHTML = html || '<p class="feed-wrapped-missing">This Wrapped card isn’t available now.</p>';
+    }))).catch(() => { for (const b of boxes) b.innerHTML = '<p class="feed-wrapped-missing">Wrapped could not load.</p>'; });
+  }
   async function mountCardRatings() {
     const slots = [...list.querySelectorAll('.feed-card-rating[data-rate-post]:not([data-mounted])')];
     if (!slots.length) return;
@@ -359,7 +371,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
     if (!(me in nicknames)) nicknames[me] = shownNickname(state);
     posts.set(p.id, p);
     list.insertAdjacentHTML('afterbegin', postHtml(p));
-    mountCardRatings();
+    mountCardRatings(); mountWrappedCards();
     fitAllReacts();
     moreBox.querySelector('p:only-child')?.remove();
   } });
@@ -418,6 +430,7 @@ export async function drawFeed(body, { viewer, signIn, action, swatch, colors, t
       list.insertAdjacentHTML(pinned ? 'afterbegin' : 'beforeend', postHtml(p, pinned));
     }
     wirePlayerCards(list, { openOnCard: true });
+    mountWrappedCards();
     list.querySelectorAll('.feed-card').forEach(fitDesignCards);
     mountCardRatings();
     fitAllReacts();

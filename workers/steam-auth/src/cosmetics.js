@@ -785,7 +785,7 @@ export class CosmeticsVault {
           if(now-(saved.lastPostAt??0)<POST_GAP)throw new Error('Wait a moment before posting again.');
           if(!Array.isArray(body.images??[]))throw new Error('Choose images to add.');
           const images=(body.images??[]).slice(0,MAX_IMAGES+1).map(decodeImage),id=userPostId(account,now);
-          const post=buildUserPost({account,at:now,text:body.text,clip:body.clip,game:body.game,images,poll:body.poll??null});
+          const post=buildUserPost({account,at:now,text:body.text,clip:body.clip,game:body.game,images,poll:body.poll??null,wrapped:body.wrapped??null});
           await txn.put(`post:${id}`,post);
           for(let i=0;i<images.length;i++)await txn.put(`media:${id}:${i}`,{type:post.images[i].type,bytes:images[i]});
           for(const to of pingTargets(post.text,body.mentions,account))await this.notify(txn,to,{kind:'mention',post:id,from:account,fromName:shownNickname(saved),text:plainMentions(post.text).slice(0,120),at:now});

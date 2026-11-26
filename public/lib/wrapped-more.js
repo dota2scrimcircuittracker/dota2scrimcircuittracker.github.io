@@ -78,7 +78,7 @@ function visionOf(rows, R) {
   if (w.length < 15) return null;
   const spot = hotspot(w.map((o) => [o.x, o.y]), 5), dw = sum(rows, ({ p }) => dewards(p));
   const g = best(rows, dewards);
-  return { wards: w, total: w.length, spot, unfound: w.filter((o) => !o.killed).length / w.length, dewards: dw,
+  return { wards: w, total: w.length, games: rows.length, spot, unfound: w.filter((o) => !o.killed).length / w.length, dewards: dw,
     bestNight: dewards(g.p) ? { n: dewards(g.p), hero: g.p.hero } : null,
     rank: R((rs) => { const x = obsOf(rs); return x.length >= 10 ? x.length / rs.length : null; }) };
 }
@@ -87,7 +87,7 @@ function fightOf(rows, R) {
   const tf = rows.filter(({ p }) => p.tf_part != null);
   if (tf.length < MIN) return null;
   const pts = deathSpots(rows), spot = pts.length >= 4 ? hotspot(pts, 9) : null;
-  return { share: per(tf, ({ p }) => p.tf_part), stuns: sum(rows, ({ p }) => p.stuns), soaked: sum(rows, ({ p }) => p.dmg_taken),
+  return { games: rows.length, share: per(tf, ({ p }) => p.tf_part), stuns: sum(rows, ({ p }) => p.stuns), soaked: sum(rows, ({ p }) => p.dmg_taken),
     rank: R((rs) => { const x = rs.filter(({ p }) => p.tf_part != null); return x.length ? per(x, ({ p }) => p.tf_part) : null; }),
     stunRank: R((rs) => per(rs, ({ p }) => p.stuns)),
     deaths: spot && spot.n >= 3 ? { pts, spot } : null };
@@ -106,9 +106,14 @@ function earlyOf(rows, R) {
   const total = sum(bins, (n) => n);
   if (total < 8) return null;
   const { mins, rate, peak } = clockRates(bins, rows.map(({ m }) => m.duration_sec));
-  const dur = sum(rows, ({ m }) => m.duration_sec) / 60;
-  return { bins, mins, rate, peak, total, assists, early: (bins[0] + bins[1] + bins[2]) / total,
+  const dur = sum(rows, ({ m }) => m.duration_sec) / 60, n = rows.length;
+  // A game: each stretch's count over every game, games that ended before it counting 0. The peak
+  // is among the eight 5-minute stretches: 40+ holds every minute past 40, so it isn't one.
+  const perGame = bins.map((b) => b / n), five = perGame.slice(0, 8);
+  return { bins, mins, rate, peak, perGame, peakGame: five.indexOf(Math.max(...five)), total, assists, early: (bins[0] + bins[1] + bins[2]) / total,
     kpm: sum(rows, ({ p }) => p.kills) / dur, apm: sum(rows, ({ p }) => p.assists) / dur,
+    kpg: sum(rows, ({ p }) => p.kills) / n, apg: sum(rows, ({ p }) => p.assists) / n,
+    rankGame: R((rs) => per(rs, ({ p }) => p.kills + p.assists)),
     fb: sum(rows, ({ p }) => p.first_blood), fd: sum(rows, ({ p }) => p.first_death),
     fbRank: R((rs) => sum(rs, ({ p }) => p.first_blood)),
     rank: R((rs) => { const d = sum(rs, ({ m }) => m.duration_sec) / 60; return d ? sum(rs, ({ p }) => p.kills + p.assists) / d : null; }) };
@@ -153,7 +158,7 @@ function handsOf(rows, R) {
   const r = rows.filter(({ p }) => p.apm != null);
   if (!r.length) return null;
   const g = best(r, (p) => p.apm), pg = best(r, (p) => p.pings);
-  return { apm: per(r, ({ p }) => p.apm), actions: sum(r, ({ m, p }) => (p.apm * m.duration_sec) / 60), top: { apm: g.p.apm, hero: g.p.hero },
+  return { games: r.length, apm: per(r, ({ p }) => p.apm), actions: sum(r, ({ m, p }) => (p.apm * m.duration_sec) / 60), top: { apm: g.p.apm, hero: g.p.hero },
     pings: sum(r, ({ p }) => p.pings), perGame: per(r, ({ p }) => p.pings), loudest: pg.p.pings ? { n: pg.p.pings, hero: pg.p.hero } : null,
     rank: R((rs) => per(rs, ({ p }) => p.apm)), pingRank: R((rs) => per(rs, ({ p }) => p.pings)) };
 }
@@ -200,12 +205,12 @@ function farmOf(rows, R, RC) {
   const t = rows.filter(({ p }) => p.lh10 != null);
   if (t.length < MIN || !sum(rows, ({ p }) => p.last_hits)) return null;
   const lh10 = (rs) => { const x = rs.filter(({ p }) => p.lh10 != null); return x.length >= MIN ? per(x, ({ p }) => p.lh10) : null; };
-  const perMin = (rs) => per(rs, ({ m, p }) => lhm(m, p));
+  const perMin = (rs) => per(rs, ({ m, p }) => lhm(m, p)), perGame = (rs) => per(rs, ({ p }) => p.last_hits ?? 0);
   const b10 = best(t, (p) => p.lh10), bAll = best(rows, (p) => p.last_hits), bRate = rows.reduce((x, c) => (lhm(c.m, c.p) > lhm(x.m, x.p) ? c : x));
-  return { lh10: lh10(rows), dn10: per(t, ({ p }) => p.dn10 ?? 0), perMin: perMin(rows), total: sum(rows, ({ p }) => p.last_hits),
+  return { lh10: lh10(rows), dn10: per(t, ({ p }) => p.dn10 ?? 0), perMin: perMin(rows), perGame: perGame(rows), total: sum(rows, ({ p }) => p.last_hits),
     best10: { n: b10.p.lh10, hero: b10.p.hero, m: b10.m }, bestGame: { n: bAll.p.last_hits, hero: bAll.p.hero, m: bAll.m },
     bestRate: { n: lhm(bRate.m, bRate.p), hero: bRate.p.hero },
-    rank10: R(lh10), rankMin: R(perMin), core10: RC(lh10), coreMin: RC(perMin) };
+    rank10: R(lh10), rankMin: R(perMin), rankGame: R(perGame), core10: RC(lh10), coreMin: RC(perMin), coreGame: RC(perGame) };
 }
 // Where a card's best single games rank among each player's best game in the division, the way the
 // season review's record boards (gameRecords) list them: best10 on last hits at 10, bestGame on
@@ -381,7 +386,10 @@ export function playerRecords(scopes, key, more = null, max = 2) {
   const seen = new Set();
   return out.filter((r) => !seen.has(r.key) && seen.add(r.key)).slice(0, max);
 }
-// games: the scope's season games. Returns [{ ...board, top: [{ key, p, team, hero, val }] }].
+// Board key -> the one-game record on the same stat (RECORDS key), folded into that board.
+const BOARD_RECORD = { farm: "gpm", damage: "damage", heal: "heal", stuns: "stuns", wards: "wards", vision: "dewards", map: "stacks", siege: "towers", tank: "tank", lane: "lh10" };
+// games: the scope's season games. Returns [{ ...board, top: [{ key, p, team, hero, val }], best? }].
+// best: the matching record's top game ({ key, p, m, hero, team, vs, val }).
 export function leaderboards(games) {
   const players = parsedPlayers(games);
   const out = BOARDS.map((b) => podium(players, b)).filter((b) => b.top.length);
@@ -398,7 +406,14 @@ export function leaderboards(games) {
     out.push({ key: "clutch", group: "Clutch", title: "Comeback of the season", tone: 3, game: cb.m, d: cb.d, team, lost, hero: star?.hero ?? null });
   }
   for (const b of MORE_BOARDS) { const x = podium(players, b); if (x.top.length) out.push(x); }
-  out.push(...gameRecords(games));
+  // A record on the same stat as a board doesn't get its own slide: its top game goes on the board
+  // (b.best), so the season average and the one-game best aren't two slides saying the same thing.
+  const recs = gameRecords(games), byKey = new Map(recs.map((r) => [r.key, r])), folded = new Set();
+  for (const x of out) {
+    const r = byKey.get(`rec-${BOARD_RECORD[x.key]}`);
+    if (r && x.top) { x.best = r.top[0]; folded.add(r.key); }
+  }
+  out.push(...recs.filter((r) => !folded.has(r.key)));
   return out;
 }
 

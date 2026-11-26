@@ -8,6 +8,10 @@ import { highlightableGames, playerLine, gameAchievements } from '../lib/highlig
 import { wireMentions, mentionsOf, forgetMentions } from './feed-mentions.js';
 
 const MAX_SIDE = 1600;
+// A Wrapped card handed over by the Wrapped page's "Post to Feed" button (pages/wrapped.js):
+// { season, div, card, label }. Kept until it's posted or taken off, so a Feed redraw keeps it.
+const WRAPPED_DRAFT = 'feed-wrapped-draft';
+const PLACEHOLDER = 'Share a highlight, a clip or a screenshot… @ to mention a player or team';
 
 // A picked file as upload bytes: GIFs stay as they are (to keep the animation) when small enough;
 // everything else is redrawn at most MAX_SIDE wide or tall, as WebP (JPEG where WebP can't be made),
@@ -49,6 +53,7 @@ export function composerHtml(matches, me) {
     <label class="sr-only" for="feed-compose-text">Write a post</label>
     <div class="feed-compose-text"><textarea id="feed-compose-text" name="text" maxlength="${MAX_POST_TEXT}" rows="2" placeholder="Share a highlight, a clip or a screenshot… @ to mention a player or team"></textarea></div>
     <div class="feed-compose-images" hidden></div>
+    <div class="feed-compose-wrapped" hidden></div>
     <div class="feed-compose-extra" data-extra="clip" hidden><input name="clip" type="url" inputmode="url" placeholder="YouTube, Twitch, Streamable, Medal or Allstar link" aria-label="Clip link"></div>
     <div class="feed-compose-extra" data-extra="game" hidden>
       <select name="game" aria-label="Highlight one of your games"><option value="">Pick one of your games…</option>${games.map((m) => `<option value="${esc(m.id)}">${esc(gameLabel(m, me))}</option>`).join('')}</select>
@@ -94,6 +99,19 @@ export function wireComposer(form, { matches, me, onPosted, badgesHtml, mentions
     }
     changed(); drawImages();
   };
+  // The Wrapped card on this post, if one was handed over.
+  const wrapBox = form.querySelector('.feed-compose-wrapped');
+  let wrapped = null;
+  try { wrapped = JSON.parse(sessionStorage.getItem(WRAPPED_DRAFT)); } catch { wrapped = null; }
+  const drawWrapped = () => {
+    wrapBox.hidden = !wrapped;
+    wrapBox.innerHTML = wrapped ? `<span>Wrapped card: <b>${esc(wrapped.label || wrapped.card)}</b> · ${esc(wrapped.season)}</span><button type="button" data-unwrap aria-label="Take the Wrapped card off this post">×</button>` : '';
+    text.placeholder = wrapped ? 'Say something about your Wrapped card… @ to mention a player or team' : PLACEHOLDER;
+  };
+  const setWrapped = (w) => {
+    wrapped = w; changed(); drawWrapped();
+    try { if (w) sessionStorage.setItem(WRAPPED_DRAFT, JSON.stringify(w)); else sessionStorage.removeItem(WRAPPED_DRAFT); } catch { /* kept for this visit only */ }
+  };
   wireMentions(text, mentions);
   const autosize = () => { text.style.height = 'auto'; text.style.height = `${Math.min(text.scrollHeight, 320)}px`; };
   text.addEventListener('input', () => {
@@ -118,7 +136,7 @@ export function wireComposer(form, { matches, me, onPosted, badgesHtml, mentions
   const resetPoll = () => {
     choices.innerHTML = Array.from({ length: MIN_POLL_OPTIONS }, (_, i) => pollChoiceHtml(i)).join('');
     form.querySelector('[data-add-choice]').hidden = false;
-    text.placeholder = 'Share a highlight, a clip or a screenshot… @ to mention a player or team';
+    text.placeholder = PLACEHOLDER;
   };
   const renumber = () => {
     choices.querySelectorAll('li').forEach((li, i) => {
@@ -135,6 +153,7 @@ export function wireComposer(form, { matches, me, onPosted, badgesHtml, mentions
     }
     const drop = e.target.closest('[data-drop-choice]');
     if (drop) { drop.closest('li').remove(); renumber(); changed(); return; }
+    if (e.target.closest('[data-unwrap]')) { setWrapped(null); return; }
     const unpick = e.target.closest('[data-unpick]');
     if (unpick) { const [img] = images.splice(Number(unpick.dataset.unpick), 1); URL.revokeObjectURL(img.url); changed(); drawImages(); return; }
     const toggle = e.target.closest('[data-toggle]');
@@ -153,6 +172,8 @@ export function wireComposer(form, { matches, me, onPosted, badgesHtml, mentions
       }
     }
   });
+  drawWrapped();
+  if (wrapped) requestAnimationFrame(() => { form.scrollIntoView({ block: 'center' }); text.focus(); });
   form.addEventListener('submit', async (e) => {
     e.preventDefault(); say('');
     const clip = form.elements.namedItem('clip').value.trim();
@@ -162,13 +183,13 @@ export function wireComposer(form, { matches, me, onPosted, badgesHtml, mentions
     button.disabled = true; button.textContent = 'Posting…';
     try {
       const { text: body, pings } = mentionsOf(text);
-      const data = await createFeedPost(draft, { text: body, mentions: pings, clip, game: select.value || null, images: await Promise.all(images.map((i) => base64(i.blob))), poll });
+      const data = await createFeedPost(draft, { text: body, mentions: pings, clip, game: select.value || null, images: await Promise.all(images.map((i) => base64(i.blob))), poll, wrapped: wrapped && { season: wrapped.season, div: wrapped.div, card: wrapped.card } });
       images.splice(0).forEach((i) => URL.revokeObjectURL(i.url));
       form.reset(); forgetMentions(text); drawImages(); autosize(); count.textContent = '';
       form.querySelectorAll('[data-extra]').forEach((x) => { x.hidden = true; });
       form.querySelectorAll('[data-toggle]').forEach((x) => x.setAttribute('aria-pressed', 'false'));
       form.querySelector('.feed-compose-badges').innerHTML = '';
-      resetPoll();
+      resetPoll(); setWrapped(null);
       onPosted(data.post, data.state);
     } catch (err) { say(err.message); }
     button.disabled = false; button.textContent = 'Post';

@@ -26,7 +26,9 @@ export const PLAYERS_PAGE_TABS = [
   ["tiers", "Tier list"], ["leaders", "Stat leaders"], ["lanes", "Laning", { ad2l: true }], ["stats", "All stats"],
 ];
 // The league's Heroes page.
-export const HEROES_PAGE_TABS = [["tiers", "Hero tiers"], ["players", "Players on heroes"], ["table", "All heroes"]];
+// Draft: the drafting meta (side and pick order, most contested, bans and picks by phase); needs
+// Captains Mode drafts, so it hides where there are none.
+export const HEROES_PAGE_TABS = [["tiers", "Hero tiers"], ["players", "Players on heroes"], ["table", "All heroes"], ["draft", "Draft"]];
 // AD2L's Predict page (the scrim one has no tabs).
 export const PREDICT_TABS = [["fantasy", "Fantasy"], ["ftable", "Fantasy table"], ["calls", "Predictions"], ["board", "Leaderboard"], ["bracket", "Bracket"], ["odds", "Seeding"]];
 // The Drafter's starting points (buttons on the page, not tabs, but linked the same way).

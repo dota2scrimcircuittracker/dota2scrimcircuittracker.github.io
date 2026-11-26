@@ -128,6 +128,9 @@ export const INFO = {
   draft_slot: "Average position of its pick in the draft, counting all 24 steps (bans and picks). Lower = taken earlier.",
   by_draft_pick: "Record by which of the team's five picks the hero was (1st … last). A big last-pick gap means it works best as a counter-pick. Under each record: average game rating (0–100), KDA, GPM, damage per minute and kill participation from that slot, green or red when clearly above or below the hero's all-slot average.",
   team_side_pick: "How often the team plays Radiant and picks first, with its record each way. In Captains Mode one team chooses side or first pick and the other gets the remaining choice, so a lean shows what this team takes, or what opponents leave it. The line under the bars shows their side when picking first or second.",
+  league_side_pick: "Every game's side and every draft's pick order, with who won. In Captains Mode one team chooses side or first pick and the other gets the remaining choice, so these show which choice has paid off. The line under the bars splits first pick by side.",
+  league_draft_phase: "Every ban and pick in the division by draft phase. Phase 1 = opening 7 bans and first 2 picks, phase 2 = 3 bans and 6 picks, phase 3 = last 4 bans and last 2 picks. Count = times. % of drafts = how often it comes up. Win % = the record of the team that banned or picked it.",
+  league_contested: "Heroes picked or banned in the most drafts. Contest rate = drafts it was picked or banned in, out of every draft.",
   draft_by_phase: "Bans, bans against and picks by draft phase. Phase 1 = opening 7 bans and first 2 picks, phase 2 = 3 bans and 6 picks, phase 3 = last 4 bans and last 2 picks. Count = times. % of drafts = how often it comes up. Win % = the team's record in those games (for picks, with the hero).",
   hero_phases: "When this hero gets banned or picked in Captains Mode drafts, split by phase.",
 

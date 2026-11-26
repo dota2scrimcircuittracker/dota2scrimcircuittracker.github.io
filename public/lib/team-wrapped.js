@@ -104,7 +104,8 @@ export function killClock(tg) {
   const fb = withFb.filter((g) => mine(g).some((p) => p.first_blood));
   if (total < 20) return null;
   const { mins, rate, peak } = clockRates(bins, tg.map(({ m }) => m.duration_sec), 5);
-  return { bins, mins, rate, total, peak, early: sum(bins.slice(0, 3), (n) => n) / total, fbGames: withFb.length, fbWins: fb.length, fbWinRate: fb.length ? fb.filter(won).length / fb.length : null };
+  const perGame = bins.map((b) => b / tg.length), five = perGame.slice(0, 8);
+  return { bins, mins, rate, total, peak, games: tg.length, perGame, peakGame: five.indexOf(Math.max(...five)), early: sum(bins.slice(0, 3), (n) => n) / total, fbGames: withFb.length, fbWins: fb.length, fbWinRate: fb.length ? fb.filter(won).length / fb.length : null };
 }
 
 // The team's lead minute by minute (its own side positive).

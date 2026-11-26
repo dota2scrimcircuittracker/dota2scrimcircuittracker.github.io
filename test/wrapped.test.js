@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { withDerived } from "../public/lib/stats.js";
-import { seasonGames, seasonAwards, playerWrapped, leadChanges, overachievers, nemesisOf, validCard, targetedBans, heroPlays, byPlayer, seasonResults, deadTimeOf, biggestHitOf, highlightsOf, personalityOf, TRAITS, PERSONALITY_NAMES, UNNAMED_PAIRS, leaguePersonalities, PERSONALITY_CAP, medalStars } from "../public/lib/wrapped.js";
+import { seasonGames, seasonAwards, playerWrapped, leadChanges, overachievers, nemesisOf, validCard, targetedBans, heroPlays, byPlayer, seasonResults, deadTimeOf, biggestHitOf, highlightsOf, personalityOf, TRAITS, PERSONALITY_NAMES, UNNAMED_PAIRS, leaguePersonalities, PERSONALITY_CAP, medalStars, seriesCloseness, leadSwings } from "../public/lib/wrapped.js";
 
 // A game: a's five are players a1..a5 on heroes ha1..ha5 (b likewise); winner "a" or "b".
 let gid = 0;
@@ -27,6 +27,54 @@ test("leadChanges counts 1k+ lead flips after minute 2", () => {
   assert.equal(leadChanges({ gold_adv: [0, 5000, -5000, 2000, -500, -1500, 3000] }), 3);
   assert.equal(leadChanges({ gold_adv: [0, 200, -300, 900] }), 0);
   assert.equal(leadChanges({}), 0);
+});
+
+test("series of the season prefers a close split series over a swingy sweep", () => {
+  const wild = [0, 0, 6000, -6000, 6000, -6000, 6000, -6000, 3000];
+  const close = [0, 0, 2000, -2000, 3000];
+  const games = [
+    game("a", { series_id: 10, gold_adv: wild }), game("a", { series_id: 10, gold_adv: wild }),
+    game("a", { series_id: 11, gold_adv: close }), game("b", { series_id: 11, gold_adv: close }), game("a", { series_id: 11, gold_adv: close }),
+  ];
+  const sos = seasonAwards(games).find((a) => a.key === "series");
+  assert.equal(sos.series, 11);
+  assert.equal(sos.runnerUp.series, 10);
+  assert.equal(seasonAwards(games.slice(2)).find((a) => a.key === "series").runnerUp, null);
+  // With only sweeps, the swingiest one still wins.
+  assert.equal(seasonAwards(games.slice(0, 2)).find((a) => a.key === "series").series, 10);
+});
+
+test("seriesCloseness rewards coming back in the series and marks down stomps", () => {
+  const even = [0, 0, 2000, 3000];
+  const stomp = [0, 0, 8000, 25000];
+  const t = (winner, i, gold_adv) => ({ ...game(winner, { gold_adv }), start_time: i });
+  const back = seriesCloseness([t("b", 1, even), t("a", 2, even), t("a", 3, even)]);
+  const front = seriesCloseness([t("a", 1, even), t("b", 2, even), t("a", 3, even)]);
+  assert.equal(back.score - front.score, 2);
+  const sweep = seriesCloseness([t("b", 1, even), t("b", 2, even), t("a", 3, even), t("a", 4, even), t("a", 5, even)]);
+  const plain = seriesCloseness([t("a", 1, even), t("b", 2, even), t("a", 3, even), t("b", 4, even), t("a", 5, even)]);
+  assert.equal(sweep.score - plain.score, 10);
+  assert.deepEqual(sweep.notes, ["Came back from 0–2"]);
+  assert.deepEqual(back.notes, ["Came back from 0–1"]);
+  const stomped = seriesCloseness([t("a", 1, even), t("b", 2, even), t("a", 3, stomp)]);
+  assert.ok(stomped.score < front.score);
+  // A game won from 5k+ down is a comeback.
+  const cb = seriesCloseness([t("a", 1, [0, 0, -6000, 2000])], { home_score: 1, away_score: 1 });
+  assert.equal(cb.split, 1);
+  assert.match(cb.notes[0], /Game 1 comeback from 6k down/);
+});
+
+test("leadSwings sizes each lead change; big swings and bloody games score higher", () => {
+  assert.deepEqual(leadSwings({ gold_adv: [0, 9000, 3000, -2000, -8000, 500, 12000] }), [11000, 20000]);
+  assert.deepEqual(leadSwings({ gold_adv: [0, 0, 2000] }), []);
+  const t = (gold_adv, kills = 2) => game("a", { gold_adv, stat: Object.fromEntries(["a1", "b1"].map((k) => [k, { kills }])) });
+  const small = seriesCloseness([t([0, 0, 2000, -2000, 2000])]);
+  const big = seriesCloseness([t([0, 0, 12000, -12000, 12000])]);
+  assert.ok(big.score > small.score);
+  const calm = seriesCloseness([t([0, 0, 2000])], null, { avgKills: 40 });
+  const bloody = seriesCloseness([t([0, 0, 2000], 30)], null, { avgKills: 40 });
+  assert.ok(bloody.score - calm.score >= 1.9);
+  assert.match(bloody.notes.join(), /Game 1: \d+ kills/);
 });
 
 test("overachievers scores only series won as the underdog, long odds most", () => {
@@ -239,4 +287,11 @@ test("leaguePersonalities: at most PERSONALITY_CAP per name, never two in one di
   for (const [id, m] of out) assert.equal(m.size, [...leagues.find((l) => l.id === id).players.values()].filter((e) => e.rows.length >= 3).length);
   // Each still gets a name with their standout trait in it.
   for (const [, m] of out) assert.ok(m.get("a5").key.includes("stacks"));
+});
+
+test("nemesis strip lists every game against it, oldest first, with their hero and result", () => {
+  const g = (winner, t, mine) => ({ ...game(winner, { heroes: { a1: mine, b1: "storm" } }), start_time: t });
+  const games = [g("b", 3, "lina"), g("a", 2, "kez"), g("b", 1, "puck"), g("b", 4, "kez")];
+  const x = playerWrapped(games, "a1").nemesisMore;
+  assert.deepEqual(x.strip.map((s) => [s.hero, s.won]), [["puck", false], ["kez", true], ["lina", false], ["kez", false]]);
 });
