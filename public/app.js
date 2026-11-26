@@ -558,6 +558,14 @@ export function route() {
     else if (h.startsWith(`${r}/heroes`)) { section = "heroes"; tm = true; page = () => renderHeroes(t); }
     else if (h.startsWith(`${r}/draft`) && !h.startsWith(`${r}/drafter`)) { section = "heroes"; tm = true; page = () => renderHeroes(t); } // old Draft tab: now part of Heroes
     else if (src.all && /^\/(predict|drafter|upload|edit)/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
+    // AD2L Wrapped (pages/wrapped.js): /wrapped every review as cards, /wrapped/review one
+    // league's awards, /wrapped/<player> one player's, /wrapped/team/<team id> one team's.
+    else if (/^\/wrapped(\/|$)/.test(h.slice(r.length))) {
+      section = "wrapped";
+      const seg = h.slice(r.length).split("/");
+      const who = seg[2] === "team" ? { team: safeDecode(seg[3] ?? "") } : seg[2] === "review" ? { review: true } : safeDecode(seg[2] ?? "") || null;
+      page = async () => (await import("./pages/wrapped.js")).renderWrapped(src, who);
+    }
     else if (h.startsWith(`${r}/predict`)) { section = "predict"; page = async () => (await predictPage()).renderPredict(src); }
     else if (h.startsWith(`${r}/drafter`)) { section = "drafter"; page = async () => (await drafterPage()).renderDrafter(src); }
     else if (/^\/stream-?kit(\/|$)/.test(h.slice(r.length))) { section = "streamkit"; page = async () => (await streamKitPage()).renderStreamKit(src); }

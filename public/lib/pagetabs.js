@@ -15,6 +15,7 @@ export const TEAM_TABS = [
 export const PLAYER_TABS = [
   ["feed", "Feed"], ["stats", "Stats"], ["compare", "Compare"], ["heroes", "Heroes"], ["combat", "Combat"],
   ["lanes", "Laning", { ad2l: true }], ["items", "Items"], ["map", "Map"], ["games", "Games"], ["achievements", "Achievements"],
+  ["wrapped", "Wrapped", { ad2l: true }],
 ];
 export const HERO_TABS = [
   ["stats", "Stats"], ["players", "Players"], ["draft", "Draft"], ["matchups", "Matchups"], ["combat", "Combat"],

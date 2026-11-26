@@ -26,3 +26,27 @@ export function liteDivision(d) {
     }),
   };
 }
+
+// A division file trimmed for Wrapped (pages/wrapped.js): drops what no Wrapped card reads
+// (pubs, per-minute XP and net worth, teamfight damage, final items, XP lead, pauses).
+// Wrapped loads every division at once, so this is most of its download. Item timings,
+// biggest hits, maps and the draft stay. Written at deploy as data/<division>-wrapped.json
+// (scripts/deploy/lite-data.js); test/lite.test.js checks every Wrapped comes out the same.
+const WRAP_GAME_DROP = ["xp_adv", "pauses", "fight_smokes"];
+const WRAP_PLAYER_DROP = ["xp_t", "networth_t", "tf_dmg", "items"];
+export function wrappedDivision(d) {
+  const { pubs, ...rest } = d;
+  return {
+    ...rest,
+    games: d.games.map((g) => {
+      const out = { ...g };
+      for (const k of WRAP_GAME_DROP) delete out[k];
+      if (g.players) out.players = g.players.map((p) => {
+        const q = { ...p };
+        for (const k of WRAP_PLAYER_DROP) delete q[k];
+        return q;
+      });
+      return out;
+    }),
+  };
+}

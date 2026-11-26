@@ -50,6 +50,17 @@ export function withDerived(match) {
   return { ...match, players, teamTotals };
 }
 
+// A player's share of their game: the average of damage share, kill participation and net-worth
+// share (a withDerived game).
+export function mvpRate(m, p) {
+  const nw = m.teamTotals?.[p.team]?.net_worth || 1;
+  return ((p.dmg_share ?? 0) + (p.kill_participation ?? 0) + p.net_worth / nw) / 3;
+}
+// A game's MVP: the winning-side player with the best mvpRate.
+export function gameMvp(m) {
+  return m.players.filter((p) => p.team === m.winner).sort((a, b) => mvpRate(m, b) - mvpRate(m, a))[0];
+}
+
 // One row per player: by `player_key` when the data has one (AD2L: main account id, so
 // smurfs merge and same-named players on different teams don't), else by name
 // (case-insensitive, scrims). Rates use totals across games, not averages of per-game

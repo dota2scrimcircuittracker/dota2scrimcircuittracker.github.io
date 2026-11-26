@@ -1022,6 +1022,12 @@ function updateGift(state) {const b=document.getElementById('collection-gift');i
 addEventListener('collection-change',e=>updateGift(e.detail.state));
 addEventListener('pack-offer-change',()=>updateGift(collectionState()));
 
+// The AD2L Wrapped card a player pinned (pages/wrapped.js), under their profile head.
+function showWrappedPin(host,pin,account) {
+  host.querySelector('.wr-pinned')?.remove();
+  if(!pin)return;
+  import('../pages/wrapped.js').then(m=>m.pinnedCardHtml(pin,account)).then(html=>{if(html)host.querySelector('.pp-head')?.insertAdjacentHTML('afterend',html);}).catch(()=>{});
+}
 export async function mountProfileCollection(host,{account,name,matches,team,tier}) {
   const section=document.createElement('section');section.className='profile-collection panel';section.innerHTML='<h3>Card collection</h3><p>Loading collection…</p>';
   // On a tabbed profile it heads the Feed tab only; the scouted page (no tabs) shows it under the head.
@@ -1029,7 +1035,7 @@ export async function mountProfileCollection(host,{account,name,matches,team,tie
   try {
     const [data,cards]=await Promise.all([publicCollection(account).catch(()=>({inventory:{},unavailable:true})),listCards().catch(()=>new Map())]);if(!section.isConnected)return;
     if(data.equipment)cards.set(account,{...cards.get(account),cosmetics:{...data.equipment,nickname:data.nickname??null}});
-    profileTitle(data.nickname,name);profileFollows(data);showProfileBackground(data.background,data.nickname??name);
+    profileTitle(data.nickname,name);profileFollows(data);showProfileBackground(data.background,data.nickname??name);showWrappedPin(host,data.wrappedPin,account);
     const count=CATALOG.filter(i=>data.inventory[i.key]>0).length+new Set(data.screens??[]).size,renderer=createPlayerCards(matches,{cards,tiers:new Map(tier?[[String(account),tier]]:[])});
     const preferences=cardDesignState(data),player={account,name,team:team??'AD2L'};
     const cardHtml=PAINT_FILTER+renderer.card(player,null,{own:true,equipmentOverride:preferences.cardDesigns[preferences.primaryCard]});

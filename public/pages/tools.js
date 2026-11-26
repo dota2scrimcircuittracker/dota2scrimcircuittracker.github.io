@@ -1,6 +1,7 @@
 // Tools (#/<league>/tools): the Drafter, Upload, the Stream kit, the table builder and Feedback, the things you
 // use rather than read. The nav's Tools dropdown lists the same entries (app.js NAV_MENUS.tools).
 import { app, pageHead, esc } from "../core.js";
+import { SEASON } from "../lib/divisions.js";
 
 // Each: { id, name, sub, href } or, for Feedback, { action: "feedback" } instead of a page.
 // The Drafter is AD2L-only (one division at a time); All divisions has no Upload.
@@ -8,6 +9,7 @@ export function toolList(src) {
   return [
     src.ad2l && !src.all && { id: "drafter", name: "Drafter", sub: "Draft against a team with the draft model's picks and bans.", href: `${src.root}/drafter` },
     !src.all && { id: "upload", name: "Upload", sub: src.ad2l ? "Add an unticketed game from its screenshots." : "Add a scrim from its screenshots.", href: `${src.root}/upload` },
+    src.ad2l && { id: "wrapped", name: `${SEASON.name} Wrapped`, sub: "The season in review: every division's awards and any player's own Wrapped. Opens when the season ends.", href: `${src.root}/wrapped` },
     { id: "stream", name: "Stream kit", sub: "Any teams' or players' cards for OBS: animated, transparent, ready to import.", href: `${src.root}/stream-kit` },
     { id: "table", name: "Table builder", sub: "Any stat, any filter, as one sortable table.", href: `${src.root}/search?table=team` },
     { id: "feedback", name: "Feedback", sub: "Mark up any page and say what you'd change.", action: "feedback" },
@@ -23,6 +25,7 @@ const ICONS = {
   table: '<rect x="3.5" y="4.5" width="17" height="15" rx="1"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/>',
   stream: '<rect x="3.5" y="5" width="17" height="11" rx="1.5"/><path d="M8 20h8M12 16v4M10 8.5l4 2.5-4 2.5z"/>',
   feedback: '<path d="M4 5h16v11H9l-5 4z"/><path d="M9 10.5h6M12 7.5v6"/>',
+  wrapped: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',
 };
 const icon = (id) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[id]}</svg>`;
 

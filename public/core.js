@@ -2,7 +2,7 @@
 // AD2L divisions and their data (loading, caches, the time machine), the scrim list, the
 // upload/edit lock and the review form's pieces other pages reuse, page tabs, sortable tables.
 import { teamTags, tagOf } from "./lib/team-tags.js";
-import { playerKey, heroSlug, withDerived, isRemake, hasDetails } from "./lib/stats.js";
+import { playerKey, heroSlug, withDerived, isRemake, hasDetails, gameMvp } from "./lib/stats.js";
 import { MIN_GAMES } from "./lib/tiers.js";
 import { heroImg } from "./lib/hero-meta.js";
 import { teamSlug, sideOf } from "./lib/teams.js";
@@ -238,6 +238,16 @@ export function divLite(key) {
   return liteReady[key] ??= loadDivision(DIVISIONS[key].file.replace(/\.json$/, "-lite.json")).catch(() => divData(key))
     .catch((e) => { delete liteReady[key]; throw e; });
 }
+// Wrapped's copy of a division (scripts/deploy/lite-data.js, lib/lite.js wrappedDivision: the
+// same cards from about 60% of the download). The full file when it's already loaded, or when
+// there's no copy (npm start). Kept apart from divCache, so other pages still get every field.
+const wrapReady = {};
+function divWrapped(key) {
+  if (divCache[key]) return Promise.resolve(divCache[key]);
+  return wrapReady[key] ??= loadDivision(DIVISIONS[key].file.replace(/\.json$/, "-wrapped.json")).then((d) => (teamTags(d.teams), d))
+    .catch(() => divData(key))
+    .catch((e) => { delete wrapReady[key]; throw e; });
+}
 
 // "My team": the visitor's own AD2L team, set under the settings cog or beside a hero grid, kept
 // in this browser. Hero grids read the draft model against it. A change anywhere fires "myteam"
@@ -350,19 +360,34 @@ for (const [key, dv] of Object.entries(DIVISIONS)) {
 export const ALL_DIVS = DIVISION_LIST.map((d) => d.key); // the menu's order
 export const gameLeague = new Map(); // match id -> division key, filled as the games load
 let allCache = null, allReady = null;
+function mergeDivisions(parts) {
+  for (const [key, d] of parts) for (const g of d.games) gameLeague.set(g.id, key);
+  const label = (key, t) => (DIVISIONS[key].views && t.division ? `${DIVISIONS[key].short} ${t.division}` : DIVISIONS[key].short);
+  return {
+    season: `${SEASON.name} All Divisions`, updated: parts.map(([, d]) => d.updated).sort().at(-1), pubs_days: parts[0][1].pubs_days,
+    teams: parts.flatMap(([key, d]) => d.teams.map((t) => ({ ...t, league: key, division: label(key, t) }))),
+    series: parts.flatMap(([, d]) => d.series),
+    games: parts.flatMap(([, d]) => d.games).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
+    pubs: Object.assign({}, ...parts.map(([, d]) => d.pubs)),
+  };
+}
 function allData() {
-  allReady ??= Promise.all(ALL_DIVS.map(async (key) => [key, await divData(key)])).then((parts) => {
-    for (const [key, d] of parts) for (const g of d.games) gameLeague.set(g.id, key);
-    const label = (key, t) => (DIVISIONS[key].views && t.division ? `${DIVISIONS[key].short} ${t.division}` : DIVISIONS[key].short);
-    return allCache = {
-      season: `${SEASON.name} All Divisions`, updated: parts.map(([, d]) => d.updated).sort().at(-1), pubs_days: parts[0][1].pubs_days,
-      teams: parts.flatMap(([key, d]) => d.teams.map((t) => ({ ...t, league: key, division: label(key, t) }))),
-      series: parts.flatMap(([, d]) => d.series),
-      games: parts.flatMap(([, d]) => d.games).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
-      pubs: Object.assign({}, ...parts.map(([, d]) => d.pubs)),
-    };
-  }).catch((e) => { allReady = null; throw e; });
+  allReady ??= Promise.all(ALL_DIVS.map(async (key) => [key, await divData(key)])).then((parts) => (allCache = mergeDivisions(parts)))
+    .catch((e) => { allReady = null; throw e; });
   return allReady;
+}
+// What Wrapped reads for a source: its division (or a view of it, or every division) from the
+// Wrapped copies (divWrapped). A time-machine pick reads as the page does.
+let allWrapReady = null;
+export function wrappedSrcData(src) {
+  if (src.weeks) return src.data();
+  if (src.all) {
+    if (allCache) return Promise.resolve(allCache);
+    return allWrapReady ??= Promise.all(ALL_DIVS.map(async (key) => [key, await divWrapped(key)])).then(mergeDivisions)
+      .catch((e) => { allWrapReady = null; throw e; });
+  }
+  if (!DIVISIONS[src.key]) return src.data();
+  return divWrapped(src.key).then((d) => (src.view ? inDivision(d, src.view.toUpperCase()) : d));
 }
 // Same array while no division's games change, so the stat caches (keyed by it) still hit.
 let allGames = { parts: [], list: null };
@@ -925,13 +950,8 @@ export function weekStart(d) {
 }
 export const shortDate = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
-// A game's MVP: the winning-side player with the best average of damage share, kill
-// participation and net-worth share.
-export function gameMvp(m) {
-  const nwTotal = (t) => m.teamTotals[t].net_worth || 1;
-  const rate = (p) => ((p.dmg_share ?? 0) + (p.kill_participation ?? 0) + p.net_worth / nwTotal(p.team)) / 3;
-  return m.players.filter((p) => p.team === m.winner).sort((a, b) => rate(b) - rate(a))[0];
-}
+// A game's MVP: lib/stats.js gameMvp.
+export { gameMvp };
 
 export const portrait = (hero, cls = "") => {
   const src = heroImg(hero);

@@ -1,0 +1,417 @@
+/* AD2L Wrapped (pages/wrapped.js): a story of tall cards, one at a time, and the pinned card on a
+   profile. Each tone is a two-colour wash over the card's hero art. */
+.wr-page { display: grid; justify-items: center; gap: 14px; padding-bottom: 32px; }
+.wr-local-note { margin: 0; font: 600 .78rem var(--mono); color: var(--gold); border: 1px dashed var(--gold); padding: 6px 10px; border-radius: 6px; }
+.wr-locked { max-width: 520px; text-align: center; }
+.wr-locked h3 { font-family: var(--display); font-size: 1.8rem; margin: .2em 0 .4em; }
+
+.wr-story { position: relative; width: min(480px, 100%); aspect-ratio: 9 / 16; max-height: min(84vh, 860px); outline: none; border-radius: 18px; }
+.wr-story:focus-visible { box-shadow: 0 0 0 3px var(--gold); }
+.wr-progress { position: absolute; z-index: 3; top: 10px; left: 12px; right: 12px; display: flex; gap: 4px; pointer-events: none; }
+.wr-progress span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .28); overflow: hidden; }
+.wr-progress span i { display: block; height: 100%; width: 0; background: #fff; transition: width .35s ease; }
+.wr-progress span.done i, .wr-progress span.now i { width: 100%; }
+/* The stage sits over the tap zones but lets taps through, except on its links, buttons and the
+   player card (which flips and opens full size). */
+.wr-stage { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.wr-stage :is(a, button, .wr-pc, .wr-clip iframe) { pointer-events: auto; }
+.wr-tap { position: absolute; z-index: 1; top: 0; bottom: 64px; width: 34%; background: none; border: 0; cursor: pointer; }
+/* Invisible tap zones: none of the site's button looks (fill, cut corner, lift) on hover or press. */
+.wr-story button.wr-tap:is(*, :hover, :focus, :active, :disabled) { background: transparent; border: 0; box-shadow: none; clip-path: none; transform: none; filter: none; color: transparent; padding: 0; min-height: 0; }
+.wr-tap::before, .wr-tap::after { content: none; }
+.wr-tap:focus-visible { outline: 2px solid rgba(255, 255, 255, .7); outline-offset: -4px; border-radius: 18px; }
+.wr-tap:disabled { cursor: default; }
+.wr-prev { left: 0; }
+.wr-next { right: 0; width: 66%; }
+
+/* A card, styled like its link-preview image (scripts/gen/wrapped-og.py): near black, the
+   league's colour glowing in from the top left and the slide's tone from the bottom right, the
+   hero's full render on the right fading out behind the words, stencil caps over it. Always dark,
+   whatever the site theme, so its colours are its own. */
+.wr-card { --glow: var(--accent, #a58bff); --wr-ink: #0c0b0a; --wr-bone: #efe7da; --wr-dust: #c2b8aa; --wr-gold: #e8b64c; --c1: #a58bff;
+  position: relative; height: 100%; border-radius: 18px; overflow: hidden; color: var(--wr-bone); background: var(--wr-ink); isolation: isolate; box-shadow: 0 18px 50px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .06); }
+.wr-tone-1 { --c1: #ff4f8b; }
+.wr-tone-2 { --c1: #ff7a1a; }
+.wr-tone-3 { --c1: #1ed760; }
+.wr-tone-4 { --c1: #f7d046; }
+.wr-tone-5 { --c1: #7c5cff; }
+.wr-tone-6 { --c1: #2fd4ff; }
+.wr-bg { position: absolute; inset: 0; z-index: -3; background:
+  radial-gradient(85% 55% at 0% 0%, color-mix(in srgb, var(--glow) 78%, transparent), transparent 72%),
+  radial-gradient(80% 50% at 100% 100%, color-mix(in srgb, var(--c1) 34%, transparent), transparent 70%),
+  linear-gradient(180deg, color-mix(in srgb, var(--glow) 20%, var(--wr-ink)) 0%, var(--wr-ink) 78%); }
+/* The hero wallpaper: full bleed under the glows, dimmed and tinted toward the slide's colours so
+   the words and the render stay on top. The glow layer goes see-through over it. */
+.wr-wall { position: absolute; inset: 0; z-index: -4; overflow: hidden; pointer-events: none; }
+.wr-wall img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; filter: saturate(1.1) brightness(.72); transform: scale(1.04); }
+.wr-wall::after { content: ""; position: absolute; inset: 0; background:
+  linear-gradient(0deg, rgba(12, 11, 10, .92) 0%, rgba(12, 11, 10, .55) 42%, rgba(12, 11, 10, .25) 70%, rgba(12, 11, 10, .45) 100%),
+  linear-gradient(90deg, rgba(12, 11, 10, .55), transparent 70%); }
+/* A hero's return (pages/wrapped.js backdropOf): one of its loading screens with no model in front,
+   so it shows brighter, and the wide screen pans slowly across the tall card. */
+.wr-has-backdrop .wr-wall img { filter: saturate(1.15) brightness(.85); object-position: 0% 35%; }
+.wr-has-backdrop .wr-wall::after { background:
+  linear-gradient(0deg, rgba(12, 11, 10, .94) 0%, rgba(12, 11, 10, .6) 38%, transparent 66%, rgba(12, 11, 10, .4) 100%); }
+/* Local preview (?wrapWalls=fav): the picked card's finish moving over its art, above the wall's shading and
+   under the glows and words (pages/wrapped.js favFinishHtml). */
+.wr-finish { position: absolute; inset: 0; z-index: -3; overflow: hidden; pointer-events: none; }
+.wr-finish .finish-layer { position: absolute; inset: 0; }
+/* The pick's signature where Fav placed it on the card, scaled to the slide (pages/wrapped.js favSigHtml). */
+.wr-sig { position: absolute; inset: 0; z-index: -2; container-type: size; pointer-events: none; opacity: .9; }
+.wr-sig .card-autograph { position: absolute; left: auto !important; right: 5%; max-width: 62%; } /* right-anchored: a long player name grows left, not off the slide */
+.wr-has-pc .wr-sig { display: none; } /* the player card sits top right and has its own */
+.wr-has-wall .wr-bg { background:
+  radial-gradient(85% 55% at 0% 0%, color-mix(in srgb, var(--glow) 50%, transparent), transparent 72%),
+  radial-gradient(80% 50% at 100% 100%, color-mix(in srgb, var(--c1) 34%, transparent), transparent 70%); }
+.wr-art { position: absolute; z-index: -2; top: 5%; right: -16%; bottom: 0; width: 96%; pointer-events: none; }
+.wr-art :is(img, video) { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 100% 0%; transform: scale(1.3); transform-origin: 100% 0%; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%); filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55)); }
+/* Non-award slides (stats, charts, nemesis): a smaller model standing on the bottom-right edge, behind
+   the words. Award slides keep the big render. */
+.wr-has-art:not([data-card*="award"]) .wr-art { top: 22%; right: -4%; bottom: 0; width: 70%; }
+/* The renders are square with a little empty space under the feet (2-11%, about 5% typical): the
+   square sits on the card's bottom edge and drops by that much so the hero stands on it. */
+.wr-has-art:not([data-card*="award"]) .wr-art :is(img, video) { position: absolute; right: 0; bottom: 0; height: auto; aspect-ratio: 1; margin-bottom: -5%; transform: none; }
+.wr-shade { display: none; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(12, 11, 10, .94) 0%, rgba(12, 11, 10, .6) 36%, transparent 60%), linear-gradient(90deg, rgba(12, 11, 10, .5), transparent 65%); }
+.wr-has-art .wr-shade { display: block; }
+.wr-inner { position: relative; height: 100%; display: flex; flex-direction: column; padding: 40px 24px 18px; }
+.wr-kicker { margin: 0; font: 600 .72rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: color-mix(in srgb, var(--glow) 55%, #fff); }
+.wr-kicker a { color: inherit; }
+.wr-body { margin: auto 0; }
+.wr-has-art .wr-body, .wr-has-pc .wr-body { margin: auto 0 6px; }
+.wr-big { font: 900 clamp(2.6rem, 12vw, 4.6rem)/.9 var(--display); text-transform: uppercase; letter-spacing: .005em; color: var(--wr-bone); text-shadow: 0 4px 24px rgba(0, 0, 0, .45); overflow-wrap: anywhere; }
+.wr-big small { font-size: .38em; margin-left: .3em; color: var(--wr-dust); letter-spacing: .04em; }
+.wr-big a, .wr-card a { color: inherit; }
+.wr-amp { color: var(--glow); }
+.wr-line { margin: .6em 0 0; font: 500 1rem/1.4 var(--body); color: var(--wr-dust); text-shadow: 0 1px 8px rgba(0, 0, 0, .4); }
+.wr-line b { font-weight: 800; color: var(--wr-bone); }
+.wr-card .wr-gold { color: var(--wr-gold); font-weight: 800; }
+.wr-hint { font-size: .82rem; opacity: .75; }
+/* Labelled numbers: a mono label over a big stencil figure. */
+.wr-stats { display: flex; flex-wrap: wrap; gap: 10px 26px; margin: 18px 0 2px; }
+.wr-stats dt, .wr-summary dt { font: 600 .64rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--wr-dust); }
+.wr-stats dd { margin: 4px 0 0; font: 900 2.4rem/1 var(--display); color: var(--wr-bone); }
+.wr-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+.wr-chip { font: 600 .68rem var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--wr-ink); background: var(--wr-gold); border-radius: 999px; padding: 6px 12px; }
+/* Top heroes: icon, name and games, record. */
+.wr-heroes { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.wr-heroes li { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.wr-heroes li > img, .wr-heroes li > span:first-child { width: 76px; height: 43px; border-radius: 6px; object-fit: cover; box-shadow: 0 4px 14px rgba(0, 0, 0, .4); }
+.wr-hname { font: 900 1.5rem/1 var(--display); text-transform: uppercase; overflow-wrap: anywhere; }
+.wr-hname small { display: block; margin-top: 4px; font: 500 .8rem var(--body); text-transform: none; color: var(--wr-dust); }
+.wr-hrec { font: 900 1.7rem/1 var(--display); }
+.wr-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; margin: 0; }
+.wr-summary div.wide { grid-column: 1 / -1; }
+.wr-summary dd { margin: 4px 0 0; font: 900 1.8rem/1.02 var(--display); text-transform: uppercase; }
+.wr-foot { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 600 .64rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--wr-dust); }
+.wr-pin { font: 700 .75rem var(--body); text-transform: none; letter-spacing: 0; color: #111; background: var(--wr-bone); border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; }
+.wr-pin[aria-pressed="true"] { background: var(--wr-gold); color: #111; }
+.wr-pin:disabled { opacity: .6; }
+.wr-share { margin-left: auto; font: 700 .75rem var(--body); text-transform: none; letter-spacing: 0; color: var(--wr-bone); background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.wr-share + .wr-pin { margin-left: 0; }
+
+/* A slide with the player's Fantasy card (pages/wrapped.js fillPlayerCard): the card where the
+   render would be, top right and tilted, the words under it. Tap it to flip; its corner button
+   opens it full size. */
+.wr-pc { position: absolute; z-index: 1; top: 50px; right: 20px; width: 48%; transform: rotate(4deg); cursor: pointer; filter: drop-shadow(0 14px 26px rgba(0, 0, 0, .55)); }
+.wr-pc:empty { aspect-ratio: 5 / 7; }
+.wr-has-pc .wr-kicker { max-width: 50%; }
+.wr-has-pc .wr-big { font-size: clamp(2.2rem, 10vw, 3.6rem); }
+.wr-pinned .wr-pc { display: none; }
+
+/* Each new card rises in, its lines a beat apart (--d); the render slides in from the right. Inside
+   a line, its items (stats, hero rows, summary tiles, chips) come one at a time after it (--k). The
+   numbers count up as they land (pages/wrapped.js countUp). */
+@media (prefers-reduced-motion: no-preference) {
+  .wr-stage .wr-card { animation: wr-in .38s cubic-bezier(.2, .8, .2, 1); }
+  .wr-stage .wr-art { animation: wr-art .7s cubic-bezier(.2, .8, .2, 1) both; }
+  .wr-stage .wr-wall img { animation: wr-wall 6s ease-out both; }
+  /* Every background keeps moving while its slide is up: a slow, small drift (Fav, 2026-11-24: the
+     zoom shouldn't stop, and slides 13, 17 and 18 moved too fast). Wide screens pan, slower than before. */
+  .wr-stage .wr-has-backdrop .wr-wall img { animation: wr-wall 6s ease-out both, wr-pan 22s ease-in-out .4s infinite alternate; }
+  .wr-new .wr-stage .wr-wall { animation: wr-drift 46s ease-in-out 1s infinite alternate; }
+  .wr-new .wr-stage .wr-has-backdrop .wr-wall img { animation: wr-wall 6s ease-out both, wr-pan-slow 70s ease-in-out .4s infinite alternate; }
+  .wr-stage .wr-body > * { --d: 0s; animation: wr-rise .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d); }
+  .wr-stage .wr-body > :nth-child(2) { --d: .08s; }
+  .wr-stage .wr-body > :nth-child(3) { --d: .16s; }
+  .wr-stage .wr-body > :nth-child(4) { --d: .24s; }
+  .wr-stage .wr-body > :nth-child(5) { --d: .32s; }
+  .wr-stage .wr-body > :nth-child(n + 6) { --d: .4s; }
+  .wr-stage :is(.wr-stats > div, .wr-heroes > li, .wr-summary > div) { --k: 0; animation: wr-rise .45s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--d, 0s) + .1s + var(--k) * .08s); }
+  .wr-stage .wr-heroes > li { animation-name: wr-slide; }
+  .wr-stage .wr-chip { --k: 0; animation: wr-pop .5s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--d, 0s) + .25s + var(--k) * .09s); }
+  .wr-stage :is(.wr-stats > div, .wr-heroes > li, .wr-summary > div, .wr-chip):nth-child(2) { --k: 1; }
+  .wr-stage :is(.wr-stats > div, .wr-heroes > li, .wr-summary > div, .wr-chip):nth-child(3) { --k: 2; }
+  .wr-stage :is(.wr-stats > div, .wr-heroes > li, .wr-summary > div, .wr-chip):nth-child(4) { --k: 3; }
+  .wr-stage :is(.wr-stats > div, .wr-heroes > li, .wr-summary > div, .wr-chip):nth-child(5) { --k: 4; }
+  .wr-stage :is(.wr-stats > div, .wr-heroes > li, .wr-summary > div, .wr-chip):nth-child(6) { --k: 5; }
+  .wr-stage :is(.wr-stats > div, .wr-heroes > li, .wr-summary > div, .wr-chip):nth-child(n + 7) { --k: 6; }
+  .wr-stage :is(.wr-big, .wr-stats dd, .wr-summary dd, .wr-hrec) { font-variant-numeric: tabular-nums; }
+  .wr-pc.in { animation: wr-deal .55s cubic-bezier(.2, .8, .2, 1) both; }
+}
+@keyframes wr-in { from { opacity: 0; transform: scale(.97); } }
+@keyframes wr-pan { from { object-position: 0% 35%; } to { object-position: 100% 35%; } }
+@keyframes wr-pan-slow { from { object-position: 15% 35%; } to { object-position: 85% 35%; } }
+@keyframes wr-drift { from { transform: scale(1) translate(0, 0); } 50% { transform: scale(1.035) translate(-1%, -.6%); } to { transform: scale(1.06) translate(.8%, -1.2%); } }
+@keyframes wr-wall { from { opacity: 0; transform: scale(1.12); } 12% { opacity: 1; } }
+@keyframes wr-art { from { opacity: 0; transform: translateX(8%); } }
+@keyframes wr-rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes wr-slide { from { opacity: 0; transform: translateX(-18px); } }
+@keyframes wr-pop { from { opacity: 0; transform: scale(.6); } }
+@keyframes wr-deal { from { opacity: 0; transform: translateY(18px) rotate(12deg) scale(.9); } }
+
+.wr-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; width: min(480px, 100%); }
+.wr-pick label { width: 100%; text-align: center; font: 600 .78rem var(--mono); color: var(--dust); }
+.wr-pick input { flex: 1; min-width: 0; }
+.wr-pick-msg { width: 100%; margin: 0; text-align: center; color: var(--dust); font-size: .85rem; }
+.wr-pick-msg:empty { display: none; }
+/* Every Wrapped (the hub): the search, then a card per review side by side. */
+.wr-hub { display: grid; gap: 20px; justify-items: center; padding: 8px 0 40px; }
+.wr-hub-lead { margin: 0; color: var(--dust); text-align: center; }
+.wr-hub .wr-pick, .wr-hub .wr-pick label { width: min(560px, 100%); justify-content: center; text-align: center; }
+.wr-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; width: min(1100px, 100%); }
+.wr-tile { position: relative; display: flex; flex-direction: column; gap: 6px; aspect-ratio: 9 / 13; padding: 18px 16px; border-radius: 16px; overflow: hidden;
+  text-decoration: none; color: #efe7da; border: 2px solid var(--tc); font-family: var(--body); isolation: isolate;
+  background: linear-gradient(160deg, var(--td), #0c0b0a 75%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .4); transition: transform .18s ease, box-shadow .18s ease; }
+.wr-tile:hover, .wr-tile:focus-visible { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(0, 0, 0, .5); }
+.wr-tile:focus-visible { outline: 2px solid var(--tc); outline-offset: 3px; }
+.wr-tile-art { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+.wr-tile::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--td) 35%, transparent) 0%, transparent 30%, rgba(12, 11, 10, .55) 55%, rgba(12, 11, 10, .95) 100%); }
+.wr-tile:hover .wr-tile-art { transform: scale(1.05); }
+.wr-tile-kicker { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--tc); text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
+.wr-tile-name { margin-top: auto; font: 800 2rem/1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.wr-tile-mark { font: 800 2.4rem/.95 var(--display); text-transform: uppercase; letter-spacing: .02em; color: var(--tc); }
+.wr-tile-sub { font-size: .85rem; color: #d6cdbf; }
+.wr-tile-state { font-size: .8rem; font-weight: 700; color: #efe7da; }
+.wr-tile-locked { filter: saturate(.45); }
+.wr-tile-locked .wr-tile-state { color: #c2b8aa; }
+@media (prefers-reduced-motion: reduce) { .wr-tile, .wr-tile-art { transition: none; } .wr-tile:hover, .wr-tile:hover .wr-tile-art { transform: none; } }
+.wr-pin-msg { margin: 0; min-height: 1.2em; color: var(--dust); font-size: .85rem; }
+
+/* The pinned card on a profile: a small card beside the head. */
+.wr-pinned { width: min(260px, 100%); margin: 12px 0; }
+.wr-pinned .wr-card { aspect-ratio: 9 / 14; height: auto; border-radius: 14px; }
+.wr-pinned .wr-inner { padding: 20px 16px 12px; }
+.wr-pinned .wr-big { font-size: 2.3rem; }
+.wr-pinned .wr-line { font-size: .82rem; }
+.wr-pinned .wr-stats { gap: 6px 16px; margin-top: 10px; }
+.wr-pinned .wr-stats dd { font-size: 1.4rem; }
+.wr-pinned .wr-heroes li { grid-template-columns: 52px minmax(0, 1fr) auto; gap: 8px; }
+.wr-pinned .wr-heroes li > img, .wr-pinned .wr-heroes li > span:first-child { width: 52px; height: 29px; }
+.wr-pinned .wr-hname { font-size: 1.05rem; }
+.wr-pinned .wr-hrec { font-size: 1.15rem; }
+.wr-pinned .wr-summary dd { font-size: 1.15rem; }
+.wr-pinned-link { display: inline-block; margin-bottom: 6px; font: 600 .75rem var(--mono); color: var(--gold); }
+
+/* The parts rail and wider card: desktop only. Phones keep the story as it is (rail hidden, the
+   layout box adds nothing). */
+.wr-layout { display: contents; }
+.wr-rail { display: none; }
+@media (min-width: 900px) {
+  .wr-layout { display: grid; grid-template-columns: 230px minmax(0, 700px); gap: 36px; align-items: center; justify-content: center; width: 100%; }
+  .wr-story { width: 100%; aspect-ratio: 4 / 5; max-height: min(88vh, 875px); justify-self: center; }
+  .wr-inner { padding: 46px 40px 24px; }
+  .wr-big { font-size: clamp(3.6rem, 5.4vw, 5.4rem); }
+  .wr-line { font-size: 1.08rem; }
+  .wr-stats { gap: 12px 34px; }
+  .wr-stats dd { font-size: 2.9rem; }
+  .wr-heroes li { grid-template-columns: 96px minmax(0, 1fr) auto; gap: 16px; }
+  .wr-heroes li > img, .wr-heroes li > span:first-child { width: 96px; height: 54px; }
+  .wr-hname { font-size: 1.9rem; }
+  .wr-hrec { font-size: 2.1rem; }
+  .wr-summary dd { font-size: 2.2rem; }
+  .wr-art { right: -10%; width: 82%; }
+  .wr-has-art:not([data-card*="award"]) .wr-art { right: -2%; width: 52%; }
+  .wr-pc { top: 42px; right: 34px; width: 42%; }
+  .wr-has-pc .wr-big { font-size: clamp(2.8rem, 4vw, 4rem); }
+  .wr-rail { display: flex; flex-direction: column; gap: 18px; align-self: center; }
+  .wr-rail-title { margin: 0; font: 700 .8rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dust); }
+  .wr-rail-title a { color: var(--bone); }
+  .wr-rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; border-left: 2px solid var(--seam-2); }
+  .wr-rail ol button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 8px 14px; margin-left: -2px; border-left: 2px solid transparent; cursor: pointer; font: 600 1rem var(--body); color: var(--dust); transition: color .15s, border-color .15s; }
+  .wr-rail ol button span { display: block; font: 700 .68rem var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: .8; margin-bottom: 2px; }
+  .wr-rail ol button:hover { color: var(--bone); }
+  .wr-rail ol button[aria-current="true"] { color: var(--bone); border-left-color: var(--gold); }
+  .wr-rail ol button[aria-current="true"] span { color: var(--gold); opacity: 1; }
+  .wr-rail ol button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .wr-rail-keys { display: flex; align-items: center; gap: 12px; }
+  .wr-rail-keys .wr-count { font: 600 .8rem var(--mono); color: var(--dust); min-width: 4.5em; text-align: center; }
+  .wr-arrow { width: 42px; height: 42px; padding: 0; border-radius: 50%; font-size: 1.1rem; }
+  .wr-pick { width: min(966px, 100%); justify-content: flex-start; padding-left: 0; }
+  .wr-pick label { width: auto; text-align: left; }
+}
+
+/* The review's player picker sits under the story; on a profile the story fills the Wrapped tab. */
+.wr-review + .wr-pick { margin: 4px auto 32px; }
+.profile-wrapped-box .wr-page { padding-top: 12px; }
+
+/* "Your top play": a Dota Clips highlight (lib/clips.js). */
+.wr-clip { margin: 0; }
+.wr-clip iframe { display: block; border: 0; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; background: #000; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.wr-clip figcaption { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; color: var(--wr-dust); font-size: .9rem; }
+.wr-clip figcaption b { color: var(--wr-bone); font-size: 1.1rem; }
+.wr-clip figcaption a { color: var(--wr-gold); text-decoration: none; }
+
+/* Wrapped's own page (a player's Wrapped, the season review): the whole screen, over the site. */
+body:has(.wr-full) { overflow: hidden; }
+.wr-full { position: fixed; inset: 0; z-index: 1003; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+  background: radial-gradient(120% 80% at 50% 0%, #2a2118 0%, #0c0b0a 60%) #0c0b0a; color: #efe7da; }
+.wr-full-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; flex: none; }
+.wr-close { color: #efe7da; text-decoration: none; font: 600 .85rem var(--mono); padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .06); }
+.wr-close:hover { background: rgba(255, 255, 255, .12); }
+.wr-full-mark { font: 600 .7rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: #c2b8aa; }
+.wr-full-body { flex: 1; display: grid; align-content: center; justify-items: center; gap: 14px; padding: 0 16px 16px; }
+.wr-full .wr-page { width: 100%; padding-bottom: 0; }
+.wr-full .wr-story { max-height: calc(100dvh - 76px); }
+.wr-full .wr-review ~ .wr-pick { margin-bottom: 8px; }
+@media (min-width: 900px) {
+  .wr-full .wr-layout { grid-template-columns: 230px minmax(0, 760px); }
+  .wr-full .wr-story { max-height: calc(100dvh - 90px); }
+}
+
+/* A profile's Wrapped tab: the opening slide, opening the full page. */
+.wr-launch { display: grid; justify-items: center; gap: 14px; padding: 12px 0 32px; }
+.wr-launch-card { display: block; width: min(560px, 100%); text-decoration: none; transition: transform .2s; }
+.wr-launch-card:hover { transform: translateY(-3px); }
+.wr-launch-card .wr-card { aspect-ratio: 4 / 5; height: auto; border-radius: 18px; }
+.wr-launch-go { font: 700 .95rem var(--mono); color: var(--gold, #e8b64c); text-decoration: none; }
+/* Team Wrapped (pages/wrapped.js teamCards): minimap, kill-clock bars, lead graph, division table. */
+.wr-map { width: min(100%, 22em); aspect-ratio: 149 / 140; margin: .7em 0 .2em; border-radius: 12px; overflow: hidden; background: #111; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.wr-map svg { display: block; width: 100%; height: 100%; }
+.wr-bars { display: flex; align-items: flex-end; gap: 5px; height: 7em; margin: .9em 0 1.6em; }
+.wr-bars i { flex: 1; min-height: 3px; border-radius: 4px 4px 0 0; background: var(--c1); opacity: .5; position: relative; }
+.wr-bars i.hi { opacity: 1; }
+.wr-bars i span { position: absolute; bottom: -1.5em; left: 50%; transform: translateX(-50%); font: .6rem var(--mono); color: var(--wr-dust); font-style: normal; }
+.wr-graphbox { margin: .7em 0; color: #1ed760; }
+.wr-graphbox.down { color: #ff4f6b; }
+.wr-graph { display: block; width: 100%; height: auto; }
+/* Team Wrapped: a hero or player name as the big word, one line, sized to the card (--len = its length). */
+.wr-fitbox { container-type: inline-size; }
+.wr-big.wr-fit { white-space: nowrap; overflow-wrap: normal; font-size: clamp(1.5rem, calc(150cqi / var(--len, 6)), 4.6rem); }
+/* Team type: one bar per trait, strongest first. */
+.wr-traits { display: grid; gap: 7px; margin-top: 14px; }
+.wr-trait { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 2.4em; gap: 10px; align-items: center; font-size: .82rem; }
+.wr-trait i { height: 9px; border-radius: 5px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.wr-trait b { display: block; height: 100%; border-radius: 5px; background: var(--wr-gold); }
+.wr-trait span:last-child { font: 600 .75rem var(--mono); text-align: right; color: var(--wr-dust); }
+/* The profile tab's four Wrappeds: player, team, division, AD2L, left to right. */
+.wr-launch-four { grid-template-columns: repeat(4, minmax(0, 1fr)); justify-items: stretch; align-items: start; gap: 18px; width: 100%; max-width: 1400px; margin: 0 auto; }
+/* Each card's big word fits its width on one line: --len is the word's length ("Wrapped" = 7). */
+.wr-launch-four .wr-big { white-space: nowrap; overflow-wrap: normal; font-size: clamp(1.4rem, calc(133cqi / var(--len, 7)), 6.5rem); }
+.wr-launch-one { display: grid; justify-items: center; gap: 10px; min-width: 0; }
+.wr-launch-four .wr-launch-card { width: 100%; }
+.wr-launch-soon .wr-launch-card { cursor: default; filter: saturate(.55); }
+.wr-launch-soon .wr-launch-card:hover { transform: none; }
+.wr-launch-soon .wr-launch-go { color: var(--dim, #9a9187); }
+@media (max-width: 900px) { .wr-launch-four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .wr-launch-four { grid-template-columns: minmax(0, 1fr); } }
+/* The opening's "Wrapped" never breaks: it scales to the card's width instead. */
+.wr-card { container-type: inline-size; }
+.wr-card[data-card="open"] .wr-big { white-space: nowrap; overflow-wrap: normal; font-size: clamp(2.4rem, 19cqi, 6.5rem); }
+
+/* New player slides: the rating line, the personality reveal, time dead. */
+.wr-line-chart { display: block; width: 100%; height: auto; margin: 14px 0 4px; overflow: visible; background: rgba(12, 11, 10, .62); border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); backdrop-filter: blur(4px); }
+.wr-lc-path { fill: none; stroke: var(--wr-gold); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .5)); }
+.wr-lc-area { fill: color-mix(in srgb, var(--wr-gold) 16%, transparent); stroke: none; }
+.wr-lc-avg { stroke: var(--wr-dust); stroke-width: 1; stroke-dasharray: 4 5; opacity: .6; }
+.wr-lc-peak { fill: var(--wr-gold); stroke: var(--wr-ink, #111); stroke-width: 2; }
+.wr-lc-low { fill: var(--wr-dust); stroke: var(--wr-ink, #111); stroke-width: 2; }
+@media (prefers-reduced-motion: no-preference) {
+  .wr-stage .wr-lc-path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: wr-draw 1.4s cubic-bezier(.4, 0, .2, 1) .35s forwards; }
+  .wr-stage .wr-lc-peak { transform-box: fill-box; transform-origin: center; animation: wr-pop .4s cubic-bezier(.2, 1.6, .4, 1) 1.6s both; }
+}
+@keyframes wr-draw { to { stroke-dashoffset: 0; } }
+@keyframes wr-pop { from { transform: scale(0); } to { transform: scale(1); } }
+.wr-reveal { margin: 0 0 .25em; font: 700 .95rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--wr-bone); text-shadow: 0 1px 10px rgba(0, 0, 0, .8); }
+.wr-card[data-card="personality"] .wr-big { overflow-wrap: normal; font-size: clamp(1.9rem, 10.5cqi, 4.6rem); }
+.wr-big-time small { margin-left: .08em; margin-right: .12em; }
+
+/* More cards (lib/wrapped-more.js): division tables, rune bars, the item icon. */
+.wr-table { width: 100%; margin: 14px 0 6px; border-collapse: collapse; font-size: .82rem; background: rgba(12, 11, 10, .62); border-radius: 12px; overflow: hidden; backdrop-filter: blur(4px); }
+.wr-table th { padding: 7px 10px; font: 600 .62rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--wr-dust); text-align: right; }
+.wr-table th:first-child, .wr-table td:first-child { text-align: left; }
+.wr-table td { padding: 5px 10px; text-align: right; font-variant-numeric: tabular-nums; border-top: 1px solid rgba(255, 255, 255, .06); }
+.wr-table td.wr-top { color: #1ed760; font-weight: 700; }
+.wr-table tr.me td { color: var(--wr-gold); font-weight: 700; }
+.wr-hbars { display: grid; grid-template-columns: 7em minmax(0, 1fr) 2.4em; gap: 6px 10px; align-items: center; margin-top: 14px; font-size: .82rem; }
+.wr-hbars i { height: 9px; border-radius: 5px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.wr-hbars b { display: block; height: 100%; border-radius: 5px; background: var(--c1); }
+.wr-hbars span:nth-child(3n) { font: 600 .75rem var(--mono); text-align: right; color: var(--wr-dust); }
+.wr-item { width: 1.5em; height: 1.1em; object-fit: cover; border-radius: 3px; vertical-align: -.1em; margin-right: .3em; }
+
+/* Fav's feedback, 2026-11-24 (public/_dev/wrapped-feedback.md). */
+/* Slide 2, the opening: a smaller card set lower, so it clears the head in the background, and
+   bigger words. */
+.wr-new .wr-card[data-card="intro"] .wr-pc { top: 26%; width: 38%; }
+.wr-new .wr-card[data-card="intro"] .wr-line { font-size: 1.15rem; }
+.wr-new .wr-card[data-card="intro"] .wr-stats dd { font-size: 2.7rem; }
+@media (min-width: 900px) {
+  .wr-new .wr-card[data-card="intro"] .wr-pc { top: 24%; width: 34%; }
+  .wr-new .wr-card[data-card="intro"] .wr-big { font-size: clamp(3.4rem, 5vw, 5rem); }
+  .wr-new .wr-card[data-card="intro"] .wr-line { font-size: 1.25rem; }
+  .wr-new .wr-card[data-card="intro"] .wr-stats dd { font-size: 3.2rem; }
+}
+/* Slide 8, the rating line: sits at the bottom instead of the middle, so it clears the hero. */
+.wr-new .wr-card[data-card="rating"] .wr-body { margin: auto 0 6px; }
+/* The summary: its numbers on a dark panel so they read over any background. */
+.wr-new .wr-card[data-card="summary"] .wr-summary { padding: 18px 20px; border-radius: 16px; background: rgba(12, 11, 10, .84); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 18px 40px rgba(0, 0, 0, .4); backdrop-filter: blur(6px); }
+/* Slide 4: five heroes, the best of them lit. */
+.wr-heroes-5 { gap: 7px; }
+.wr-heroes-5 .wr-hname { font-size: 1.25rem; }
+.wr-heroes-5 .wr-hrec { font-size: 1.4rem; }
+.wr-heroes-5 li > img, .wr-heroes-5 li > span:first-child { height: 36px; width: 64px; }
+.wr-heroes li.wr-best { margin: 0 -10px; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, var(--wr-gold) 18%, rgba(12, 11, 10, .55)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wr-gold) 55%, transparent); }
+@media (min-width: 900px) {
+  .wr-heroes-5 .wr-hname { font-size: 1.5rem; }
+  .wr-heroes-5 .wr-hrec { font-size: 1.7rem; }
+  .wr-heroes-5 li { grid-template-columns: 80px minmax(0, 1fr) auto; }
+  .wr-heroes-5 li > img, .wr-heroes-5 li > span:first-child { width: 80px; height: 45px; }
+}
+/* Slide 5: the next bans with their portraits. */
+.wr-then { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.wr-then-h { display: inline-flex; align-items: center; gap: 8px; }
+.wr-then-h img { width: 52px; height: 29px; border-radius: 5px; object-fit: cover; box-shadow: 0 3px 10px rgba(0, 0, 0, .4); }
+/* The category rail: each category with its slides under it, the current slide lit, scrolling with
+   the story (pages/wrapped.js byCategory). */
+@media (min-width: 900px) {
+  .wr-rail:has(.wr-rail-slides) > ol { max-height: min(62vh, 640px); overflow-y: auto; scrollbar-width: thin; gap: 2px; }
+  .wr-rail:has(.wr-rail-slides) > ol > li > button { padding: 6px 14px 2px; font: 700 .7rem var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dust); }
+  .wr-rail .wr-rail-slides { border-left: 0; gap: 0; margin-bottom: 6px; }
+  .wr-rail .wr-rail-slides button { padding: 3px 14px 3px 22px; font: 500 .86rem var(--body); }
+  .wr-rail .wr-rail-slides button[aria-current="true"] { color: var(--bone); border-left-color: var(--gold); font-weight: 700; }
+}
+/* MVP slide: the division's average as a white tick on each bar. */
+.wr-trait i.wr-vs { position: relative; overflow: visible; }
+.wr-trait i.wr-vs em { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; border-radius: 2px; background: var(--wr-bone); box-shadow: 0 0 6px rgba(0, 0, 0, .6); }
+.wr-card[data-card="summary"] .wr-sig { display: none; }
+
+/* Slide borders, on by default locally (?wrapBorders=0 off): a shop border around the slide (pages/wrapped.js favBorderHtml). */
+.wr-border { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; }
+.wr-border .wr-ring { position: absolute; inset: 0; border: 8px solid transparent; border-radius: inherit;
+  /* the card's frame layers (cosmetics-effects.css .ft-face): a clear first layer where the card has its fill, then the paint */
+  background-image: linear-gradient(transparent, transparent), var(--frame-paint); background-size: var(--frame-size); background-origin: var(--frame-layers, padding-box, border-box); background-clip: var(--frame-layers, padding-box, border-box); animation: var(--frame-motion);
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0) border-box; -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0) border-box; }
+.wr-border > .exp-border { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-height: none; overflow: visible; }
+/* The border is the slide's edge: no gold focus ring outside it, and no gold trim line inside it (lapis). */
+.wr-story:has(.wr-border):focus-visible { box-shadow: none; }
+.wr-border [stroke="#e9c25a"] { display: none; }
+/* With a border, everything sits inside it: --wr-edge is the frame's widest reach (smoke and scene borders run deeper
+   than a painted ring). The progress pips stay on top of the slide, just inside the frame. */
+.wr-story:has(.wr-border) { container-type: inline-size; --wr-edge: max(22px, 5.5cqi); } /* drawn borders stretch with the slide */
+.wr-story:has(.wr-border) .wr-progress { z-index: 4; top: calc(var(--wr-edge) * 1.3 + 4px); left: calc(var(--wr-edge) + 8px); right: calc(var(--wr-edge) + 8px); }
+.wr-story:has(.wr-border) .wr-progress span { background: rgba(255, 255, 255, .35); box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); }
+.wr-story:has(.wr-border) .wr-inner { padding: calc(var(--wr-edge) * 1.3 + 24px) calc(var(--wr-edge) + 12px) calc(var(--wr-edge) * 1.3 + 4px); }
+.wr-story:has(.wr-border) .wr-pc { top: calc(var(--wr-edge) * 1.3 + 40px); right: calc(var(--wr-edge) + 12px); width: 44%; }
+.wr-story:has(.wr-border) .wr-sig .card-autograph { right: calc(var(--wr-edge) + 4%); }
+/* Nothing from a border crosses the words: it fades out just inside the frame. Brown's personal border keeps its drift
+   across the slide, which is the point of it. */
+.wr-border:not([data-border="fx-brown-wisp"]) {
+  --in: var(--wr-edge); --fade: calc(var(--wr-edge) + 10px); --in-y: calc(var(--wr-edge) * 1.3); --fade-y: calc(var(--wr-edge) * 1.3 + 14px);
+  -webkit-mask: linear-gradient(90deg, #000 var(--in), transparent var(--fade), transparent calc(100% - var(--fade)), #000 calc(100% - var(--in))),
+    linear-gradient(180deg, #000 var(--in-y), transparent var(--fade-y), transparent calc(100% - var(--fade-y)), #000 calc(100% - var(--in-y)));
+  mask: linear-gradient(90deg, #000 var(--in), transparent var(--fade), transparent calc(100% - var(--fade)), #000 calc(100% - var(--in))),
+    linear-gradient(180deg, #000 var(--in-y), transparent var(--fade-y), transparent calc(100% - var(--fade-y)), #000 calc(100% - var(--in-y)));
+}
+/* A painted ring is 8px all round: a slim inset for those. Smoke borders keep the deeper one above. */
+.wr-story:has(.wr-border .wr-ring) { --wr-edge: 10px; }

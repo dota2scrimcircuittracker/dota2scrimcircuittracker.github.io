@@ -135,6 +135,8 @@ export async function renderPlayer(src, key) {
       ["feed", /^\d+$/.test(key) ? `<div class="profile-feed-box"></div>` : ""],
       // Achievements and their reward packs, loaded when the tab opens (parts/achievements.js).
       ["achievements", /^\d+$/.test(key) ? `<div class="profile-ach-box"></div>` : ""],
+      // Their season Wrapped (pages/wrapped.js): the tab shows once there is one to show.
+      ["wrapped", src.ad2l && /^\d+$/.test(key) ? `<div class="profile-wrapped-box"></div>` : ""],
   ]));
 
   // One compact header: back link and league on one line, then name, tier, team line and the
@@ -167,6 +169,7 @@ export async function renderPlayer(src, key) {
   if(/^\d+$/.test(key)) mountProfileFeed(app.querySelector(".profile-feed-box"),key).catch(()=>{});
   if(/^\d+$/.test(key)) mountProfileAchievements(app.querySelector(".profile-ach-box"),key).catch(()=>{});
   if(/^\d+$/.test(key)) mountGiftPanel(app,key,s.name).catch(()=>{});
+  if(src.ad2l&&/^\d+$/.test(key)) { const t=app.querySelector("#pp-tab-wrapped"); if(t&&t.getAttribute("aria-selected")!=="true") t.hidden=true; import("./wrapped.js").then(m=>m.mountPlayerWrapped(app,key)).catch(()=>{}); }
   // ?stream=card: only this player's card, for OBS; otherwise Fav and Brown get the link to it.
   if(/^\d+$/.test(key)) import("../parts/stream-card.js").then(m=>m.isStreamCard()?m.startStreamCard():m.mountStreamLink(app,inGameName)).catch(()=>{});
   wireItemHeroes();
