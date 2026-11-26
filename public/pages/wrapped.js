@@ -1653,8 +1653,8 @@ export async function mountPlayerWrapped(host, key) {
   const cards = [
     { href, label: `Open ${name(s.p)}'s Wrapped`, c: { key: "open", tone: 1, wall: heroes[0], kicker: "Player", body: `${big("Wrapped")}${line(`${name(s.p)}'s season in review`)}` } },
     { href: teamHref, label: team ? `Open ${esc(team)} Wrapped` : "Team Wrapped", c: { key: "launch-team", tone: 3, wall: heroes[1] ?? null, kicker: "Team", body: `${big("Team")}${line(team ? esc(team) : "Their team's season")}${teamHref ? "" : line('<span class="wr-hint">Coming soon</span>')}` } },
-    { href: dname ? `${s.home.root}/wrapped` : null, label: `Open ${esc(dname ?? "division")} Wrapped`, c: { key: "launch-division", tone: 5, wall: null, kicker: "Division", body: `${big(esc(dname ?? "Division"))}${line(`${esc(SEASON.name)} season review`)}` } },
-    { href: `${SOURCES.all.root}/wrapped`, label: "Open AD2L Wrapped", c: { key: "launch-ad2l", tone: 6, wall: null, kicker: "AD2L", body: `${big("AD2L")}${line("Every division's awards")}` } },
+    { href: dname ? `${s.home.root}/wrapped/review` : null, label: `Open ${esc(dname ?? "division")} Wrapped`, c: { key: "launch-division", tone: 5, wall: null, kicker: "Division", body: `${big(esc(dname ?? "Division"))}${line(`${esc(SEASON.name)} season review`)}` } },
+    { href: "#/wrapped", label: "Open AD2L Wrapped", c: { key: "launch-ad2l", tone: 6, wall: null, kicker: "AD2L", body: `${big("AD2L")}${line("Every division's awards")}` } },
   ];
   for (const { c } of cards) { const word = c.body.match(/^<[^>]*>([^<]*)</)?.[1] ?? "Wrapped"; c.body = `<div style="--len:${Math.max(7, word.length)}">${c.body}</div>`; }
   box.innerHTML = `<div class="wr-launch wr-launch-four">${cards.map(({ href: h, label, c }) => `<div class="wr-launch-one${h ? "" : " wr-launch-soon"}">
@@ -1867,7 +1867,7 @@ async function renderTeamWrapped(src, id) {
     title: `${t.name} Wrapped`, railTitle: `${esc(t.name)}'s ${esc(SEASON.name)}`,
     opening: { key: "t-open", tone: 1, hero: null, wall: top[0], kicker: `${dname} · ${esc(SEASON.name)}`, body: `${big(esc(t.name))}${line("Team Wrapped")}${line('<span class="wr-hint">Tap or press → to go on</span>')}` },
     parts: FAV_WALLS ? slideParts(parts) : parts,
-    ending: { key: "end", tone: 5, hero: null, kicker: "That's a wrap", body: `${big(`GG, ${esc(t.name)}`)}${line(t.roster.filter((r) => r.games > r.standin).slice(0, 7).map((r) => esc(r.name)).join(" · "))}${line(`<a href="${src.root}/wrapped">See ${dname}'s awards</a>`)}` },
+    ending: { key: "end", tone: 5, hero: null, kicker: "That's a wrap", body: `${big(`GG, ${esc(t.name)}`)}${line(t.roster.filter((r) => r.games > r.standin).slice(0, 7).map((r) => esc(r.name)).join(" · "))}${line(`<a href="${src.root}/wrapped/review">See ${dname}'s awards</a>`)}` },
     extra: localNote([!div.open && dname].filter(Boolean)),
     share: { url: pageUrl(`${src.root}/wrapped/team/${encodeURIComponent(id)}`), title: `${t.name}'s ${SEASON.name} Wrapped` },
     heroes: top.slice(0, 3), pool: top,
@@ -1916,7 +1916,7 @@ async function renderPlayerWrapped(src, key) {
   if (perfCards.length) parts.push({ n: 2, label: "Performance", cards: perfCards });
   else if (across.length) parts.push({ n: 2, label: `${name(p)} across AD2L`, cards: [partCard(2, `${name(p)} across AD2L`, "Ranked against every division's players"), ...across] });
   else if (!leagueShown) parts.push({ n: 2, label: `${name(p)} across AD2L`, cards: [lockedCard(`${name(p)}'s league-wide ranks`)] });
-  const review = `${(home ?? SOURCES.all).root}/wrapped/review`;
+  const review = home ? `${home.root}/wrapped/review` : "#/wrapped/review";
   if (FAV_WALLS) { const all = parts.flatMap((x) => x.cards); if (!all.some((c) => c.key === "locked")) parts.splice(0, parts.length, ...byCategory(all)); }
   if (FAV_WALLS) await claimDesigns(parts.flatMap((x) => x.cards), key).catch((e) => console.warn("card designs unavailable", e));
   if (FAV_WALLS) for (const c of parts.flatMap((x) => x.cards)) { c.sig = p.name; c.who = key; }
@@ -1989,7 +1989,7 @@ async function renderReview(src) {
   const divShown = !!div && (div.open || isLocal()), leagueShown = !!all && (all.open || isLocal());
   const dname = src.all ? null : leagueName(src);
   if (src.all ? !leagueShown : !divShown) {
-    app.innerHTML = `${pageHead(kicker, title)}<section class="wr-page"><div class="wr-locked panel"><p class="wr-kicker">Locked</p><h3>The ${esc(SEASON.name)} review opens when the season ends</h3><p>${dname ? `${dname}'s awards unlock once its grand final is played.` : "The league's awards unlock once every division's grand final is played."} Every player's own Wrapped opens on their profile then too.</p><p><a href="${src.root}/wrapped">Back to every Wrapped</a></p></div></section>`;
+    app.innerHTML = `${pageHead(kicker, title)}<section class="wr-page"><div class="wr-locked panel"><p class="wr-kicker">Locked</p><h3>The ${esc(SEASON.name)} review opens when the season ends</h3><p>${dname ? `${dname}'s awards unlock once its grand final is played.` : "The league's awards unlock once every division's grand final is played."} Every player's own Wrapped opens on their profile then too.</p><p><a href="#/wrapped">Back to every Wrapped</a></p></div></section>`;
     return;
   }
   const parts = [];
@@ -2006,7 +2006,7 @@ async function renderReview(src) {
     if (dd.length) parts.push({ n: parts.length + 1, label: `${dname} drafts`, cards: [partCard(parts.length + 1, `${dname} drafts`, "Bans, picks and the meta"), ...dd] });
     for (const x of boardParts(src, div, dname)) parts.push({ n: parts.length + 1, ...x });
   }
-  // A division's review stops at its own awards: AD2L's are their own review (#/all/wrapped).
+  // A division's review stops at its own awards: AD2L's are their own review (#/wrapped/review).
   if (src.all && leagueShown) {
     const showdown = FAV_WALLS && showdownCard(await allDivisions().then(divisionShowdown).catch((e) => (console.warn("division showdown unavailable", e), null)), null);
     parts.push({ n: parts.length + 1, label: "AD2L awards", cards: [partCard(parts.length + 1, "AD2L awards", `${plural(all.games.length, "game")} in every division`), ...awardsOf(SOURCES.all, all), showdown].filter(Boolean) });
@@ -2022,9 +2022,9 @@ async function renderReview(src) {
   }
   const mine = await import("../parts/me.js").then((m) => m.myProfileHref()).catch(() => null);
   const myRecap = mine ? mine.replace("/player/", "/wrapped/") : null;
-  fullPage(`${src.root}/wrapped`, "Every Wrapped").innerHTML = `<section class="wr-review"></section>`;
+  fullPage("#/wrapped", "Every Wrapped").innerHTML = `<section class="wr-review"></section>`;
   mountStory(app.querySelector(".wr-review"), {
-    title, railTitle: esc(title), share: { url: pageUrl(`${src.root}/wrapped/review`), title: `${title} · ${src.all ? "AD2L" : `AD2L ${dname}`}` }, extra: localNote([divShown && !div.open && dname, src.all && leagueShown && !all.open && "AD2L"].filter(Boolean)),
+    title, railTitle: esc(title), share: { url: pageUrl(src.all ? "#/wrapped/review" : `${src.root}/wrapped/review`), title: `${title} · ${src.all ? "AD2L" : `AD2L ${dname}`}` }, extra: localNote([divShown && !div.open && dname, src.all && leagueShown && !all.open && "AD2L"].filter(Boolean)),
     opening: { key: "open", tone: 1, hero: null, kicker: `AD2L ${esc(SEASON.long)}`, body: `${big("Wrapped")}${line("The season in review")}${line(dname ? `${dname}'s awards.` : "The awards across every division.")}${line('<span class="wr-hint">Tap or press → to go on</span>')}` },
     parts: FAV_WALLS ? slideParts(parts) : parts,
     ending: { key: "end", tone: 5, hero: null, kicker: "That's a wrap", body: `${big(`GG, ${esc(SEASON.name)}`)}${line(myRecap ? `<a href="${myRecap}">Open your own Wrapped</a>` : "Every player's own Wrapped is on their profile. Sign in with Steam to find yours.")}` },
@@ -2065,7 +2065,7 @@ async function renderHub(src) {
     </a>`;
   const seasonGamesOf = (d) => seasonGames(d.games).length;
   const tiles = [
-    tile({ href: `${SOURCES.all.root}/wrapped/review`, name: "All AD2L", sub: `${plural(seasonGamesOf(all), "game")} · every division`, open: done.every(Boolean), color: "#e8b64c", dark: "#7a3f12", art: artOf(all) }),
+    tile({ href: "#/wrapped/review", name: "All AD2L", sub: `${plural(seasonGamesOf(all), "game")} · every division`, open: done.every(Boolean), color: "#e8b64c", dark: "#7a3f12", art: artOf(all) }),
     ...divs.map((d, i) => tile({ href: `${SOURCES[d.key].root}/wrapped/review`, name: d.name, sub: `${plural(seasonGamesOf(datas[i]), "game")} · ${plural(datas[i].teams.length, "team")}`, open: done[i], color: d.color, dark: d.dark, art: artOf(datas[i]) })),
   ];
   // Signed in: your own Wrapped and your team's come first, in your division's colours, each on

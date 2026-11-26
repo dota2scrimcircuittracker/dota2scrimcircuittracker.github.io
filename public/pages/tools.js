@@ -9,7 +9,7 @@ export function toolList(src) {
   return [
     src.ad2l && !src.all && { id: "drafter", name: "Drafter", sub: "Draft against a team with the draft model's picks and bans.", href: `${src.root}/drafter` },
     !src.all && { id: "upload", name: "Upload", sub: src.ad2l ? "Add an unticketed game from its screenshots." : "Add a scrim from its screenshots.", href: `${src.root}/upload` },
-    src.ad2l && { id: "wrapped", name: `${SEASON.name} Wrapped`, sub: "The season in review: every division's awards and any player's own Wrapped. Opens when the season ends.", href: `${src.root}/wrapped` },
+    src.ad2l && { id: "wrapped", name: `${SEASON.name} Wrapped`, sub: "The season in review: every division's awards and any player's own Wrapped. Opens when the season ends.", href: "#/wrapped" },
     { id: "stream", name: "Stream kit", sub: "Any teams' or players' cards for OBS: animated, transparent, ready to import.", href: `${src.root}/stream-kit` },
     { id: "table", name: "Table builder", sub: "Any stat, any filter, as one sortable table.", href: `${src.root}/search?table=team` },
     { id: "feedback", name: "Feedback", sub: "Mark up any page and say what you'd change.", action: "feedback" },

@@ -1,7 +1,10 @@
 // Link previews for AD2L Wrapped (pages/wrapped.js). For each league whose season is over (its
 // grand finals played, lib/wrapped.js seasonOver), writes into a built copy of public/:
-//   /<league>/wrapped/            the Wrapped hub (every division's tile), with this league's
-//                                 award winners in its description; image img/og/wrapped/hub.jpg
+//   /wrapped/                     the Wrapped hub (every division's tile), each open league's
+//                                 champions in its description; image img/og/wrapped/hub.jpg
+//   /wrapped/review/              All AD2L's review (opens once every division is done), same image
+//   /<league>/wrapped/            the old hub address, with that league's award winners: the app
+//                                 forwards it to /wrapped/ (app.js route), the preview stays
 //   /<league>/wrapped/review/     the league's season review (img/og/wrapped/<league>/league.jpg)
 //   /<league>/wrapped/<player>/   that player's Wrapped, with their own title, description and
 //                                 image (img/og/wrapped/<league>/<player>.jpg, drawn by
@@ -58,6 +61,8 @@ let teamPages = 0;
 let leagues = 0;
 // The hub image's tiles, one per division, top division first as pages/wrapped.js renderHub shows them.
 const hubTiles = [];
+// Each open league's champions, for /wrapped/'s description.
+const champions = [];
 const hubImg = `${SITE}/img/og/wrapped/hub.jpg`;
 // Profile tabs: a player's home is the first division (this order) whose season games have them,
 // as pages/wrapped.js homeOf. Listed once that division's season is over.
@@ -87,6 +92,7 @@ for (const dv of DIVISIONS) {
   const slug = slugOf(dv), league = `AD2L ${dv.name}`;
 
   const champs = awards.filter((a) => a.key === "champions").map((a) => `${a.title}: ${d.teams.find((t) => t.id === a.team)?.name ?? "?"}`);
+  champions.push(...awards.filter((a) => a.key === "champions").map((a) => `${dv.name}: ${d.teams.find((t) => t.id === a.team)?.name ?? "?"}`));
   const leagueImg = `${SITE}/img/og/wrapped/${dv.key}/league.jpg`;
   const named = [...champs, ...awards.filter((a) => a.p).map((a) => `${a.title}: ${a.p.name}${a.key === "duo" ? ` + ${a.hero}` : ""}`)];
   await write(`${slug}/wrapped`, {
@@ -171,6 +177,19 @@ for (const dv of DIVISIONS) {
 }
 
 // The hub's image: S48 WRAPPED over every division's tile, once any league is open.
+if (leagues) {
+  const allOpen = hubTiles.every((t) => t.open);
+  await write("wrapped", {
+    title: `AD2L ${SEASON.name} Wrapped`,
+    description: `The ${SEASON.name} season in review, every division. ${champions.length ? `Champions: ${champions.join(" · ")}. ` : ""}Find any player's or team's own Wrapped.`,
+    color: "#e8b64c", image: hubImg, alt: `AD2L ${SEASON.name} Wrapped: every division's season in review`,
+  });
+  await write("wrapped/review", {
+    title: `AD2L ${SEASON.name} season review · All divisions`,
+    description: allOpen ? `Every division's ${SEASON.name} awards together. ${champions.join(" · ")}.` : `Every division's ${SEASON.name} awards together. Opens once every division's grand final is played.`,
+    color: "#e8b64c", image: hubImg, alt: `AD2L ${SEASON.name} Wrapped: every division's season in review`,
+  });
+}
 if (leagues) jobs.push({ hub: true, out: path.join(OUT, "img", "og", "wrapped", "hub.jpg"), season: SEASON.name, tiles: [...hubTiles].reverse() });
 
 await writeFile(path.join(OUT, "data", "wrapped-players.json"), JSON.stringify({ season: SEASON.name, players: profiles }));

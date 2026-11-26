@@ -509,6 +509,9 @@ export function route() {
   let h = here();
   if (/^#\/ad2l\/./.test(h)) h = h.replace(/^#\/ad2l/, SOURCES.ad2l.root); // old Champion links
   h = h.replace(OLD_SCRIM, "#/scrims/");
+  // AD2L Wrapped has one address whatever league you came from: /wrapped/ the hub, /wrapped/review/
+  // All AD2L's review. A league's (or All's) old hub address forwards there.
+  h = h.replace(/^#\/[a-z0-9]+(?:\/[a-z])?\/wrapped\/?(?=\?|$)/, "#/wrapped").replace(/^#\/all\/wrapped\/review\/?(?=\?|$)/, "#/wrapped/review");
   // A query typed inside the route (#/scrims/search?q=…) moves to the address's own query, where
   // pages read it (?q=, ?tab=…).
   const [bare, inRoute = ""] = h.split("?");
@@ -525,6 +528,9 @@ export function route() {
   }
   setRoutedAt(location.href);
   if (h === "#/" || /^#\/ad2l\/?$/.test(h)) return routeHub();
+  // #/wrapped[/review]: drawn as All's, without remembering All as the league you were in.
+  const wrappedRoot = /^#\/wrapped(\/review)?$/.exec(h);
+  if (wrappedRoot) h = `${SOURCES.all.root}/wrapped${wrappedRoot[1] ?? ""}`;
   if (h === "#/privacy") return routePrivacy();
   if (h === "#/stats") return routeStats();
   // #/gallery[/<sub-tab>]: the Gallery without a league in the address. It opens inside the league
@@ -541,7 +547,7 @@ export function route() {
   const src = !key ? SOURCES.scrim : view && SOURCES[`${key}_${view}`] || SOURCES[key];
   const isAd2l = src.ad2l, r = src.root;
   document.body.dataset.league = src.key;
-  try { localStorage.setItem("lastLeague", src.key); } catch { /* not remembered */ }
+  if (!wrappedRoot) try { localStorage.setItem("lastLeague", src.key); } catch { /* not remembered */ }
   const divLabel = DIVISIONS[src.key]?.views ? (src.view ? `Division ${src.view.toUpperCase()}` : "Combined") : "";
   const leagueTitle = src.all ? `AD2L ${SEASON.name} · All Divisions` : isAd2l ? `AD2L ${src.division}${divLabel ? ` · ${divLabel}` : ""}` : "Scrim League";
   // In the playoffs (lib/divisions.js SEASON.phase) every AD2L league gets a stamp over its name.
@@ -585,7 +591,7 @@ export function route() {
     else if (h.startsWith(`${r}/heroes`)) { section = "heroes"; tm = true; page = () => renderHeroes(t); }
     else if (h.startsWith(`${r}/draft`) && !h.startsWith(`${r}/drafter`)) { section = "heroes"; tm = true; page = () => renderHeroes(t); } // old Draft tab: now part of Heroes
     else if (src.all && /^\/(predict|drafter|upload|edit)/.test(h.slice(r.length))) { section = "standings"; tm = true; page = () => renderStandings(t); }
-    // AD2L Wrapped (pages/wrapped.js): /wrapped every review as cards, /wrapped/review one
+    // AD2L Wrapped (pages/wrapped.js): #/wrapped (above, as All) every review as cards, /wrapped/review one
     // league's awards, /wrapped/<player> one player's, /wrapped/team/<team id> one team's.
     else if (/^\/wrapped(\/|$)/.test(h.slice(r.length))) {
       section = "wrapped";
