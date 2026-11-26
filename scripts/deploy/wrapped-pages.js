@@ -70,6 +70,12 @@ for (const dv of DIVISIONS) {
     description: `The ${dv.name} season in review. ${named.join(" · ")}. Every player's own Wrapped is on their profile.`,
     color: dv.color, image: `${SITE}/img/og/${dv.key}.png`,
   });
+  // The season review story itself (#/<league>/wrapped/review): same preview, its own address.
+  await write(`${slug}/wrapped/review`, {
+    title: `${SEASON.name} season review · ${league}`,
+    description: `The ${dv.name} season in review. ${named.join(" · ")}.`,
+    color: dv.color, image: `${SITE}/img/og/${dv.key}.png`,
+  });
 
   for (const e of byPlayer(games).values()) {
     if (!/^\d+$/.test(e.key)) continue;

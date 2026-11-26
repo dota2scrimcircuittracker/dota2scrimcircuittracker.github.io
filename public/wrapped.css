@@ -107,7 +107,7 @@
 .wr-pin[aria-pressed="true"] { background: var(--wr-gold); color: #111; }
 .wr-pin:disabled { opacity: .6; }
 .wr-share { margin-left: auto; font: 700 .75rem var(--body); text-transform: none; letter-spacing: 0; color: var(--wr-bone); background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
-.wr-share + .wr-pin { margin-left: 0; }
+.wr-share + .wr-pin, .wr-share + .wr-share { margin-left: 0; }
 
 /* A slide with the player's Fantasy card (pages/wrapped.js fillPlayerCard): the card where the
    render would be, top right and tilted, the words under it. Tap it to flip; its corner button
@@ -418,3 +418,5 @@ body:has(.wr-full) { overflow: hidden; }
 }
 /* A painted ring is 8px all round: a slim inset for those. Smoke borders keep the deeper one above. */
 .wr-story:has(.wr-border .wr-ring) { --wr-edge: 10px; }
+/* Award slides: the next 3 under the winner (the race, top 4 in all). */
+.wr-next { margin: 14px 0 6px; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }

@@ -768,11 +768,11 @@ export function rankedRecords(field, ranked, since, ranks = new Map()) {
   return out.sort((a, b) => (b.climb ?? -99) - (a.climb ?? -99) || b.net - a.net || b.wins + b.losses - (a.wins + a.losses));
 }
 
-// The MVP race: the first 5 with at least one game MVP, each on their most played hero.
+// The MVP race: the first 4 with at least one game MVP (the winner + the next 3), each on their most played hero.
 // sorted: players (byPlayer entries) best first; n: entry -> game MVPs.
 const mostPlayed = (rows) => { const c = {}; for (const { p } of rows) c[p.hero] = (c[p.hero] ?? 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null; };
 function raceOf(sorted, n) {
-  return sorted.filter((e) => n(e) > 0).slice(0, 5).map((e) => ({ key: e.key, p: e.p, value: n(e), games: e.rows.length, hero: mostPlayed(e.rows) }));
+  return sorted.filter((e) => n(e) > 0).slice(0, 4).map((e) => ({ key: e.key, p: e.p, value: n(e), games: e.rows.length, hero: mostPlayed(e.rows) }));
 }
 
 // The league's awards. games: season games; series, teams: the division's; reads: series model
@@ -823,7 +823,7 @@ export function seasonAwards(games, { series = [], teams = [], reads = [], cuts 
     const ranked = [...sups].sort((a, b) => score(b) - score(a)), top = ranked[0];
     out.push({ key: "support", title: "Best support", player: top.key, p: top.p, games: top.rows.length,
       kp: parts[0](top), wards: parts[1](top), dewards: parts[2](top), winRate: winRate(top),
-      top: ranked.slice(0, 5).map((e) => ({ key: e.key, p: e.p, games: e.rows.length, hero: mostPlayed(e.rows), kp: parts[0](e), wards: parts[1](e), winRate: winRate(e), score: score(e) })) });
+      top: ranked.slice(0, 4).map((e) => ({ key: e.key, p: e.p, games: e.rows.length, hero: mostPlayed(e.rows), kp: parts[0](e), wards: parts[1](e), winRate: winRate(e), score: score(e) })) });
   }
 
   // Best laner: the best average lane score over 4+ judged lanes (fewer if nobody has 4).
@@ -832,7 +832,7 @@ export function seasonAwards(games, { series = [], teams = [], reads = [], cuts 
     const rank = (n) => board.filter((r) => r.lanes >= n).sort((a, b) => b.score - a.score || b.lanes - a.lanes);
     const ranked = rank(4).length ? rank(4) : rank(2), l = ranked[0];
     if (l) out.push({ key: "laner", title: "Best laner", player: l.key, p: l.p, group: l.group, lanes: l.lanes, won: l.won, margin: l.margin,
-      top: ranked.slice(0, 5).map((r) => ({ key: r.key, p: r.p, hero: mostPlayed(players.get(r.key)?.rows ?? []) ?? r.p?.hero ?? null, group: r.group, lanes: r.lanes, won: r.won, margin: r.margin })) });
+      top: ranked.slice(0, 4).map((r) => ({ key: r.key, p: r.p, hero: mostPlayed(players.get(r.key)?.rows ?? []) ?? r.p?.hero ?? null, group: r.group, lanes: r.lanes, won: r.won, margin: r.margin })) });
   }
 
   // Strongest duo: a player on one hero, 3+ games, by win rate with one win and one loss added
@@ -849,7 +849,7 @@ export function seasonAwards(games, { series = [], teams = [], reads = [], cuts 
   }
   const duo = duos.sort((a, b) => b.score - a.score || b.n - a.n || (b.k + b.a) / Math.max(b.dth, 1) - (a.k + a.a) / Math.max(a.dth, 1))[0];
   if (duo) out.push({ key: "duo", title: "Strongest player + hero", player: duo.key, p: duo.p, hero: duo.hero, games: duo.n, wins: duo.w, kda: (duo.k + duo.a) / Math.max(duo.dth, 1),
-    top: duos.slice(0, 5).map((d) => ({ key: d.key, p: d.p, hero: d.hero, games: d.n, wins: d.w, kda: (d.k + d.a) / Math.max(d.dth, 1) })) });
+    top: duos.slice(0, 4).map((d) => ({ key: d.key, p: d.p, hero: d.hero, games: d.n, wins: d.w, kda: (d.k + d.a) / Math.max(d.dth, 1) })) });
 
   // Most sandbagged: the most medal stars gained in ranked since the season began (rankedRecords
   // above), with the top 5. ranked: the draft file's; since: the season's first series; ranks:

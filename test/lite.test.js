@@ -67,7 +67,8 @@ for (const { key } of DIVISIONS) {
   test(`Wrapped copy of ${key} gives the same Wrapped`, { skip: !existsSync(file) && "no data file" }, () => {
     const raw = JSON.parse(readFileSync(file, "utf8"));
     const wrap = wrappedDivision(raw);
-    assert.ok(JSON.stringify(wrap).length < JSON.stringify(raw).length * 0.75, "Wrapped copy should be smaller");
+    // 0.77: the estimated assists by five minutes (assist_bins, 2026-11-25) added about 1%.
+    assert.ok(JSON.stringify(wrap).length < JSON.stringify(raw).length * 0.77, "Wrapped copy should be smaller");
     assert.equal(wrappedOut(wrap, key), wrappedOut(raw, key));
   });
 }

@@ -2,7 +2,7 @@
 // season first (signed in, or the player in the address), then the league's awards. Each of your
 // cards (and any award you won) can be pinned to your profile; the profile draws it with
 // pinnedCardHtml. The maths is lib/wrapped.js.
-import { app, wrappedSrcData, esc, pageHead, playerLink, teamLink, heroLink, fmt, pct, signedK, setTitle, SOURCES, playerHref, DIVISIONS, floorOf, divLite } from "../core.js";
+import { app, wrappedSrcData, esc, pageHead, playerLink, teamLink, heroLink, fmt, pct, signedK, setTitle, SOURCES, playerHref, DIVISIONS, floorOf, divLite, setRoutedAt, addressOf } from "../core.js";
 import { loadNicknames, nicknameOf } from "../lib/nicknames.js";
 import { hasDetails, playerKey, mainAccount } from "../lib/stats.js";
 import { laneCuts, LANE_GROUPS } from "../lib/lanes.js";
@@ -27,7 +27,7 @@ import { hitText } from "../parts/combat.js";
 import { MULTI, streakName } from "../lib/combat.js";
 import { teamWrapped } from "../lib/team-wrapped.js";
 import { VB as MAP_VB, Y as mapY } from "../lib/wardmap.js";
-import { parsedPlayers, moreOf, everyDivision, divisionShowdown, leaderboards, teamMapOf, performanceOf } from "../lib/wrapped-more.js";
+import { parsedPlayers, moreOf, everyDivision, divisionShowdown, leaderboards, teamMapOf, performanceOf, gameRecords, playerRecords } from "../lib/wrapped-more.js";
 import { teamGames } from "../lib/team-wrapped.js";
 import { itemImg, itemName } from "../lib/items.js";
 import { signatureHtml } from "../lib/signatures.js";
@@ -161,7 +161,7 @@ function playerCards(src, w, scope = { name: leagueName(src), league: false }) {
     }
   }
   const more = w.more ?? {};
-  if (!scope.league) { const c = itemsMore(more.items, pn, field); if (c) add(c); }
+  if (!scope.league) { const c = itemsMore(src, more.items, pn, field); if (c) add(c); }
   if (w.signature) {
     const s = w.signature;
     add({ key: "signature", tone: 3, pick: [], kicker: `${pn}'s signature${scope.league ? " across AD2L" : ""}`,
@@ -193,6 +193,8 @@ function playerCards(src, w, scope = { name: leagueName(src), league: false }) {
     add({ key: "lane", tone: 6, pick: [], kicker: `${pn}'s laning · ${esc(lane(l.group))}`,
       body: `${big(`${l.won}–${l.even}–${l.lost}`)}${line("lanes won, even and lost")}${stats([["Lanes won", pct(l.won / Math.max(l.lanes, 1))], FAV_WALLS && ["Lanes lost", pct(l.lost / Math.max(l.lanes, 1))], l.margin != null && ["At 10 min", signedK(l.margin)]])}${l.margin != null ? line("gold + XP ahead at 10 minutes, on average") : ""}` });
   }
+  { const c = farmMore(src, more.farm, pn, field) ?? assistMore(src, more.assists, pn, field); if (c) add(c); }
+  for (const r of w.records ?? []) add(recordCard(src, r, w.key, pn));
   for (const c of [visionMore(more.vision, pn, field), mapMore(more.map, pn, field), siegeMore(more.siege, pn, field)]) if (c) add(c);
   if (w.nemesis) add({ key: "nemesis", tone: 2, hero: w.nemesis.hero, fixed: true, kicker: `${pn}'s nemesis`,
     body: `${big(esc(w.nemesis.hero))}${line(`beat ${pn} <b>${w.nemesis.lost}</b> of ${plural(w.nemesis.n, "time")} they faced it`)}${stats([["Faced", fmt(w.nemesis.n)], ["Lost", fmt(w.nemesis.lost)], FAV_WALLS && w.nemesisMore && ["KDA vs it", w.nemesisMore.kdaVs.toFixed(1)]])}${FAV_WALLS && w.nemesisMore ? nemesisMoreHtml(src, w, pn) : ""}` });
@@ -414,10 +416,10 @@ function fightMore(f, pn, field) {
 const perMin = (r) => (r >= 1 ? r.toFixed(1) : r.toFixed(2));
 function earlyMore(e, pn, field) {
   if (!e) return null;
-  const lbl = (i) => (i === 8 ? "40+" : `${i * 5}`), mx = Math.max(...e.rate);
-  const when = e.early > 0.45 ? `${pct(e.early)} before 15:00. An early-game bully.` : e.early < 0.25 ? `Only ${pct(e.early)} before 15:00. Wakes up late.` : `${pct(e.early)} of their kills came before 15:00.`;
-  return { key: "m-early", tone: 1, pick: [], kicker: `${pn}'s kill clock`,
-    body: `${big(e.peak === 8 ? "40+" : `${e.peak * 5}–${e.peak * 5 + 5}`, "min")}${line(`Their deadliest stretch: ${perMin(e.rate[e.peak])} kills a minute (${fmt(e.bins[e.peak])} of ${fmt(e.total)} kills). ${when}`)}<div class="wr-bars">${e.rate.map((n, i) => `<i class="${i === e.peak ? "hi" : ""}" style="height:${(n / mx) * 100}%"><span>${lbl(i)}</span></i>`).join("")}</div>${stats([["First bloods", fmt(e.fb)], ["Died first", fmt(e.fd)]])}${e.fb ? rankChip(e.fbRank, "for first bloods", field) : ""}` };
+  const lbl = (i) => (i === 8 ? "40+" : `${i * 5}`), mx = Math.max(...e.rate), what = e.assists ? "kills and assists" : "kills";
+  const when = e.early > 0.45 ? `${pct(e.early)} before 15:00. An early-game menace.` : e.early < 0.25 ? `Only ${pct(e.early)} before 15:00. Wakes up late.` : `${pct(e.early)} of them came before 15:00.`;
+  return { key: "m-early", tone: 1, pick: [], kicker: `${pn}'s most active time`,
+    body: `${big(e.peak === 8 ? "40+" : `${e.peak * 5}–${e.peak * 5 + 5}`, "min")}${line(`Their busiest stretch: ${perMin(e.rate[e.peak])} ${what} a minute. ${when}`)}<div class="wr-bars">${e.rate.map((n, i) => `<i class="${i === e.peak ? "hi" : ""}" style="height:${(n / mx) * 100}%"><span>${lbl(i)}</span></i>`).join("")}</div>${stats([["Kills/min", e.kpm.toFixed(2)], ["Assists/min", e.apm.toFixed(2)], ["First bloods", fmt(e.fb)], ["Died first", fmt(e.fd)]])}${rankChip(e.rank, "for kills + assists a minute", field)}${e.assists ? line('<span class="wr-hint">Assist times are estimated from the teamfights they dealt damage in.</span>') : ""}` };
 }
 function mapMore(a, pn, field) {
   if (!a) return null;
@@ -445,11 +447,34 @@ function handsMore(h, pn, field) {
   return { key: "m-hands", tone: 4, pick: [], kicker: `${pn}'s hands and mouth`,
     body: `${big(fmt(Math.round(h.apm)), "APM")}${line(`${fmt(Math.round(h.actions))} actions across the season. Top speed: ${h.top.apm} on ${esc(h.top.hero)}.`)}${rankChip(h.rank, "for APM", field)}${stats([["Pings", fmt(h.pings)], ["A game", fmt(Math.round(h.perGame))]])}${h.loudest ? line(`Loudest game: ${h.loudest.n} pings on ${esc(h.loudest.hero)}.`) : ""}${rankChip(h.pingRank, "for pings a game", field)}` };
 }
-function itemsMore(it, pn, field) {
+function itemsMore(src, it, pn, field) {
   if (!it) return null;
-  const img = itemImg(it.key), clk = (s) => mmss(Math.max(0, s));
+  const img = (k) => (itemImg(k) ? `<img class="wr-item" src="${esc(itemImg(k))}" alt="">` : ""), clk = (s) => mmss(Math.max(0, s));
+  if (it.vs === "hero") return { key: "m-items", tone: 2, pick: [it.hero], kicker: "Ahead of the curve",
+    body: `${big(clk(it.gain), "faster")}${line(`${pn}'s ${esc(itemName(it.key))} on ${heroLink(src, it.hero)} came ${clk(it.gain)} before the usual ${esc(it.hero)} in ${field}.`)}${stats([[`${pn} (${plural(it.builds, "build")})`, `${img(it.key)}${clk(it.mine)}`], [`Usual on ${esc(it.hero)}`, clk(it.usual)]])}${it.rows.length > 1 ? heroRows(src, it.rows, (r) => `−${clk(r.gain)}`, (r) => `${img(r.key)}${esc(itemName(r.key))} · ${clk(r.mine)} vs ${clk(r.usual)}`) : ""}${line(`<span class="wr-hint">Median finish time against every build of the same item on the same hero in ${field} (5+ builds, 3+ by others).</span>`)}` };
   return { key: "m-items", tone: 2, ...(it.hero ? { pick: [it.hero] } : { pick: [] }), kicker: "Ahead of the curve",
-    body: `${big(clk(it.gain), "faster")}${line(`${pn}'s ${esc(itemName(it.key))} came ${clk(it.gain)} before ${field}'s usual timing.`)}${stats([[`${pn} (${plural(it.builds, "build")})`, `${img ? `<img class="wr-item" src="${esc(img)}" alt="">` : ""}${clk(it.mine)}`], [field, clk(it.usual)]])}${line('<span class="wr-hint">Median finish time, on items the division usually finishes after 12:00.</span>')}` };
+    body: `${big(clk(it.gain), "faster")}${line(`${pn}'s ${esc(itemName(it.key))} came ${clk(it.gain)} before ${field}'s usual timing.`)}${stats([[`${pn} (${plural(it.builds, "build")})`, `${img(it.key)}${clk(it.mine)}`], [field, clk(it.usual)]])}${line('<span class="wr-hint">Median finish time, on items the division usually finishes after 12:00.</span>')}` };
+}
+// A record board they made the top 5 of, them in gold.
+function recordCard(src, r, key, pn) {
+  const me = r.top[r.rank - 1];
+  return { key: `m-rec-${r.key}`, rail: r.title, tone: r.tone, hero: me.hero, fixed: true, game: me.m, kicker: `${pn} in the ${esc(r.scope)} record book`,
+    body: `${big(r.rank === 1 ? "#1" : `#${r.rank}`, esc(r.title.toLowerCase()))}${line(`${r.rank === 1 ? `The ${esc(r.scope)} record` : `${ordinal(r.rank)} in ${esc(r.scope)}`}: ${gold(esc(me.val))} on ${heroLink(src, me.hero)} vs ${esc(me.vs ?? "")}.${r.blurb === "In one game." ? "" : ` ${esc(r.blurb)}`}`)}${heroRows(src, r.top, (t) => (t.key === key ? gold(esc(t.val)) : esc(t.val)), (t) => `${esc(t.hero)} · ${esc(t.team ?? "")} · <a href="${src.root}/game/${esc(t.m.id)}">game</a>`, (t) => (t.key === key ? gold(playerLink(src, t.p)) : playerLink(src, t.p)))}` };
+}
+const ordinal = (n) => `${n}${["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10 < 4 ? n % 10 : 0]}`;
+// recRank: where a single game ranks in the division's record book (each player's best game) (top 10 only, so it reads as a flex).
+const recRank = (r, field) => (r && r.rank <= 10 ? `, ${r.rank === 1 ? gold(`the record in ${field}`) : `${gold(`#${r.rank}`)} in ${field}'s record book`}` : "");
+// Last hits (cores) and assists (supports): the flex card.
+const posRank = (r, what) => (r ? chips([`#${r.rank} of ${r.of} ${what}`]) : "");
+function farmMore(src, f, pn, field) {
+  if (!f) return null;
+  return { key: "m-farm", tone: 4, hero: f.best10.hero, fixed: true, kicker: `${pn}'s last hits`,
+    body: `${big(f.lh10.toFixed(1), "at 10 min")}${line(`Last hits at 10:00, on average. ${fmt(f.total)} last hits this season.`)}${stats([["LH/min", f.perMin.toFixed(1)], ["Denies @10", f.dn10.toFixed(1)], ["Best @10", `${f.best10.n}`], ["Most in a game", fmt(f.bestGame.n)]])}${line(`Best start: ${gold(`${f.best10.n} at 10:00`)} on ${heroLink(src, f.best10.hero)}${recRank(f.best10.rank, field)}. Biggest game: ${fmt(f.bestGame.n)} on ${heroLink(src, f.bestGame.hero)}${recRank(f.bestGame.rank, field)} (<a href="${src.root}/game/${esc(f.bestGame.m.id)}">game</a>).`)}${rankChip(f.rank10, "for last hits at 10", field)}${rankChip(f.rankMin, "for last hits a minute", field)}${posRank(f.core10, "cores for last hits at 10")}` };
+}
+function assistMore(src, a, pn, field) {
+  if (!a) return null;
+  return { key: "m-assists", tone: 6, hero: a.bestGame.hero, fixed: true, kicker: `${pn}'s assists`,
+    body: `${big(a.perGame.toFixed(1), "assists a game")}${line(`${fmt(a.total)} assists this season. ${gold(pct(a.kp))} of their team's kills had their name on it.`)}${stats([["Assists/min", a.perMin.toFixed(2)], ["Kill share", pct(a.kp)], ["Most in a game", fmt(a.bestGame.n)]])}${line(`Busiest game: ${gold(`${a.bestGame.k}/${a.bestGame.d}/${a.bestGame.n}`)} on ${heroLink(src, a.bestGame.hero)}${recRank(a.bestGame.rank, field)} (<a href="${src.root}/game/${esc(a.bestGame.m.id)}">game</a>).`)}${rankChip(a.rankGame, "for assists a game", field)}${rankChip(a.rankKp, "for kill share", field)}${posRank(a.posGame, `${POSN[a.pos]} for assists a game`)}` };
 }
 // Across AD2L: their averages ranked against each division's players at their position.
 const POSN = ["players", "carries", "mids", "offlaners", "soft supports", "hard supports"];
@@ -463,8 +488,8 @@ function everyDivMore(e, pn) {
 function boardCard(src, b, scope) {
   if (b.key === "clutch") return { key: `board-${scope}:clutch`, tone: b.tone, hero: b.hero, fixed: true, game: b.game, kicker: `${scope} · ${esc(b.group)}`,
     body: `${big(esc(b.title))}${line(`${gold(esc(b.team))} came back from ${(b.d / 1000).toFixed(1)}k down to beat ${esc(b.lost)}, ${mmss(b.game.duration_sec)}.`)}<div class="wr-graphbox up">${leadGraph((b.game.gold_adv ?? []).map((v) => (b.game.winner === "a" ? v : -v)))}</div>${line(`<a href="${src.root}/game/${esc(b.game.id)}">Open the game ›</a>`)}` };
-  return { key: `board-${scope}:${b.key}`, tone: b.tone, pick: b.top.map((t) => t.hero).filter(Boolean), sig: b.top[0]?.p?.name, who: b.top[0]?.p && mainAccount(b.top[0].p), kicker: `${scope} · ${esc(b.group)}`,
-    body: `${big(esc(b.title))}${line(esc(b.blurb))}${heroRows(src, b.top, (t) => esc(t.val), (t) => esc(t.team ?? ""), (t) => playerLink(src, t.p))}` };
+  return { key: `board-${scope}:${b.key}`, ...(b.record ? { rail: b.title } : {}), tone: b.tone, pick: b.top.map((t) => t.hero).filter(Boolean), sig: b.top[0]?.p?.name, who: b.top[0]?.p && mainAccount(b.top[0].p), kicker: `${scope} · ${esc(b.group)}`,
+    body: `${big(esc(b.title))}${line(esc(b.blurb))}${heroRows(src, b.top, (t) => esc(t.val), b.record ? (t) => `${esc(t.hero)} · ${esc(t.team ?? "")} vs ${esc(t.vs ?? "")} · <a href="${src.root}/game/${esc(t.m.id)}">game</a>` : (t) => esc(t.team ?? ""), (t) => playerLink(src, t.p))}` };
 }
 function showdownCard(s, homeKey) {
   if (!s) return null;
@@ -995,27 +1020,47 @@ const whole = (src) => (src.view ? SOURCES[src.key] ?? src : src);
 export const recapHref = (src, key) => `${src.root}/wrapped/${encodeURIComponent(key)}`;
 // A player's Wrapped to share: /<league>/wrapped/<player>/, whose page carries their own preview
 // image and words (scripts/deploy/wrapped-pages.js writes it once the league's season is over).
+// A slide as a PNG (Share → Image), drawn by the library the feedback screenshots use
+// (lib/feedback.js), loaded on first use. The card's own buttons are left out.
+const SHOT_LIB = "https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/dist/index.mjs";
+let shotLib;
+async function slideImage(card) {
+  shotLib ??= import(SHOT_LIB);
+  const { domToBlob } = await shotLib;
+  return domToBlob(card, { scale: 2, type: "image/png", timeout: 3000, filter: (n) => !(n instanceof Element && n.matches(".wr-pin, .wr-share")) });
+}
+// The page this one was opened from on the site (core.js navigate keeps its title): the title's
+// first part ("Cev", "Wrapped"), or null when it was opened from outside.
+const cameFrom = () => {
+  const [name, kind] = (history.state?.from ?? "").split(" · ").map((s) => s.trim());
+  return !name ? null : kind === "Players" ? `${name}'s profile` : name;
+};
+// A Wrapped page's link: its /path/ form where it has a preview page (lib/share.js), else /#/... .
+const pageUrl = (route) => location.origin + addressOf(route);
 const shareUrl = (src, key) => `${location.origin}/${slugOf(DIVISIONS_LIST.find((d) => d.key === src.key) ?? { key: src.key })}/wrapped/${key}/`;
 const partCard = (n, label, sub) => ({ key: `part${n}`, tone: [3, 5, 6, 1][n - 1] ?? 4, hero: null, kicker: `Part ${n}`, body: `${big(label)}${sub ? line(sub) : ""}` });
 const lockedCard = (what) => ({ key: "locked", tone: 4, hero: null, kicker: "Coming soon", body: `${big("Not yet")}${line(`${what} unlock once every division's grand final is played.`)}` });
-const awardsOf = (s, d) => d.awards.flatMap((a) => [{ ...awardCard(s, a, d.teamName), ...(FAV_WALLS ? { pc: null } : {}), key: `award-${srcId(s)}:${a.key}${a.key === "champions" ? `-${a.team}` : ""}` }, raceCard(s, a)]).filter((c) => c?.body);
-// The follow-up to MVP and Playoff MVP: the top 5 by game MVPs (Fav, 2026-11-25: "show a top 5
-// since there are so many players").
+const awardsOf = (s, d) => d.awards.map((a) => {
+  const c = awardCard(s, a, d.teamName);
+  if (!c?.body) return null;
+  return { ...c, ...(FAV_WALLS ? { pc: null } : {}), body: c.body + runnersUp(s, a), key: `award-${srcId(s)}:${a.key}${a.key === "champions" ? `-${a.team}` : ""}` };
+}).filter(Boolean);
+// Under MVP and Playoff MVP: the next 3 by game MVPs, on the winner's own slide (Fav, 2026-11-25:
+// "show a top 5 since there are so many players", then "one page each ... highlight the top and
+// then show the next 3. so its really top 4").
 // Best support, Best laner and Strongest player + hero get one too (Fav: "more of these slides
 // should have top 3 or top 5 so more people can be highlighted").
 const RACES = {
   mvp: { tone: 5, title: "The MVP race", blurb: "Most game MVPs.", right: (t) => `${t.value}`, note: (t) => `${t.games} games` },
   playoffMvp: { tone: 2, title: "The playoff MVP race", blurb: "Most game MVPs in playoff games.", right: (t) => `${t.value}`, note: (t) => `${t.games} playoff games` },
-  support: { tone: 3, title: "The support race", blurb: "Score: kill participation, wards, dewards, stacks and wins against the average position 4 and 5 main, added up.", right: (t) => `${t.score >= 0 ? "+" : ""}${t.score.toFixed(1)}`, note: (t) => `${pct(t.kp)} KP · ${t.wards.toFixed(1)} wards a game · ${pct(t.winRate)} wins` },
+  support: { tone: 3, title: "The support race", blurb: "Score = how far above the average support in KP, wards, dewards, stacks and wins", right: (t) => `${t.score >= 0 ? "+" : ""}${t.score.toFixed(1)}`, note: (t) => `${pct(t.kp)} KP · ${t.wards.toFixed(1)} wards a game · ${pct(t.winRate)} wins` },
   laner: { tone: 6, title: "The laning race", blurb: "Best average lane score.", right: (t) => `${t.won}/${t.lanes}`, note: (t) => `${esc(lane(t.group))}${t.margin != null ? ` · ${signedK(t.margin)} at 10` : ""}` },
   duo: { tone: 4, title: "The duo race", blurb: "Best record on one hero, 3+ games.", right: (t) => `${t.wins}–${t.games - t.wins}`, note: (t) => `${esc(HERO_META.find(([n]) => n === t.hero)?.[1] ?? t.hero)} · ${t.kda.toFixed(1)} KDA` },
 };
-function raceCard(src, a) {
-  const r = RACES[a.key];
-  if (!r || !(a.top?.length > 1)) return null;
-  return { key: `award-${srcId(src)}:${a.key}-race`, tone: r.tone, pick: a.top.map((t) => t.hero).filter(Boolean), sig: a.top[0].p?.name, who: a.top[0].p && mainAccount(a.top[0].p),
-    kicker: `${a.title} · Top ${a.top.length}`,
-    body: `${big(r.title)}${line(r.blurb)}${heroRows(src, a.top, r.right, (t) => [r.note(t), t.p?.team_name && esc(t.p.team_name)].filter(Boolean).join(" · "), (t) => playerLink(src, t.p))}` };
+function runnersUp(src, a) {
+  const r = RACES[a.key], rest = a.top?.slice(1, 4) ?? [];
+  if (!r || !rest.length) return "";
+  return `<p class="wr-next">Next up · ${esc(r.blurb)}</p>${heroRows(src, rest, r.right, (t) => [r.note(t), t.p?.team_name && esc(t.p.team_name)].filter(Boolean).join(" · "), (t) => `#${a.top.indexOf(t) + 1} ${playerLink(src, t.p)}`)}`;
 }
 // New version (FAV_WALLS): the Arcana Cup's results, one slide per bracket, the only cards in the
 // season review: the winning card as it was entered, the podium under it. [] until a bracket settles.
@@ -1050,7 +1095,7 @@ const CATEGORY_OF = {
   intro: "Season", finish: "Season",
   heroes: "Heroes", bans: "Heroes", "m-items": "Heroes", nemesis: "Heroes",
   signature: "Fighting", best: "Fighting", highlights: "Fighting", "m-early": "Fighting", "m-fight": "Fighting", hit: "Fighting", clip: "Fighting",
-  rating: "Form", playoffs: "Form", "m-clutch": "Form", lane: "Form", mvps: "Form",
+  rating: "Form", playoffs: "Form", "m-clutch": "Form", lane: "Form", "m-farm": "Form", "m-assists": "Form", mvps: "Form",
   "m-vision": "Around the map", "m-map": "Around the map", "m-siege": "Around the map",
   dead: "Personality", "m-hands": "Personality", personality: "Personality",
   "perf-team": "Performance", "perf-division": "Performance", "perf-league": "Performance",
@@ -1058,20 +1103,20 @@ const CATEGORY_OF = {
 };
 const CATEGORIES = ["Season", "Heroes", "Fighting", "Form", "Around the map", "Personality", "Performance", "Summary"];
 const RAIL_LABEL = { intro: "Their season", finish: "Team result", heroes: "Top heroes", bans: "Banned against", "m-items": "Item race", nemesis: "Nemesis",
-  signature: "Signature", best: "Best game", highlights: "Highlight reel", "m-early": "Kill clock", "m-fight": "In the fight", hit: "Biggest hit", clip: "Top play",
-  rating: "Season in one line", playoffs: "Playoffs", "m-clutch": "Comeback", lane: "Laning", mvps: "MVPs",
+  signature: "Signature", best: "Best game", highlights: "Highlight reel", "m-early": "Most active time", "m-fight": "In the fight", hit: "Biggest hit", clip: "Top play",
+  rating: "Season in one line", playoffs: "Playoffs", "m-clutch": "Comeback", lane: "Laning", "m-farm": "Last hits", "m-assists": "Assists", mvps: "MVPs",
   "m-vision": "Vision", "m-map": "The work nobody sees", "m-siege": "Siege mode",
   dead: "Time in the grey", "m-hands": "Hands and mouth", personality: "Personality",
   "perf-team": "In the team", "perf-division": "In the division", "perf-league": "Across AD2L", summary: "Summary", end: "That's a wrap",
   "t-record": "The record", "t-heroes": "Heroes", "t-map": "The work nobody sees", showdown: "Division showdown" };
 const plainText = (s) => String(s).replace(/<[^>]*>/g, "");
 // Leaderboards and cup slides sit under a part already named for their scope: drop "AD2L · ".
-const railLabel = (c) => RAIL_LABEL[c.key] ?? (c.key.startsWith("award:") ? plainText(c.kicker).replace(/^.* won /, "") : /^(board-|cup-)/.test(c.key) ? plainText(c.kicker).replace(/^.*? · /, "") : plainText(c.kicker));
+const railLabel = (c) => RAIL_LABEL[c.key] ?? c.rail ?? (c.key.startsWith("award:") ? plainText(c.kicker).replace(/^.* won /, "") : /^(board-|cup-)/.test(c.key) ? plainText(c.kicker).replace(/^.*? · /, "") : plainText(c.kicker));
 function byCategory(cards) {
   const groups = new Map(CATEGORIES.map((k) => [k, []]));
   for (const c of cards) {
     if (/^part\d+$/.test(c.key)) continue;
-    const k = CATEGORY_OF[c.key] ?? (c.key.startsWith("award:") ? "Form" : "Summary");
+    const k = CATEGORY_OF[c.key] ?? (c.key.startsWith("award:") || c.key.startsWith("m-rec-") ? "Form" : "Summary");
     groups.get(k).push(c);
   }
   return [...groups].filter(([, cs]) => cs.length).map(([label, cs]) => ({ n: null, label, cards: cs, slides: true }));
@@ -1123,7 +1168,7 @@ function mountStory(root, { title, railTitle, opening, parts, ending, pins = nul
   let at = 0;
   const show = (i) => {
     at = Math.max(0, Math.min(cards.length - 1, i));
-    stage.innerHTML = cardHtml(cards[at], { pin: (share ? '<button type="button" class="wr-share" data-share>Share</button>' : "") + pinBtn(cards[at]), index: at });
+    stage.innerHTML = cardHtml(cards[at], { pin: (share ? '<button type="button" class="wr-share" data-share>Share</button>' : "") + '<button type="button" class="wr-share wr-shot" data-shot>Image</button>' + pinBtn(cards[at]), index: at });
     fillPlayerCard(stage, cards[at]);
     countUp(stage.querySelector(".wr-card"));
     // The next slide's render, fetched ahead so it's there when you tap.
@@ -1136,6 +1181,11 @@ function mountStory(root, { title, railTitle, opening, parts, ending, pins = nul
     story.querySelector(".wr-next").disabled = at === cards.length - 1;
     rail.querySelectorAll("[data-step]").forEach((b) => { b.disabled = b.dataset.step === "-1" ? at === 0 : at === cards.length - 1; });
     rail.querySelector(".wr-count").textContent = `${at + 1} / ${cards.length}`;
+    // The slide rides in the address (?slide=N, from 1), so back/forward and a copied link come
+    // back to it. replaceState: moving through slides adds no history entries.
+    const u = new URL(location.href);
+    if (at) u.searchParams.set("slide", at + 1); else u.searchParams.delete("slide");
+    if (u.href !== location.href) { history.replaceState(history.state, "", u.pathname + u.search + u.hash); setRoutedAt(location.href); }
     const part = parts.findLastIndex((x) => x.at <= at);
     rail.querySelectorAll("[data-part]").forEach((b, j) => b.setAttribute("aria-current", String(j === part)));
     // A category rail lists every slide: the current one lit, kept in view as the story moves.
@@ -1166,14 +1216,48 @@ function mountStory(root, { title, railTitle, opening, parts, ending, pins = nul
     const dx = e.changedTouches[0].clientX - x0; x0 = null;
     if (Math.abs(dx) > 40) show(at + (dx < 0 ? 1 : -1));
   });
-  // Share: the phone's share sheet where there is one, else the link copied.
+  // Share: the phone's share sheet where there is one, else the link copied. The link opens on
+  // the slide on screen.
   stage.addEventListener("click", async (e) => {
     if (!e.target.closest("[data-share]")) return;
     e.stopPropagation();
+    const url = at ? `${share.url}?slide=${at + 1}` : share.url;
     try {
-      if (navigator.share && matchMedia("(pointer: coarse)").matches) await navigator.share({ title: share.title, url: share.url });
-      else { await navigator.clipboard.writeText(share.url); msg.textContent = "Link copied. It shows this Wrapped's card when you post it."; }
-    } catch (err) { if (err?.name !== "AbortError") msg.textContent = `Copy this link: ${share.url}`; }
+      if (navigator.share && matchMedia("(pointer: coarse)").matches) await navigator.share({ title: share.title, url });
+      else { await navigator.clipboard.writeText(url); msg.textContent = "Link to this slide copied. It shows this Wrapped's card when you post it."; }
+    } catch (err) { if (err?.name !== "AbortError") msg.textContent = `Copy this link: ${url}`; }
+  });
+  // Image: the slide on screen as a picture. Phones: the share sheet with the picture attached.
+  // Elsewhere: copied, to paste straight into Discord (else downloaded).
+  stage.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-shot]");
+    if (!b) return;
+    e.stopPropagation();
+    const card = stage.querySelector(".wr-card"), name = `wrapped-slide-${at + 1}.png`;
+    b.disabled = true; msg.textContent = "Making the image…";
+    const blob = slideImage(card);
+    try {
+      if (matchMedia("(pointer: coarse)").matches && navigator.canShare) {
+        const file = new File([await blob], name, { type: "image/png" });
+        if (!navigator.canShare({ files: [file] })) throw new Error("no file share");
+        await navigator.share({ files: [file], title: share?.title ?? title, ...(share ? { text: at ? `${share.url}?slide=${at + 1}` : share.url } : {}) });
+        msg.textContent = "";
+      } else if (navigator.clipboard?.write && window.ClipboardItem) {
+        // The blob as a promise: Safari only allows the write straight from the tap.
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        msg.textContent = "Slide image copied. Paste it into Discord.";
+      } else throw new Error("no clipboard");
+    } catch (err) {
+      if (err?.name === "AbortError") msg.textContent = "";
+      else {
+        try {
+          const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await blob), download: name });
+          a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+          msg.textContent = "Slide image downloaded.";
+        } catch (e2) { msg.textContent = `Couldn't make the image (${e2.message}).`; }
+      }
+    }
+    b.disabled = false;
   });
   stage.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-pin]");
@@ -1192,7 +1276,9 @@ function mountStory(root, { title, railTitle, opening, parts, ending, pins = nul
     } catch (err) { msg.textContent = err.message; }
     show(at);
   });
-  show(0);
+  // ?slide=N opens on that slide (back from another page, or a shared link).
+  const start = Number(new URLSearchParams(location.search).get("slide"));
+  show(Number.isInteger(start) && start > 0 ? start - 1 : 0);
 }
 
 // A player's own Wrapped: part 1 them in their division, part 2 them across AD2L. It has a page of
@@ -1242,7 +1328,11 @@ async function playerStory(key) {
   if (wDiv) {
     wDiv.ratings = await ratingsOf(home, div, key).catch(() => null);
     wDiv.personality = (await sharedPersonality(home, key)) ?? wDiv.personality;
-    if (FAV_WALLS) { wDiv.more = moreOf(div.parsed ??= parsedPlayers(div.games), key); wDiv.perf = performanceOf(div.parsed, key); }
+    if (FAV_WALLS) {
+      wDiv.more = moreOf(div.parsed ??= parsedPlayers(div.games), key); wDiv.perf = performanceOf(div.parsed, key);
+      // Record boards they're top 5 on: AD2L's (when it's shown) and their division's.
+      wDiv.records = playerRecords([leagueShown && { name: "AD2L", records: (all.records ??= gameRecords(all.games)) }, { name: leagueName(home), records: (div.records ??= gameRecords(div.games)) }].filter(Boolean), key, wDiv.more);
+    }
     const clip = clipOf(key), cm = clip && div.games.find((m) => String(m.id) === String(clip.match));
     wDiv.clipHero = cm?.players.find((q) => playerKey(q) === key)?.hero ?? null;
   }
@@ -1453,6 +1543,7 @@ async function renderTeamWrapped(src, id) {
     parts: FAV_WALLS ? slideParts(parts) : parts,
     ending: { key: "end", tone: 5, hero: null, kicker: "That's a wrap", body: `${big(`GG, ${esc(t.name)}`)}${line(t.roster.filter((r) => r.games > r.standin).slice(0, 7).map((r) => esc(r.name)).join(" · "))}${line(`<a href="${src.root}/wrapped">See ${dname}'s awards</a>`)}` },
     extra: localNote([!div.open && dname].filter(Boolean)),
+    share: { url: pageUrl(`${src.root}/wrapped/team/${encodeURIComponent(id)}`), title: `${t.name}'s ${SEASON.name} Wrapped` },
     heroes: top.slice(0, 3), pool: top,
   });
   box.querySelector(".wr-story")?.focus({ preventScroll: true });
@@ -1461,9 +1552,16 @@ async function renderTeamWrapped(src, id) {
 // The full-screen page around a story: a bar with the way back, then the story.
 function fullPage(back, backLabel) {
   app.innerHTML = `<section class="wr-full">
-      <header class="wr-full-bar"><a class="wr-close" href="${back}">← ${esc(backLabel)}</a><span class="wr-full-mark">AD2L ${esc(SEASON.name)} Wrapped</span></header>
+      <header class="wr-full-bar"><a class="wr-close" href="${back}">← ${esc(cameFrom() ?? backLabel)}</a><span class="wr-full-mark">AD2L ${esc(SEASON.name)} Wrapped</span></header>
       <div class="wr-full-body"></div>
     </section>`;
+  // Opened from another page on the site: back goes to exactly that page (the hub, a profile on
+  // its Wrapped tab, another Wrapped...). Opened from a shared link: the link above.
+  app.querySelector(".wr-close").addEventListener("click", (e) => {
+    if (!cameFrom() || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    history.back();
+  });
   return app.querySelector(".wr-full-body");
 }
 
@@ -1547,14 +1645,25 @@ async function renderReview(src) {
     return;
   }
   const parts = [];
-  const boards = (s, d, scope) => (FAV_WALLS ? leaderboards(d.games) : []).map((b) => boardCard(s, b, scope));
-  if (divShown) parts.push({ n: 1, label: `${dname} awards`, cards: [partCard(1, `${dname} awards`, `${plural(div.games.length, "game")} this season`), ...awardsOf(src, div), ...boards(src, div, dname)] });
+  // The leaderboards in two parts of their own (Fav, 2026-11-25: "sort ... between averages and in
+  // one game"): season averages and totals, then single games (records, biggest hit, comeback).
+  const boards = (s, d, scope) => (FAV_WALLS ? leaderboards(d.games) : []).map((b) => ({ one: !!b.record || b.key === "clutch" || b.key === "hit", card: boardCard(s, b, scope) }));
+  const boardParts = (s, d, scope) => {
+    const bs = boards(s, d, scope);
+    return [{ label: `${scope} · Season averages`, cards: bs.filter((b) => !b.one).map((b) => b.card) }, { label: `${scope} · In one game`, cards: bs.filter((b) => b.one).map((b) => b.card) }].filter((x) => x.cards.length);
+  };
+  if (divShown) {
+    parts.push({ n: 1, label: `${dname} awards`, cards: [partCard(1, `${dname} awards`, `${plural(div.games.length, "game")} this season`), ...awardsOf(src, div)] });
+    for (const x of boardParts(src, div, dname)) parts.push({ n: parts.length + 1, ...x });
+  }
   // A division's review stops at its own awards: AD2L's are their own review (#/all/wrapped).
   if (src.all && leagueShown) {
     const showdown = FAV_WALLS && showdownCard(await allDivisions().then(divisionShowdown).catch((e) => (console.warn("division showdown unavailable", e), null)), null);
-    parts.push({ n: parts.length + 1, label: "AD2L awards", cards: [partCard(parts.length + 1, "AD2L awards", `${plural(all.games.length, "game")} in every division`), ...awardsOf(SOURCES.all, all), showdown, ...boards(SOURCES.all, all, "AD2L")].filter(Boolean) });
+    parts.push({ n: parts.length + 1, label: "AD2L awards", cards: [partCard(parts.length + 1, "AD2L awards", `${plural(all.games.length, "game")} in every division`), ...awardsOf(SOURCES.all, all), showdown].filter(Boolean) });
+    for (const x of boardParts(SOURCES.all, all, "AD2L")) parts.push({ n: parts.length + 1, ...x });
   }
-  if (FAV_WALLS) {
+  // The Arcana Cup is league-wide: only the All AD2L review shows it (Fav, 2026-11-25).
+  if (FAV_WALLS && src.all && leagueShown) {
     const cup = await cupCards(src).catch((e) => (console.warn("arcana cup slides unavailable", e), []));
     if (cup.length) parts.push({ n: parts.length + 1, label: "Arcana Cup", cards: [partCard(parts.length + 1, "Arcana Cup", "The season's card design cup"), ...cup] });
   }
@@ -1562,7 +1671,7 @@ async function renderReview(src) {
   const myRecap = mine ? mine.replace("/player/", "/wrapped/") : null;
   fullPage(`${src.root}/wrapped`, "Every Wrapped").innerHTML = `<section class="wr-review"></section>`;
   mountStory(app.querySelector(".wr-review"), {
-    title, railTitle: esc(title), extra: localNote([divShown && !div.open && dname, src.all && leagueShown && !all.open && "AD2L"].filter(Boolean)),
+    title, railTitle: esc(title), share: { url: pageUrl(`${src.root}/wrapped/review`), title: `${title} · ${src.all ? "AD2L" : `AD2L ${dname}`}` }, extra: localNote([divShown && !div.open && dname, src.all && leagueShown && !all.open && "AD2L"].filter(Boolean)),
     opening: { key: "open", tone: 1, hero: null, kicker: `AD2L ${esc(SEASON.long)}`, body: `${big("Wrapped")}${line("The season in review")}${line(dname ? `${dname}'s awards.` : "The awards across every division.")}${line('<span class="wr-hint">Tap or press → to go on</span>')}` },
     parts: FAV_WALLS ? slideParts(parts) : parts,
     ending: { key: "end", tone: 5, hero: null, kicker: "That's a wrap", body: `${big(`GG, ${esc(SEASON.name)}`)}${line(myRecap ? `<a href="${myRecap}">Open your own Wrapped</a>` : "Every player's own Wrapped is on their profile. Sign in with Steam to find yours.")}` },

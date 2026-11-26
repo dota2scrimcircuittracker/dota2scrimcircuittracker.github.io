@@ -19,8 +19,8 @@ const DIV_TABS = `${TABS}|drafter`; // the Drafter is AD2L only: scrims have no 
 const LEAGUES = DIVISIONS.map(slugOf).join("|");
 const VIEWED = DIVISIONS.filter((d) => d.views).map(slugOf).join("|") || "(?!)";
 const VIEWS = [...new Set(DIVISIONS.flatMap((d) => d.views ?? []))].join("") || "a";
-const SHAREABLE = new RegExp(`^(?:scrims(?:/(?:${TABS}))?|ad2l|all(?:/(?:content|week|players|heroes))?|(?:${LEAGUES}|(?:${VIEWED})/[${VIEWS}])(?:/(?:${DIV_TABS}))?|(?:${LEAGUES})/(?:teams|game)/\\d+|(?:all|${LEAGUES}|(?:${VIEWED})/[${VIEWS}])/player/\\d+|(?:${LEAGUES})/wrapped(?:/\\d+)?)?$`);
-// A league's Wrapped is /<league>/wrapped/ and /<league>/wrapped/<player>/ (wrapped-pages.js,
+const SHAREABLE = new RegExp(`^(?:scrims(?:/(?:${TABS}))?|ad2l|all(?:/(?:content|week|players|heroes))?|(?:${LEAGUES}|(?:${VIEWED})/[${VIEWS}])(?:/(?:${DIV_TABS}))?|(?:${LEAGUES})/(?:teams|game)/\\d+|(?:all|${LEAGUES}|(?:${VIEWED})/[${VIEWS}])/player/\\d+|(?:${LEAGUES})/wrapped(?:/(?:review|\\d+))?)?$`);
+// A league's Wrapped is /<league>/wrapped/, /<league>/wrapped/review/ and /<league>/wrapped/<player>/ (wrapped-pages.js,
 // written once its season is over).
 
 // "#/heroic/b/week" -> "/heroic/b/week/"; null when the route has no preview page.

@@ -1061,7 +1061,9 @@ export function navigate(href) {
   const params = new URLSearchParams(q), tab = params.get("tab");
   const u = new URL(addressOf(h), location.href);
   for (const [k, v] of params) u.searchParams.set(k, v);
-  history.pushState(tab ? { tab } : null, "", u.pathname + u.search + u.hash);
+  // from: the page left behind (its title), so a page's own back button can name it and step back
+  // to it exactly (pages/wrapped.js fullPage). A page opened from outside the site has none.
+  history.pushState({ ...(tab ? { tab } : {}), from: document.title }, "", u.pathname + u.search + u.hash);
   window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
 // Scroll an element to just under the sticky header.

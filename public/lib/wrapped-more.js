@@ -7,6 +7,7 @@ import { mainTeamOf } from "./wrapped.js";
 import { CX, CY } from "./wardmap.js";
 import { hotspot, clockRates } from "./team-wrapped.js";
 import { RUNES } from "./combat.js";
+import { assistBins } from "./lite.js";
 
 const MIN = 3;
 const sum = (a, f) => a.reduce((t, x) => t + (f(x) ?? 0), 0);
@@ -61,8 +62,14 @@ export function moreOf(players, key) {
   const me = players.get(key);
   if (!me) return null;
   const rows = me.rows, R = (f, o) => rankOf(players, key, f, o);
+  // RP: the same rank among players at their main position (3+ of them).
+  const pos = new Map([...players].filter(([, e]) => e.pos === me.pos)), RP = (f, o) => (me.pos && pos.size >= 3 ? rankOf(pos, key, f, o) : null);
+  // RC: the same rank among cores (positions 1-3): last hits matter to all three (Fav, 2026-11-25).
+  const cores = new Map([...players].filter(([, e]) => e.pos >= 1 && e.pos <= 3)), RC = (f, o) => (me.pos >= 1 && me.pos <= 3 && cores.size >= 3 ? rankOf(cores, key, f, o) : null);
+  const sup = me.pos === 4 || me.pos === 5;
   return { vision: visionOf(rows, R), fight: fightOf(rows, R), early: earlyOf(rows, R), map: mapOf(rows, R),
-    clutch: clutchOf(rows), siege: siegeOf(rows, R), hands: handsOf(rows, R), items: itemRaceOf(players, rows) };
+    clutch: clutchOf(rows), siege: siegeOf(rows, R), hands: handsOf(rows, R), items: itemRaceOf(players, rows),
+    farm: sup ? null : withRecords(farmOf(rows, R, RC), players), assists: sup ? withRecords(assistOf(rows, R, RP, me.pos), players) : null };
 }
 
 // Vision: supports (15+ observers). Their spot, how many were never found, and dewards.
@@ -85,16 +92,26 @@ function fightOf(rows, R) {
     stunRank: R((rs) => per(rs, ({ p }) => p.stuns)),
     deaths: spot && spot.n >= 3 ? { pts, spot } : null };
 }
-// Early game: the five-minute stretch with most of their kills, first bloods drawn and suffered.
+// Most active time: the five-minute stretch with most of their kills and assists (Fav, 2026-11-25),
+// first bloods drawn and suffered. Assist times are estimated (lite.js assistBins), enough for the
+// shape; the per-minute numbers use the real counts. Games without teamfights count kills only.
 function earlyOf(rows, R) {
-  const ks = rows.flatMap(({ p }) => arr(p.kill_t));
-  if (ks.length < 8) return null;
   const bins = Array(9).fill(0);
-  for (const t of ks) bins[Math.min(8, Math.max(0, Math.floor(t / 300)))]++;
+  let assists = false;
+  for (const { m, p } of rows) {
+    for (const t of arr(p.kill_t)) bins[Math.min(8, Math.max(0, Math.floor(t / 300)))]++;
+    const a = assistBins(m, p);
+    if (a) { assists = true; a.forEach((n, i) => { bins[i] += n; }); }
+  }
+  const total = sum(bins, (n) => n);
+  if (total < 8) return null;
   const { mins, rate, peak } = clockRates(bins, rows.map(({ m }) => m.duration_sec));
-  return { bins, mins, rate, peak, total: ks.length, early: ks.filter((t) => t < 900).length / ks.length,
+  const dur = sum(rows, ({ m }) => m.duration_sec) / 60;
+  return { bins, mins, rate, peak, total, assists, early: (bins[0] + bins[1] + bins[2]) / total,
+    kpm: sum(rows, ({ p }) => p.kills) / dur, apm: sum(rows, ({ p }) => p.assists) / dur,
     fb: sum(rows, ({ p }) => p.first_blood), fd: sum(rows, ({ p }) => p.first_death),
-    fbRank: R((rs) => sum(rs, ({ p }) => p.first_blood)) };
+    fbRank: R((rs) => sum(rs, ({ p }) => p.first_blood)),
+    rank: R((rs) => { const d = sum(rs, ({ m }) => m.duration_sec) / 60; return d ? sum(rs, ({ p }) => p.kills + p.assists) / d : null; }) };
 }
 // Around the map: stacks, runes and smoke kills. Only for players who stand out at one of them.
 function mapOf(rows, R) {
@@ -140,11 +157,26 @@ function handsOf(rows, R) {
     pings: sum(r, ({ p }) => p.pings), perGame: per(r, ({ p }) => p.pings), loudest: pg.p.pings ? { n: pg.p.pings, hero: pg.p.hero } : null,
     rank: R((rs) => per(rs, ({ p }) => p.apm)), pingRank: R((rs) => per(rs, ({ p }) => p.pings)) };
 }
-// Item race: the item they finished furthest ahead of the division's usual time (2+ builds, an item
-// the division usually finishes after 12:00). Null when they're not ahead on anything by a minute.
+// Item race: the item they finished furthest ahead of the usual time on the same hero (Fav,
+// 2026-11-25: "tie item timings to heroes"). A hero's usual time needs 5+ builds of the item on it
+// across the division, 3+ of them someone else's; they need 2+ builds of it on that hero. When no
+// hero qualifies, the division's usual time for the item on any hero (8+ builds), as before. Only
+// items usually finished after 12:00, and only a lead of a minute or more (median times).
+// rows: up to three of their per-hero leads, the biggest first.
+const pairs = (p) => { const a = arr(p.item_times), o = []; for (let i = 0; i + 1 < a.length; i += 2) o.push([a[i], a[i + 1]]); return o; };
 function itemRaceOf(players, rows) {
-  const times = (rs) => { const t = new Map(); for (const { p } of rs) { const a = arr(p.item_times); for (let i = 0; i + 1 < a.length; i += 2) { if (!t.has(a[i])) t.set(a[i], []); t.get(a[i]).push(a[i + 1]); } } return t; };
-  const lg = times([...players.values()].flatMap((e) => e.rows)), mine = times(rows);
+  const put = (map, k, v) => { if (!map.has(k)) map.set(k, []); map.get(k).push(v); };
+  const meKey = playerKey(rows[0].p), lg = new Map(), lgHero = new Map(), mine = new Map(), mineHero = new Map();
+  for (const e of players.values()) for (const { p } of e.rows) for (const [k, t] of pairs(p)) { put(lg, k, t); put(lgHero, `${p.hero}|${k}`, { t, me: e.key === meKey }); }
+  for (const { p } of rows) for (const [k, t] of pairs(p)) { put(mine, k, t); put(mineHero, `${p.hero}|${k}`, t); }
+  const hero = [];
+  for (const [hk, ts] of mineHero) {
+    const all = lgHero.get(hk) ?? [];
+    if (ts.length < 2 || all.length < 5 || all.filter((x) => !x.me).length < 3) continue;
+    const usual = median(all.map((x) => x.t)), mm = median(ts), cut = hk.lastIndexOf("|");
+    if (usual >= 720 && usual - mm >= 60) hero.push({ key: hk.slice(cut + 1), hero: hk.slice(0, cut), mine: mm, usual, gain: usual - mm, builds: ts.length, of: all.length });
+  }
+  if (hero.length) { hero.sort((x, y) => y.gain - x.gain); return { ...hero[0], vs: "hero", rows: hero.slice(0, 3) }; }
   let b = null;
   for (const [k, ts] of mine) {
     const all = lg.get(k) ?? [];
@@ -157,7 +189,49 @@ function itemRaceOf(players, rows) {
       b = { key: k, mine: mm, usual: lm, gain, builds: ts.length, hero: Object.entries(hc).sort((x, y) => y[1] - x[1])[0]?.[0] ?? null };
     }
   }
-  return b && b.gain >= 60 ? b : null;
+  return b && b.gain >= 60 ? { ...b, vs: "all", rows: [] } : null;
+}
+// Last hits, for cores (positions 1-3, or no main position): at 10 minutes and a minute over the
+// whole game, denies at 10, their best games, ranked in the division and among cores (Fav,
+// 2026-11-25: "lasthits at 10 and throughout the game. Just for people to flex"). Sync keeps
+// last hits at 10 minutes only, so "throughout the game" is the whole-game rate.
+const lhm = (m, p) => (p.last_hits ?? 0) / (m.duration_sec / 60);
+function farmOf(rows, R, RC) {
+  const t = rows.filter(({ p }) => p.lh10 != null);
+  if (t.length < MIN || !sum(rows, ({ p }) => p.last_hits)) return null;
+  const lh10 = (rs) => { const x = rs.filter(({ p }) => p.lh10 != null); return x.length >= MIN ? per(x, ({ p }) => p.lh10) : null; };
+  const perMin = (rs) => per(rs, ({ m, p }) => lhm(m, p));
+  const b10 = best(t, (p) => p.lh10), bAll = best(rows, (p) => p.last_hits), bRate = rows.reduce((x, c) => (lhm(c.m, c.p) > lhm(x.m, x.p) ? c : x));
+  return { lh10: lh10(rows), dn10: per(t, ({ p }) => p.dn10 ?? 0), perMin: perMin(rows), total: sum(rows, ({ p }) => p.last_hits),
+    best10: { n: b10.p.lh10, hero: b10.p.hero, m: b10.m }, bestGame: { n: bAll.p.last_hits, hero: bAll.p.hero, m: bAll.m },
+    bestRate: { n: lhm(bRate.m, bRate.p), hero: bRate.p.hero },
+    rank10: R(lh10), rankMin: R(perMin), core10: RC(lh10), coreMin: RC(perMin) };
+}
+// Where a card's best single games rank among each player's best game in the division, the way the
+// season review's record boards (gameRecords) list them: best10 on last hits at 10, bestGame on
+// last hits or assists. of: players with a game counted.
+function withRecords(c, players) {
+  if (!c) return c;
+  const rank = (v, f) => {
+    const bests = [...players.values()].map((e) => Math.max(-1, ...e.rows.map(({ p }) => f(p) ?? -1))).filter((x) => x >= 0);
+    return { rank: 1 + bests.filter((x) => x > v).length, of: bests.length };
+  };
+  if (c.best10) c.best10.rank = rank(c.best10.n, (p) => p.lh10);
+  if (c.bestGame) c.bestGame.rank = rank(c.bestGame.n, c.best10 ? (p) => p.last_hits : (p) => p.assists);
+  return c;
+}
+// Supports (positions 4 and 5) get assists in that slot: assists a game and a minute, kill
+// participation (their kills + assists over their team's kills), their best game, ranked in the
+// division and at their position.
+function assistOf(rows, R, RP, pos) {
+  if (!sum(rows, ({ p }) => p.assists)) return null;
+  const apg = (rs) => per(rs, ({ p }) => p.assists);
+  const apm = (rs) => { const d = sum(rs, ({ m }) => m.duration_sec) / 60; return d ? sum(rs, ({ p }) => p.assists) / d : null; };
+  const kp = (rs) => { let x = 0, y = 0; for (const { m, p } of rs) { x += p.kills + p.assists; y += sum(m.players.filter((q) => q.team === p.team), (q) => q.kills); } return y ? x / y : null; };
+  const g = best(rows, (p) => p.assists);
+  return { pos, total: sum(rows, ({ p }) => p.assists), perGame: apg(rows), perMin: apm(rows), kp: kp(rows),
+    bestGame: { n: g.p.assists, hero: g.p.hero, m: g.m, k: g.p.kills, d: g.p.deaths },
+    rankGame: R(apg), rankMin: R(apm), rankKp: R(kp), posGame: RP(apg), posKp: RP(kp) };
 }
 
 // ---------- across AD2L ----------
@@ -255,6 +329,58 @@ const podium = (players, b) => {
   vals.sort((a, c) => (b.low ? a.v - c.v : c.v - a.v));
   return { ...b, top: vals.slice(0, 5).map(({ e, v }) => ({ key: e.key, p: e.p, team: e.team.name, hero: b.hero ? b.hero(e.rows) : topHero(e.rows), val: b.show(v) })) };
 };
+// Single-game records (Fav, 2026-11-25: "who had the most last hits at 10 mins in one game"): the
+// top 5 games of the season, one per player (their best), with the game for a link. For Champion
+// and AD2L reviews alike (whatever games are passed).
+const RECORDS = [
+  { key: "lh10", title: "Most last hits at 10", blurb: "In one game, at 10:00.", tone: 2, f: (p) => p.lh10 },
+  { key: "lh", title: "Most last hits", blurb: "In one game.", tone: 4, f: (p) => p.last_hits },
+  { key: "kills", title: "Most kills", blurb: "In one game.", tone: 1, f: (p) => p.kills },
+  { key: "assists", title: "Most assists", blurb: "In one game.", tone: 6, f: (p) => p.assists },
+  { key: "damage", title: "Most hero damage", blurb: "In one game.", tone: 1, f: (p) => p.hero_damage, show: k1 },
+  { key: "gpm", title: "Highest GPM", blurb: "In one game.", tone: 4, f: (p) => p.gpm },
+  { key: "heal", title: "Most healing", blurb: "In one game.", tone: 5, f: (p) => p.hero_healing, show: k1 },
+  { key: "wards", title: "Most wards", blurb: "Observers and sentries placed in one game.", tone: 6, f: (p) => (p.obs_placed == null ? null : p.obs_placed + (p.sen_placed ?? 0)) },
+  // Stats no other card shows as a single game (Fav, 2026-11-25: "other stats that arent elsewhere").
+  { key: "xpm", title: "Highest XPM", blurb: "Experience a minute, in one game.", tone: 2, f: (p) => p.xpm },
+  { key: "nw", title: "Richest", blurb: "Highest net worth at the end of one game.", tone: 4, f: (p) => p.net_worth, show: k1 },
+  { key: "denies", title: "Most denies", blurb: "In one game.", tone: 2, f: (p) => p.denies },
+  { key: "towers", title: "Most building damage", blurb: "In one game.", tone: 2, f: (p) => p.tower_damage, show: k1 },
+  { key: "stuns", title: "Most stun time", blurb: "Seconds of disable in one game.", tone: 6, f: (p) => p.stuns, show: (v) => `${v.toFixed(1)}s` },
+  { key: "stacks", title: "Most stacks", blurb: "Camps stacked in one game.", tone: 4, f: (p) => p.camps_stacked },
+  { key: "dewards", title: "Most dewards", blurb: "Enemy wards destroyed in one game.", tone: 6, f: (p) => (p.obs_killed == null ? null : p.obs_killed + (p.sen_killed ?? 0)) },
+  { key: "streak", title: "Longest kill streak", blurb: "Kills without dying, in one game.", tone: 1, f: (p) => { const a = arr(p.streaks); for (let i = a.length - 1; i >= 0; i--) if (a[i]) return i + 3; return null; } },
+  { key: "tank", title: "Most damage taken", blurb: "From heroes, in one game.", tone: 5, f: (p) => p.dmg_taken, show: k1 },
+];
+export function gameRecords(games) {
+  return RECORDS.map((r) => {
+    const mine = new Map();
+    for (const m of games) for (const p of m.players ?? []) {
+      const v = r.f(p);
+      if (v == null || !Number.isFinite(v) || v <= 0) continue;
+      const k = playerKey(p), b = mine.get(k);
+      if (!b || v > b.v) mine.set(k, { v, m, p });
+    }
+    const top = [...mine].sort((a, b) => b[1].v - a[1].v).slice(0, 5).map(([key, { v, m, p }]) => ({ key, p, m, hero: p.hero, team: p.team === "a" ? m.team_a : m.team_b, vs: p.team === "a" ? m.team_b : m.team_a, val: (r.show ?? ((x) => `${Math.round(x)}`))(v) }));
+    return { key: `rec-${r.key}`, group: "Records", title: r.title, blurb: r.blurb, tone: r.tone, record: true, top };
+  }).filter((r) => r.top.length >= 3);
+}
+// A player's records: the record boards (gameRecords, for their division and for AD2L) they're in
+// the top 5 of, best place first, AD2L before the division at the same place (and a record only
+// once). Leaves out what their own cards already show (more: moreOf's result: last hits for a
+// core with the last-hits card, assists for a support with the assists card). At most `max`.
+// scopes: [{ name, records }]. Returns [{ ...board, scope, rank }].
+export function playerRecords(scopes, key, more = null, max = 2) {
+  const skip = new Set([...(more?.farm ? ["rec-lh10", "rec-lh"] : []), ...(more?.assists ? ["rec-assists"] : [])]);
+  const out = [];
+  scopes.forEach((s, si) => { for (const r of s.records ?? []) {
+    const i = r.top.findIndex((t) => t.key === key);
+    if (i >= 0 && !skip.has(r.key)) out.push({ ...r, scope: s.name, rank: i + 1, si });
+  } });
+  out.sort((a, b) => a.rank - b.rank || a.si - b.si);
+  const seen = new Set();
+  return out.filter((r) => !seen.has(r.key) && seen.add(r.key)).slice(0, max);
+}
 // games: the scope's season games. Returns [{ ...board, top: [{ key, p, team, hero, val }] }].
 export function leaderboards(games) {
   const players = parsedPlayers(games);
@@ -272,6 +398,7 @@ export function leaderboards(games) {
     out.push({ key: "clutch", group: "Clutch", title: "Comeback of the season", tone: 3, game: cb.m, d: cb.d, team, lost, hero: star?.hero ?? null });
   }
   for (const b of MORE_BOARDS) { const x = podium(players, b); if (x.top.length) out.push(x); }
+  out.push(...gameRecords(games));
   return out;
 }
 
