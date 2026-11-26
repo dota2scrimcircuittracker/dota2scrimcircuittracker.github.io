@@ -81,23 +81,25 @@ export async function wrappedData(src) {
 
 // The model's read of every decided series (lib/wrapped-reads.js): from the deploy's
 // data/wrapped-reads.json when it matches this data, else worked out here (npm start has no file).
-let prebuilt;
-const prebuiltFile = () => (prebuilt ??= fetch("data/wrapped-reads.json", { cache: "no-cache" })
-  .then((r) => (r.ok ? r.json() : null)).then((f) => (f?.season === SEASON.name ? f : null)).catch(() => null));
-const prebuiltReads = () => prebuiltFile().then((f) => f?.leagues ?? null);
+// A division's Wrapped reads its own league's share (data/wrapped-reads-<key>.json), All the whole file.
+const prebuilt = {};
+const prebuiltFile = (key = "all") => (prebuilt[key] ??= fetch(key === "all" ? "data/wrapped-reads.json" : `data/wrapped-reads-${key}.json`, { cache: "no-cache" })
+  .then((r) => (r.ok ? r.json() : null)).then((f) => (f?.season === SEASON.name ? f : null)).catch(() => null)
+  .then((f) => f ?? (key === "all" ? null : prebuiltFile("all"))));
+const prebuiltReads = (key) => prebuiltFile(key).then((f) => f?.leagues ?? null);
 // Most sandbagged's ranked pubs (main accounts only): the file's cut of each division's draft
 // `ranked` when it has them all from the same sync as this data (merged in the same order as
 // draftDataFor), else the draft files themselves.
 async function pubRanked(src, d) {
   const keys = [...new Set(src.all ? d.teams.map((t) => t.league) : [src.key])].filter((k) => DIVISIONS[k]);
-  const file = await prebuiltFile(), packed = file?.ranked;
+  const file = await prebuiltFile(src.all ? "all" : src.key), packed = file?.ranked;
   const fresh = async (k) => packed?.[k] && file.updated?.[k] === (await wrappedSrcData(SOURCES[k])).updated;
   if ((await Promise.all(keys.map(fresh))).every(Boolean)) return Object.assign({}, ...keys.map((k) => packed[k]));
   return (await draftDataFor(keys).catch(() => null))?.ranked ?? null;
 }
 async function modelReads(src, d) {
   if (!src.view) {
-    const ready = unpackReads((await prebuiltReads())?.[src.key], d);
+    const ready = unpackReads((await prebuiltReads(src.key))?.[src.key], d);
     if (ready) return ready;
   }
   const file = await draftDataFor(src.all ? [...new Set(d.teams.map((t) => t.league))] : [src.key]).catch(() => null);
@@ -884,7 +886,8 @@ async function playerCardHtml({ src, key, hero, n = 0, design: claimed = null })
   if (!/^\d+$/.test(String(key))) return "";
   cardKit ??= import("../parts/player-card.js");
   savedCards ??= listCards().catch(() => new Map());
-  const [{ createPlayerCards, PAINT_FILTER }, { d, games }, saved, tiers] = await Promise.all([cardKit, wrappedData(src), savedCards, wrappedTiers()]);
+  const own = knownTiers.get(String(key)), tierMap = own !== undefined ? Promise.resolve(new Map(own ? [[String(key), own]] : [])) : wrappedTiers();
+  const [{ createPlayerCards, PAINT_FILTER }, { d, games }, saved, tiers] = await Promise.all([cardKit, wrappedData(src), savedCards, tierMap]);
   const account = Number(key), ov = saved.get(account) ?? {};
   // New version (FAV_WALLS): only a card the player made, exactly as they made it. The opening slide
   // (no hero) shows their main design; a hero's slide shows the design they made for that hero, and
@@ -1023,7 +1026,7 @@ async function cupCards(src) {
   // copy (npm start has no file). Looked up only when one is needed.
   const podiums = Object.keys(CUP_CATEGORIES).flatMap((cat) => { const c = view.categories?.[cat]; return c?.phase === "done" ? cupPodium(c.order, c.entries) : []; });
   const needRoster = podiums.some((e) => view.nicknames?.[e.account] == null);
-  const listed = needRoster && !src.all ? (await prebuiltFile())?.names : null;
+  const listed = needRoster && !src.all ? (await prebuiltFile(src.key))?.names : null;
   const teams = !needRoster || listed ? [] : src.all ? (await wrappedSrcData(SOURCES.all)).teams
     : (await Promise.all(Object.keys(DIVISIONS).filter((k) => SOURCES[k]).map((k) => divLite(k).catch(() => ({ teams: [] }))))).flatMap((d) => d.teams);
   const roster = listed ? new Map(Object.entries(listed)) : new Map(teams.flatMap((t) => t.players.map((q) => [String(q.account_id), q.name])));
@@ -1204,7 +1207,32 @@ const allDivisions = () => (allDivs ??= Promise.all(DIVISIONS_LIST.filter((d) =>
 })).catch((e) => { allDivs = null; throw e; }));
 const everyDivOf = async (home, key) => everyDivision(await allDivisions(), home.key, key);
 
+// A player's league-wide parts, worked out at deploy (scripts/deploy/wrapped-reads.js writes
+// data/wrapped/<account>.json): with it, their Wrapped loads their own division only. Null on
+// npm start, for the old version (?wrapWalls=now) and for players without an account id.
+const playerFiles = {};
+const playerFile = (key) => (playerFiles[key] ??= !FAV_WALLS || !/^\d+$/.test(String(key)) ? Promise.resolve(null)
+  : fetch(`data/wrapped/${key}.json`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null))
+    .then((f) => (f?.season === SEASON.name && SOURCES[f.home] ? f : null)).catch(() => null));
+// Card tiers the player files gave (account -> { tier, rating } or null), so their card needn't load every division.
+const knownTiers = new Map();
 async function playerStory(key) {
+  const pre = await playerFile(key);
+  if (pre) {
+    const home = SOURCES[pre.home], div = await wrappedData(home);
+    const divShown = div.open || isLocal(), leagueShown = pre.allOpen || isLocal();
+    const wDiv = divShown && div.d.updated === pre.updated ? playerWrapped(div.games, key, { cuts: div.cuts, awards: div.awards, results: div.results }) : null;
+    if (wDiv) {
+      knownTiers.set(String(key), pre.tier ?? null);
+      wDiv.ratings = await ratingsOf(home, div, key).catch(() => null);
+      wDiv.personality = pre.personality ?? wDiv.personality;
+      wDiv.more = moreOf(div.parsed ??= parsedPlayers(div.games), key); wDiv.perf = performanceOf(div.parsed, key);
+      const clip = clipOf(key), cm = clip && div.games.find((m) => String(m.id) === String(clip.match));
+      wDiv.clipHero = cm?.players.find((q) => playerKey(q) === key)?.hero ?? null;
+      const wAll = leagueShown ? { ...pre.league, everyDiv: pre.everyDiv, p: wDiv.p, heroes: wDiv.heroes, played: wDiv.played } : null;
+      return { all: { open: pre.allOpen }, home, div, divShown, leagueShown, wDiv, wAll, p: wDiv.p };
+    }
+  }
   const [all, home] = await Promise.all([wrappedData(SOURCES.all), homeOf(key)]);
   const div = home ? await wrappedData(home) : null;
   const divShown = !!div && (div.open || isLocal()), leagueShown = all.open || isLocal();
@@ -1490,9 +1518,12 @@ export async function renderWrapped(src, who = null) {
   src = whole(src);
   // Start every download this Wrapped needs now, side by side: below, each waits on the one before
   // (the reads file only after every division has loaded, the saved card designs only at the end).
-  // A team's Wrapped and a division's review read their own division; the others read them all.
-  for (const k of who?.team != null || (who?.review && !src.all) ? [src.key] : Object.keys(DIVISIONS)) if (SOURCES[k]) wrappedSrcData(SOURCES[k]).catch(() => {});
-  prebuiltFile();
+  // A team's Wrapped and a division's review read their own division, a player's theirs (from their
+  // file), All's review and the hub every division.
+  const fetchFor = (keys) => { for (const k of keys) if (SOURCES[k]) wrappedSrcData(SOURCES[k]).catch(() => {}); prebuiltFile(keys.length === 1 ? keys[0] : "all"); };
+  const everyKey = Object.keys(DIVISIONS), player = who && who.team == null && !who.review;
+  if (player) playerFile(who).then((f) => fetchFor(f ? [f.home] : everyKey));
+  else fetchFor(who?.team != null || (who?.review && !src.all) ? [src.key] : everyKey);
   savedCards ??= listCards().catch(() => new Map());
   if (FAV_WALLS) favWalls ??= await loadFavWalls().catch((e) => (console.warn("fav walls unavailable", e), null));
   if (who?.team != null) return renderTeamWrapped(src, who.team);

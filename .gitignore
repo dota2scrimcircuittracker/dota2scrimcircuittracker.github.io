@@ -30,3 +30,11 @@ workers/steam-auth/.wrangler/
 # The Claude account's bot key (scripts/claude-bot.mjs) and wrangler dev secrets. Never commit.
 .claude-bot-key
 .dev.vars
+
+# Built at deploy (scripts/deploy/): local copies only, the deploy makes its own.
+public/data/wrapped-reads.json
+public/data/wrapped-reads-*.json
+public/data/wrapped/
+public/data/wrapped-players.json
+public/data/*-lite.json
+public/data/*-wrapped.json
