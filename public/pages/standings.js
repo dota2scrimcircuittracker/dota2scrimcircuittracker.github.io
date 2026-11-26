@@ -2,7 +2,7 @@
 import { teamTags, teamInitials } from "../lib/team-tags.js";
 import { lineChart, wireCharts } from "../lib/charts.js";
 import { isPlayed, matchOdds, matchPostOdds, tune, fitRatings } from "../lib/predict.js";
-import { withDraft, draftDataFor, draftAt } from "../parts/cmdraft.js";
+import { withDraft, draftData, draftDataFor, draftAt } from "../parts/cmdraft.js";
 import { strengthOfSchedule, gameWins } from "../lib/schedule.js";
 import { info } from "../lib/glossary.js";
 import { weekStart, DIVISIONS, teamLink, pct, esc, app, pageHead, playerTabs, sortableTable, SOURCES, wirePlayerTabs } from "../core.js";
@@ -178,6 +178,8 @@ export async function upNextHtml(src, d) {
 export async function renderStandings(src) {
   const kicker = src.kicker;
   app.innerHTML = loading(kicker, "Teams");
+  // The draft file (Sybil's half of the odds) downloads alongside the division's, not after it.
+  for (const k of src.all ? Object.keys(DIVISIONS) : [src.key]) if (DIVISIONS[k]) draftData(k);
   let d;
   try { d = await src.data(); } catch (e) { app.innerHTML = `${pageHead(kicker, "Teams")}${errorBox(e)}`; return; }
 
@@ -217,19 +219,36 @@ export async function renderStandings(src) {
   const leader = [...rows].sort((a, b) => b.gw - a.gw || (b.game_rate ?? 0) - (a.game_rate ?? 0))[0];
   const hot = [...rows].sort((a, b) => b.streak - a.streak)[0];
   const tough = sos.filter((x) => x.sos != null && byId[x.id]?.series).sort((a, b) => b.sos - a.sos)[0];
-  const upset = played.filter((s) => s.home_score !== s.away_score && !bye.has(s.home) && !bye.has(s.away)).map((s) => {
-    const r = fitRatings(d.teams, d.series, { ...params, before: s.time ?? 0 });
-    r.draft = sybilAt?.(s.time ?? 0) ?? null;
-    const o = matchOdds(r, s.home, s.away), won = s.home_score > s.away_score ? "home" : "away";
-    return { s, p: o[won], w: won === "home" ? s.home : s.away, l: won === "home" ? s.away : s.home };
-  }).sort((a, b) => a.p - b.p)[0];
+  // A fit only depends on which played series came before (lib/predict.js fitRatings), so series
+  // with the same ones before them (a league night's) share one fit instead of one each.
+  const playedTimes = d.series.filter(isPlayed).map((s) => s.time ?? 0).sort((a, b) => a - b), fits = new Map();
+  const fitBefore = (t) => {
+    let n = 0;
+    while (n < playedTimes.length && playedTimes[n] < t) n++;
+    return fits.get(n) ?? fits.set(n, fitRatings(d.teams, d.series, { ...params, before: t })).get(n);
+  };
+  // The upset replays the draft model (Sybil) once per league night, the slowest part of this page,
+  // so the page draws first and the card joins the end of the row once it's worked out (below).
+  // Each night's draft read is its own step, with a pause before it, so the page stays responsive.
+  const findUpset = async () => {
+    const odds = [];
+    for (const s of played.filter((x) => x.home_score !== x.away_score && !bye.has(x.home) && !bye.has(x.away))) {
+      if (sybilAt && !nightReads.has(s.time ?? 0)) await new Promise((ok) => setTimeout(ok, 0));
+      const r = fitBefore(s.time ?? 0);
+      r.draft = sybilAt?.(s.time ?? 0) ?? null;
+      const o = matchOdds(r, s.home, s.away), won = s.home_score > s.away_score ? "home" : "away";
+      odds.push({ s, p: o[won], w: won === "home" ? s.home : s.away, l: won === "home" ? s.away : s.home });
+    }
+    return odds.sort((a, b) => a.p - b.p)[0];
+  };
   const score = (s) => `${Math.max(s.home_score, s.away_score)}–${Math.min(s.home_score, s.away_score)}`;
+  const upsetCard = (upset) => upset && upset.p < 0.4 && ["Biggest upset", teamLink(src, name[upset.w], upset.w),
+    `beat <b>${esc(name[upset.l])}</b> ${score(upset.s)}; the model gave that <b>${pct(upset.p)}</b>`, "standings_upset"];
+  const cardHtml = ([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`;
   const cards = [
     leader?.series && ["League leader", teamLink(src, leader.team, leader.id), `<b>${leader.gw}–${leader.gl}</b> in games · ${leader.w}–${leader.tie}–${leader.l} in series`, "standings_leader"],
     hot?.streak >= 2 && ["Hottest team", teamLink(src, hot.team, hot.id), `<b>${hot.streak} series</b> won in a row`, "standings_streak"],
     tough && ["Toughest schedule so far", teamLink(src, name[tough.id], tough.id), `Opponents have won <b>${tough.sos}</b> games`, "sos"],
-    upset && upset.p < 0.4 && ["Biggest upset", teamLink(src, name[upset.w], upset.w),
-      `beat <b>${esc(name[upset.l])}</b> ${score(upset.s)}; the model gave that <b>${pct(upset.p)}</b>`, "standings_upset"],
   ].filter(Boolean);
 
   // Race: each team's game wins after each league night.
@@ -263,7 +282,7 @@ export async function renderStandings(src) {
 
   const updated = new Date(d.updated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const tabs = playerTabs(pageTabs(STANDINGS_TABS, src, [
-    ["table", `${cards.length ? `<div class="cards reveal st-cards">${cards.map(([k, v, sub, tip], i) => `<div class="card" style="--i:${i}"><div class="k">${k}${info(tip)}</div><div class="v small">${v}</div><div class="s">${sub}</div></div>`).join("")}</div>` : ""}
+    ["table", `${cards.length ? `<div class="cards reveal st-cards">${cards.map(cardHtml).join("")}</div>` : ""}
       <div id="t" class="reveal"></div>
       <p class="table-note">${src.all ? "All divisions in one table, sorted by game wins. Teams only play within their division, so compare across divisions with care. Official standings are on PlayOn."
         : `Sorted by game wins; official standings and tiebreakers live on
@@ -276,6 +295,16 @@ export async function renderStandings(src) {
   app.innerHTML = `
     ${pageHead(kicker, "Teams", `${d.games.length} ticketed games · updated ${updated}.`, tabs.bar)}
     ${tabs.panels}`;
+  // Biggest upset, after the first paint (findUpset above). Skipped if the page has moved on.
+  const tableEl = app.querySelector("#t");
+  requestAnimationFrame(() => setTimeout(async () => {
+    if (!tableEl?.isConnected) return;
+    const card = upsetCard(await findUpset());
+    if (!card || !tableEl.isConnected) return;
+    let row = app.querySelector(".st-cards");
+    if (!row) { tableEl.insertAdjacentHTML("beforebegin", `<div class="cards reveal st-cards"></div>`); row = app.querySelector(".st-cards"); }
+    row.insertAdjacentHTML("beforeend", cardHtml(card, cards.length)); // info bubbles work by one page-wide listener (lib/glossary.js)
+  }, 0));
 
   // A bye is a forfeit win with no games behind it: its own muted square, not a real W.
   const oppWins = gameWins(groupStage(d.series));
