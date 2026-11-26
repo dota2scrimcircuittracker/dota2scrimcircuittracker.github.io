@@ -561,3 +561,14 @@ body:has(.wr-full) { overflow: hidden; }
 .wr-switch button:hover { color: var(--wr-bone); }
 .wr-switch button[aria-pressed="true"] { color: var(--wr-ink); background: var(--wr-gold); cursor: default; }
 .wr-switch button:focus-visible { outline: 2px solid var(--wr-gold); outline-offset: 2px; }
+
+/* Lite (html.wr-lite, pages/wrapped.js liteProbe): a device drawing under 40 fps. Slide finishes and smoke
+   lettering go, the signature holds still, backgrounds, the collage and slide borders stop moving (the wall still fades in). */
+html.wr-lite .wr-finish, html.wr-lite .wr-sig canvas { display: none; }
+html.wr-lite .wr-sig *, html.wr-lite .wr-sig *::before, html.wr-lite .wr-sig *::after { animation: none !important; }
+html.wr-lite .wr-wall, html.wr-lite .wr-collage-row { animation: none !important; }
+/* Animated slide borders stay drawn, frozen. */
+html.wr-lite .wr-border *, html.wr-lite .wr-border *::before, html.wr-lite .wr-border *::after { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: no-preference) {
+  html.wr-lite .wr-stage .wr-wall img { animation: wr-wall 6s ease-out both !important; }
+}

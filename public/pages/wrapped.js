@@ -41,6 +41,33 @@ function addStyles() {
   document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="wrapped.css" data-wrapped-css>');
 }
 
+// Slow devices: a player saw 2-3 fps in Firefox and Opera (2026-11-26). Once a story is up, the page
+// times 90 frames; if the middle one takes over 25 ms (under 40 fps) it goes lite for the rest of the
+// visit (html.wr-lite, wrapped.css): no slide finishes or smoke lettering, backgrounds hold still.
+// A hidden tab draws no frames, so it waits until the tab is shown.
+function liteProbe() {
+  const root = document.documentElement;
+  if (root.classList.contains("wr-lite") || root.dataset.liteProbe) return;
+  try { if (sessionStorage.getItem("wr-lite") === "1") { root.classList.add("wr-lite"); return; } } catch { /* storage blocked */ }
+  root.dataset.liteProbe = "1";
+  const gaps = [];
+  let prev = 0;
+  const step = (t) => {
+    if (document.hidden) { prev = 0; requestAnimationFrame(step); return; }
+    if (prev) gaps.push(t - prev);
+    prev = t;
+    if (gaps.length < 90) { requestAnimationFrame(step); return; }
+    delete root.dataset.liteProbe;
+    gaps.sort((a, b) => a - b);
+    if (gaps[45] > 25) {
+      root.classList.add("wr-lite");
+      try { sessionStorage.setItem("wr-lite", "1"); } catch { /* storage blocked */ }
+    }
+  };
+  // Past the first slide's entrance and image loads, which stall any device for a moment.
+  setTimeout(() => requestAnimationFrame(step), 1500);
+}
+
 const name = (p) => esc(p?.name ?? "?");
 const lane = (g) => LANE_GROUPS.find(([k]) => k === g)?.[1] ?? g;
 const num = (v, f) => (f === "%" ? pct(v) : Number(v).toFixed(f));
@@ -1308,6 +1335,7 @@ function mountStory(root, { title, railTitle, opening, parts, ending, pins = nul
   const pinBtn = (c) => (pinnable(c) ? `<button type="button" class="wr-pin" data-pin="${esc(c.key)}" aria-pressed="${isPinned(c)}">${isPinned(c) ? "📌 Pinned to profile" : "📌 Pin to profile"}</button>` : "");
   const story = root.querySelector(".wr-story"), stage = story.querySelector(".wr-stage"), msg = root.querySelector(".wr-pin-msg"), rail = root.querySelector(".wr-rail");
   wireArt(stage);
+  liteProbe();
   let at = 0;
   wireSwitch(stage, () => cards[at]);
   const list = story.querySelector(".wr-list"), countBtn = story.querySelector(".wr-count-btn"), playBtn = story.querySelector(".wr-play");
