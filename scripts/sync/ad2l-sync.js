@@ -279,6 +279,7 @@ async function playerMatches(acct, date, fresh = false) {
 const candidates = new Set();
 const pubRows = new Map(); // main account -> rows
 const historyRows = new Map(); // main account -> rows (smurfs merged), for the draft model
+const rankedRows = new Map(); // main account -> its own ranked games since the season began (no smurfs), for Wrapped
 // Teams with a series in the last 12 hours or the next 2: their match lists are fetched fresh.
 const playingNow = new Set(series.filter((s) => s.time && s.time > Date.now() / 1000 - 12 * 3600 && s.time < Date.now() / 1000 + 2 * 3600).flatMap((s) => [s.home, s.away]));
 for (const [acct, o] of ONLY ? [] : owner) {
@@ -290,6 +291,7 @@ for (const [acct, o] of ONLY ? [] : owner) {
     .catch((e) => (console.log(`  ${acct}: ${e.message}; skipped this run`), []));
   const hist = historyRows.get(o.main) ?? historyRows.set(o.main, []).get(o.main);
   for (const r of rows) if (r.hero_id && r.start_time) hist.push(r);
+  if (acct === o.main) rankedRows.set(acct, rows.filter((r) => r.lobby_type === 7 && r.start_time >= firstSeries));
   for (const r of rows) {
     if (r.lobby_type === 1 && r.start_time < Date.now() / 1000 - days * 86400) continue;
     if (r.lobby_type === 1) candidates.add(r.match_id);
@@ -608,12 +610,17 @@ const draftOut = {
   history: Object.fromEntries([...historyRows].map(([acct, rows]) => [acct, [...new Map(rows.map((r) => [r.match_id, r])).values()]
     .sort((a, b) => a.start_time - b.start_time)
     .flatMap((r) => [r.start_time, r.hero_id, (r.player_slot < 128) === r.radiant_win ? 1 : 0, r.lobby_type ?? 0, r.duration ?? 0, num(r.last_hits), num(r.gold_per_min), num(r.hero_healing), r.lane_role ?? 0, r.average_rank ?? 0])])),
+  // Wrapped's Most sandbagged: each main account's own ranked games since the season's first
+  // series (smurfs left out), flat groups of 3: start time, won (1/0), lobby average rank (0
+  // unknown). Oldest first.
+  ranked: Object.fromEntries([...rankedRows].filter(([, rows]) => rows.length).map(([acct, rows]) => [acct, [...rows].sort((a, b) => a.start_time - b.start_time)
+    .flatMap((r) => [r.start_time, (r.player_slot < 128) === r.radiant_win ? 1 : 0, r.average_rank ?? 0])])),
 };
 // One line per key and per player, so the auto sync's "only the timestamp changed" check (it
 // drops a file whose every changed line holds "updated":) sees real changes, and diffs stay small.
 const line = ([k, v]) => `${JSON.stringify(k)}:${JSON.stringify(v)}`;
-const { history, totals: allTime, ...head } = draftOut;
+const { history, totals: allTime, ranked, ...head } = draftOut;
 await writeFile(OUT.replace(/\.json$/, "-draft.json"),
-  `{${Object.entries(head).map(line).join(",\n")},\n"totals":{\n${Object.entries(allTime).map(line).join(",\n")}\n},\n"history":{\n${Object.entries(history).map(line).join(",\n")}\n}}\n`);
+  `{${Object.entries(head).map(line).join(",\n")},\n"totals":{\n${Object.entries(allTime).map(line).join(",\n")}\n},\n"ranked":{\n${Object.entries(ranked).map(line).join(",\n")}\n},\n"history":{\n${Object.entries(history).map(line).join(",\n")}\n}}\n`);
 console.log(`  ${games.length} division games from league ${LEAGUE_ID}; ${odCalls} OpenDota calls this run`);
 console.log(`wrote ${path.relative(ROOT, OUT)}`);

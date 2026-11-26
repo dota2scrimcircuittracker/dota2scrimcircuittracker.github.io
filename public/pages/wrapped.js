@@ -567,12 +567,11 @@ const artHtml = (png, still) => (still || calm()
 // plain and always get the same one.
 const WALL_HEROES = HERO_META.map(([, name]) => name).filter((n) => heroArt(n));
 const pickHero = (key) => WALL_HEROES[[...String(key)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % WALL_HEROES.length];
-// The new version, local only: on loopback it's the default (?wrapWalls=now shows today's live version,
-// as the left side of _dev/wrapped-compare.html does). The live site keeps today's version until Fav says.
-// every background is the art of one of Fav's picked card designs (lib/fav-showcase-picks.js) in
-// place of the hero wallpaper and loading screens. Same motion: the wall zooms in, a return pans.
-const FAV_WALLS = typeof location !== "undefined" && ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname)
-  && new URLSearchParams(location.search).get("wrapWalls") !== "now";
+// The new version, live for everyone (?wrapWalls=now shows the old one, as the left side of
+// _dev/wrapped-compare.html does): every background is the art of one of Fav's picked card designs
+// (lib/fav-showcase-picks.js) in place of the hero wallpaper and loading screens. Same motion: the
+// wall zooms in, a return pans.
+const FAV_WALLS = typeof location !== "undefined" && new URLSearchParams(location.search).get("wrapWalls") !== "now";
 let favWalls = null;
 const favFinish = new Map(); // picked art src -> that pick's equipment, for its finish (favFinishHtml)
 const favHeroOf = new Map(); // picked art src -> its hero (lightning borders go to lightning heroes only)
