@@ -49,7 +49,7 @@ const seriesScore = (s) => `${Math.max(s.home_score, s.away_score)}–${Math.min
 
 // Everything a story needs from one league: its season games, awards and team names. Cached per
 // league for the visit (the profile pin and the page share it).
-// A league's own id: Heroic/Aegis's views share its key, so they add theirs ('heroic_a').
+// A league's own id: Heroic/Aegis's views share its key, so each view adds its own ('heroic_a').
 // The league as the page names it: "Heroic/Aegis · Division A" on a view.
 const leagueName = (src) => { const d = String(src.division ?? "").replace(new RegExp(`^${SEASON.name} `), ""); return esc(src.view ? `${d} · Division ${src.view.toUpperCase()}` : d); };
 const srcId = (src) => (src.view ? `${src.key}_${src.view}` : src.key);
