@@ -55,7 +55,7 @@ test("killClock bins kills by five minutes and reads the first blood rate", () =
   const kills = Array.from({ length: 10 }, (_, i) => 600 + i);
   const k = killClock(teamGames([game("a", { stat: { a1: { kill_t: kills, first_blood: 1 } } }), game("a", { stat: { a1: { kill_t: kills } } })], 1));
   assert.equal(k.peak, 2); assert.equal(k.total, 20);
-  assert.equal(k.fbWins, 1); assert.equal(k.fbWinRate, 1);
+  assert.equal(k.fbWins, 1); assert.equal(k.fbWinRate, 1); assert.equal(k.games, 2); assert.equal(k.perGame[2], 10);
 });
 
 test("clutchOf finds the comeback from the team's own side", () => {

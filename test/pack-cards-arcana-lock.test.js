@@ -36,7 +36,7 @@ const settledCup=(rows,vault,{votingAt})=>{
 };
 
 test('pack cards are automatic: the first four designs, Card 5 swaps in, plain slots skipped, a twin design is one of the four',async()=>{
-  const {rows,as,get,raw}=vaultRig('auto');
+  const {rows,as,get,raw}=vaultRig('auto',()=>WINTER.lockAt-864e5);
   const order=async a=>(await get(a)).designs.map(d=>[d.slot,d.main]);
   for(const a of [801,802])await as(a,{action:'session'});
   rows.set('user:801',{...rows.get('user:801'),extraSlots:2,inventory:{...rows.get('user:801').inventory,'tool:twin-flip':1}});
@@ -65,7 +65,7 @@ test('pack cards are automatic: the first four designs, Card 5 swaps in, plain s
 });
 
 test('pack cards: an old opt-in packCards row (savedAt, fewer than four) still parses and fills up',async()=>{
-  const {rows,as,get}=vaultRig('old');
+  const {rows,as,get}=vaultRig('old',()=>WINTER.lockAt-864e5);
   await as(851,{action:'session'});
   for(const slot of [0,1,2,3,4])await as(851,{action:'equip',equipment:eq(20+slot),cardSlot:slot});
   rows.set('user:851',{...rows.get('user:851'),packCards:[{slot:4,main:'kills',savedAt:1700},{slot:2,main:'stuns',savedAt:1600}]});

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {designKey,castVote,tally} from '../public/lib/card-ratings.js';
 import {DEFAULT_EQUIPMENT,CATALOG} from '../public/lib/cosmetics-catalog.js';
 import {CosmeticsVault} from '../workers/steam-auth/src/cosmetics.js';
+import {WINTER} from '../public/lib/winter.js';
 
 test('a design fingerprint ignores key order and changes with the design',()=>{
   assert.equal(designKey({a:1,b:{c:2,d:[1,2]}}),designKey({b:{d:[1,2],c:2},a:1}));
@@ -100,7 +101,7 @@ test('pull log: epic and legendary pulls only, newest first, filled once from ol
 });
 test('pack cards: nominate up to 4 with a main stat, self-rate apart from votes, rate any slot',async()=>{
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
-  const vault=new CosmeticsVault({storage});let n=0;
+  const vault=new CosmeticsVault({storage});let n=0;vault.clock=()=>Math.min(Date.now(),WINTER.lockAt-864e5);
   const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`pc-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
   for(const a of [401,402])await as(a,{action:'session'});
   for(const slot of [0,1,3])await as(401,{action:'equip',equipment:{...DEFAULT_EQUIPMENT,hue:10+slot},cardSlot:slot});
@@ -120,7 +121,7 @@ test('pack cards: nominate up to 4 with a main stat, self-rate apart from votes,
 });
 test('pack cards: stricter nominations and self-ratings',async()=>{
   const rows=new Map(),storage={get:async k=>structuredClone(rows.get(k)),put:async(k,v)=>rows.set(k,structuredClone(v)),delete:async k=>rows.delete(k),list:async({prefix})=>new Map([...rows].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]))};storage.transaction=fn=>fn(storage);
-  const vault=new CosmeticsVault({storage});let n=0;
+  const vault=new CosmeticsVault({storage});let n=0;vault.clock=()=>Math.min(Date.now(),WINTER.lockAt-864e5);
   const as=async(account,body)=>(await vault.fetch(new Request(`https://vault/action?account=${account}`,{method:'POST',body:JSON.stringify({requestId:`pcs-request-${String(++n).padStart(6,'0')}`,...body})}))).json();
   const playerCards=async a=>(await (await vault.fetch(new Request(`https://vault/player-cards?account=${a}`))).json()).designs;
   for(const a of [501,502,503])await as(a,{action:'session'});

@@ -164,6 +164,8 @@ test("setWrappedPin keeps a valid pin and refuses anything else", async () => {
   const pin = { season: "S48", div: "heroic_a", card: "award:mvp" };
   assert.deepEqual(setWrappedPin({}, { pin: { ...pin, extra: "x" } }).wrappedPin, pin);
   assert.equal(setWrappedPin({ wrappedPin: pin }, { pin: null }).wrappedPin, null);
+  // A pin is always your own card: a player is dropped.
+  assert.deepEqual(setWrappedPin({}, { pin: { ...pin, player: "17449298" } }).wrappedPin, pin);
   for (const bad of [{ ...pin, card: "<img>" }, { ...pin, season: "48" }, { ...pin, div: "../x" }, "summary", [pin]])
     assert.throws(() => setWrappedPin({}, { pin: bad }));
 });
