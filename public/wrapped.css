@@ -97,14 +97,17 @@
   linear-gradient(180deg, color-mix(in srgb, var(--glow) 20%, var(--wr-ink)) 0%, var(--wr-ink) 78%); }
 /* The hero wallpaper: full bleed under the glows, dimmed and tinted toward the slide's colours so
    the words and the render stay on top. The glow layer goes see-through over it. */
-.wr-wall { position: absolute; inset: 0; z-index: -4; overflow: hidden; pointer-events: none; }
+.wr-wall { position: absolute; inset: 0; z-index: -4; overflow: hidden; pointer-events: none; container-type: size; }
 .wr-wall img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; filter: saturate(1.1) brightness(.72); transform: scale(1.04); }
 .wr-wall::after { content: ""; position: absolute; inset: 0; background:
   linear-gradient(0deg, rgba(12, 11, 10, .92) 0%, rgba(12, 11, 10, .55) 42%, rgba(12, 11, 10, .25) 70%, rgba(12, 11, 10, .45) 100%),
   linear-gradient(90deg, rgba(12, 11, 10, .55), transparent 70%); }
 /* A hero's return (pages/wrapped.js backdropOf): one of its loading screens with no model in front,
    so it shows brighter, and the wide screen pans slowly across the tall card. */
-.wr-has-backdrop .wr-wall img { filter: saturate(1.15) brightness(.85); object-position: 0% 35%; }
+/* It pans with `translate` (the GPU moves it, no repaint): the image at its own width, sliding by its width
+   less the slide's (100cqw, .wr-wall is the container). object-position panning repainted it, and every
+   blur over it, each frame: 2-3 fps in Firefox. */
+.wr-has-backdrop .wr-wall img { filter: saturate(1.15) brightness(.85); width: auto; min-width: 100%; max-width: none; object-position: 50% 35%; }
 .wr-has-backdrop .wr-wall::after { background:
   linear-gradient(0deg, rgba(12, 11, 10, .94) 0%, rgba(12, 11, 10, .6) 38%, transparent 66%, rgba(12, 11, 10, .4) 100%); }
 /* Local preview (?wrapWalls=fav): the picked card's finish moving over its art, above the wall's shading and
@@ -216,8 +219,8 @@
   .wr-pc.in { animation: wr-deal .55s cubic-bezier(.2, .8, .2, 1) both; }
 }
 @keyframes wr-in { from { opacity: 0; transform: scale(.97); } }
-@keyframes wr-pan { from { object-position: 0% 35%; } to { object-position: 100% 35%; } }
-@keyframes wr-pan-slow { from { object-position: 15% 35%; } to { object-position: 85% 35%; } }
+@keyframes wr-pan { from { translate: 0 0; } to { translate: calc(100cqw - 100%) 0; } }
+@keyframes wr-pan-slow { from { translate: calc((100cqw - 100%) * .15) 0; } to { translate: calc((100cqw - 100%) * .85) 0; } }
 @keyframes wr-drift { from { transform: scale(1) translate(0, 0); } 50% { transform: scale(1.035) translate(-1%, -.6%); } to { transform: scale(1.06) translate(.8%, -1.2%); } }
 @keyframes wr-wall { from { opacity: 0; transform: scale(1.12); } 12% { opacity: 1; } }
 @keyframes wr-art { from { opacity: 0; transform: translateX(8%); } }
@@ -240,8 +243,8 @@
 .wr-collage { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; animation: wr-collage-in 1.2s ease both; }
 @keyframes wr-collage-in { from { opacity: 0; } }
 .wr-collage-wall { position: absolute; inset: -25% -20%; display: grid; grid-auto-rows: 1fr; gap: 14px; transform: rotate(-8deg);
-  filter: brightness(.42) saturate(.85); opacity: .55; }
-.wr-collage-row { display: flex; gap: 14px; width: max-content; animation: wr-collage-drift 180s linear infinite; }
+  opacity: .55; }
+.wr-collage-row { display: flex; gap: 14px; width: max-content; filter: brightness(.42) saturate(.85); animation: wr-collage-drift 180s linear infinite; }
 .wr-collage-row.is-rev { animation-direction: reverse; animation-duration: 220s; }
 .wr-collage-row img { width: 340px; height: 100%; min-height: 200px; object-fit: cover; border-radius: 14px; }
 /* Dark in the middle where the tiles sit, the art showing at the edges; fades into the page at the bottom. */
@@ -426,7 +429,7 @@ body:has(.wr-full) { overflow: hidden; }
 .wr-card[data-card="open"] .wr-big { white-space: nowrap; overflow-wrap: normal; font-size: clamp(2.4rem, 19cqi, 6.5rem); }
 
 /* New player slides: the rating line, the personality reveal, time dead. */
-.wr-line-chart { display: block; width: 100%; height: auto; margin: 14px 0 4px; overflow: visible; background: rgba(12, 11, 10, .62); border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); backdrop-filter: blur(4px); }
+.wr-line-chart { display: block; width: 100%; height: auto; margin: 14px 0 4px; overflow: visible; background: rgba(12, 11, 10, .8); border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
 .wr-lc-path { fill: none; stroke: var(--wr-gold); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .5)); }
 .wr-lc-area { fill: color-mix(in srgb, var(--wr-gold) 16%, transparent); stroke: none; }
 .wr-lc-avg { stroke: var(--wr-dust); stroke-width: 1; stroke-dasharray: 4 5; opacity: .6; }
@@ -443,7 +446,7 @@ body:has(.wr-full) { overflow: hidden; }
 .wr-big-time small { margin-left: .08em; margin-right: .12em; }
 
 /* More cards (lib/wrapped-more.js): division tables, rune bars, the item icon. */
-.wr-table { width: 100%; margin: 14px 0 6px; border-collapse: collapse; font-size: .82rem; background: rgba(12, 11, 10, .62); border-radius: 12px; overflow: hidden; backdrop-filter: blur(4px); }
+.wr-table { width: 100%; margin: 14px 0 6px; border-collapse: collapse; font-size: .82rem; background: rgba(12, 11, 10, .8); border-radius: 12px; overflow: hidden; }
 .wr-table th { padding: 7px 10px; font: 600 .62rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--wr-dust); text-align: right; }
 .wr-table th:first-child, .wr-table td:first-child { text-align: left; }
 .wr-table td { padding: 5px 10px; text-align: right; font-variant-numeric: tabular-nums; border-top: 1px solid rgba(255, 255, 255, .06); }
@@ -470,7 +473,7 @@ body:has(.wr-full) { overflow: hidden; }
 /* Slide 8, the rating line: sits at the bottom instead of the middle, so it clears the hero. */
 .wr-new .wr-card[data-card="rating"] .wr-body { margin: auto 0 6px; }
 /* The summary: its numbers on a dark panel so they read over any background. */
-.wr-new .wr-card[data-card="summary"] .wr-summary { padding: 18px 20px; border-radius: 16px; background: rgba(12, 11, 10, .84); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 18px 40px rgba(0, 0, 0, .4); backdrop-filter: blur(6px); }
+.wr-new .wr-card[data-card="summary"] .wr-summary { padding: 18px 20px; border-radius: 16px; background: rgba(12, 11, 10, .84); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 18px 40px rgba(0, 0, 0, .4); }
 /* Slide 4: five heroes, the best of them lit. */
 .wr-heroes-5 { gap: 7px; }
 .wr-heroes-5 .wr-hname { font-size: 1.25rem; }
@@ -553,7 +556,7 @@ body:has(.wr-full) { overflow: hidden; }
 /* The switch on a switch card: "A game | A minute" and the like. */
 .wr-view { display: contents; }
 .wr-view[hidden] { display: none; }
-.wr-switch { display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 12px; border-radius: 999px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .18); backdrop-filter: blur(6px); }
+.wr-switch { display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 12px; border-radius: 999px; background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 255, 255, .18); }
 .wr-switch button { font: 600 .66rem var(--mono); letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--wr-bone) 70%, transparent); background: none; border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: background .2s, color .2s; }
 .wr-switch button:hover { color: var(--wr-bone); }
 .wr-switch button[aria-pressed="true"] { color: var(--wr-ink); background: var(--wr-gold); cursor: default; }

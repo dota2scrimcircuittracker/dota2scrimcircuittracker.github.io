@@ -1324,12 +1324,17 @@ function mountStory(root, { title, railTitle, opening, parts, ending, pins = nul
   const AUTO_KEY = "wr-autoplay", holds = new Set();
   let auto = !calm() && local.get(AUTO_KEY) === "1", spent = 0, dur = slideMs(null), last = 0, frame = 0;
   const running = () => auto && !holds.size && at < cards.length - 1;
+  // Runs every frame while auto-play is on: the button is only rewritten when it changes.
+  let painted = null;
   const paintPlay = () => {
-    story.classList.toggle("wr-auto", auto);
-    playBtn.hidden = calm();
-    playBtn.setAttribute("aria-pressed", String(auto));
-    playBtn.setAttribute("aria-label", auto ? "Pause auto-play" : "Play cards automatically");
-    playBtn.textContent = auto ? "❚❚" : "▶";
+    if (painted !== auto) {
+      painted = auto;
+      story.classList.toggle("wr-auto", auto);
+      playBtn.hidden = calm();
+      playBtn.setAttribute("aria-pressed", String(auto));
+      playBtn.setAttribute("aria-label", auto ? "Pause auto-play" : "Play cards automatically");
+      playBtn.textContent = auto ? "❚❚" : "▶";
+    }
     const s = story.querySelector(`[data-seg="${at}"] i`);
     if (s) s.style.width = auto && at < cards.length - 1 ? `${Math.min(100, (spent / dur) * 100)}%` : "";
   };
