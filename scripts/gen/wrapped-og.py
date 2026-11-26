@@ -250,6 +250,83 @@ def draw_tile(job):
     img.convert("RGB").save(out, "JPEG", quality=86, optimize=True, progressive=True)
 
 
+def draw_hub(job):
+    # The Wrapped hub (pages/wrapped.js renderHub): S48 WRAPPED over a row of every division's
+    # tile, each its most-picked hero's art under NAME / WRAPPED in its colour. Divisions still
+    # playing are greyed, as on the hub.
+    img = Image.new("RGBA", (W, H), INK + (255,))
+    tiles = job["tiles"]
+    arts = []
+    for t in tiles:
+        a = None
+        if t.get("art") and Path(t["art"]).exists():
+            try:
+                a = Image.open(t["art"]).convert("RGB")
+            except Exception:
+                a = None
+        arts.append(a)
+    # Backdrop: the arts side by side, blurred and dimmed.
+    have = [a for a in arts if a]
+    if have:
+        strip = Image.new("RGB", (W, H), INK)
+        bw = W // len(have) + 1
+        for i, a in enumerate(have):
+            strip.paste(cover(a, bw, H, 0.2), (i * (W // len(have)), 0))
+        strip = strip.filter(ImageFilter.GaussianBlur(28))
+        img = Image.blend(img.convert("RGB"), strip, 0.38).convert("RGBA")
+    d = ImageDraw.Draw(img)
+    # Title: a rule, AD2L · S48, then S48 WRAPPED, centred like the hub's head.
+    kick = f"AD2L  ·  {job['season']}"
+    kf = font("mono-600.ttf", 20)
+    kw = spaced_len(d, kick, kf, 5)
+    kx = (W - kw) // 2 + 26
+    d.line([(kx - 52, 52), (kx - 16, 52)], fill=GOLD, width=3)
+    spaced(d, (kx, 40), kick, kf, GOLD, 5)
+    title = f"{job['season']} WRAPPED"
+    tf = font("display-900.ttf", 112)
+    d.text(((W - d.textlength(title, font=tf)) // 2, 62), title, font=tf, fill=BONE)
+    # The tiles.
+    n, gap, side = len(tiles), 14, 40
+    tw = (W - 2 * side - gap * (n - 1)) // n
+    ty = 206
+    th = H - ty - 46
+    for i, (t, a) in enumerate(zip(tiles, arts)):
+        tx = side + i * (tw + gap)
+        accent, dark = hexrgb(t["color"]), hexrgb(t["dark"])
+        tile = Image.new("RGBA", (tw, th), dark + (255,))
+        if a:
+            tile = cover(a, tw, th, 0.35).convert("RGBA")
+            if not t["open"]:
+                tile = Image.blend(tile, tile.convert("L").convert("RGBA"), 0.6)
+        g = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+        gd = ImageDraw.Draw(g)
+        for y in range(th):
+            f = y / th
+            top = max(0.0, 0.35 - f * 1.2)
+            low = max(0.0, (f - 0.45) / 0.55)
+            col = tuple(int(dark[k] * top / max(top + low, 1e-6) + INK[k] * low / max(top + low, 1e-6)) for k in range(3))
+            gd.line([(0, y), (tw, y)], fill=col + (int(255 * min(1.0, top + low * 0.95)),))
+        tile.alpha_composite(g)
+        td = ImageDraw.Draw(tile)
+        name = t["name"].upper()
+        nf = fit(td, name, "display-900.ttf", 38, tw - 20, 16)
+        mf = fit(td, "WRAPPED", "display-900.ttf", 44, tw - 20, 16)
+        my = th - 22 - td.textbbox((0, 0), "WRAPPED", font=mf)[3]
+        td.text((10, my), "WRAPPED", font=mf, fill=accent if t["open"] else DUST)
+        td.text((10, my - td.textbbox((0, 0), name, font=nf)[3] - 2), name, font=nf, fill=BONE)
+        spaced(td, (10, 10), f"AD2L {job['season']}", font("mono-600.ttf", 11), accent, 2)
+        mask = Image.new("L", (tw, th), 0)
+        ImageDraw.Draw(mask).rounded_rectangle([0, 0, tw - 1, th - 1], radius=12, fill=255)
+        img.paste(tile, (tx, ty), mask)
+        d.rounded_rectangle([tx, ty, tx + tw - 1, ty + th - 1], radius=12, outline=accent if t["open"] else (120, 112, 104), width=3)
+    brand = "ad2l stat tracker"
+    bf = font("mono-400.ttf", 15)
+    d.text((W - 40 - d.textlength(brand, font=bf), H - 30), brand, font=bf, fill=DUST)
+    out = Path(job["out"])
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.convert("RGB").save(out, "JPEG", quality=86, optimize=True, progressive=True)
+
+
 def draw(job):
     img = background(job["color"], job["dark"])
     accent = hexrgb(job["color"])
@@ -359,7 +436,7 @@ def main():
     jobs = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     fetch_fonts()
     for i, job in enumerate(jobs):
-        (draw_tile if job.get("tile") else draw)(job)
+        (draw_hub if job.get("hub") else draw_tile if job.get("tile") else draw)(job)
         if (i + 1) % 50 == 0:
             print(f"  {i + 1}/{len(jobs)} Wrapped images")
     print(f"wrote {len(jobs)} Wrapped images")

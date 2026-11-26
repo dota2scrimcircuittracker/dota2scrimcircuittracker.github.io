@@ -1,6 +1,8 @@
 // Link previews for AD2L Wrapped (pages/wrapped.js). For each league whose season is over (its
 // grand finals played, lib/wrapped.js seasonOver), writes into a built copy of public/:
-//   /<league>/wrapped/            the season review, with the award winners in its description
+//   /<league>/wrapped/            the Wrapped hub (every division's tile), with this league's
+//                                 award winners in its description; image img/og/wrapped/hub.jpg
+//   /<league>/wrapped/review/     the league's season review (img/og/wrapped/<league>/league.jpg)
 //   /<league>/wrapped/<player>/   that player's Wrapped, with their own title, description and
 //                                 image (img/og/wrapped/<league>/<player>.jpg, drawn by
 //                                 scripts/gen/wrapped-og.py)
@@ -54,6 +56,9 @@ async function write(p, head) {
 const jobs = [];
 let teamPages = 0;
 let leagues = 0;
+// The hub image's tiles, one per division, top division first as pages/wrapped.js renderHub shows them.
+const hubTiles = [];
+const hubImg = `${SITE}/img/og/wrapped/hub.jpg`;
 // Profile tabs: a player's home is the first division (this order) whose season games have them,
 // as pages/wrapped.js homeOf. Listed once that division's season is over.
 const homes = new Set(), profiles = {};
@@ -71,6 +76,7 @@ for (const dv of DIVISIONS) {
     const w = playerWrapped(games, key);
     if (w) profiles[key] = { home: dv.key, name: w.p.name ?? null, team: w.team ?? null, teamId: e.team.id, heroes: w.heroes.slice(0, 2).map((h) => h.hero) };
   }
+  hubTiles.push({ name: dv.name, color: dv.color, dark: dv.dark, open: open || PREVIEW, ...artOf(games.flatMap((m) => m.players.map((q) => q.hero))) });
   if (!PREVIEW && !open) continue;
   leagues++;
   const cuts = laneCuts(d.games.filter(hasDetails));
@@ -86,15 +92,15 @@ for (const dv of DIVISIONS) {
   await write(`${slug}/wrapped`, {
     title: `${SEASON.name} Wrapped · ${league}`,
     description: `The ${dv.name} season in review. ${named.join(" · ")}. Every player's own Wrapped is on their profile.`,
-    color: dv.color, image: leagueImg,
+    color: dv.color, image: hubImg, alt: `AD2L ${SEASON.name} Wrapped: every division's season in review`,
   });
-  // The season review story itself (#/<league>/wrapped/review): same preview, its own address.
+  // The season review story itself (#/<league>/wrapped/review): the league's own tile.
   await write(`${slug}/wrapped/review`, {
     title: `${SEASON.name} season review · ${league}`,
     description: `The ${dv.name} season in review. ${named.join(" · ")}.`,
     color: dv.color, image: leagueImg,
   });
-  // One image for both, like the hub's tile: the league's most-picked hero, champions and MVP.
+  // Its image, like the hub's tile: the league's most-picked hero, champions and MVP.
   jobs.push({
     tile: true, out: path.join(OUT, "img", "og", "wrapped", dv.key, "league.jpg"), color: dv.color, dark: dv.dark,
     kicker: `AD2L · ${SEASON.name}`, name: dv.name, sub: `${plural(games.length, "game")} · ${plural(d.teams.length, "team")} · season in review`,
@@ -163,6 +169,9 @@ for (const dv of DIVISIONS) {
     });
   }
 }
+
+// The hub's image: S48 WRAPPED over every division's tile, once any league is open.
+if (leagues) jobs.push({ hub: true, out: path.join(OUT, "img", "og", "wrapped", "hub.jpg"), season: SEASON.name, tiles: [...hubTiles].reverse() });
 
 await writeFile(path.join(OUT, "data", "wrapped-players.json"), JSON.stringify({ season: SEASON.name, players: profiles }));
 
