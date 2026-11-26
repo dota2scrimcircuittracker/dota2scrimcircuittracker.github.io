@@ -4,7 +4,7 @@
 // The page uses a league's rows when they match its data, and works them out itself otherwise.
 // Also ranked: { <division key>: packed }, each division's draft-file `ranked` (main accounts'
 // ranked pubs) cut to the season (packRanked), so Wrapped doesn't load every draft file for
-// Most sandbagged.
+// Most sandbagged. And names: every rostered player's name, for the Arcana Cup slides.
 // Usage: node scripts/deploy/wrapped-reads.js <site dir>
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -46,7 +46,10 @@ const since = starts.length ? Math.min(...starts) : Infinity;
 const ranked = Object.fromEntries(parts.map(({ key, draft }) => [key, packRanked(draft?.ranked, since)]));
 // Each division file's sync stamp, so a page with newer data reads the draft files instead.
 const updated = Object.fromEntries(parts.map(({ key, d }) => [key, d.updated ?? null]));
-const out = JSON.stringify({ season: SEASON.name, leagues, ranked, updated });
+// Every rostered player's name (account id -> name), for the Arcana Cup slides' podium players
+// without a nickname, so a division's review doesn't load every division to find one name.
+const names = Object.fromEntries(parts.flatMap(({ d }) => d.teams.flatMap((t) => t.players.map((q) => [String(q.account_id), q.name]))));
+const out = JSON.stringify({ season: SEASON.name, leagues, ranked, updated, names });
 await writeFile(path.join(dir, "wrapped-reads.json"), out);
 const n = Object.values(leagues).reduce((s, r) => s + r.length, 0);
 console.log(`wrapped-reads.json: ${Object.keys(leagues).length} leagues, ${n} reads, ${Math.round(out.length / 1024)} KB, ${((Date.now() - started) / 1000).toFixed(1)}s`);

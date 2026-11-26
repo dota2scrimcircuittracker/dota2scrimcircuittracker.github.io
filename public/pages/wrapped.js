@@ -2,7 +2,7 @@
 // season first (signed in, or the player in the address), then the league's awards. Each of your
 // cards (and any award you won) can be pinned to your profile; the profile draws it with
 // pinnedCardHtml. The maths is lib/wrapped.js.
-import { app, wrappedSrcData, esc, pageHead, playerLink, teamLink, heroLink, fmt, pct, signedK, setTitle, SOURCES, playerHref, DIVISIONS, floorOf } from "../core.js";
+import { app, wrappedSrcData, esc, pageHead, playerLink, teamLink, heroLink, fmt, pct, signedK, setTitle, SOURCES, playerHref, DIVISIONS, floorOf, divLite } from "../core.js";
 import { loadNicknames, nicknameOf } from "../lib/nicknames.js";
 import { hasDetails, playerKey, mainAccount } from "../lib/stats.js";
 import { laneCuts, LANE_GROUPS } from "../lib/lanes.js";
@@ -493,9 +493,8 @@ const sharedPersonality = async (src, key) => (await leaguePersonalityMap().catc
 // parts/tiers.js tierRef on the full file (none of the fields lib/lite.js drops are read), without
 // downloading the full file (about 1 MB more) for it.
 async function ratingsOf(src, data, key) {
-  const detailed = (data.detailed ??= data.d.games.filter(hasDetails));
-  let model = null;
-  try { model = (data.model ??= tierModel(detailed, { minGames: floorOf(src) })); } catch { return null; }
+  let detailed, model = null;
+  try { ({ detailed, model } = tiersOf(src, data.d)); } catch { return null; }
   if (!model) return null;
   const pts = [];
   for (const m of data.games) {
@@ -856,10 +855,17 @@ let savedCards = null, cardTiers = null, cardKit = null;
 // Each card's tier (account id -> { tier, rating }), the one on their profile: the same lists as
 // parts/tiers.js divisionTiers, made from Wrapped's own copies of the divisions instead of every
 // full division file (about 5 MB more to download). Same models (see ratingsOf), same tiers.
+// A division's detailed games and its rating model, made once per division file.
+const tierMemo = new WeakMap();
+function tiersOf(src, d) {
+  let m = tierMemo.get(d);
+  if (!m) { const detailed = d.games.filter(hasDetails); m = { detailed, model: tierModel(detailed, { minGames: floorOf(src) }) }; tierMemo.set(d, m); }
+  return m;
+}
+// From each division's file as loaded (not wrappedData), so a card's tier doesn't wait on every division's awards.
 const wrappedTiers = () => (cardTiers ??= Promise.all(Object.keys(DIVISIONS).filter((k) => SOURCES[k]).map(async (k) => {
-  const src = SOURCES[k], data = await wrappedData(src), min = floorOf(src);
-  const detailed = (data.detailed ??= data.d.games.filter(hasDetails));
-  return tierList(detailed, { model: (data.model ??= tierModel(detailed, { minGames: min })), minGames: min });
+  const src = SOURCES[k], { detailed, model } = tiersOf(src, await wrappedSrcData(src));
+  return tierList(detailed, { model, minGames: floorOf(src) });
 })).then((lists) => new Map(lists.flatMap((l) => l.tiers.flatMap(({ tier, players }) => players.map((p) => [p.key, { tier, rating: p.rating }])))))
   .catch(() => new Map()));
 const heroId = (name) => HERO_META.find(([, n]) => n === name)?.[0] ?? null;
@@ -922,7 +928,8 @@ async function claimDesigns(cards, key) {
 // An Arcana Cup entry: the frozen design as it was entered (parts/arcana-cup.js draws it the same way).
 async function cupCardHtml({ entry, name }) {
   cardKit ??= import("../parts/player-card.js");
-  const [{ createPlayerCards, PAINT_FILTER }, { d, games }, tiers] = await Promise.all([cardKit, wrappedData(SOURCES.all), wrappedTiers()]);
+  const [{ createPlayerCards, PAINT_FILTER }, d, tiers] = await Promise.all([cardKit, wrappedSrcData(SOURCES.all), wrappedTiers()]);
+  const games = seasonGames(d.games);
   const team = d.teams.find((t) => t.players.some((q) => String(q.account_id) === String(entry.account)))?.name ?? "AD2L";
   const draw = createPlayerCards(games, { cards: new Map(), teams: d.teams, tiers });
   return (document.getElementById("ft-paint") ? "" : PAINT_FILTER) + draw.card({ account: Number(entry.account), name, team }, null, { own: true, pickButtons: false, equipmentOverride: entry.design }).replace("data-pick=", "data-cup-entry=");
@@ -1010,8 +1017,16 @@ function raceCard(src, a) {
 // New version (FAV_WALLS): the Arcana Cup's results, one slide per bracket, the only cards in the
 // season review: the winning card as it was entered, the podium under it. [] until a bracket settles.
 async function cupCards(src) {
-  const [view, all] = await Promise.all([cupView(), wrappedData(SOURCES.all)]);
-  const roster = new Map(all.d.teams.flatMap((t) => t.players.map((q) => [String(q.account_id), q.name])));
+  const view = await cupView();
+  // A podium player without a nickname takes their roster name: from All's file in its review (loaded
+  // already), else the deploy's name list (data/wrapped-reads.json names), else every division's lite
+  // copy (npm start has no file). Looked up only when one is needed.
+  const podiums = Object.keys(CUP_CATEGORIES).flatMap((cat) => { const c = view.categories?.[cat]; return c?.phase === "done" ? cupPodium(c.order, c.entries) : []; });
+  const needRoster = podiums.some((e) => view.nicknames?.[e.account] == null);
+  const listed = needRoster && !src.all ? (await prebuiltFile())?.names : null;
+  const teams = !needRoster || listed ? [] : src.all ? (await wrappedSrcData(SOURCES.all)).teams
+    : (await Promise.all(Object.keys(DIVISIONS).filter((k) => SOURCES[k]).map((k) => divLite(k).catch(() => ({ teams: [] }))))).flatMap((d) => d.teams);
+  const roster = listed ? new Map(Object.entries(listed)) : new Map(teams.flatMap((t) => t.players.map((q) => [String(q.account_id), q.name])));
   const nameOf = (e) => view.nicknames?.[e.account] ?? roster.get(String(e.account)) ?? `Player ${e.account}`;
   const heroName = (id) => HERO_META.find(([n]) => n === id)?.[1] ?? null;
   return Object.entries(CUP_CATEGORIES).map(([cat, info], i) => {
@@ -1475,8 +1490,8 @@ export async function renderWrapped(src, who = null) {
   src = whole(src);
   // Start every download this Wrapped needs now, side by side: below, each waits on the one before
   // (the reads file only after every division has loaded, the saved card designs only at the end).
-  // A team's Wrapped reads its own division; every other one reads them all.
-  for (const k of who?.team != null ? [src.key] : Object.keys(DIVISIONS)) if (SOURCES[k]) wrappedSrcData(SOURCES[k]).catch(() => {});
+  // A team's Wrapped and a division's review read their own division; the others read them all.
+  for (const k of who?.team != null || (who?.review && !src.all) ? [src.key] : Object.keys(DIVISIONS)) if (SOURCES[k]) wrappedSrcData(SOURCES[k]).catch(() => {});
   prebuiltFile();
   savedCards ??= listCards().catch(() => new Map());
   if (FAV_WALLS) favWalls ??= await loadFavWalls().catch((e) => (console.warn("fav walls unavailable", e), null));
@@ -1492,8 +1507,9 @@ async function renderReview(src) {
   setTitle("Season review", `AD2L ${SEASON.name}`);
   app.innerHTML = loading(kicker, title);
   let all, div = null;
-  try { [all, div] = await Promise.all([wrappedData(SOURCES.all), src.all ? null : wrappedData(src)]); } catch (e) { app.innerHTML = `${pageHead(kicker, title)}${errorBox(e)}`; return; }
-  const divShown = !!div && (div.open || isLocal()), leagueShown = all.open || isLocal();
+  // A division's review shows its own awards only: it doesn't wait on every division's (All's review does).
+  try { [all, div] = await Promise.all([src.all ? wrappedData(SOURCES.all) : null, src.all ? null : wrappedData(src)]); } catch (e) { app.innerHTML = `${pageHead(kicker, title)}${errorBox(e)}`; return; }
+  const divShown = !!div && (div.open || isLocal()), leagueShown = !!all && (all.open || isLocal());
   const dname = src.all ? null : leagueName(src);
   if (src.all ? !leagueShown : !divShown) {
     app.innerHTML = `${pageHead(kicker, title)}<section class="wr-page"><div class="wr-locked panel"><p class="wr-kicker">Locked</p><h3>The ${esc(SEASON.name)} review opens when the season ends</h3><p>${dname ? `${dname}'s awards unlock once its grand final is played.` : "The league's awards unlock once every division's grand final is played."} Every player's own Wrapped opens on their profile then too.</p><p><a href="${src.root}/wrapped">Back to every Wrapped</a></p></div></section>`;
